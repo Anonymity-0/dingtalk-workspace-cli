@@ -87,6 +87,9 @@ policy: test-auth-legacy-compat
 	@$(POLICY_ENV) ./scripts/policy/check-schema-command-registry.sh
 	@$(POLICY_ENV) ./scripts/policy/check-command-surface.sh --strict
 	@$(POLICY_ENV) ./scripts/policy/check-generated-drift.sh
+	@$(POLICY_ENV) ./scripts/policy/check-param-concepts.sh
+	@$(POLICY_ENV) ./scripts/policy/check-param-alias-cooccurrence.sh
+	@$(POLICY_ENV) $(GO) test -count=1 ./internal/app -run '^TestParamAliasFixtureThroughEmbeddedDeliveryPath$$'
 	@$(POLICY_ENV) ./scripts/policy/check-schema-catalog.sh
 	@$(POLICY_ENV) ./scripts/policy/check-schema-binary.sh
 	@$(POLICY_ENV) $(MAKE) test-schema-agent-examples
@@ -143,6 +146,14 @@ generate-schema:
 	$(GO) generate ./internal/cli; \
 	diff -qr internal/cli/schema_command_registry "$$registry_guard" >/dev/null || { \
 		printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry/' >&2; \
+		exit 1; \
+	}; \
+	cmp -s internal/cli/param_concepts.json "$$concepts_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.json' >&2; \
+		exit 1; \
+	}; \
+	cmp -s internal/cli/param_concepts.schema.json "$$concepts_schema_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.schema.json' >&2; \
 		exit 1; \
 	}; \
 	cmp -s internal/cli/param_concepts.json "$$concepts_guard" || { \
