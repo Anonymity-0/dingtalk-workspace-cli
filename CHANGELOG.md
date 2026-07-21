@@ -6,6 +6,53 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.53] - 2026-07-21
+
+This release promotes the sealed `v1.0.53-beta.7` contents to stable. It adds enterprise onboarding, declarative shortcuts, Sheet/Aitable writes, multi-account profiles, and broader personal IM events, while hardening authentication and the guarded release path.
+
+### Added
+
+- **Enterprise and office command coverage** — adds enterprise creation, employee invitation, and account provisioning commands; 366 declarative service shortcuts; Sheet import commands; and Aitable workflow create/update support with reviewed Schema contracts.
+- **Multiple accounts in one DingTalk organization** — profiles can distinguish accounts by organization and user, select them explicitly, and log out one account or an entire organization without overwriting another account's credentials.
+- **Expanded personal IM event subscriptions** (#651) — adds read-receipt, recall, and reaction events for one-to-one and group chats, plus specified-sender subscriptions by staff ID or OpenDingTalk ID.
+- **Official multi-platform Homebrew channel** — ships separate stable and keg-only beta Formulae for macOS and Linux across amd64 and arm64, with isolated update PRs.
+
+### Changed
+
+- **Personal event output contract** (#651) — `event consume` now emits event-specific top-level structured fields; scripts that consumed the former transport envelope must use the flat fields or select `-f raw`, while `--debug-raw-events` retains the diagnostic envelope.
+- **Guarded release lifecycle** — beta/stable publication now uses explicit promotion, immutable delivery proofs, protected recovery, and tag-bound optional OSS policy; an unprovisioned OSS mirror is sealed as `deferred` so GitHub, npm, and Homebrew are not blocked.
+
+### Fixed
+
+- **Authentication and credential reliability** — organization-policy denials stop before mutation or polling, long-running clients reload and refresh access tokens consistently, concurrent credential writes are atomic, and Windows portable-auth commands fail before reading or writing unsupported credential bundles.
+- **Command validation and compatibility** — invalid Sheet/task targets fail locally, IM shortcuts preserve AI-tag and alias compatibility, and Aitable import uploads require and forward a positive file size.
+- **Release publication reliability** — GitHub draft publication is bound to one verified release ID and exact assets, preflight uses isolated installer worktrees, guarded local tags remain compatible, cloud planning fingerprints the actual allocated release refs, and npm channel verification waits for bounded registry propagation without moving tags.
+
+## [1.0.53-beta.7] - 2026-07-21
+
+This beta validates bounded npm channel verification after registry publication.
+
+### Fixed
+
+- **npm dist-tag eventual consistency** — Release delivery now tolerates a briefly stale `latest` or `beta` read after publishing by retrying only when npm reports a valid older version. Registry errors, invalid or incomparable tags, and channels that never converge still fail closed without moving any tag during verification.
+
+## [1.0.53-beta.6] - 2026-07-21
+
+This beta validates guarded local release compatibility and tag-bound OSS deferral so an unprovisioned mirror cannot block the primary release channels.
+
+### Changed
+
+- **Tag-bound optional OSS release mirror** — Official cloud Release runs no longer block GitHub, npm, and Homebrew delivery when an OSS bucket has not been provisioned. Cloud tags immutably record `OSS-Mirror: enabled|deferred`; publication, repair, and withdrawal consume that sealed policy instead of the current repository variable. Enabled releases remain fail-closed, while deferred releases skip the nonexistent channel and cannot be backfilled without a future audited repair proof.
+
+### Fixed
+
+- **Guarded local release compatibility** — The tag-push Release workflow now accepts the `Channel`-only annotated tags created by the guarded local release entry while continuing to reject any partial cloud-only seal metadata.
+- **Cloud release tag allocation fingerprint** — Release planning now fingerprints the actual `v*` and `withdrawn/v*` refs fetched from GitHub, matching the seal job's API view instead of hashing an empty non-wildcard ref prefix and rejecting every publish before tag creation.
+
+## [1.0.53-beta.5] - 2026-07-21
+
+This beta validates long-running access-token recovery and the faster, recoverable guarded release path introduced after v1.0.53-beta.4.
+
 ### Changed
 
 - **Fast guarded beta and stable releases** — successful local release checks now leave a six-hour proof bound to the exact version, commit, repository identity, remote `main`, and stable baseline, so the subsequent guarded `--publish` invocation revalidates authority without repeating tests and packaging. A default-branch governance smoke uses the same dedicated immutable-release credential as the tag workflow before any tag is allocated.
@@ -13,6 +60,9 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Fixed
 
+- **Long-running event authentication recovery** — personal and portal event streams resolve the current access token for every ticket request, refresh a server-rejected token with compare-and-refresh semantics, and reconnect with backoff when refresh is temporarily blocked by network failures, rate limits, or 5xx responses.
+- **Consistent access-token caching and errors** — runtime, recovery, Skill, PAT polling, and personal/portal event clients now resolve user access tokens through one expiry- and publication-aware manager, so long-running processes reload rotated credentials while keychain, refresh, parse, permission, and cancellation failures remain observable instead of being collapsed into “not authenticated.”
+- **Tag-push GitHub Release publication** — Draft publication now locks one GitHub Release database ID, verifies its exact tag, channel, notes, recovery marker, asset set, and uploaded bytes, then publishes and rechecks that same ID as immutable. Recovery runs use the trusted default-branch release helpers instead of the sealed tag's historical scripts, fixing the Draft-only `GET /releases/tags/{tag}` 404 without allowing the release identity to drift during recovery.
 - **Release preflight reliability** — source-mode installer tests now use isolated temporary checkouts and HOME directories instead of overwriting and deleting the real repository `dws` binary, release preflight explicitly rebuilds before policy checks, and the full-suite runner gives the growing script package a non-flaky five-minute per-suite budget.
 
 ## [1.0.53-beta.4] - 2026-07-17
