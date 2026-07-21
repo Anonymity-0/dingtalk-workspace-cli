@@ -130,15 +130,27 @@ test-schema-agent-examples:
 generate-schema:
 	@set -e; \
 	registry_guard=$$(mktemp -d); \
+	concepts_guard=$$(mktemp); \
+	concepts_schema_guard=$$(mktemp); \
 	metadata_guard=$$(mktemp -d); \
 	selection_guard=$$(mktemp -d); \
-	trap 'rm -rf "$$registry_guard" "$$metadata_guard" "$$selection_guard"' EXIT HUP INT TERM; \
+	trap 'rm -rf "$$registry_guard" "$$concepts_guard" "$$concepts_schema_guard" "$$metadata_guard" "$$selection_guard"' EXIT HUP INT TERM; \
 	cp -R internal/cli/schema_command_registry/ "$$registry_guard/"; \
+	cp internal/cli/param_concepts.json "$$concepts_guard"; \
+	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
 	cp -R internal/cli/schema_hints/metadata/. "$$metadata_guard/"; \
 	cp -R internal/cli/schema_hints/selection/. "$$selection_guard/"; \
 	$(GO) generate ./internal/cli; \
 	diff -qr internal/cli/schema_command_registry "$$registry_guard" >/dev/null || { \
 		printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry/' >&2; \
+		exit 1; \
+	}; \
+	cmp -s internal/cli/param_concepts.json "$$concepts_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.json' >&2; \
+		exit 1; \
+	}; \
+	cmp -s internal/cli/param_concepts.schema.json "$$concepts_schema_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.schema.json' >&2; \
 		exit 1; \
 	}; \
 	diff -qr internal/cli/schema_hints/metadata "$$metadata_guard" >/dev/null || { \
