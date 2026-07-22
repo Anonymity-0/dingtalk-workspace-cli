@@ -1033,6 +1033,8 @@ func TestResolveAuthLoginConfigReadsInheritedYes(t *testing.T) {
 	login := &cobra.Command{Use: "login"}
 	login.Flags().String("token", "", "")
 	login.Flags().Bool("device", false, "")
+	login.Flags().Bool("intl", false, "")
+	login.Flags().Bool("international", false, "")
 	login.Flags().Bool("force", false, "")
 	login.Flags().Bool("recommend", false, "")
 	root.AddCommand(login)
@@ -1058,6 +1060,35 @@ func TestResolveAuthLoginConfigReadsInheritedYes(t *testing.T) {
 		!strings.Contains(got, `"profile_selector":""`) ||
 		!strings.Contains(got, `"target_corp_id":""`) {
 		t.Fatalf("login request diagnostic log missing selector resolution:\n%s", got)
+	}
+}
+
+func TestResolveAuthLoginConfigReadsInternationalAliases(t *testing.T) {
+	for _, flag := range []string{"intl", "international"} {
+		t.Run(flag, func(t *testing.T) {
+			root := &cobra.Command{Use: "dws"}
+			root.PersistentFlags().Bool("yes", false, "")
+			login := &cobra.Command{Use: "login"}
+			login.Flags().String("token", "", "")
+			login.Flags().Bool("device", false, "")
+			login.Flags().Bool("intl", false, "")
+			login.Flags().Bool("international", false, "")
+			login.Flags().Bool("force", false, "")
+			login.Flags().Bool("recommend", false, "")
+			root.AddCommand(login)
+
+			if err := login.Flags().Set(flag, "true"); err != nil {
+				t.Fatalf("set %s: %v", flag, err)
+			}
+
+			cfg, err := resolveAuthLoginConfig(login)
+			if err != nil {
+				t.Fatalf("resolveAuthLoginConfig error = %v", err)
+			}
+			if !cfg.International {
+				t.Fatalf("International = false for --%s, want true", flag)
+			}
+		})
 	}
 }
 

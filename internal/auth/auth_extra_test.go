@@ -424,6 +424,28 @@ func TestBuildAuthURLIncludesTargetCorpID(t *testing.T) {
 	}
 }
 
+func TestBuildAuthURLForInternationalRegion(t *testing.T) {
+	authURL := buildAuthURLForRegion("client-id", "http://127.0.0.1:1234/callback", "", LoginRegionInternational)
+	if !strings.HasPrefix(authURL, InternationalAuthorizeURL+"?") {
+		t.Fatalf("auth URL = %s, want international authorize host", authURL)
+	}
+}
+
+func TestLoginRegionEndpointDefaults(t *testing.T) {
+	if got := AuthorizeURLForLoginRegion(LoginRegionDefault); got != AuthorizeURL {
+		t.Fatalf("default authorize URL = %q, want %q", got, AuthorizeURL)
+	}
+	if got := UserAccessTokenURLForLoginRegion(LoginRegionInternational); got != InternationalUserAccessTokenURL {
+		t.Fatalf("international user access token URL = %q, want %q", got, InternationalUserAccessTokenURL)
+	}
+	if got := MCPBaseURLForLoginRegion(LoginRegionInternational); got != InternationalMCPBaseURL {
+		t.Fatalf("international MCP base URL = %q, want %q", got, InternationalMCPBaseURL)
+	}
+	if got := DeviceBaseURLForLoginRegion(LoginRegionInternational); got != InternationalDeviceBaseURL {
+		t.Fatalf("international device base URL = %q, want %q", got, InternationalDeviceBaseURL)
+	}
+}
+
 func buildTokenDataFromResponse(resp tokenResponse) *TokenData {
 	if resp.AccessToken == "" {
 		return nil

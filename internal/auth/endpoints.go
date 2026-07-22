@@ -50,8 +50,14 @@ const (
 	// AuthorizeURL is the DingTalk OAuth authorization page.
 	AuthorizeURL = "https://login.dingtalk.com/oauth2/auth"
 
+	// InternationalAuthorizeURL is the DingTalk international OAuth authorization page.
+	InternationalAuthorizeURL = "https://login.dingtalk.io/oauth2/auth"
+
 	// UserAccessTokenURL exchanges an authorization code for user tokens.
 	UserAccessTokenURL = "https://api.dingtalk.com/v1.0/oauth2/userAccessToken"
+
+	// InternationalUserAccessTokenURL exchanges authorization codes for international user tokens.
+	InternationalUserAccessTokenURL = "https://api.dingtalk.io/v1.0/oauth2/userAccessToken"
 
 	// UserInfoURL fetches the authenticated user's profile.
 	UserInfoURL = "https://api.dingtalk.com/v1.0/contact/users/me"
@@ -75,6 +81,9 @@ const (
 	// DefaultDeviceBaseURL is the login server base URL for device flow.
 	DefaultDeviceBaseURL = "https://login.dingtalk.com"
 
+	// InternationalDeviceBaseURL is the international login server base URL for device flow.
+	InternationalDeviceBaseURL = "https://login.dingtalk.io"
+
 	// DeviceCodePath requests a device_code and user_code.
 	DeviceCodePath = "/oauth2/device/code.json"
 
@@ -96,11 +105,12 @@ const (
 	LogoutContinueURL = "https://login.dingtalk.com"
 
 	// MCP API endpoints for CLI authorization management.
-	DefaultMCPBaseURL    = config.DefaultMCPBaseURL
-	CLIAuthEnabledPath   = "/cli/cliAuthEnabled"
-	SuperAdminPath       = "/cli/superAdmin"
-	SendCliAuthApplyPath = "/cli/sendCliAuthApply"
-	ClientIDPath         = "/cli/clientId"
+	DefaultMCPBaseURL       = config.DefaultMCPBaseURL
+	InternationalMCPBaseURL = "https://mcp.dingtalk.io"
+	CLIAuthEnabledPath      = "/cli/cliAuthEnabled"
+	SuperAdminPath          = "/cli/superAdmin"
+	SendCliAuthApplyPath    = "/cli/sendCliAuthApply"
+	ClientIDPath            = "/cli/clientId"
 
 	// MCP OAuth endpoints (used when clientId is fetched from MCP).
 	MCPOAuthTokenPath   = "/oauth2/getToken"
@@ -113,6 +123,45 @@ const (
 	// POST with {"appKey":"X","appSecret":"X"} → {"accessToken":"...","expireIn":7200}
 	AppAccessTokenURL = "https://api.dingtalk.com/v1.0/oauth2/accessToken"
 )
+
+type LoginRegion string
+
+const (
+	LoginRegionDefault       LoginRegion = ""
+	LoginRegionInternational LoginRegion = "international"
+)
+
+func (r LoginRegion) IsInternational() bool {
+	return r == LoginRegionInternational
+}
+
+func AuthorizeURLForLoginRegion(region LoginRegion) string {
+	if region.IsInternational() {
+		return InternationalAuthorizeURL
+	}
+	return AuthorizeURL
+}
+
+func DeviceBaseURLForLoginRegion(region LoginRegion) string {
+	if region.IsInternational() {
+		return InternationalDeviceBaseURL
+	}
+	return DefaultDeviceBaseURL
+}
+
+func MCPBaseURLForLoginRegion(region LoginRegion) string {
+	if region.IsInternational() {
+		return InternationalMCPBaseURL
+	}
+	return GetMCPBaseURL()
+}
+
+func UserAccessTokenURLForLoginRegion(region LoginRegion) string {
+	if region.IsInternational() {
+		return InternationalUserAccessTokenURL
+	}
+	return UserAccessTokenURL
+}
 
 // GetTerminalBaseURL returns the terminal base URL with priority:
 // 1. ~/.dws/terminal_url file content (for pre-release environment)

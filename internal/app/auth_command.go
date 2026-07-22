@@ -48,6 +48,7 @@ type authLoginConfig struct {
 	TargetCorpID                   string
 	HistoryProfileSelector         string
 	HistoryProfileSelectorExplicit bool
+	International                  bool
 }
 
 type authLoginGuideAction string
@@ -116,6 +117,7 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 示例:
   dws auth login              # 本机登录并新增/刷新一个组织 profile
   dws auth login --profile <corpId>  # 指定本次授权目标组织，不持久切换当前组织
+  dws auth login --intl       # 使用钉钉国际登录入口
   dws auth login --recommend  # 无交互批量授权服务端推荐权限
   dws auth login --device     # SSH 远程 / 无头环境登录 (设备流)
   dws auth login --force      # 兼容保留；login 默认已忽略缓存并进入授权流程
@@ -149,6 +151,9 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 				provider := authpkg.NewDeviceFlowProvider(configDir, nil)
 				provider.Output = cmd.ErrOrStderr()
 				provider.NoBrowser, _ = cmd.Flags().GetBool("no-browser")
+				if cfg.International {
+					provider.SetLoginRegion(authpkg.LoginRegionInternational)
+				}
 				provider.IdentityEnricher = func(ctx context.Context, data *authpkg.TokenData) error {
 					return enrichAuthLoginProfileFromContact(ctx, configDir, patCaller, data, authLoginHistoryHint{
 						Selector: cfg.HistoryProfileSelector,
@@ -167,6 +172,9 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 				provider.Output = cmd.ErrOrStderr()
 				provider.NoBrowser, _ = cmd.Flags().GetBool("no-browser")
 				provider.TargetCorpID = cfg.TargetCorpID
+				if cfg.International {
+					provider.LoginRegion = authpkg.LoginRegionInternational
+				}
 				provider.IdentityEnricher = func(ctx context.Context, data *authpkg.TokenData) error {
 					return enrichAuthLoginProfileFromContact(ctx, configDir, patCaller, data, authLoginHistoryHint{
 						Selector: cfg.HistoryProfileSelector,
@@ -278,6 +286,8 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 	}
 	cmd.Flags().String("token", "", "Access token")
 	cmd.Flags().Bool("device", false, "Use device authorization flow")
+	cmd.Flags().Bool("intl", false, "Use DingTalk international login")
+	cmd.Flags().Bool("international", false, "Use DingTalk international login")
 	cmd.Flags().Bool("force", false, "兼容保留；login 默认已忽略缓存并进入授权流程")
 	cmd.Flags().Bool("recommend", false, "登录成功后无交互批量授权服务端推荐权限")
 	// Hidden compatibility flags
@@ -1225,6 +1235,14 @@ func resolveAuthLoginConfig(cmd *cobra.Command) (authLoginConfig, error) {
 	if err != nil {
 		return authLoginConfig{}, apperrors.NewInternal("failed to read --device")
 	}
+	intl, err := cmd.Flags().GetBool("intl")
+	if err != nil {
+		return authLoginConfig{}, apperrors.NewInternal("failed to read --intl")
+	}
+	international, err := cmd.Flags().GetBool("international")
+	if err != nil {
+		return authLoginConfig{}, apperrors.NewInternal("failed to read --international")
+	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return authLoginConfig{}, apperrors.NewInternal("failed to read --force")
@@ -1266,6 +1284,7 @@ func resolveAuthLoginConfig(cmd *cobra.Command) (authLoginConfig, error) {
 		TargetCorpID:                   targetCorpID,
 		HistoryProfileSelector:         historyProfileSelector,
 		HistoryProfileSelectorExplicit: historyProfileSelectorExplicit,
+		International:                  intl || international,
 	}, nil
 }
 
