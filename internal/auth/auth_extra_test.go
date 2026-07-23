@@ -446,6 +446,27 @@ func TestLoginRegionEndpointDefaults(t *testing.T) {
 	}
 }
 
+func TestMCPBaseURLOverrideAffectsInternationalRegion(t *testing.T) {
+	restore := PushMCPBaseURLOverride("https://pre-mcp.dingtalk.io/")
+	defer restore()
+
+	if got := MCPBaseURLForLoginRegion(LoginRegionInternational); got != "https://pre-mcp.dingtalk.io" {
+		t.Fatalf("international MCP base URL = %q, want override", got)
+	}
+}
+
+func TestLoginBaseURLOverrideAffectsInternationalRegion(t *testing.T) {
+	restore := PushLoginBaseURLOverride("https://pre-login.dingtalk.io/")
+	defer restore()
+
+	if got := DeviceBaseURLForLoginRegion(LoginRegionInternational); got != "https://pre-login.dingtalk.io" {
+		t.Fatalf("international device base URL = %q, want override", got)
+	}
+	if got := AuthorizeURLForLoginRegion(LoginRegionInternational); got != "https://pre-login.dingtalk.io/oauth2/auth" {
+		t.Fatalf("international authorize URL = %q, want override", got)
+	}
+}
+
 func buildTokenDataFromResponse(resp tokenResponse) *TokenData {
 	if resp.AccessToken == "" {
 		return nil

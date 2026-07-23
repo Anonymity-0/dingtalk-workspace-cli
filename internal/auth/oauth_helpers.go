@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
+	"github.com/google/uuid"
 )
 
 var (
@@ -1433,6 +1435,7 @@ const mcpRequestMaxRetries = 3
 // false negatives caused by momentary network issues.
 func (p *OAuthProvider) CheckCLIAuthEnabled(ctx context.Context, accessToken string) (*CLIAuthStatus, error) {
 	var lastErr error
+	traceID := cliAuthTraceID()
 	for attempt := 0; attempt < mcpRequestMaxRetries; attempt++ {
 		if attempt > 0 {
 			select {
@@ -1441,7 +1444,7 @@ func (p *OAuthProvider) CheckCLIAuthEnabled(ctx context.Context, accessToken str
 			case <-oauthRetryAfter(time.Duration(attempt) * time.Second):
 			}
 		}
-		status, err := p.doCheckCLIAuthEnabled(ctx, accessToken)
+		status, err := p.doCheckCLIAuthEnabled(ctx, accessToken, attempt+1, traceID)
 		if err == nil {
 			return status, nil
 		}
@@ -1450,17 +1453,24 @@ func (p *OAuthProvider) CheckCLIAuthEnabled(ctx context.Context, accessToken str
 	return nil, fmt.Errorf("check CLI auth status failed after %d attempts: %w", mcpRequestMaxRetries, lastErr)
 }
 
-func (p *OAuthProvider) doCheckCLIAuthEnabled(ctx context.Context, accessToken string) (*CLIAuthStatus, error) {
+func (p *OAuthProvider) doCheckCLIAuthEnabled(ctx context.Context, accessToken string, attempt int, traceID string) (*CLIAuthStatus, error) {
 	url := MCPBaseURLForLoginRegion(p.loginRegion()) + CLIAuthEnabledPath
 	req, err := oauthNewRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("x-user-access-token", accessToken)
+	applyCLIAuthTraceHeaders(req, traceID)
 	if ch := os.Getenv("DWS_CHANNEL"); ch != "" {
 		req.Header.Set("x-dws-channel", ch)
 	}
 	applyEditionEnterpriseCredentialHeaders(req)
+	slog.Debug("auth.cli_auth_enabled.request",
+		"attempt", attempt,
+		"url", url,
+		"trace_id", traceID,
+		"channel", os.Getenv("DWS_CHANNEL"),
+	)
 
 	client := p.httpClient
 	if client == nil {
@@ -1468,9 +1478,23 @@ func (p *OAuthProvider) doCheckCLIAuthEnabled(ctx context.Context, accessToken s
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		slog.Debug("auth.cli_auth_enabled.error",
+			"attempt", attempt,
+			"url", url,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
 	defer resp.Body.Close()
+	slog.Debug("auth.cli_auth_enabled.response",
+		"attempt", attempt,
+		"url", url,
+		"status", resp.StatusCode,
+		"trace_id", traceID,
+		"response_trace_id", cliAuthResponseTraceID(resp.Header),
+		"eagleeye_rpc_id", resp.Header.Get("EagleEye-RpcId"),
+	)
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, config.MaxResponseBodySize))
 	if err != nil {
@@ -1482,6 +1506,35 @@ func (p *OAuthProvider) doCheckCLIAuthEnabled(ctx context.Context, accessToken s
 		return nil, fmt.Errorf("parsing response: %w", err)
 	}
 	return &status, nil
+}
+
+func cliAuthTraceID() string {
+	if traceID := strings.TrimSpace(os.Getenv("DINGTALK_TRACE_ID")); traceID != "" {
+		return traceID
+	}
+	return strings.ReplaceAll(uuid.NewString(), "-", "")
+}
+
+func applyCLIAuthTraceHeaders(req *http.Request, traceID string) {
+	if req == nil || traceID == "" {
+		return
+	}
+	req.Header.Set("EagleEye-TraceId", traceID)
+	req.Header.Set("X-Dingtalk-Trace-Id", traceID)
+}
+
+func cliAuthResponseTraceID(headers http.Header) string {
+	for _, key := range []string{
+		"EagleEye-TraceId",
+		"X-Trace-Id",
+		"X-Request-Id",
+		"X-Dingtalk-Trace-Id",
+	} {
+		if value := strings.TrimSpace(headers.Get(key)); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 // GetSuperAdmins fetches the list of corp super admins.

@@ -473,6 +473,40 @@ func TestInjectStaticServersMergesStaticAndSupplementServers(t *testing.T) {
 	}
 }
 
+func TestStaticDingTalkEndpointsFollowConfiguredMCPBaseURL(t *testing.T) {
+	previous := edition.Get()
+	defer edition.Override(previous)
+	defer SetDynamicServers(nil)
+
+	configDir := t.TempDir()
+	t.Setenv("DWS_CONFIG_DIR", configDir)
+	if err := os.WriteFile(filepath.Join(configDir, "mcp_url"), []byte("https://pre-mcp.dingtalk.io\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile(mcp_url) error = %v", err)
+	}
+
+	edition.Override(&edition.Hooks{
+		Name: "test",
+		StaticServers: func() []edition.ServerInfo {
+			return []edition.ServerInfo{{
+				ID:       "contact",
+				Name:     "Contact",
+				Endpoint: "https://mcp-gw.dingtalk.com/server/contact?key=abc",
+				Prefixes: []string{"user"},
+			}}
+		},
+	})
+
+	injectStaticServers()
+
+	for _, productID := range []string{"contact", "user"} {
+		got, ok := directRuntimeEndpoint(productID, "")
+		want := "https://pre-mcp-gw.dingtalk.io/server/contact?key=abc"
+		if !ok || got != want {
+			t.Fatalf("directRuntimeEndpoint(%q) = %q, %v; want %q, true", productID, got, ok, want)
+		}
+	}
+}
+
 func mustFindCommand(t *testing.T, root *cobra.Command, path ...string) *cobra.Command {
 	t.Helper()
 	cmd := root

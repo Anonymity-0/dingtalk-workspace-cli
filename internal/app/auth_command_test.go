@@ -1037,6 +1037,8 @@ func TestResolveAuthLoginConfigReadsInheritedYes(t *testing.T) {
 	login.Flags().Bool("international", false, "")
 	login.Flags().Bool("force", false, "")
 	login.Flags().Bool("recommend", false, "")
+	login.Flags().String("pre-url", "", "")
+	login.Flags().String("mcp-url", "", "")
 	root.AddCommand(login)
 
 	if err := root.PersistentFlags().Set("yes", "true"); err != nil {
@@ -1075,6 +1077,8 @@ func TestResolveAuthLoginConfigReadsInternationalAliases(t *testing.T) {
 			login.Flags().Bool("international", false, "")
 			login.Flags().Bool("force", false, "")
 			login.Flags().Bool("recommend", false, "")
+			login.Flags().String("pre-url", "", "")
+			login.Flags().String("mcp-url", "", "")
 			root.AddCommand(login)
 
 			if err := login.Flags().Set(flag, "true"); err != nil {
@@ -1090,6 +1094,182 @@ func TestResolveAuthLoginConfigReadsInternationalAliases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveAuthLoginConfigReadsMCPURL(t *testing.T) {
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().Bool("yes", false, "")
+	login := &cobra.Command{Use: "login"}
+	login.Flags().String("token", "", "")
+	login.Flags().Bool("device", false, "")
+	login.Flags().Bool("intl", false, "")
+	login.Flags().Bool("international", false, "")
+	login.Flags().Bool("force", false, "")
+	login.Flags().Bool("recommend", false, "")
+	login.Flags().String("pre-url", "", "")
+	login.Flags().String("mcp-url", "", "")
+	root.AddCommand(login)
+
+	if err := login.Flags().Set("mcp-url", " https://pre-mcp.dingtalk.io/ "); err != nil {
+		t.Fatalf("set mcp-url: %v", err)
+	}
+
+	cfg, err := resolveAuthLoginConfig(login)
+	if err != nil {
+		t.Fatalf("resolveAuthLoginConfig error = %v", err)
+	}
+	if cfg.MCPURL != "https://pre-mcp.dingtalk.io/" {
+		t.Fatalf("MCPURL = %q, want trimmed flag value", cfg.MCPURL)
+	}
+}
+
+func TestResolveAuthLoginConfigReadsPreURL(t *testing.T) {
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().Bool("yes", false, "")
+	login := &cobra.Command{Use: "login"}
+	login.Flags().String("token", "", "")
+	login.Flags().Bool("device", false, "")
+	login.Flags().Bool("intl", false, "")
+	login.Flags().Bool("international", false, "")
+	login.Flags().Bool("force", false, "")
+	login.Flags().Bool("recommend", false, "")
+	login.Flags().String("pre-url", "", "")
+	login.Flags().String("mcp-url", "", "")
+	root.AddCommand(login)
+
+	if err := login.Flags().Set("pre-url", " pre-login.dingtalk.io "); err != nil {
+		t.Fatalf("set pre-url: %v", err)
+	}
+
+	cfg, err := resolveAuthLoginConfig(login)
+	if err != nil {
+		t.Fatalf("resolveAuthLoginConfig error = %v", err)
+	}
+	if cfg.PreURL != "pre-login.dingtalk.io" {
+		t.Fatalf("PreURL = %q, want trimmed flag value", cfg.PreURL)
+	}
+}
+
+func TestAuthLoginEndpointOverridesForPreURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		raw       string
+		wantLogin string
+		wantMCP   string
+	}{
+		{
+			name:      "pre login",
+			raw:       "https://pre-login.dingtalk.io/",
+			wantLogin: "https://pre-login.dingtalk.io",
+			wantMCP:   "https://pre-mcp.dingtalk.io",
+		},
+		{
+			name:      "pre mcp",
+			raw:       "pre-mcp.dingtalk.io",
+			wantLogin: "https://pre-login.dingtalk.io",
+			wantMCP:   "https://pre-mcp.dingtalk.io",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := authLoginEndpointOverridesForPreURL(tc.raw)
+			if err != nil {
+				t.Fatalf("authLoginEndpointOverridesForPreURL error = %v", err)
+			}
+			if got.LoginURL != tc.wantLogin || got.MCPURL != tc.wantMCP {
+				t.Fatalf("overrides = %#v, want login %q mcp %q", got, tc.wantLogin, tc.wantMCP)
+			}
+		})
+	}
+}
+
+func TestAuthLoginMCPBaseURLForConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         authLoginConfig
+		preOverride authLoginEndpointOverrides
+		wantURL     string
+		wantPersist bool
+	}{
+		{
+			name:        "default center login uses com without persisted override",
+			cfg:         authLoginConfig{},
+			wantURL:     authpkg.DefaultMCPBaseURL,
+			wantPersist: false,
+		},
+		{
+			name:        "international login persists io",
+			cfg:         authLoginConfig{International: true},
+			wantURL:     authpkg.InternationalMCPBaseURL,
+			wantPersist: true,
+		},
+		{
+			name: "pre login persists mapped pre mcp",
+			cfg:  authLoginConfig{PreURL: "pre-login.dingtalk.io"},
+			preOverride: authLoginEndpointOverrides{
+				LoginURL: "https://pre-login.dingtalk.io",
+				MCPURL:   "https://pre-mcp.dingtalk.io",
+			},
+			wantURL:     "https://pre-mcp.dingtalk.io",
+			wantPersist: true,
+		},
+		{
+			name: "explicit mcp url wins over pre url",
+			cfg: authLoginConfig{
+				PreURL: "pre-login.dingtalk.io",
+				MCPURL: " https://custom-mcp.example.com/ ",
+			},
+			preOverride: authLoginEndpointOverrides{
+				LoginURL: "https://pre-login.dingtalk.io",
+				MCPURL:   "https://pre-mcp.dingtalk.io",
+			},
+			wantURL:     "https://custom-mcp.example.com",
+			wantPersist: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotURL, gotPersist, err := authLoginMCPBaseURLForConfig(tc.cfg, tc.preOverride)
+			if err != nil {
+				t.Fatalf("authLoginMCPBaseURLForConfig error = %v", err)
+			}
+			if gotURL != tc.wantURL || gotPersist != tc.wantPersist {
+				t.Fatalf("got url=%q persist=%v, want url=%q persist=%v", gotURL, gotPersist, tc.wantURL, tc.wantPersist)
+			}
+		})
+	}
+}
+
+func TestPersistAuthLoginMCPBaseURL(t *testing.T) {
+	t.Run("persists selected io mcp url", func(t *testing.T) {
+		configDir := t.TempDir()
+		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.InternationalMCPBaseURL, true); err != nil {
+			t.Fatalf("persistAuthLoginMCPBaseURL error = %v", err)
+		}
+		data, err := os.ReadFile(filepath.Join(configDir, "mcp_url"))
+		if err != nil {
+			t.Fatalf("ReadFile(mcp_url) error = %v", err)
+		}
+		if string(data) != authpkg.InternationalMCPBaseURL {
+			t.Fatalf("mcp_url = %q, want %q", string(data), authpkg.InternationalMCPBaseURL)
+		}
+	})
+
+	t.Run("center login clears previous persisted override", func(t *testing.T) {
+		configDir := t.TempDir()
+		mcpURLPath := filepath.Join(configDir, "mcp_url")
+		if err := os.WriteFile(mcpURLPath, []byte("https://mcp.dingtalk.io"), 0o600); err != nil {
+			t.Fatalf("WriteFile(mcp_url) error = %v", err)
+		}
+		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.DefaultMCPBaseURL, false); err != nil {
+			t.Fatalf("persistAuthLoginMCPBaseURL error = %v", err)
+		}
+		if _, err := os.Stat(mcpURLPath); !os.IsNotExist(err) {
+			t.Fatalf("mcp_url still exists after center login, stat err = %v", err)
+		}
+	})
 }
 
 func TestAuthLoginForcesAuthorizationByDefault(t *testing.T) {

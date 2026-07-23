@@ -136,6 +136,9 @@ func (r LoginRegion) IsInternational() bool {
 }
 
 func AuthorizeURLForLoginRegion(region LoginRegion) string {
+	if override := LoginBaseURLOverride(); override != "" {
+		return override + "/oauth2/auth"
+	}
 	if region.IsInternational() {
 		return InternationalAuthorizeURL
 	}
@@ -143,6 +146,9 @@ func AuthorizeURLForLoginRegion(region LoginRegion) string {
 }
 
 func DeviceBaseURLForLoginRegion(region LoginRegion) string {
+	if override := LoginBaseURLOverride(); override != "" {
+		return override
+	}
 	if region.IsInternational() {
 		return InternationalDeviceBaseURL
 	}
@@ -150,6 +156,9 @@ func DeviceBaseURLForLoginRegion(region LoginRegion) string {
 }
 
 func MCPBaseURLForLoginRegion(region LoginRegion) string {
+	if override := MCPBaseURLOverride(); override != "" {
+		return override
+	}
 	if region.IsInternational() {
 		return InternationalMCPBaseURL
 	}
@@ -195,7 +204,53 @@ var (
 	// clientIDFromMCP indicates whether the clientID was fetched from MCP server.
 	// When true, MCP OAuth endpoints should be used instead of direct DingTalk API.
 	clientIDFromMCP bool
+
+	loginBaseURLMu       sync.RWMutex
+	loginBaseURLOverride string
+	mcpBaseURLMu         sync.RWMutex
+	mcpBaseURLOverride   string
 )
+
+// PushLoginBaseURLOverride sets a process-local DingTalk login base URL
+// override and returns a restore function.
+func PushLoginBaseURLOverride(baseURL string) func() {
+	loginBaseURLMu.Lock()
+	previous := loginBaseURLOverride
+	loginBaseURLOverride = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	loginBaseURLMu.Unlock()
+	return func() {
+		loginBaseURLMu.Lock()
+		loginBaseURLOverride = previous
+		loginBaseURLMu.Unlock()
+	}
+}
+
+func LoginBaseURLOverride() string {
+	loginBaseURLMu.RLock()
+	defer loginBaseURLMu.RUnlock()
+	return loginBaseURLOverride
+}
+
+// PushMCPBaseURLOverride sets a process-local MCP base URL override and returns
+// a restore function. It is intended for one command invocation, such as
+// pre-release smoke testing.
+func PushMCPBaseURLOverride(baseURL string) func() {
+	mcpBaseURLMu.Lock()
+	previous := mcpBaseURLOverride
+	mcpBaseURLOverride = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	mcpBaseURLMu.Unlock()
+	return func() {
+		mcpBaseURLMu.Lock()
+		mcpBaseURLOverride = previous
+		mcpBaseURLMu.Unlock()
+	}
+}
+
+func MCPBaseURLOverride() string {
+	mcpBaseURLMu.RLock()
+	defer mcpBaseURLMu.RUnlock()
+	return mcpBaseURLOverride
+}
 
 // SetClientIDFromMCP sets the clientID fetched from MCP server and marks it as MCP-sourced.
 func SetClientIDFromMCP(id string) {

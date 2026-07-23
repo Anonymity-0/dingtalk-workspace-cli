@@ -14,10 +14,12 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -204,6 +206,59 @@ func TestCheckCLIAuthEnabled_Enabled(t *testing.T) {
 		t.Fatal("expected CLIAuthEnabled=true")
 	}
 	t.Logf("✅ Normal enabled response: success=%v, enabled=%v", status.Success, status.Result.CLIAuthEnabled)
+}
+
+func TestCheckCLIAuthEnabled_TraceHeadersAndDebugLog(t *testing.T) {
+	t.Setenv("DINGTALK_TRACE_ID", "trace-for-cli-auth-test")
+
+	var logBuf bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(previousLogger)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("EagleEye-TraceId"); got != "trace-for-cli-auth-test" {
+			t.Errorf("EagleEye-TraceId = %q, want trace-for-cli-auth-test", got)
+		}
+		if got := r.Header.Get("X-Dingtalk-Trace-Id"); got != "trace-for-cli-auth-test" {
+			t.Errorf("X-Dingtalk-Trace-Id = %q, want trace-for-cli-auth-test", got)
+		}
+		w.Header().Set("EagleEye-TraceId", "server-trace-001")
+		w.Header().Set("EagleEye-RpcId", "rpc-001")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(CLIAuthStatus{
+			Success: true,
+			Result:  &CLIAuthResult{CLIAuthEnabled: true},
+		})
+	}))
+	defer srv.Close()
+
+	configDir := setupMCPConfigDir(t, srv.URL)
+	p := &OAuthProvider{configDir: configDir, httpClient: srv.Client()}
+
+	status, err := p.CheckCLIAuthEnabled(context.Background(), "sensitive-token")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if status.Result == nil || !status.Result.CLIAuthEnabled {
+		t.Fatal("expected CLIAuthEnabled=true")
+	}
+
+	logs := logBuf.String()
+	for _, want := range []string{
+		"auth.cli_auth_enabled.request",
+		"auth.cli_auth_enabled.response",
+		"trace-for-cli-auth-test",
+		"server-trace-001",
+		"rpc-001",
+	} {
+		if !strings.Contains(logs, want) {
+			t.Fatalf("debug logs missing %q, got: %s", want, logs)
+		}
+	}
+	if strings.Contains(logs, "sensitive-token") {
+		t.Fatalf("debug logs leaked access token: %s", logs)
+	}
 }
 
 func TestCheckCLIAuthEnabled_Disabled(t *testing.T) {

@@ -131,7 +131,7 @@ func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[strin
 		return
 	}
 	id := strings.TrimSpace(server.CLI.ID)
-	endpoint := strings.TrimSpace(server.Endpoint)
+	endpoint := activeDingTalkGatewayEndpoint(server.Endpoint)
 	if id != "" && endpoint != "" {
 		endpoints[id] = endpoint
 		products[id] = true
@@ -282,7 +282,7 @@ func endpointFromEditionServers(productID string, fn func() []edition.ServerInfo
 		return "", false
 	}
 	for _, server := range fn() {
-		endpoint := strings.TrimSpace(server.Endpoint)
+		endpoint := activeDingTalkGatewayEndpoint(server.Endpoint)
 		if endpoint == "" {
 			continue
 		}
@@ -296,6 +296,33 @@ func endpointFromEditionServers(productID string, fn func() []edition.ServerInfo
 		}
 	}
 	return "", false
+}
+
+func activeDingTalkGatewayEndpoint(endpoint string) string {
+	endpoint = strings.TrimSpace(endpoint)
+	parsed, err := url.Parse(endpoint)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return endpoint
+	}
+	if !isDingTalkMCPGatewayHost(parsed.Hostname()) {
+		return endpoint
+	}
+	base, err := url.Parse(defaultPATGatewayBaseURL())
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return endpoint
+	}
+	parsed.Scheme = base.Scheme
+	parsed.Host = base.Host
+	return strings.TrimRight(parsed.String(), "/")
+}
+
+func isDingTalkMCPGatewayHost(host string) bool {
+	switch strings.ToLower(strings.TrimSpace(host)) {
+	case "mcp-gw.dingtalk.com", "pre-mcp-gw.dingtalk.com", "mcp-gw.dingtalk.io", "pre-mcp-gw.dingtalk.io":
+		return true
+	default:
+		return false
+	}
 }
 
 // DirectRuntimeProductIDs returns product IDs that should stay visible for

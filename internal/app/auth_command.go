@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,6 +51,13 @@ type authLoginConfig struct {
 	HistoryProfileSelector         string
 	HistoryProfileSelectorExplicit bool
 	International                  bool
+	PreURL                         string
+	MCPURL                         string
+}
+
+type authLoginEndpointOverrides struct {
+	LoginURL string
+	MCPURL   string
 }
 
 type authLoginGuideAction string
@@ -118,6 +127,8 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
   dws auth login              # 本机登录并新增/刷新一个组织 profile
   dws auth login --profile <corpId>  # 指定本次授权目标组织，不持久切换当前组织
   dws auth login --intl       # 使用钉钉国际登录入口
+  dws auth login --intl --pre-url https://pre-login.dingtalk.io
+  dws auth login --intl --pre-url https://pre-mcp.dingtalk.io
   dws auth login --recommend  # 无交互批量授权服务端推荐权限
   dws auth login --device     # SSH 远程 / 无头环境登录 (设备流)
   dws auth login --force      # 兼容保留；login 默认已忽略缓存并进入授权流程
@@ -128,6 +139,22 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			var preOverrides authLoginEndpointOverrides
+			if cfg.PreURL != "" {
+				var err error
+				preOverrides, err = authLoginEndpointOverridesForPreURL(cfg.PreURL)
+				if err != nil {
+					return err
+				}
+				restoreLoginBaseURL := authpkg.PushLoginBaseURLOverride(preOverrides.LoginURL)
+				defer restoreLoginBaseURL()
+			}
+			mcpBaseURL, persistMCPURL, err := authLoginMCPBaseURLForConfig(cfg, preOverrides)
+			if err != nil {
+				return err
+			}
+			restoreMCPBaseURL := authpkg.PushMCPBaseURLOverride(mcpBaseURL)
+			defer restoreMCPBaseURL()
 			configDir := defaultConfigDir()
 			var tokenData *authpkg.TokenData
 			format, _ := cmd.Root().PersistentFlags().GetString("format")
@@ -188,6 +215,11 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 				}
 			}
 
+			if tokenData != nil {
+				if err := persistAuthLoginMCPBaseURL(configDir, mcpBaseURL, persistMCPURL); err != nil {
+					return apperrors.NewInternal(fmt.Sprintf("failed to persist MCP URL: %v", err))
+				}
+			}
 			ResetRuntimeTokenCache()
 			clearCompatCache()
 			w := cmd.OutOrStdout()
@@ -288,6 +320,8 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 	cmd.Flags().Bool("device", false, "Use device authorization flow")
 	cmd.Flags().Bool("intl", false, "Use DingTalk international login")
 	cmd.Flags().Bool("international", false, "Use DingTalk international login")
+	cmd.Flags().String("pre-url", "", "Override pre-release login/MCP base URL for this login")
+	cmd.Flags().String("mcp-url", "", "Override MCP base URL for this login")
 	cmd.Flags().Bool("force", false, "兼容保留；login 默认已忽略缓存并进入授权流程")
 	cmd.Flags().Bool("recommend", false, "登录成功后无交互批量授权服务端推荐权限")
 	// Hidden compatibility flags
@@ -1251,6 +1285,14 @@ func resolveAuthLoginConfig(cmd *cobra.Command) (authLoginConfig, error) {
 	if err != nil {
 		return authLoginConfig{}, apperrors.NewInternal("failed to read --recommend")
 	}
+	preURL, err := cmd.Flags().GetString("pre-url")
+	if err != nil {
+		return authLoginConfig{}, apperrors.NewInternal("failed to read --pre-url")
+	}
+	mcpURL, err := cmd.Flags().GetString("mcp-url")
+	if err != nil {
+		return authLoginConfig{}, apperrors.NewInternal("failed to read --mcp-url")
+	}
 	yes := false
 	profileSelector := ""
 	if cmd.Root() != nil {
@@ -1285,7 +1327,99 @@ func resolveAuthLoginConfig(cmd *cobra.Command) (authLoginConfig, error) {
 		HistoryProfileSelector:         historyProfileSelector,
 		HistoryProfileSelectorExplicit: historyProfileSelectorExplicit,
 		International:                  intl || international,
+		PreURL:                         strings.TrimSpace(preURL),
+		MCPURL:                         strings.TrimSpace(mcpURL),
 	}, nil
+}
+
+func authLoginEndpointOverridesForPreURL(raw string) (authLoginEndpointOverrides, error) {
+	parsed, normalized, err := normalizeAuthLoginBaseURL(raw, "--pre-url")
+	if err != nil {
+		return authLoginEndpointOverrides{}, err
+	}
+	host := strings.ToLower(parsed.Hostname())
+	switch {
+	case strings.HasPrefix(host, "pre-login."):
+		return authLoginEndpointOverrides{
+			LoginURL: normalized,
+			MCPURL:   authLoginURLWithHost(parsed, "pre-mcp."+strings.TrimPrefix(host, "pre-login.")),
+		}, nil
+	case strings.HasPrefix(host, "pre-mcp."):
+		return authLoginEndpointOverrides{
+			LoginURL: authLoginURLWithHost(parsed, "pre-login."+strings.TrimPrefix(host, "pre-mcp.")),
+			MCPURL:   normalized,
+		}, nil
+	default:
+		return authLoginEndpointOverrides{}, apperrors.NewValidation("--pre-url must be a pre-login.* or pre-mcp.* URL")
+	}
+}
+
+func authLoginMCPBaseURLForConfig(cfg authLoginConfig, preOverrides authLoginEndpointOverrides) (string, bool, error) {
+	if cfg.MCPURL != "" {
+		_, normalized, err := normalizeAuthLoginBaseURL(cfg.MCPURL, "--mcp-url")
+		if err != nil {
+			return "", false, err
+		}
+		return normalized, true, nil
+	}
+	if cfg.PreURL != "" {
+		if preOverrides.MCPURL == "" {
+			var err error
+			preOverrides, err = authLoginEndpointOverridesForPreURL(cfg.PreURL)
+			if err != nil {
+				return "", false, err
+			}
+		}
+		return preOverrides.MCPURL, true, nil
+	}
+	if cfg.International {
+		return authpkg.InternationalMCPBaseURL, true, nil
+	}
+	return authpkg.DefaultMCPBaseURL, false, nil
+}
+
+func persistAuthLoginMCPBaseURL(configDir, mcpBaseURL string, persist bool) error {
+	if persist {
+		return authpkg.NewManager(configDir, nil).SaveMCPURL(mcpBaseURL)
+	}
+	if err := os.Remove(filepath.Join(configDir, "mcp_url")); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func normalizeAuthLoginBaseURL(raw, flagName string) (*url.URL, string, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return nil, "", apperrors.NewValidation(flagName + " cannot be empty")
+	}
+	if !strings.Contains(value, "://") {
+		value = "https://" + value
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return nil, "", apperrors.NewValidation(fmt.Sprintf("invalid %s: %v", flagName, err))
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, "", apperrors.NewValidation(flagName + " must use http or https")
+	}
+	if parsed.Hostname() == "" {
+		return nil, "", apperrors.NewValidation(flagName + " must include a host")
+	}
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	return parsed, strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func authLoginURLWithHost(parsed *url.URL, host string) string {
+	copyURL := *parsed
+	if port := parsed.Port(); port != "" {
+		copyURL.Host = net.JoinHostPort(host, port)
+	} else {
+		copyURL.Host = host
+	}
+	return strings.TrimRight(copyURL.String(), "/")
 }
 
 func authLoginForcesAuthorization(_ authLoginConfig) bool {
