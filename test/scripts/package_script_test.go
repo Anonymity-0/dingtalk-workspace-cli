@@ -2196,9 +2196,9 @@ func TestReleaseWorkflowWaitsForNPMDistTagPropagation(t *testing.T) {
 		{
 			name:       "stale beta never converges",
 			sequence:   "1.0.53-beta.6\n",
-			wantCalls:  12,
-			wantSleeps: 11,
-			wantOutput: "still reports older v1.0.53-beta.6 after 12 attempts",
+			wantCalls:  60,
+			wantSleeps: 59,
+			wantOutput: "still reports older v1.0.53-beta.6 after 60 attempts",
 		},
 		{
 			name:       "permanent registry error fails immediately",
