@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.55-beta.3] - 2026-07-24
+
+This beta validates the HR Brain command surface, smoother guarded release
+automation, and deterministic Markdown test coverage on top of the
+`v1.0.55-beta.2` baseline.
 
 ### Added
 
@@ -18,19 +22,6 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 ### Fixed
 
 - **Deterministic Markdown coverage** — replaces timing-dependent temporary-file deletion tests with synchronized file-stat failures so release admission no longer flakes on scheduler timing.
-
-## [1.0.55-beta.2] - 2026-07-23
-
-This beta validates Wukong capability parity across Chat, Contacts, documents,
-Drive, Markdown, and Todos, together with faster guarded releases and legacy
-authentication migration.
-
-### Added
-
-- **Chat editing and group management** — adds `chat message edit`, conversation-category lookups through `chat category list-by-conv` and `chat category batch-info`, and the confirmed, irreversible `chat group upgrade-to-external` flow.
-- **Contact maintenance commands** — adds `contact user update`, `contact user update-self`, `contact dept create`, `contact dept update`, and `contact account update`, all with guarded write behavior.
-- **Markdown file workflows** — adds the `markdown` product with `fetch`, `create`, `overwrite`, and `patch` commands for Drive-native `.md` files, including explicit routing, dry-run previews, and confirmation for destructive writes.
-- **Todo labels** — adds `todo tag add`, `delete`, `update`, `list`, and `create`.
 
 ### Changed
 
