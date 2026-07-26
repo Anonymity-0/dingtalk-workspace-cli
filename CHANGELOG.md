@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Group bot listing** (#795) — `chat +chat-bots` no longer projects a non-empty `list_group_bots` response to an empty list; the shared chat list resolver now recognizes `result.bots`.
+
 ## [1.0.55-beta.3] - 2026-07-24
 
 This beta validates the HR Brain command surface, smoother guarded release
