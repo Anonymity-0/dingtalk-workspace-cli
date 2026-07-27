@@ -61,60 +61,6 @@ func docVersionExists(ctx context.Context, nodeID string, version int) (bool, er
 	return false, nil
 }
 
-// docInfoWithDriveSize keeps the document metadata response authoritative and
-// best-effort enriches its missing fileSize from drive/get_file_info. The
-// document metadata endpoint does not expose a size for several uploaded file
-// types even though the drive endpoint does.
-func docInfoWithDriveSize(ctx context.Context, nodeID string) error {
-	docText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_document_info", map[string]any{
-		"nodeId": nodeID,
-	})
-	if err != nil {
-		return err
-	}
-
-	var docResponse map[string]any
-	if err := json.Unmarshal([]byte(docText), &docResponse); err != nil {
-		deps.Out.PrintRaw(docText)
-		return nil
-	}
-	docResult, wrapped := docResponse["result"].(map[string]any)
-	if !wrapped {
-		docResult = docResponse
-	}
-	if current, exists := docResult["fileSize"]; exists && current != nil {
-		return deps.Out.PrintJSON(docResponse)
-	}
-
-	fileID := nodeID
-	if extracted := extractNodeIDFromDocURL(nodeID); extracted != "" {
-		fileID = extracted
-	}
-	driveText, err := callMCPToolReturnTextOnServer(ctx, "drive", "get_file_info", map[string]any{
-		"fileId": fileID,
-	})
-	if err != nil {
-		return deps.Out.PrintJSON(docResponse)
-	}
-
-	var driveResponse map[string]any
-	if err := json.Unmarshal([]byte(driveText), &driveResponse); err != nil {
-		return deps.Out.PrintJSON(docResponse)
-	}
-	driveResult, ok := driveResponse["result"].(map[string]any)
-	if !ok {
-		driveResult = driveResponse
-	}
-	fileSize, exists := driveResult["fileSize"]
-	if !exists || fileSize == nil {
-		fileSize, exists = driveResult["size"]
-	}
-	if exists && fileSize != nil {
-		docResult["fileSize"] = fileSize
-	}
-	return deps.Out.PrintJSON(docResponse)
-}
-
 // docVersionNextCursor 从 list_doc_versions 响应中提取分页游标；没有下一页时返回 ""。
 func docVersionNextCursor(v any) string {
 	switch val := v.(type) {
@@ -971,8 +917,7 @@ func newDocCommand() *cobra.Command {
 	infoCmd := &cobra.Command{
 		Use:   "info",
 		Short: "获取文档元信息",
-		Long: `获取文档标题、类型、创建者、创建时间、权限等元信息 (不含内容)。
-文档接口未返回 fileSize 时，会从钉盘元数据补齐文件大小。`,
+		Long:  `获取文档标题、类型、创建者、创建时间、权限等元信息 (不含内容)。`,
 		Example: `  dws doc info --node DOC_ID
   dws doc info --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -980,10 +925,7 @@ func newDocCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if commandDryRun(cmd) {
-				return callMCPToolOnServer("doc", "get_document_info", map[string]any{"nodeId": nodeID})
-			}
-			return docInfoWithDriveSize(cmd.Context(), nodeID)
+			return callMCPTool("get_document_info", map[string]any{"nodeId": nodeID})
 		},
 	}
 
