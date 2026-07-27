@@ -168,6 +168,7 @@ var (
 	runnerPreflightDocDownload          = (*runtimeRunner).preflightDocDownload
 	runnerCallTool                      = (*transport.Client).CallTool
 	runnerStdioEnsureInitialized        = (*transport.StdioClient).EnsureInitialized
+	runnerStdioListTools                = (*transport.StdioClient).ListTools
 	runnerStdioCallTool                 = (*transport.StdioClient).CallTool
 	runnerHandlePatAuthCheck            func(context.Context, *runtimeRunner, executor.Invocation, *apperrors.PATError, string, io.Writer) (executor.Result, error)
 	runnerRetryWithPatAuthRetry         func(context.Context, executor.Runner, executor.Invocation, *PatScopeError, string, io.Writer) (executor.Result, error)
@@ -209,7 +210,14 @@ func (r *runtimeRunner) Run(ctx context.Context, invocation executor.Invocation)
 		if profile == nil {
 			return executor.Result{}, apperrors.NewValidation(fmt.Sprintf("profile %q not found", rawProfile))
 		}
-		authpkg.SetRuntimeProfile(authpkg.ProfileSelector(*profile))
+		resolvedSelector := authpkg.ProfileSelector(*profile)
+		if strings.TrimSpace(profile.UserID) == "" {
+			// Preserve a unique local-name selector for an unresolved account.
+			// Reducing it to corpId can select a different exact account through
+			// the organization's current-account pointer.
+			resolvedSelector = rawProfile
+		}
+		authpkg.SetRuntimeProfile(resolvedSelector)
 		defer authpkg.SetRuntimeProfile(rawProfile)
 	}
 
@@ -350,6 +358,9 @@ func (r *runtimeRunner) runMultiProfile(ctx context.Context, invocation executor
 
 	for _, selection := range selections {
 		resolvedSelector := authpkg.ProfileSelector(selection.Profile)
+		if strings.TrimSpace(selection.Profile.UserID) == "" {
+			resolvedSelector = selection.Selector
+		}
 		authpkg.SetRuntimeProfile(resolvedSelector)
 		result, err := r.runSingle(ctx, cloneInvocation(invocation), false)
 
@@ -485,7 +496,7 @@ func (r *runtimeRunner) handleCatalogMiss(ctx context.Context, invocation execut
 func (r *runtimeRunner) executeInvocation(ctx context.Context, endpoint string, invocation executor.Invocation) (result executor.Result, retErr error) {
 	// Route stdio:// endpoints to the local StdioClient — no HTTP, no auth.
 	if IsStdioEndpoint(endpoint) {
-		return r.executeStdioInvocation(ctx, invocation)
+		return r.executeStdioInvocationAtEndpoint(ctx, endpoint, invocation)
 	}
 
 	// Constructing the Cobra tree is also used for help, schema, and command
@@ -766,6 +777,14 @@ func (r *runtimeRunner) executeInvocation(ctx context.Context, endpoint string, 
 // subprocess instead of the HTTP transport. This is used for plugin stdio
 // servers whose endpoints use the stdio:// scheme.
 func (r *runtimeRunner) executeStdioInvocation(ctx context.Context, invocation executor.Invocation) (executor.Result, error) {
+	return r.executeStdioInvocationAtEndpoint(ctx, "", invocation)
+}
+
+func (r *runtimeRunner) executeStdioInvocationAtEndpoint(
+	ctx context.Context,
+	endpoint string,
+	invocation executor.Invocation,
+) (executor.Result, error) {
 	if invocation.DryRun {
 		return executor.Result{
 			Invocation: invocation,
@@ -778,10 +797,14 @@ func (r *runtimeRunner) executeStdioInvocation(ctx context.Context, invocation e
 		}, nil
 	}
 
-	client, ok := LookupStdioClient(invocation.CanonicalProduct)
+	lookupKey := strings.Trim(strings.TrimPrefix(strings.TrimSpace(endpoint), stdioEndpointScheme), "/")
+	if lookupKey == "" {
+		lookupKey = invocation.CanonicalProduct
+	}
+	client, ok := LookupStdioClient(lookupKey)
 	if !ok {
 		return executor.Result{}, apperrors.NewInternal(
-			fmt.Sprintf("stdio client not found for %q", invocation.CanonicalProduct))
+			fmt.Sprintf("stdio client not found for %q", lookupKey))
 	}
 
 	callCtx := ctx
@@ -797,6 +820,27 @@ func (r *runtimeRunner) executeStdioInvocation(ctx context.Context, invocation e
 			apperrors.WithReason("stdio_initialize_error"),
 		)
 	}
+
+	tools, err := runnerStdioListTools(client, callCtx)
+	if err != nil {
+		return executor.Result{}, apperrors.NewAPI(
+			fmt.Sprintf("stdio tools/list failed: %v", err),
+			apperrors.WithOperation("tools/list"),
+			apperrors.WithReason("stdio_tools_list_error"),
+		)
+	}
+	schema, ok := pluginToolInputSchema(tools, invocation.Tool)
+	if !ok {
+		return executor.Result{}, apperrors.NewValidation(
+			fmt.Sprintf("plugin tool %q is not declared by tools/list", invocation.Tool),
+			apperrors.WithReason("plugin_tool_not_found"),
+		)
+	}
+	normalizedParams, err := normalizePluginInputParams(invocation.Params, schema)
+	if err != nil {
+		return executor.Result{}, err
+	}
+	invocation.Params = normalizedParams
 
 	callResult, err := runnerStdioCallTool(client, callCtx, invocation.Tool, invocation.Params)
 	if err != nil {

@@ -61,6 +61,7 @@ type commonConsumeOptions struct {
 type personalConsumeOptions struct {
 	Common           commonConsumeOptions
 	EventKey         string
+	Flatten          bool
 	DebugRawEvents   bool
 	SubscribeID      string
 	Rule             string
@@ -140,6 +141,7 @@ var (
 func newEventSchemaCommand() *cobra.Command {
 	var asIdentity string
 	var formatRaw string
+	var flatten bool
 	cmd := &cobra.Command{
 		Use:               "schema <event_key>",
 		Short:             "显示事件 schema",
@@ -157,11 +159,12 @@ func newEventSchemaCommand() *cobra.Command {
 			if !def.Public {
 				return personal.PublicAvailabilityError(args[0])
 			}
-			return renderPersonalSchema(c.OutOrStdout(), def, formatRaw)
+			return renderPersonalSchema(c.OutOrStdout(), def, formatRaw, flatten)
 		},
 	}
 	cmd.Flags().StringVar(&asIdentity, "as", "user", "事件身份: user")
 	cmd.Flags().StringVarP(&formatRaw, "format", "f", "json", "输出格式: json")
+	cmd.Flags().BoolVar(&flatten, "flatten", false, "显示 --flatten 消费模式对应的顶层业务字段 schema")
 	hideEventInternalFlags(cmd, "as")
 	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
 		Name:        "event_key",
@@ -189,7 +192,7 @@ func runPersonalEventList(c *cobra.Command, opts personalListOptions) error {
 	return tw.Flush()
 }
 
-func renderPersonalSchema(w io.Writer, def personal.Definition, format string) error {
+func renderPersonalSchema(w io.Writer, def personal.Definition, format string, flatten bool) error {
 	format = strings.ToLower(strings.TrimSpace(format))
 	if format == "" {
 		format = "json"
@@ -199,27 +202,13 @@ func renderPersonalSchema(w io.Writer, def personal.Definition, format string) e
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(personal.BuildSchemaDocument(def))
+	return enc.Encode(personal.BuildSchemaDocumentForMode(def, flatten))
 }
 
 func runPersonalEventConsume(c *cobra.Command, opts personalConsumeOptions) error {
 	ctx := c.Context()
 	if err := ensurePublicPersonalEvent(opts.EventKey); err != nil {
 		return err
-	}
-	configDir := defaultConfigDir()
-	identity, err := personalResolveEventIdentity(ctx, configDir, opts.StreamSourceID)
-	if err != nil {
-		return fmt.Errorf("event consume --as user: %w", err)
-	}
-	identityHash := dwsevent.IdentityHash(identity.Key())
-	editionName := editionNameOrDefault()
-	workDir := eventWorkDir(configDir, editionName, dwsevent.SourceKindPersonalStream, identityHash)
-	ipcEndpoint := defaultIPCEndpoint(workDir, editionName, dwsevent.SourceKindPersonalStream, identityHash)
-
-	routes, err := consume.ParseRoutes(opts.Common.RoutesRaw)
-	if err != nil {
-		return fmt.Errorf("event consume --as user: %w", err)
 	}
 	rawFormat := ""
 	if f := c.Flags().Lookup("format"); f != nil && f.Changed {
@@ -229,8 +218,26 @@ func runPersonalEventConsume(c *cobra.Command, opts personalConsumeOptions) erro
 	if fellback && !opts.Common.Quiet {
 		fmt.Fprintf(c.ErrOrStderr(), "WARN: --format %q has no meaning for event stream; using ndjson\n", rawFormat)
 	}
-	projector := personalEventProjector(opts.DebugRawEvents)
+	if err := validatePersonalEventOutputMode(opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
+		return fmt.Errorf("event consume --as user: %w", err)
+	}
+	projector := personalEventProjector(opts.DebugRawEvents, opts.Flatten)
 
+	configDir := defaultConfigDir()
+	identity, err := personalResolveEventIdentity(ctx, configDir, opts.StreamSourceID)
+	if err != nil {
+		return fmt.Errorf("event consume --as user: %w", err)
+	}
+	identityHash := dwsevent.IdentityHash(identity.Key())
+	editionName := editionNameOrDefault()
+	workDir := eventWorkDir(configDir, editionName, dwsevent.SourceKindPersonalStream, identityHash)
+	ipcEndpoint := defaultIPCEndpoint(workDir, editionName, dwsevent.SourceKindPersonalStream, identityHash)
+	spawnProfileSelector := personalBusProfileSelector(configDir, identity)
+
+	routes, err := consume.ParseRoutes(opts.Common.RoutesRaw)
+	if err != nil {
+		return fmt.Errorf("event consume --as user: %w", err)
+	}
 	if opts.Common.DryRun {
 		if strings.TrimSpace(opts.SubscribeID) == "" {
 			if err := validatePersonalSubscriptionOptions(opts); err != nil {
@@ -241,12 +248,13 @@ func runPersonalEventConsume(c *cobra.Command, opts personalConsumeOptions) erro
 			WorkDir:        workDir,
 			IPCEndpoint:    ipcEndpoint,
 			ClientID:       identity.ClientID,
-			SpawnExtraArgs: personalBusSpawnArgs(identity, opts.StreamTicketMode, personalEventStreamTicketURL(opts.StreamTicketURL, configDir)),
+			SpawnExtraArgs: personalBusSpawnArgs(identity, opts.StreamTicketMode, personalEventStreamTicketURL(opts.StreamTicketURL, configDir), spawnProfileSelector),
 			Compact:        opts.Common.Compact,
 			MaxEvents:      opts.Common.MaxEvents,
 			Duration:       opts.Common.Duration,
 			EventKey:       opts.EventKey,
 			Format:         normalised,
+			Flatten:        opts.Flatten,
 			OutputDir:      opts.Common.OutputDir,
 			Routes:         routes,
 			Projector:      projector,
@@ -297,12 +305,13 @@ func runPersonalEventConsume(c *cobra.Command, opts personalConsumeOptions) erro
 		WorkDir:          workDir,
 		IPCEndpoint:      ipcEndpoint,
 		ClientID:         identity.ClientID,
-		SpawnExtraArgs:   personalBusSpawnArgs(identity, opts.StreamTicketMode, opts.StreamTicketURL),
+		SpawnExtraArgs:   personalBusSpawnArgs(identity, opts.StreamTicketMode, opts.StreamTicketURL, spawnProfileSelector),
 		Compact:          opts.Common.Compact,
 		MaxEvents:        opts.Common.MaxEvents,
 		Duration:         opts.Common.Duration,
 		EventKey:         eventKey,
 		Format:           normalised,
+		Flatten:          opts.Flatten,
 		OutputDir:        opts.Common.OutputDir,
 		Routes:           routes,
 		Projector:        projector,
@@ -366,11 +375,27 @@ func runPersonalEventConsume(c *cobra.Command, opts personalConsumeOptions) erro
 	return err
 }
 
-func personalEventProjector(debugRawEvents bool) consume.Projector {
+func personalEventProjector(debugRawEvents, flatten bool) consume.Projector {
 	if debugRawEvents {
 		return func(ev transport.Event) (any, error) { return ev, nil }
 	}
-	return personal.ProjectOutput
+	if flatten {
+		return personal.ProjectOutput
+	}
+	return nil
+}
+
+func validatePersonalEventOutputMode(flatten, debugRawEvents bool, format consume.Format) error {
+	if !flatten {
+		return nil
+	}
+	if debugRawEvents {
+		return fmt.Errorf("--flatten and --debug-raw-events are mutually exclusive")
+	}
+	if format == consume.FormatRaw {
+		return fmt.Errorf("--flatten and --format raw are mutually exclusive")
+	}
+	return nil
 }
 
 func applyPersonalConsumeFilters(cfg *consume.Config, opts personalConsumeOptions, subscribeID, eventKey string) {
@@ -845,7 +870,44 @@ func newPersonalStreamSource(ctx context.Context, opts personalStreamSourceOptio
 	})
 }
 
-func personalBusSpawnArgs(identity personal.Identity, ticketMode, ticketURL string) []string {
+func personalBusProfileSelector(configDir string, identity personal.Identity) string {
+	// The parent already resolved and loaded this selector. Preserve it before
+	// consulting identity metadata: personal event discovery can fill an empty
+	// token userId from runtime defaults, and that inferred value must not turn a
+	// historical unresolved account into a different exact same-corp account in
+	// the detached child.
+	if selector := strings.TrimSpace(authpkg.RuntimeProfile()); selector != "" {
+		return selector
+	}
+	if cfg, err := authpkg.LoadProfiles(configDir); err == nil && cfg != nil {
+		// With no explicit process-local override, LoadTokenData selected the
+		// persisted current profile. Prefer that selection over the enriched
+		// identity: $currentUserId may describe an exact same-corp account even
+		// though the token came from the historical unresolved profile.
+		currentSelector := strings.TrimSpace(cfg.CurrentProfile)
+		for i := range cfg.Profiles {
+			profile := cfg.Profiles[i]
+			selector := authpkg.ProfileSelectionSelector(profile, cfg)
+			if selector == currentSelector &&
+				(strings.TrimSpace(identity.CorpID) == "" || strings.TrimSpace(profile.CorpID) == strings.TrimSpace(identity.CorpID)) {
+				return selector
+			}
+		}
+		for i := range cfg.Profiles {
+			profile := cfg.Profiles[i]
+			if strings.TrimSpace(profile.CorpID) == strings.TrimSpace(identity.CorpID) &&
+				strings.TrimSpace(profile.UserID) == strings.TrimSpace(identity.UserID) {
+				return authpkg.ProfileSelectionSelector(profile, cfg)
+			}
+		}
+	}
+	return authpkg.ProfileSelector(authpkg.Profile{
+		CorpID: identity.CorpID,
+		UserID: identity.UserID,
+	})
+}
+
+func personalBusSpawnArgs(identity personal.Identity, ticketMode, ticketURL string, profileSelectors ...string) []string {
 	args := []string{
 		"--source-kind", string(dwsevent.SourceKindPersonalStream),
 		"--stream-source-id", identity.SourceID,
@@ -854,10 +916,11 @@ func personalBusSpawnArgs(identity personal.Identity, ticketMode, ticketURL stri
 	// credentials as the parent, including when one organization has multiple
 	// logged-in users.
 	if cid := strings.TrimSpace(identity.CorpID); cid != "" {
-		args = append(args, "--profile", authpkg.ProfileSelector(authpkg.Profile{
-			CorpID: identity.CorpID,
-			UserID: identity.UserID,
-		}))
+		profileSelector := authpkg.ProfileSelector(authpkg.Profile{CorpID: identity.CorpID, UserID: identity.UserID})
+		if len(profileSelectors) > 0 && strings.TrimSpace(profileSelectors[0]) != "" {
+			profileSelector = strings.TrimSpace(profileSelectors[0])
+		}
+		args = append(args, "--profile", profileSelector)
 	}
 	if strings.TrimSpace(ticketMode) != "" {
 		args = append(args, "--stream-ticket-mode", ticketMode)

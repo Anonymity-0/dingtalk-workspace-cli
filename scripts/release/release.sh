@@ -4,6 +4,7 @@ set -eu
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$SCRIPT_DIR/release-lib.sh"
 ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
+CLOUD_RELEASE_URL="https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/actions/workflows/release.yml"
 
 CHANNEL="${1:-}"
 VERSION="${2:-}"
@@ -19,12 +20,12 @@ usage() {
 usage: release.sh <prerelease|stable> <version> [options]
 
 Runs the full test, command-compatibility, package, and install preflight.
-The default is validation only; add --publish to create and push the tag.
+The default is validation only. Official publication is cloud-only.
 
 Options:
   --remote <name>       Required tag destination
   --from-beta <tag>     Required for stable releases
-  --publish             Create and push the annotated release tag
+  --publish             Create a tag only for a non-official test or fork remote
   --yes                 Skip the interactive version confirmation
 EOF
 }
@@ -73,10 +74,19 @@ repository_identity() {
 
 fetch_identity="$(repository_identity "$fetch_url")"
 push_identity="$(repository_identity "$push_url")"
+normalized_push_identity="$(
+  printf '%s\n' "$push_identity" | tr '[:upper:]' '[:lower:]'
+)"
 [ "$fetch_identity" = "$push_identity" ] || {
   printf 'release remote fetch and push URLs target different repositories:\n  fetch: %s\n  push:  %s\n' "$fetch_url" "$push_url" >&2
   exit 1
 }
+if [ "$PUBLISH" -eq 1 ] &&
+   [ "$normalized_push_identity" = "github.com/dingtalk-real-ai/dingtalk-workspace-cli" ]; then
+  printf '%s\n' 'Direct tag publication to the official repository is disabled.' >&2
+  printf 'Use Actions -> Release -> Run workflow: %s\n' "$CLOUD_RELEASE_URL" >&2
+  exit 1
+fi
 printf 'Release target: %s\n  fetch: %s\n  push:  %s\n' "$REMOTE" "$fetch_url" "$push_url"
 
 github_repository_from_url() {
@@ -351,7 +361,7 @@ else
   if [ -n "$previous_stable" ]; then
     printf '==> Comparing command tree with %s\n' "$previous_stable"
     "$ROOT/scripts/policy/check-command-compatibility.sh" \
-      --base-ref "$REMOTE/$BRANCH" \
+      --base-ref HEAD \
       --stable-ref "$previous_stable"
   fi
 
@@ -405,7 +415,7 @@ if [ "$previous_stable" != "$previous_stable_before_refresh" ]; then
   printf '==> Stable authority advanced from %s to %s; rechecking command compatibility\n' \
     "${previous_stable_before_refresh:-none}" "$previous_stable"
   "$ROOT/scripts/policy/check-command-compatibility.sh" \
-    --base-ref "$REMOTE/$BRANCH" \
+    --base-ref HEAD \
     --stable-ref "$previous_stable"
 fi
 
@@ -416,9 +426,9 @@ fi
 
 # Delivery, compatibility, and publication checks above may take long enough
 # for main or stable authority to move. This last refresh must be followed only
-# by local proof/tag creation. The atomic push advertises main with the tag, so
-# an already-advanced remote main rejects the whole transaction; a later main
-# advance is safe because the sealed commit remains in protected main history.
+# by local proof/tag creation. Only the tag is pushed: the sealed commit is
+# already contained in protected main history, so a later main advance never
+# invalidates the release.
 printf '==> Settling final %s/%s and stable authority\n' "$REMOTE" "$BRANCH"
 git fetch --force "$REMOTE" "+refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH"
 fetch_release_tags
@@ -430,13 +440,18 @@ settled_previous_stable="$(sed -n 's/^previous_stable=//p' "$final_metadata" | t
   exit 1
 }
 
-if [ "$ran_expensive_gates" -eq 1 ]; then
+if [ "$ran_expensive_gates" -eq 1 ] &&
+   [ "$normalized_push_identity" != "github.com/dingtalk-real-ai/dingtalk-workspace-cli" ]; then
   write_preflight_proof "$proof_path"
 fi
 
 if [ "$PUBLISH" -ne 1 ]; then
   printf '\nPreflight passed. No tag was created.\n'
-  printf 'Publish within six hours with the same command plus --publish to reuse this exact proof.\n'
+  if [ "$normalized_push_identity" = "github.com/dingtalk-real-ai/dingtalk-workspace-cli" ]; then
+    printf 'Publish from Actions -> Release -> Run workflow: %s\n' "$CLOUD_RELEASE_URL"
+  else
+    printf 'Publish within six hours with the same command plus --publish to reuse this exact proof.\n'
+  fi
   exit 0
 fi
 
@@ -447,8 +462,7 @@ else
   git tag -a "$VERSION" -m "Release $VERSION" -m 'Channel: prerelease'
 fi
 
-if ! git push --atomic "$push_url" \
-  "HEAD:refs/heads/$BRANCH" "refs/tags/$VERSION"; then
+if ! git push "$push_url" "refs/tags/$VERSION"; then
   set +e
   remote_refs="$(git ls-remote --tags "$push_url" "refs/tags/$VERSION" "refs/tags/$VERSION^{}")"
   query_status=$?

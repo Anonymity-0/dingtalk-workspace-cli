@@ -106,7 +106,7 @@ func threadListProject(data map[string]any) []map[string]any {
 		if v, ok := threadListFirst(m, "subject", "title", "topic"); ok {
 			row["subject"] = v
 		}
-		if v, ok := threadListFirst(m, "lastUpdated", "last_updated", "updateTime", "modifiedTime", "sentDateTime"); ok {
+		if v, ok := threadListFirst(m, "lastUpdated", "last_updated", "lastModifiedDateTime", "updateTime", "modifiedTime", "sentDateTime"); ok {
 			row["lastUpdated"] = v
 		}
 		if v, ok := threadListFirst(m, "isRead", "is_read", "read", "unread"); ok {
