@@ -449,6 +449,26 @@ func TestCrossPlatformCoverageHandleConnectionProtocolEdges(t *testing.T) {
 		}
 	})
 	run(newDaemon(), func(c net.Conn) {
+		w := transport.NewWriter(c)
+		_ = w.WriteJSON(transport.Hello{Type: transport.FrameTypeHello, Role: transport.HelloRoleConsumerStop})
+		_ = w.WriteJSON(transport.StatusReq{Type: transport.FrameTypeStatusReq})
+	})
+	run(newDaemon(), func(c net.Conn) {
+		w, r := transport.NewWriter(c), transport.NewReader(c)
+		_ = w.WriteJSON(transport.Hello{Type: transport.FrameTypeHello, Role: transport.HelloRoleConsumerStop})
+		_ = w.WriteJSON(transport.ConsumerStopReq{
+			Type:         transport.FrameTypeConsumerStopReq,
+			SubscribeIDs: []string{"", "missing", "missing"},
+		})
+		var resp transport.ConsumerStopResp
+		if err := r.ReadJSON(&resp); err != nil {
+			t.Fatal(err)
+		}
+		if len(resp.NotFound) != 1 || resp.NotFound[0] != "missing" {
+			t.Fatalf("consumer stop response = %#v", resp)
+		}
+	})
+	run(newDaemon(), func(c net.Conn) {
 		w, r := transport.NewWriter(c), transport.NewReader(c)
 		_ = w.WriteJSON(transport.Hello{Type: transport.FrameTypeHello, Filter: "["})
 		var bye transport.Bye
@@ -493,6 +513,58 @@ func TestCrossPlatformCoverageHandleConnectionProtocolEdges(t *testing.T) {
 		d.hub.Broadcast(transport.Bye{Type: transport.FrameTypeBye})
 		time.Sleep(time.Millisecond)
 	})
+}
+
+func TestCrossPlatformCoverageHandleConnectionPrioritizesQueuedConsumerStop(t *testing.T) {
+	d := &daemon{
+		cfg:      Config{ClientID: "client", Edition: "open", IdleTimeout: time.Second},
+		log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		hub:      NewHub(2),
+		started:  time.Now(),
+		idleStop: make(chan struct{}),
+	}
+	server, client := net.Pipe()
+	done := make(chan struct{})
+	go func() {
+		d.handleConnection(context.Background(), server)
+		close(done)
+	}()
+
+	w, r := transport.NewWriter(client), transport.NewReader(client)
+	if err := w.WriteJSON(transport.Hello{
+		Type:        transport.FrameTypeHello,
+		SubscribeID: "sub-priority",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for d.hub.Len() != 1 {
+		if time.Now().After(deadline) {
+			t.Fatal("consumer was not registered")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if stopped := d.hub.StopConsumers([]string{"sub-priority"}, "priority-stop"); len(stopped) != 1 {
+		t.Fatalf("stopped = %#v", stopped)
+	}
+
+	var ack transport.HelloAck
+	if err := r.ReadJSON(&ack); err != nil {
+		t.Fatal(err)
+	}
+	var bye transport.Bye
+	if err := r.ReadJSON(&bye); err != nil {
+		t.Fatal(err)
+	}
+	if bye.Reason != "priority-stop" {
+		t.Fatalf("bye = %#v", bye)
+	}
+	_ = client.Close()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("connection handler did not stop")
+	}
 }
 
 type queryConn struct{}

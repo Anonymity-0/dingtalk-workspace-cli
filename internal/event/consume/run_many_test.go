@@ -461,3 +461,75 @@ func TestRunManyOutputAndReadFailures(t *testing.T) {
 		}
 	})
 }
+
+func TestCrossPlatformCoverageRunManyIgnoresMalformedFrames(t *testing.T) {
+	busA := newManyFakeBus(601, nil)
+	busB := newManyFakeBus(601, nil)
+	installManyDiscover(t, busA, busB)
+	var stdout synchronizedBuffer
+	cfg := manyTestConfig(&stdout, io.Discard)
+	cfg.MaxEvents = 1
+	done := make(chan error, 1)
+	go func() { done <- RunMany(context.Background(), cfg, manyTestSpecs()) }()
+	<-busA.hello
+	<-busB.hello
+	<-busA.acked
+	<-busB.acked
+
+	busA.send <- "not-an-object"
+	busA.send <- map[string]any{"type": "event", "seq": "not-a-number"}
+	busA.send <- transport.Event{
+		Type: transport.FrameTypeEvent, EventID: "valid",
+		EventType: "event-a", SubscribeID: "sub-a", Data: `{}`,
+	}
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("RunMany() error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("RunMany did not stop after the valid event")
+	}
+	if !strings.Contains(stdout.String(), `"event_id":"valid"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestCrossPlatformCoverageRunManyTreatsCancelledReadAsGraceful(t *testing.T) {
+	busA := newManyFakeBus(602, nil)
+	busB := newManyFakeBus(602, nil)
+	installManyDiscover(t, busA, busB)
+	oldCancelled := runManyIsCtxCancelled
+	runManyIsCtxCancelled = func(context.Context) bool { return true }
+	t.Cleanup(func() { runManyIsCtxCancelled = oldCancelled })
+
+	done := make(chan error, 1)
+	go func() {
+		done <- RunMany(context.Background(), manyTestConfig(io.Discard, io.Discard), manyTestSpecs())
+	}()
+	<-busA.hello
+	<-busB.hello
+	<-busA.acked
+	<-busB.acked
+	_ = busA.server.Close()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("cancelled read error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("RunMany did not stop after the cancelled read")
+	}
+}
+
+func TestPrintDryRunManyDisplaysPendingSubscription(t *testing.T) {
+	var output bytes.Buffer
+	PrintDryRunMany(&output, manyTestConfig(io.Discard, io.Discard), []ConsumerSpec{
+		{EventKey: "event-a", EventTypes: []string{"event-a"}},
+	})
+	if !strings.Contains(output.String(), "subscribe_id=(pending)") {
+		t.Fatalf("dry-run output = %q", output.String())
+	}
+}

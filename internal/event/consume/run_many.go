@@ -44,6 +44,8 @@ type manyFrame struct {
 	err   error
 }
 
+var runManyIsCtxCancelled = isCtxCancelled
+
 // RunMany consumes multiple independently isolated subscriptions in one
 // process. It shares one formatter/sink pipeline and one command lifecycle,
 // while retaining one bus IPC connection per subscription.
@@ -189,11 +191,8 @@ func RunMany(ctx context.Context, cfg Config, specs []ConsumerSpec) error {
 			reason = classifyCancel()
 			return nil
 		case frame := <-frames:
-			if _, ok := active[frame.index]; !ok {
-				continue
-			}
 			if frame.err != nil {
-				if isCtxCancelled(ctx) {
+				if runManyIsCtxCancelled(ctx) {
 					reason = classifyCancel()
 					return nil
 				}

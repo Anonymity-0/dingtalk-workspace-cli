@@ -113,6 +113,7 @@ type personalStreamSourceOptions struct {
 
 var (
 	personalResolveEventIdentity        = resolvePersonalEventIdentity
+	personalLookupDefinition            = personal.Lookup
 	personalEnsureSubscription          = ensurePersonalSubscription
 	personalGetSubscription             = (*personal.Client).GetSubscription
 	personalCreateSubscription          = (*personal.Client).CreateSubscription
@@ -468,9 +469,6 @@ func runPersonalEventConsumeMany(c *cobra.Command, opts personalConsumeOptions) 
 		ids := make([]string, 0, len(created))
 		for i := len(created) - 1; i >= 0; i-- {
 			id := strings.TrimSpace(created[i].Sub.SubscribeID)
-			if id == "" {
-				continue
-			}
 			ids = append(ids, id)
 			if err := personalDeleteSubscription(client, context.Background(), id); err != nil {
 				fmt.Fprintf(c.ErrOrStderr(), "WARN: failed to clean personal subscription %s: %v\n", id, err)
@@ -562,7 +560,7 @@ func preparePersonalMultiOptions(opts personalConsumeOptions) ([]personalConsume
 	hasUserScope := false
 	hasGroupScope := false
 	for _, eventKey := range keys {
-		def, ok := personal.Lookup(eventKey)
+		def, ok := personalLookupDefinition(eventKey)
 		if !ok {
 			return nil, fmt.Errorf("unknown personal event key %q", eventKey)
 		}
@@ -611,7 +609,7 @@ func preparePersonalMultiOptions(opts personalConsumeOptions) ([]personalConsume
 
 	plans := make([]personalConsumeOptions, 0, len(keys))
 	for _, eventKey := range keys {
-		def, _ := personal.Lookup(eventKey)
+		def, _ := personalLookupDefinition(eventKey)
 		plan := opts
 		plan.EventKey = eventKey
 		plan.EventKeys = nil

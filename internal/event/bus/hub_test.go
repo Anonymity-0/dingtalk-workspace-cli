@@ -292,6 +292,9 @@ func TestHub_UnregisterIdempotent(t *testing.T) {
 
 func TestHub_StopConsumersTargetsExactSubscribeID(t *testing.T) {
 	h := NewHub(10)
+	if stopped := h.StopConsumers([]string{"", "  "}, "ignored"); stopped != nil {
+		t.Fatalf("empty targets stopped = %#v", stopped)
+	}
 	a, err := h.Register(transport.Hello{SubscribeID: "sub-a"})
 	if err != nil {
 		t.Fatal(err)

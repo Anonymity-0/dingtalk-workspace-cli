@@ -87,6 +87,20 @@ func TestPreparePersonalMultiOptionsCombinationMatrix(t *testing.T) {
 			wantErr: "cannot be consumed in one command",
 		},
 		{
+			name: "duplicate keys collapse to one",
+			opts: personalConsumeOptions{
+				EventKeys: []string{personal.EventMention, personal.EventMention},
+			},
+			wantErr: "multiple event keys are required",
+		},
+		{
+			name: "unknown event",
+			opts: personalConsumeOptions{
+				EventKeys: []string{personal.EventMention, "user_im_unknown"},
+			},
+			wantErr: "unknown personal event key",
+		},
+		{
 			name:    "missing user target",
 			opts:    personalConsumeOptions{EventKeys: []string{personal.EventSingleChat, personal.EventReadO2O}},
 			wantErr: "one of --user or --open-dingtalk-id",
@@ -97,6 +111,33 @@ func TestPreparePersonalMultiOptionsCombinationMatrix(t *testing.T) {
 				EventKeys: []string{personal.EventInChat, personal.EventGroupUpdated},
 			},
 			wantErr: "--group is required",
+		},
+		{
+			name: "user identity flags conflict",
+			opts: personalConsumeOptions{
+				EventKeys:      []string{personal.EventSingleChat, personal.EventReadO2O},
+				UserID:         "test-user-001",
+				OpenDingTalkID: "open-test-user",
+			},
+			wantErr: "mutually exclusive",
+		},
+		{
+			name: "group target on user events",
+			opts: personalConsumeOptions{
+				EventKeys: []string{personal.EventSingleChat, personal.EventReadO2O},
+				UserID:    "test-user-001",
+				GroupID:   "cid-test",
+			},
+			wantErr: "--group cannot be used",
+		},
+		{
+			name: "user target on group events",
+			opts: personalConsumeOptions{
+				EventKeys: []string{personal.EventInChat, personal.EventGroupUpdated},
+				UserID:    "test-user-001",
+				GroupID:   "cid-test",
+			},
+			wantErr: "cannot be used with group-scoped events",
 		},
 		{
 			name: "target on no target events",
@@ -121,6 +162,14 @@ func TestPreparePersonalMultiOptionsCombinationMatrix(t *testing.T) {
 				QueryCSV:  "alarm",
 			},
 			wantErr: "require all selected events to be message receive events",
+		},
+		{
+			name: "invalid message filter",
+			opts: personalConsumeOptions{
+				EventKeys:  []string{personal.EventMention, personal.EventAllSingleChat},
+				FilterJSON: "{",
+			},
+			wantErr: "filter",
 		},
 	}
 
@@ -148,6 +197,32 @@ func TestPreparePersonalMultiOptionsCombinationMatrix(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestPreparePersonalMultiOptionsRejectsNonPublicEvent(t *testing.T) {
+	oldLookup := personalLookupDefinition
+	t.Cleanup(func() { personalLookupDefinition = oldLookup })
+	personalLookupDefinition = func(eventKey string) (personal.Definition, bool) {
+		def, ok := personal.Lookup(eventKey)
+		if eventKey == personal.EventAllSingleChat {
+			def.Public = false
+		}
+		return def, ok
+	}
+
+	_, err := preparePersonalMultiOptions(personalConsumeOptions{
+		EventKeys: []string{personal.EventMention, personal.EventAllSingleChat},
+	})
+	if err == nil || !strings.Contains(err.Error(), "not publicly available") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestDedupePersonalEventKeysSkipsEmptyValues(t *testing.T) {
+	got := dedupePersonalEventKeys([]string{"", " event-a ", "event-a", "event-b"})
+	if !reflect.DeepEqual(got, []string{"event-a", "event-b"}) {
+		t.Fatalf("deduped keys = %#v", got)
 	}
 }
 
@@ -386,14 +461,125 @@ func TestRunPersonalEventConsumeManyDryRunDoesNotCreateSubscriptions(t *testing.
 	cmd.SetErr(&stderr)
 	err := runPersonalEventConsume(cmd, personalConsumeOptions{
 		EventKeys: []string{personal.EventMention, personal.EventAllSingleChat},
+		QueryCSV:  "alarm",
 		Common:    commonConsumeOptions{DryRun: true},
 	})
 	if err != nil {
 		t.Fatalf("dry-run error = %v", err)
 	}
-	if !strings.Contains(stderr.String(), "subscription[0]") || !strings.Contains(stderr.String(), "subscription[1]") {
+	if !strings.Contains(stderr.String(), "subscription[0]") ||
+		!strings.Contains(stderr.String(), "subscription[1]") ||
+		!strings.Contains(stderr.String(), "filter=") {
 		t.Fatalf("dry-run subscriptions missing:\n%s", stderr.String())
 	}
+}
+
+func TestCrossPlatformCoverageRunPersonalEventConsumeManySetupAndCleanupEdges(t *testing.T) {
+	valid := personalConsumeOptions{EventKeys: []string{personal.EventMention, personal.EventAllSingleChat}}
+
+	t.Run("prepare error", func(t *testing.T) {
+		err := runPersonalEventConsumeMany(newPersonalCoverageCommand(), personalConsumeOptions{
+			EventKeys: []string{personal.EventMention},
+		})
+		if err == nil || !strings.Contains(err.Error(), "multiple event keys") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+
+	t.Run("format warning and identity error", func(t *testing.T) {
+		restore := installPersonalManySeams(t)
+		defer restore()
+		cmd := newPersonalCoverageCommand()
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+		if err := cmd.Flags().Set("format", "bogus"); err != nil {
+			t.Fatal(err)
+		}
+		wantErr := errors.New("identity")
+		personalResolveEventIdentity = func(context.Context, string, string) (personal.Identity, error) {
+			return personal.Identity{}, wantErr
+		}
+		opts := valid
+		opts.Common.FormatRaw = "bogus"
+		if err := runPersonalEventConsumeMany(cmd, opts); !errors.Is(err, wantErr) {
+			t.Fatalf("error = %v", err)
+		}
+		if !strings.Contains(stderr.String(), "using ndjson") {
+			t.Fatalf("warning = %q", stderr.String())
+		}
+	})
+
+	t.Run("flatten raw conflict", func(t *testing.T) {
+		cmd := newPersonalCoverageCommand()
+		if err := cmd.Flags().Set("format", "raw"); err != nil {
+			t.Fatal(err)
+		}
+		opts := valid
+		opts.Flatten = true
+		opts.Common.FormatRaw = "raw"
+		if err := runPersonalEventConsumeMany(cmd, opts); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+
+	t.Run("route validation and output conflict", func(t *testing.T) {
+		restore := installPersonalManySeams(t)
+		defer restore()
+		personalResolveEventIdentity = func(context.Context, string, string) (personal.Identity, error) {
+			return personal.Identity{AccessToken: "token", ClientID: "client", SourceID: "open", LocalSubject: "subject"}, nil
+		}
+
+		opts := valid
+		opts.Common.RoutesRaw = []string{"bad-route"}
+		if err := runPersonalEventConsumeMany(newPersonalCoverageCommand(), opts); err == nil {
+			t.Fatal("invalid route succeeded")
+		}
+
+		wantErr := errors.New("validate")
+		personalValidateConsumeConfig = func(consume.Config) error { return wantErr }
+		if err := runPersonalEventConsumeMany(newPersonalCoverageCommand(), valid); !errors.Is(err, wantErr) {
+			t.Fatalf("config validation error = %v", err)
+		}
+
+		personalValidateConsumeConfig = func(consume.Config) error { return nil }
+		personalValidateNoOutputConflict = func(consume.Config, string) error { return wantErr }
+		cmd := newPersonalCoverageCommand()
+		if err := cmd.Flags().Set("output", "events.json"); err != nil {
+			t.Fatal(err)
+		}
+		if err := runPersonalEventConsumeMany(cmd, valid); !errors.Is(err, wantErr) {
+			t.Fatalf("output conflict error = %v", err)
+		}
+	})
+
+	t.Run("runtime error reports cleanup failures", func(t *testing.T) {
+		restore := installPersonalManySeams(t)
+		defer restore()
+		personalResolveEventIdentity = func(context.Context, string, string) (personal.Identity, error) {
+			return personal.Identity{AccessToken: "token", ClientID: "client", SourceID: "open", LocalSubject: "subject"}, nil
+		}
+		personalEnsureSubscription = func(_ context.Context, _ *personal.Client, _ personal.Identity, opts personalConsumeOptions) (*personal.Subscription, string, string, error) {
+			return &personal.Subscription{SubscribeID: "sub-" + opts.EventKey}, opts.EventKey, "all", nil
+		}
+		personalUpsertRunState = func(string, personal.RunState) error { return nil }
+		personalValidateConsumeConfig = func(consume.Config) error { return nil }
+		cleanupErr := errors.New("cleanup")
+		personalDeleteSubscription = func(*personal.Client, context.Context, string) error { return cleanupErr }
+		personalRemoveRunStates = func(string, []string) error { return cleanupErr }
+		runErr := errors.New("run many")
+		personalConsumeRunMany = func(context.Context, consume.Config, []consume.ConsumerSpec) error { return runErr }
+
+		cmd := newPersonalCoverageCommand()
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+		if err := runPersonalEventConsumeMany(cmd, valid); !errors.Is(err, runErr) {
+			t.Fatalf("runtime error = %v", err)
+		}
+		if !strings.Contains(stderr.String(), "failed to clean personal subscription") ||
+			!strings.Contains(stderr.String(), "failed to clean personal event run state") {
+			t.Fatalf("cleanup warnings = %q", stderr.String())
+		}
+	})
 }
 
 func TestStopPersonalConsumersUsesTargetedRPCAndLegacyFallback(t *testing.T) {
@@ -453,6 +639,7 @@ func TestStopPersonalConsumersUsesTargetedRPCAndLegacyFallback(t *testing.T) {
 func installPersonalManySeams(t *testing.T) func() {
 	t.Helper()
 	oldIdentity := personalResolveEventIdentity
+	oldLookup := personalLookupDefinition
 	oldEnsure := personalEnsureSubscription
 	oldUpsert := personalUpsertRunState
 	oldDelete := personalDeleteSubscription
@@ -462,6 +649,7 @@ func installPersonalManySeams(t *testing.T) func() {
 	oldConflict := personalValidateNoOutputConflict
 	return func() {
 		personalResolveEventIdentity = oldIdentity
+		personalLookupDefinition = oldLookup
 		personalEnsureSubscription = oldEnsure
 		personalUpsertRunState = oldUpsert
 		personalDeleteSubscription = oldDelete

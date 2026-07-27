@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
@@ -103,5 +104,30 @@ func TestStopConsumersValidatesInputAndDialErrors(t *testing.T) {
 	t.Cleanup(func() { consumerStopDial = oldDial })
 	if _, err := StopConsumers("pipe", []string{"sub-a"}); !errors.Is(err, wantErr) {
 		t.Fatalf("dial error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageStopConsumersProtocolErrors(t *testing.T) {
+	oldDial := consumerStopDial
+	t.Cleanup(func() { consumerStopDial = oldDial })
+
+	for _, test := range []struct {
+		name   string
+		failAt int
+		want   string
+	}{
+		{name: "hello write", failAt: 1, want: "write consumer stop hello"},
+		{name: "request write", failAt: 2, want: "write consumer stop request"},
+		{name: "response read", failAt: 0, want: "read consumer stop response"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			consumerStopDial = func(string) (net.Conn, error) {
+				return &queryErrorConn{failAt: test.failAt}, nil
+			}
+			_, err := StopConsumers("pipe", []string{"sub-a"})
+			if !errors.Is(err, errBusctlInjected) || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
