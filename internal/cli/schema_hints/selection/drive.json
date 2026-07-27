@@ -545,9 +545,9 @@
       ]
     },
     "drive.rename_document": {
-      "agent_summary": "修改文档空间中文档或文件的名称",
+      "agent_summary": "修改文档空间中文档或文件的名称，并避免服务端保留原扩展名导致双扩展名",
       "use_when": [
-        "用户要重命名钉盘/文档空间中的文件或文档显示名称时"
+        "用户要重命名钉盘/文档空间中的文件或文档显示名称时；--name 带常见扩展名也可，CLI 会自动去掉一层"
       ],
       "avoid_when": [
         "要改正文里的标题/章节 H1 改用 dws doc block update，不要用 rename",

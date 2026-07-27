@@ -144,9 +144,16 @@
       "runtime_gate": "none"
     },
     "doc.get_document_info": {
-      "interface_mode": "mcp",
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
       "availability": "available",
-      "reviewed": true
+      "interface_reason": "The CLI uses doc/get_document_info as the authoritative response and best-effort enriches a missing fileSize from drive/get_file_info, so no single MCP interface represents the delivered result.",
+      "reviewed": true,
+      "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
+      "runtime_gate": "none"
     },
     "doc.import_get": {
       "effect": "write",

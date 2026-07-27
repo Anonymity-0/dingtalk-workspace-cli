@@ -9377,7 +9377,7 @@
       ]
     },
     "doc info": {
-      "agent_summary": "获取文档元信息（标题/类型/创建者/权限等）",
+      "agent_summary": "获取文档元信息（标题/类型/创建者/权限等，并从钉盘补齐缺失的文件大小）",
       "agent_summary_source": "dws-agent-selection/doc",
       "availability": "available",
       "avoid_when": [
@@ -9386,21 +9386,21 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "agent-hint",
       "examples": [
         "dws doc info --node \u003cDOC_ID\u003e --format json",
         "dws doc info --node \"https://alidocs.dingtalk.com/i/nodes/\u003cDOC_UUID\u003e\" --format json"
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "获取文档元信息（标题/类型/创建者/权限等）",
+          "value": "获取文档元信息（标题/类型/创建者/权限等，并从钉盘补齐缺失的文件大小）",
           "source": "internal/cli/schema_hints/selection/doc.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "人工审阅：结合本机 dws schema 实时 MCP description/parameters（经 interface_ref）、产品 Skill、Cobra Long 与 Runtime 确认门禁，按飞书风格重写选型文案；不改变命令身份、参数契约或接口绑定。",
           "candidates": [
             {
-              "value": "获取文档元信息（标题/类型/创建者/权限等）",
+              "value": "获取文档元信息（标题/类型/创建者/权限等，并从钉盘补齐缺失的文件大小）",
               "source": "internal/cli/schema_hints/selection/doc.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -9413,14 +9413,14 @@
           "source": "internal/cli/schema_hints/metadata/doc.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/doc marks this tool as reviewed",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/doc.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/doc marks this tool as reviewed"
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
             },
             {
               "value": "available",
@@ -9454,29 +9454,45 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
+            },
             {
               "value": "not_required",
               "source": "risk-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "effect": {
           "value": "read",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
+            },
             {
               "value": "read",
               "source": "command-verb",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -9504,31 +9520,39 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
+            },
             {
               "value": "idempotent",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
-          "value": "mcp",
+          "value": "composite",
           "source": "internal/cli/schema_hints/metadata/doc.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/doc marks this tool as reviewed",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
             {
-              "value": "mcp",
+              "value": "composite",
               "source": "internal/cli/schema_hints/metadata/doc.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/doc marks this tool as reviewed"
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
             },
             {
               "value": "mcp",
@@ -9538,17 +9562,43 @@
             }
           ]
         },
-        "interface_ref": {
-          "value": "doc.get_document_info",
-          "source": "internal/cli/schema_hints/imported/wukong.json",
-          "precedence": "imported",
+        "interface_reason": {
+          "value": "The CLI uses doc/get_document_info as the authoritative response and best-effort enriches a missing fileSize from drive/get_file_info, so no single MCP interface represents the delivered result.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
+            {
+              "value": "The CLI uses doc/get_document_info as the authoritative response and best-effort enriches a missing fileSize from drive/get_file_info, so no single MCP interface represents the delivered result.",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ],
+          "overridden_candidates": [
             {
               "value": "doc.get_document_info",
               "source": "internal/cli/schema_hints/imported/wukong.json",
               "precedence": "imported",
-              "selected": true
+              "selected": false
             },
             {
               "value": "doc.get_document_info",
@@ -9563,14 +9613,14 @@
           "source": "internal/cli/schema_hints/metadata/doc.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/doc marks this tool as reviewed",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/doc.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/doc marks this tool as reviewed"
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
             },
             {
               "value": true,
@@ -9583,22 +9633,31 @@
         },
         "risk": {
           "value": "low",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields.",
           "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed composite metadata read fixes the document endpoint's missing fileSize without changing its authoritative title, type, owner, or permission fields."
+            },
             {
               "value": "low",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "use_when": {
           "value": [
             "用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
-            "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时"
+            "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时",
+            "文档接口本身缺少 fileSize，但用户需要读取上传文件大小时"
           ],
           "source": "internal/cli/schema_hints/selection/doc.json",
           "precedence": "reviewed_explicit",
@@ -9608,7 +9667,8 @@
             {
               "value": [
                 "用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
-                "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时"
+                "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时",
+                "文档接口本身缺少 fileSize，但用户需要读取上传文件大小时"
               ],
               "source": "internal/cli/schema_hints/selection/doc.json",
               "precedence": "reviewed_explicit",
@@ -9619,11 +9679,8 @@
         }
       },
       "idempotency": "idempotent",
-      "interface_mode": "mcp",
-      "interface_ref": {
-        "product_id": "doc",
-        "rpc_name": "get_document_info"
-      },
+      "interface_mode": "composite",
+      "interface_reason": "The CLI uses doc/get_document_info as the authoritative response and best-effort enriches a missing fileSize from drive/get_file_info, so no single MCP interface represents the delivered result.",
       "reviewed": true,
       "risk": "low",
       "source_refs": [
@@ -9645,7 +9702,8 @@
       ],
       "use_when": [
         "用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
-        "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时"
+        "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时",
+        "文档接口本身缺少 fileSize，但用户需要读取上传文件大小时"
       ]
     },
     "doc list": {
@@ -12274,7 +12332,7 @@
         },
         "use_when": {
           "value": [
-            "用户要改文档/文件在列表与链接中展示的名称时"
+            "用户要改文档/文件在列表与链接中展示的名称时；即使名称带常见扩展名，CLI 也会去掉一层再交给保留原扩展名的服务端"
           ],
           "source": "internal/cli/schema_hints/selection/doc.json",
           "precedence": "reviewed_explicit",
@@ -12283,7 +12341,7 @@
           "candidates": [
             {
               "value": [
-                "用户要改文档/文件在列表与链接中展示的名称时"
+                "用户要改文档/文件在列表与链接中展示的名称时；即使名称带常见扩展名，CLI 也会去掉一层再交给保留原扩展名的服务端"
               ],
               "source": "internal/cli/schema_hints/selection/doc.json",
               "precedence": "reviewed_explicit",
@@ -12315,7 +12373,7 @@
         "structured-hint:internal/cli/schema_hints/selection-review.json#doc.rename_document"
       ],
       "use_when": [
-        "用户要改文档/文件在列表与链接中展示的名称时"
+        "用户要改文档/文件在列表与链接中展示的名称时；即使名称带常见扩展名，CLI 也会去掉一层再交给保留原扩展名的服务端"
       ]
     },
     "doc search": {

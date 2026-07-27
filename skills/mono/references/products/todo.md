@@ -457,9 +457,10 @@ dws todo task list-sub --task-id <taskId> --format json
 
 - 优先级值: 10=低, 20=普通, 30=较高, 40=紧急
 - `--due` 是截止时间 dueTime，不是提醒时间；使用 ISO-8601 格式（如 2026-03-10T18:00:00+08:00）
-- 当前不支持单独的 `reminder` / `remind-at` 精确提醒能力；不要把 `--due` 解释成“几点提醒”
+- `todo +remind --at` 同样只写截止时间 dueTime，不会创建独立提醒规则；不要把它解释成“几点提醒”
 - `--recurrence`：仅在与 `--due` 同时设置时有效；当前仅支持按天循环。字符串内需含换行，示例：`DTSTART:20260320T020000Z\nRRULE:FREQ=DAILY;INTERVAL=1`（DTSTART 表示首次截止时间，需与业务约定一致）
-- 若用户的真实诉求是“到点提醒我”，需要先说明能力边界；当前 CLI 只能表达 deadline / recurrence，不能表达独立 reminder schedule
+- 独立提醒可在待办创建后通过 `task add-reminder` 写入，或用 `task reset-reminder` 整体替换/清除
+- 当前上游没有提醒规则查询接口，`task get/list` 均不返回 `reminderRules`；写命令成功响应只能作为写入回执，不能声称已读回核验
 - `task list` 的 `--status` 对应 MCP `get_user_todos_in_current_org` 的 `todoStatus` 参数
 - `task list --query-all` 查询当前用户跨组织的全部待办；不传时保持当前组织范围
 - todo 是个人待办管理产品

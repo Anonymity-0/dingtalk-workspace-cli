@@ -14,6 +14,9 @@
 package helpers
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
@@ -48,4 +51,27 @@ func commandBoolFlag(cmd *cobra.Command, name string) bool {
 		}
 	}
 	return false
+}
+
+// renameBaseName removes one familiar file extension before calling
+// rename_document. That service preserves the node's current extension, so
+// forwarding "report.txt" for a .txt file would otherwise produce
+// "report.txt.txt". Unknown dotted suffixes are preserved because they may be
+// part of a display name (for example "release.v2").
+func renameBaseName(name string) string {
+	trimmed := strings.TrimSpace(name)
+	extension := strings.ToLower(strings.TrimPrefix(filepath.Ext(trimmed), "."))
+	if _, ok := renamePreservedExtensions[extension]; !ok {
+		return trimmed
+	}
+	return strings.TrimSuffix(trimmed, filepath.Ext(trimmed))
+}
+
+var renamePreservedExtensions = map[string]struct{}{
+	"7z": {}, "able": {}, "adoc": {}, "adraw": {}, "aform": {}, "amind": {},
+	"appt": {}, "awbd": {}, "axls": {}, "csv": {}, "doc": {}, "docx": {},
+	"gif": {}, "gz": {}, "jpeg": {}, "jpg": {}, "json": {}, "md": {},
+	"mp3": {}, "mp4": {}, "pdf": {}, "png": {}, "ppt": {}, "pptx": {},
+	"rar": {}, "svg": {}, "tar": {}, "txt": {}, "wav": {}, "webp": {},
+	"xls": {}, "xlsx": {}, "xml": {}, "zip": {},
 }

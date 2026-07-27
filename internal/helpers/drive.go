@@ -834,7 +834,8 @@ func newDriveCommand() *cobra.Command {
 	driveRenameCmd := &cobra.Command{
 		Use:   "rename",
 		Short: "重命名文件/文档",
-		Long: `修改文档空间中文档或文件的名称。
+		Long: `修改文档空间中文档或文件的名称。服务端会保留节点的原扩展名；
+如果 --name 带常见文件扩展名，CLI 会自动去掉一层，避免出现 report.txt.txt。
 
 权限要求: 对文档有"编辑"权限。`,
 		Example: `  dws drive rename --node DOC_ID --name "新名称"`,
@@ -848,12 +849,12 @@ func newDriveCommand() *cobra.Command {
 			}
 			return callMCPToolOnServer("doc", "rename_document", map[string]any{
 				"nodeId":  nodeID,
-				"newName": flagOrFallback(cmd, "name", "title"),
+				"newName": renameBaseName(flagOrFallback(cmd, "name", "title")),
 			})
 		},
 	}
 	driveRenameCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
-	driveRenameCmd.Flags().String("name", "", "新名称 (必填)")
+	driveRenameCmd.Flags().String("name", "", "新名称 (必填；服务端保留原扩展名，传入常见扩展名时 CLI 会自动去掉一层)")
 
 	driveStatsCmd := &cobra.Command{
 		Use:   "stats",

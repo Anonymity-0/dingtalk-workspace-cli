@@ -282,6 +282,10 @@ func newTodoCommand() *cobra.Command {
 	todoTaskGetCmd := &cobra.Command{
 		Use:   "get",
 		Short: "待办详情",
+		Long: `查询单条待办的详情。
+
+当前上游详情接口不返回 reminderRules；本命令不能读取或验证 add-reminder /
+reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作为写入回执。`,
 		Example: `  dws todo task get --task-id <taskId>
 
   # 查询 taskId: dws todo task list`,
@@ -427,6 +431,10 @@ func newTodoCommand() *cobra.Command {
 	todoTaskAddReminderCmd := &cobra.Command{
 		Use:   "add-reminder",
 		Short: "添加待办提醒",
+		Long: `为已有待办写入一条提醒规则。
+
+当前上游没有提醒规则查询接口，task get/list 也不返回 reminderRules；
+成功响应是写入回执，不代表 CLI 能再次读取并核验该规则。`,
 		Example: `  dws todo task add-reminder --task-id <taskId> --base-time dueTime --due-date-offset -30
 			dws todo task add-reminder --task-id <taskId> --base-time customTime --reminder-time-stamp 2026-03-10T18:00:00+08:00
   # 查询 taskId: dws todo task list
@@ -473,6 +481,10 @@ func newTodoCommand() *cobra.Command {
 	todoTaskUpdateReminderCmd := &cobra.Command{
 		Use:   "reset-reminder",
 		Short: "重置待办提醒",
+		Long: `整体替换待办提醒规则；不传 --reminder-rules 时清除提醒。
+
+当前上游没有提醒规则查询接口，task get/list 也不返回 reminderRules；
+成功响应是写入回执，不代表 CLI 能再次读取并核验最终规则。`,
 		Example: `  dws todo task reset-reminder --task-id <taskId>
 			dws todo task reset-reminder --task-id <taskId> --reminder-rules <reminderRules>
   # 查询 taskId: dws todo task list
@@ -924,7 +936,7 @@ func rejectUnsupportedTodoReminderFlags(cmd *cobra.Command) error {
 	return &CLIError{
 		Code:       CodeMissingParam,
 		Message:    fmt.Sprintf("todo 当前不支持独立 reminder 参数: %s", strings.Join(unsupported, ", ")),
-		Suggestion: "请使用 --due 表示截止时间；如果用户要的是精确提醒时间，请明确说明该能力当前不支持，而不是把 --due 当作 reminder。",
+		Suggestion: "请先用 --due 设置截止时间；需要独立提醒时，再用 dws todo task add-reminder。当前上游不支持读取提醒规则，不能用 task get/list 验证写入结果。",
 		Operation:  "todo.task.reminder",
 	}
 }

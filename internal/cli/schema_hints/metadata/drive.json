@@ -203,7 +203,14 @@
       },
       "interface_mode": "mcp",
       "availability": "available",
-      "reviewed": true
+      "reviewed": true,
+      "parameters": {
+        "name": {
+          "description": "新显示名称；服务端保留节点原扩展名，若传入常见文件扩展名，CLI 会自动去掉一层以避免双扩展名"
+        }
+      },
+      "review_reason": "The reviewed CLI normalizes one familiar extension from --name because rename_document preserves the node's existing extension.",
+      "cli_path": "drive rename"
     },
     "drive.search_files": {
       "interface_mode": "mcp",

@@ -39,7 +39,7 @@ metadata:
 | `dws todo +list-comment` | read | 查询待办评论列表 |
 | `dws todo +list-sub` | read | 查询子待办列表 |
 | `dws todo +overdue` | read | 列出我已过期未完成的待办 |
-| `dws todo +remind` | write | 给自己创建一条带截止/提醒时间的待办 |
+| `dws todo +remind` | write | 给自己创建一条带可选截止时间的待办（`--at` 只写 dueTime，不创建提醒规则） |
 | `dws todo +todo-done` | write | 按标题关键词把我的某条待办标记完成（自动定位 taskId） |
 <!-- VISIBLE_SHORTCUTS_END -->
 

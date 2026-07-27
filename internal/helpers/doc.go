@@ -61,6 +61,60 @@ func docVersionExists(ctx context.Context, nodeID string, version int) (bool, er
 	return false, nil
 }
 
+// docInfoWithDriveSize keeps the document metadata response authoritative and
+// best-effort enriches its missing fileSize from drive/get_file_info. The
+// document metadata endpoint does not expose a size for several uploaded file
+// types even though the drive endpoint does.
+func docInfoWithDriveSize(ctx context.Context, nodeID string) error {
+	docText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_document_info", map[string]any{
+		"nodeId": nodeID,
+	})
+	if err != nil {
+		return err
+	}
+
+	var docResponse map[string]any
+	if err := json.Unmarshal([]byte(docText), &docResponse); err != nil {
+		deps.Out.PrintRaw(docText)
+		return nil
+	}
+	docResult, wrapped := docResponse["result"].(map[string]any)
+	if !wrapped {
+		docResult = docResponse
+	}
+	if current, exists := docResult["fileSize"]; exists && current != nil {
+		return deps.Out.PrintJSON(docResponse)
+	}
+
+	fileID := nodeID
+	if extracted := extractNodeIDFromDocURL(nodeID); extracted != "" {
+		fileID = extracted
+	}
+	driveText, err := callMCPToolReturnTextOnServer(ctx, "drive", "get_file_info", map[string]any{
+		"fileId": fileID,
+	})
+	if err != nil {
+		return deps.Out.PrintJSON(docResponse)
+	}
+
+	var driveResponse map[string]any
+	if err := json.Unmarshal([]byte(driveText), &driveResponse); err != nil {
+		return deps.Out.PrintJSON(docResponse)
+	}
+	driveResult, ok := driveResponse["result"].(map[string]any)
+	if !ok {
+		driveResult = driveResponse
+	}
+	fileSize, exists := driveResult["fileSize"]
+	if !exists || fileSize == nil {
+		fileSize, exists = driveResult["size"]
+	}
+	if exists && fileSize != nil {
+		docResult["fileSize"] = fileSize
+	}
+	return deps.Out.PrintJSON(docResponse)
+}
+
 // docVersionNextCursor 从 list_doc_versions 响应中提取分页游标；没有下一页时返回 ""。
 func docVersionNextCursor(v any) string {
 	switch val := v.(type) {
@@ -917,7 +971,8 @@ func newDocCommand() *cobra.Command {
 	infoCmd := &cobra.Command{
 		Use:   "info",
 		Short: "获取文档元信息",
-		Long:  `获取文档标题、类型、创建者、创建时间、权限等元信息 (不含内容)。`,
+		Long: `获取文档标题、类型、创建者、创建时间、权限等元信息 (不含内容)。
+文档接口未返回 fileSize 时，会从钉盘元数据补齐文件大小。`,
 		Example: `  dws doc info --node DOC_ID
   dws doc info --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -925,9 +980,10 @@ func newDocCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return callMCPTool("get_document_info", map[string]any{
-				"nodeId": nodeID,
-			})
+			if commandDryRun(cmd) {
+				return callMCPToolOnServer("doc", "get_document_info", map[string]any{"nodeId": nodeID})
+			}
+			return docInfoWithDriveSize(cmd.Context(), nodeID)
 		},
 	}
 
@@ -1550,7 +1606,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			}
 			return callMCPTool("rename_document", map[string]any{
 				"nodeId":  nodeID,
-				"newName": flagOrFallback(cmd, "name", "title"),
+				"newName": renameBaseName(flagOrFallback(cmd, "name", "title")),
 			})
 		},
 	}
@@ -1740,7 +1796,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 
 	// rename
 	renameCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
-	renameCmd.Flags().String("name", "", "新名称 (必填)")
+	renameCmd.Flags().String("name", "", "新名称 (必填；服务端保留原扩展名，传入常见扩展名时 CLI 会自动去掉一层)")
 
 	// delete
 	deleteCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
@@ -2709,15 +2765,17 @@ CLI 内部自动完成全部流程:
 				return fmt.Errorf("flag --version is required")
 			}
 			version, _ := cmd.Flags().GetInt("version")
-			exists, err := docVersionExists(cmd.Context(), nodeID, version)
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return fmt.Errorf("文档版本 %d 不存在，已停止回滚；请先执行 dws doc version list --node %s --format json 获取可回滚版本", version, nodeID)
-			}
-			if !confirmDangerousAction(cmd, fmt.Sprintf("revert document to version %d", version), nodeID) {
-				return nil
+			if !commandDryRun(cmd) {
+				exists, err := docVersionExists(cmd.Context(), nodeID, version)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					return fmt.Errorf("文档版本 %d 不存在，已停止回滚；请先执行 dws doc version list --node %s --format json 获取可回滚版本", version, nodeID)
+				}
+				if !confirmDangerousAction(cmd, fmt.Sprintf("revert document to version %d", version), nodeID) {
+					return nil
+				}
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,

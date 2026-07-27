@@ -5829,12 +5829,13 @@
       ]
     },
     "todo task add-reminder": {
-      "agent_summary": "添加待办提醒",
+      "agent_summary": "写入一条待办提醒规则（上游不支持规则读回）",
       "agent_summary_source": "dws-agent-selection/todo",
       "availability": "available",
       "avoid_when": [
         "要重置/清除提醒规则时改用 dws todo task reset-reminder",
-        "提醒时间与目标待办未确认时不要添加"
+        "提醒时间与目标待办未确认时不要添加",
+        "业务要求写后读取并核验 reminderRules 时不要声称可验证；当前 task get/list 均不返回提醒规则"
       ],
       "confirmation": "not_required",
       "effect": "write",
@@ -5845,14 +5846,14 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "添加待办提醒",
+          "value": "写入一条待办提醒规则（上游不支持规则读回）",
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "结合本机 dws schema 实时描述、Skill 与 Cobra 手写选型；pinned schema_mcp_metadata 仅对照。",
           "candidates": [
             {
-              "value": "添加待办提醒",
+              "value": "写入一条待办提醒规则（上游不支持规则读回）",
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -5885,7 +5886,8 @@
         "avoid_when": {
           "value": [
             "要重置/清除提醒规则时改用 dws todo task reset-reminder",
-            "提醒时间与目标待办未确认时不要添加"
+            "提醒时间与目标待办未确认时不要添加",
+            "业务要求写后读取并核验 reminderRules 时不要声称可验证；当前 task get/list 均不返回提醒规则"
           ],
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
@@ -5895,7 +5897,8 @@
             {
               "value": [
                 "要重置/清除提醒规则时改用 dws todo task reset-reminder",
-                "提醒时间与目标待办未确认时不要添加"
+                "提醒时间与目标待办未确认时不要添加",
+                "业务要求写后读取并核验 reminderRules 时不要声称可验证；当前 task get/list 均不返回提醒规则"
               ],
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
@@ -6043,7 +6046,7 @@
         },
         "use_when": {
           "value": [
-            "已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）"
+            "已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）；成功响应仅作为写入回执"
           ],
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
@@ -6052,7 +6055,7 @@
           "candidates": [
             {
               "value": [
-                "已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）"
+                "已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）；成功响应仅作为写入回执"
               ],
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
@@ -6078,11 +6081,12 @@
         "internal/cli/schema_hints/selection/todo.json",
         "internal/cli/schema_mcp_metadata.json#tools.todo.add_todo_reminder",
         "live-dws-schema:todo.add_todo_reminder",
+        "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/todo.md",
         "structured-hint:internal/cli/schema_hints/selection-review.json#todo.add_todo_reminder"
       ],
       "use_when": [
-        "已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）"
+        "已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）；成功响应仅作为写入回执"
       ]
     },
     "todo task create": {
@@ -6343,6 +6347,7 @@
         "internal/cli/schema_hints/selection/todo.json",
         "internal/cli/schema_mcp_metadata.json#tools.todo.create_personal_todo",
         "live-dws-schema:todo.create_personal_todo",
+        "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/todo.md",
         "structured-hint:internal/cli/schema_hints/imported/wukong.json#todo.create_personal_todo",
         "structured-hint:internal/cli/schema_hints/selection-review.json#todo.create_personal_todo"
@@ -7183,7 +7188,8 @@
       "availability": "available",
       "avoid_when": [
         "需要按条件查多个待办时改用 dws todo task list",
-        "需要修改待办时改用 update/done/delete 等写命令"
+        "需要修改待办时改用 update/done/delete 等写命令",
+        "需要读取或验证提醒规则时不要使用；当前详情接口不返回 reminderRules"
       ],
       "confirmation": "not_required",
       "effect": "read",
@@ -7234,7 +7240,8 @@
         "avoid_when": {
           "value": [
             "需要按条件查多个待办时改用 dws todo task list",
-            "需要修改待办时改用 update/done/delete 等写命令"
+            "需要修改待办时改用 update/done/delete 等写命令",
+            "需要读取或验证提醒规则时不要使用；当前详情接口不返回 reminderRules"
           ],
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
@@ -7244,7 +7251,8 @@
             {
               "value": [
                 "需要按条件查多个待办时改用 dws todo task list",
-                "需要修改待办时改用 update/done/delete 等写命令"
+                "需要修改待办时改用 update/done/delete 等写命令",
+                "需要读取或验证提醒规则时不要使用；当前详情接口不返回 reminderRules"
               ],
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
@@ -8559,12 +8567,13 @@
       ]
     },
     "todo task reset-reminder": {
-      "agent_summary": "重置待办提醒",
+      "agent_summary": "整体替换或清除待办提醒规则（上游不支持规则读回）",
       "agent_summary_source": "dws-agent-selection/todo",
       "availability": "available",
       "avoid_when": [
         "只需追加一条提醒时改用 dws todo task add-reminder",
-        "新规则与目标待办未确认时不要重置"
+        "新规则与目标待办未确认时不要重置",
+        "业务要求写后读取并核验 reminderRules 时不要声称可验证；当前 task get/list 均不返回提醒规则"
       ],
       "confirmation": "not_required",
       "effect": "write",
@@ -8575,14 +8584,14 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "重置待办提醒",
+          "value": "整体替换或清除待办提醒规则（上游不支持规则读回）",
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "结合本机 dws schema 实时描述、Skill 与 Cobra 手写选型；pinned schema_mcp_metadata 仅对照。",
           "candidates": [
             {
-              "value": "重置待办提醒",
+              "value": "整体替换或清除待办提醒规则（上游不支持规则读回）",
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -8615,7 +8624,8 @@
         "avoid_when": {
           "value": [
             "只需追加一条提醒时改用 dws todo task add-reminder",
-            "新规则与目标待办未确认时不要重置"
+            "新规则与目标待办未确认时不要重置",
+            "业务要求写后读取并核验 reminderRules 时不要声称可验证；当前 task get/list 均不返回提醒规则"
           ],
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
@@ -8625,7 +8635,8 @@
             {
               "value": [
                 "只需追加一条提醒时改用 dws todo task add-reminder",
-                "新规则与目标待办未确认时不要重置"
+                "新规则与目标待办未确认时不要重置",
+                "业务要求写后读取并核验 reminderRules 时不要声称可验证；当前 task get/list 均不返回提醒规则"
               ],
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
@@ -8773,7 +8784,7 @@
         },
         "use_when": {
           "value": [
-            "需要清除或整体替换待办提醒规则时（可不传 reminder-rules 以清除）"
+            "需要清除或整体替换待办提醒规则时（可不传 reminder-rules 以清除）；成功响应仅作为写入回执"
           ],
           "source": "internal/cli/schema_hints/selection/todo.json",
           "precedence": "reviewed_explicit",
@@ -8782,7 +8793,7 @@
           "candidates": [
             {
               "value": [
-                "需要清除或整体替换待办提醒规则时（可不传 reminder-rules 以清除）"
+                "需要清除或整体替换待办提醒规则时（可不传 reminder-rules 以清除）；成功响应仅作为写入回执"
               ],
               "source": "internal/cli/schema_hints/selection/todo.json",
               "precedence": "reviewed_explicit",
@@ -8812,7 +8823,7 @@
         "structured-hint:internal/cli/schema_hints/selection-review.json#todo.reset_todo_reminder"
       ],
       "use_when": [
-        "需要清除或整体替换待办提醒规则时（可不传 reminder-rules 以清除）"
+        "需要清除或整体替换待办提醒规则时（可不传 reminder-rules 以清除）；成功响应仅作为写入回执"
       ]
     },
     "todo task update": {

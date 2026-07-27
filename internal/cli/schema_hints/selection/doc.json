@@ -321,10 +321,11 @@
       ]
     },
     "doc.get_document_info": {
-      "agent_summary": "获取文档元信息（标题/类型/创建者/权限等）",
+      "agent_summary": "获取文档元信息（标题/类型/创建者/权限等，并从钉盘补齐缺失的文件大小）",
       "use_when": [
         "用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
-        "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时"
+        "准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时",
+        "文档接口本身缺少 fileSize，但用户需要读取上传文件大小时"
       ],
       "avoid_when": [
         "已确认是 adoc 且只要正文改用 dws doc read",
@@ -581,7 +582,7 @@
     "doc.rename_document": {
       "agent_summary": "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
       "use_when": [
-        "用户要改文档/文件在列表与链接中展示的名称时"
+        "用户要改文档/文件在列表与链接中展示的名称时；即使名称带常见扩展名，CLI 也会去掉一层再交给保留原扩展名的服务端"
       ],
       "avoid_when": [
         "改正文标题/章节标题改用 doc block update",
