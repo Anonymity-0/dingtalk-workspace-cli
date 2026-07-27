@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "source_hash": "sha256:46412dbee4c24a4c7cbd322a78b7d54b05b255fe5dbe9fe9b6ee049422572a9f",
+  "source_hash": "sha256:a4326dacc1b26242dd7100fae40dfc9b126469b73f55e30742b684453e7dd097",
   "surface_hash": "sha256:8eef4235b4391a6a865c180ebd3a65ca3531a84c6985b37811f23fff9daf2e3a",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 25,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:bda812c0b48f221a70f9c710d56a4dead5916bf425a9b153e7b275d15365f1a0",
+      "source_hash": "sha256:6476ce71a3390ba917908d92aae636ed6519499a099f23d4d6b2b2295a67e677",
       "surface_hash": "sha256:8eef4235b4391a6a865c180ebd3a65ca3531a84c6985b37811f23fff9daf2e3a",
       "surface_products": 25,
       "surface_tools": 603,
       "tools_with_agent_summary": 603,
       "tools_with_metadata": 603,
-      "unmatched_skill_tools": 118,
+      "unmatched_skill_tools": 122,
       "version": 1
     },
     "count": 25,
@@ -12386,7 +12386,7 @@
           "skills/mono/SKILL.md",
           "skills/mono/references/products/event.md"
         ],
-        "agent_summary": "订阅/消费个人消息接收、已读、撤回和表情回应事件，并管理订阅生命周期",
+        "agent_summary": "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期",
         "agent_summary_source": "dws-agent-selection/event",
         "avoid_when": [
           "查历史聊天或主动发消息分别用 chat 查询/发送命令"
@@ -12399,13 +12399,13 @@
                 "precedence": "reviewed_explicit",
                 "selected": true,
                 "source": "internal/cli/schema_hints/selection/event.json",
-                "value": "订阅/消费个人消息接收、已读、撤回和表情回应事件，并管理订阅生命周期"
+                "value": "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期"
               }
             ],
             "precedence": "reviewed_explicit",
             "resolution": "highest_precedence",
             "source": "internal/cli/schema_hints/selection/event.json",
-            "value": "订阅/消费个人消息接收、已读、撤回和表情回应事件，并管理订阅生命周期"
+            "value": "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期"
           },
           "avoid_when": {
             "candidates": [
@@ -12432,7 +12432,7 @@
                 "selected": true,
                 "source": "internal/cli/schema_hints/selection/event.json",
                 "value": [
-                  "需要实时监听个人消息接收、已读、撤回或表情回应事件，或管理个人事件订阅生命周期"
+                  "需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期"
                 ]
               }
             ],
@@ -12440,7 +12440,7 @@
             "resolution": "highest_precedence",
             "source": "internal/cli/schema_hints/selection/event.json",
             "value": [
-              "需要实时监听个人消息接收、已读、撤回或表情回应事件，或管理个人事件订阅生命周期"
+              "需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期"
             ]
           }
         },
@@ -12451,7 +12451,7 @@
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "订阅并持续消费指定个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+            "agent_summary": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
             "agent_summary_source": "dws-agent-selection/event",
             "availability": "available",
             "avoid_when": [
@@ -12462,7 +12462,7 @@
             "cli_name": "consume",
             "cli_path": "event consume",
             "confirmation": "not_required",
-            "description": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。",
+            "description": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。",
             "effect": "write",
             "idempotency": "non_idempotent",
             "interface_mode": "composite",
@@ -12474,8 +12474,11 @@
             "title": "订阅事件流并输出到 stdout",
             "use_when": [
               "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
+              "用户明确要求监听当前身份的所有单聊或所有群消息",
               "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
-              "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标"
+              "需要监听指定群的标题变更、成员进退群或群解散事件",
+              "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
+              "同一目标、同一过滤条件需要同时监听多个兼容事件"
             ]
           },
           {
@@ -12529,7 +12532,7 @@
             "risk": "low",
             "title": "显示事件 schema",
             "use_when": [
-              "已知任一公开个人消息 event_key，消费前需要理解扁平输出字段"
+              "已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"
             ]
           },
           {
@@ -12590,7 +12593,7 @@
           }
         ],
         "use_when": [
-          "需要实时监听个人消息接收、已读、撤回或表情回应事件，或管理个人事件订阅生命周期"
+          "需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期"
         ]
       },
       {
@@ -299492,7 +299495,7 @@
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md"
       ],
-      "agent_summary": "订阅并持续消费指定个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+      "agent_summary": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
       "agent_summary_source": "dws-agent-selection/event",
       "availability": "available",
       "avoid_when": [
@@ -299511,13 +299514,13 @@
           ]
         ]
       },
-      "description": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。",
+      "description": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。",
       "display": "事件订阅 (DingTalk Stream 长连接)",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
-        "dws event consume user_im_message_reaction_group --group cid-example --flatten --max-events 1 --format ndjson"
+        "dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson"
       ],
       "field_provenance": {
         "agent_summary": {
@@ -299527,14 +299530,14 @@
               "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/event.json",
-              "value": "订阅并持续消费指定个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON"
+              "value": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON"
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "source": "internal/cli/schema_hints/selection/event.json",
-          "value": "订阅并持续消费指定个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON"
+          "value": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON"
         },
         "availability": {
           "candidates": [
@@ -299612,13 +299615,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。"
+              "value": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。"
+          "value": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。"
         },
         "effect": {
           "candidates": [
@@ -299645,7 +299648,7 @@
               "source": "internal/cli/schema_hints/selection/event.json",
               "value": [
                 "dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
-                "dws event consume user_im_message_reaction_group --group cid-example --flatten --max-events 1 --format ndjson"
+                "dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson"
               ]
             }
           ],
@@ -299655,7 +299658,7 @@
           "source": "internal/cli/schema_hints/selection/event.json",
           "value": [
             "dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
-            "dws event consume user_im_message_reaction_group --group cid-example --flatten --max-events 1 --format ndjson"
+            "dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson"
           ]
         },
         "idempotency": {
@@ -299784,8 +299787,11 @@
               "source": "internal/cli/schema_hints/selection/event.json",
               "value": [
                 "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
+                "用户明确要求监听当前身份的所有单聊或所有群消息",
                 "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
-                "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标"
+                "需要监听指定群的标题变更、成员进退群或群解散事件",
+                "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
+                "同一目标、同一过滤条件需要同时监听多个兼容事件"
               ]
             }
           ],
@@ -299795,8 +299801,11 @@
           "source": "internal/cli/schema_hints/selection/event.json",
           "value": [
             "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
+            "用户明确要求监听当前身份的所有单聊或所有群消息",
             "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
-            "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标"
+            "需要监听指定群的标题变更、成员进退群或群解散事件",
+            "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
+            "同一目标、同一过滤条件需要同时监听多个兼容事件"
           ]
         }
       },
@@ -301250,7 +301259,7 @@
           "type": "string"
         },
         "personal-event-base-url": {
-          "description": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws",
+          "description": "个人事件控制面 base URL；默认由 MCP base 派生 /dws",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -301258,7 +301267,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws"
+                  "value": "个人事件控制面 base URL；默认由 MCP base 派生 /dws"
                 },
                 {
                   "precedence": "default",
@@ -301270,7 +301279,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws"
+              "value": "个人事件控制面 base URL；默认由 MCP base 派生 /dws"
             },
             "property": {
               "candidates": [
@@ -301862,7 +301871,7 @@
           "type": "string"
         },
         "stream-ticket-url": {
-          "description": "个人 Stream 取票 URL；默认由 MCP base URL 派生",
+          "description": "个人 Stream 取票 URL；默认由 MCP base 派生 /stream/connections/ticket",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -301870,7 +301879,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "个人 Stream 取票 URL；默认由 MCP base URL 派生"
+                  "value": "个人 Stream 取票 URL；默认由 MCP base 派生 /stream/connections/ticket"
                 },
                 {
                   "precedence": "default",
@@ -301882,7 +301891,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "个人 Stream 取票 URL；默认由 MCP base URL 派生"
+              "value": "个人 Stream 取票 URL；默认由 MCP base 派生 /stream/connections/ticket"
             },
             "property": {
               "candidates": [
@@ -302213,11 +302222,12 @@
       "path": "event.consume",
       "positionals": [
         {
-          "description": "要消费的个人事件码；省略时仅适用于显式配置其它事件来源的兼容模式",
+          "description": "要消费的一个或多个个人事件码；多个事件必须共享同一目标和过滤上下文",
           "index": 0,
           "name": "event_key",
           "required": false,
-          "type": "string"
+          "type": "string",
+          "variadic": true
         }
       ],
       "primary_cli_path": "event consume",
@@ -302228,8 +302238,11 @@
       "title": "订阅事件流并输出到 stdout",
       "use_when": [
         "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
+        "用户明确要求监听当前身份的所有单聊或所有群消息",
         "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
-        "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标"
+        "需要监听指定群的标题变更、成员进退群或群解散事件",
+        "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
+        "同一目标、同一过滤条件需要同时监听多个兼容事件"
       ]
     },
     "event.list": {
@@ -303190,7 +303203,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/event.json",
               "value": [
-                "已知任一公开个人消息 event_key，消费前需要理解扁平输出字段"
+                "已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"
               ]
             }
           ],
@@ -303199,7 +303212,7 @@
           "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "source": "internal/cli/schema_hints/selection/event.json",
           "value": [
-            "已知任一公开个人消息 event_key，消费前需要理解扁平输出字段"
+            "已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"
           ]
         }
       },
@@ -303404,7 +303417,7 @@
       "source": "reviewed_command_registry",
       "title": "显示事件 schema",
       "use_when": [
-        "已知任一公开个人消息 event_key，消费前需要理解扁平输出字段"
+        "已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"
       ]
     },
     "event.status": {
@@ -303916,7 +303929,7 @@
           "type": "string"
         },
         "personal-event-base-url": {
-          "description": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws",
+          "description": "个人事件控制面 base URL；默认由 MCP base 派生 /dws",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -303924,7 +303937,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws"
+                  "value": "个人事件控制面 base URL；默认由 MCP base 派生 /dws"
                 },
                 {
                   "precedence": "default",
@@ -303936,7 +303949,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws"
+              "value": "个人事件控制面 base URL；默认由 MCP base 派生 /dws"
             },
             "property": {
               "candidates": [
@@ -304749,7 +304762,7 @@
           "type": "boolean"
         },
         "personal-event-base-url": {
-          "description": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws",
+          "description": "个人事件控制面 base URL；默认由 MCP base 派生 /dws",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -304757,7 +304770,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws"
+                  "value": "个人事件控制面 base URL；默认由 MCP base 派生 /dws"
                 },
                 {
                   "precedence": "default",
@@ -304769,7 +304782,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "个人事件控制面 base URL；默认由 MCP base URL 派生为 /dws"
+              "value": "个人事件控制面 base URL；默认由 MCP base 派生 /dws"
             },
             "property": {
               "candidates": [

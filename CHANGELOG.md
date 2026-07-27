@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **Expanded personal event consumption** (#790) — adds eight IM personal event keys, supports subscribing to and consuming multiple event keys in one `dws event consume` invocation, and adds targeted local-consumer shutdown when a subscription is stopped so other consumers can continue on the shared event bus.
+
 ## [1.0.55-beta.4] - 2026-07-27
 
 This beta validates the shortcut projection fixes for group bots, bot search,
