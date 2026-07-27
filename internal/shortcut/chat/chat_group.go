@@ -413,12 +413,13 @@ func chatGroupResolveList(data map[string]any) []any {
 	if data == nil {
 		return []any{}
 	}
-	// "roles" is probed too: chatRoleListProject reuses this resolver and
-	// list_custom_group_roles nests its list under result.roles — without it
-	// +chat-role-list silently returns empty despite the group having roles.
+	// "bots" and "roles" are probed too: chatBotsProject and
+	// chatRoleListProject reuse this resolver, while their backing tools nest
+	// lists under result.bots and result.roles. Without those keys the
+	// shortcuts silently return empty despite the group having bots or roles.
 	// Group listings key on groups/conversations, which are probed first, so
-	// adding roles is harmless to them.
-	for _, key := range []string{"result", "data", "list", "items", "groups", "conversations", "roles"} {
+	// adding these sibling containers is harmless to them.
+	for _, key := range []string{"result", "data", "list", "items", "groups", "conversations", "bots", "roles"} {
 		v, ok := data[key]
 		if !ok {
 			continue
@@ -427,7 +428,7 @@ func chatGroupResolveList(data map[string]any) []any {
 			return arr
 		}
 		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "groups", "conversations", "roles", "result", "data"} {
+			for _, ik := range []string{"list", "items", "groups", "conversations", "bots", "roles", "result", "data"} {
 				if arr, ok := inner[ik].([]any); ok {
 					return arr
 				}

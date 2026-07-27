@@ -82,7 +82,7 @@ func botSearchProject(data map[string]any) []map[string]any {
 // botResolveList locates the list payload inside the response, tolerating a bare
 // top-level array or nesting under result/data/list/items containers.
 func botResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "robots", "records"} {
+	for _, key := range []string{"result", "data", "list", "items", "robots", "bots", "records"} {
 		v, ok := data[key]
 		if !ok {
 			continue
@@ -91,7 +91,7 @@ func botResolveList(data map[string]any) []any {
 			return arr
 		}
 		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "robots", "records", "result", "data"} {
+			for _, ik := range []string{"list", "items", "robots", "bots", "records", "result", "data"} {
 				if arr, ok := inner[ik].([]any); ok {
 					return arr
 				}
@@ -158,7 +158,7 @@ func botFindProject(data map[string]any) []map[string]any {
 			continue
 		}
 		row := map[string]any{}
-		if v, ok := botFirst(m, "openDingTalkId", "open_ding_talk_id", "openId"); ok {
+		if v, ok := botFirst(m, "botOpenDingTalkId", "openDingTalkId", "open_ding_talk_id", "openId"); ok {
 			row["openDingTalkId"] = v
 		}
 		if v, ok := botFirst(m, "name", "robotName", "botName"); ok {

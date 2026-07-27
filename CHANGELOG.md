@@ -10,6 +10,20 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 - **Expanded personal event consumption** (#790) — adds eight IM personal event keys, supports subscribing to and consuming multiple event keys in one `dws event consume` invocation, and adds targeted local-consumer shutdown when a subscription is stopped so other consumers can continue on the shared event bus.
 
+## [1.0.55-beta.4] - 2026-07-27
+
+This beta validates the shortcut projection fixes for group bots, bot search,
+and mail threads, together with hardened release delivery to Gitee and npm on
+top of the `v1.0.55-beta.3` baseline.
+
+### Fixed
+
+- **Shortcut projection fixes** (#795) — `chat +chat-bots` no longer projects a non-empty `list_group_bots` response to an empty list, `+bot-find` recognizes the `search_bots` response shape (`result.bots` entries with `botOpenDingTalkId`), and mail thread listings keep `lastUpdated` when the backend returns `lastModifiedDateTime`.
+
+### Changed
+
+- **Hardened release delivery** — the Gitee mirror workflow can synchronize a specific release's assets on demand, release lookup tolerates Gitee's HTTP 200 null-body response for missing releases, npm dist-tag verification waits through slow registry CDN propagation with incremental backoff, and beta/stable release operations are role-enforced (#791).
+
 ## [1.0.55-beta.3] - 2026-07-24
 
 This beta validates the HR Brain command surface, smoother guarded release
