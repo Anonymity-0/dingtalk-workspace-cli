@@ -684,6 +684,31 @@ func TestBuildFilterQueryAndJSON(t *testing.T) {
 	}
 }
 
+func TestSupportsMessageFilter(t *testing.T) {
+	for _, eventKey := range []string{
+		EventMention,
+		EventSingleChat,
+		EventInChat,
+		EventFromUser,
+		EventAllSingleChat,
+		EventAllGroupChat,
+	} {
+		if !SupportsMessageFilter(eventKey) {
+			t.Fatalf("SupportsMessageFilter(%q) = false, want true", eventKey)
+		}
+	}
+	for _, eventKey := range []string{
+		EventReadO2O,
+		EventReactionGroup,
+		EventGroupUpdated,
+		"unknown_event",
+	} {
+		if SupportsMessageFilter(eventKey) {
+			t.Fatalf("SupportsMessageFilter(%q) = true, want false", eventKey)
+		}
+	}
+}
+
 func TestIdempotencyKeyUsesLocalIdentityKey(t *testing.T) {
 	left := Identity{LocalSubject: "refresh:left", ClientID: "client-1", SourceID: "open"}
 	right := Identity{LocalSubject: "refresh:right", ClientID: "client-1", SourceID: "open"}

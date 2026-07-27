@@ -6,7 +6,6 @@ package busctl
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -18,7 +17,7 @@ import (
 // signal when an already-running bus predates the targeted stop protocol.
 var ErrConsumerStopUnsupported = errors.New("busctl: targeted consumer stop is unsupported")
 
-var consumerStopDial = func(endpoint string) (net.Conn, error) { return transport.Dial(endpoint) }
+var consumerStopDial = transport.Dial
 
 // StopConsumers asks a running bus to close only consumers matching the
 // supplied personal subscription IDs.
