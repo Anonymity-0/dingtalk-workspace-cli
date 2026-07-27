@@ -15,6 +15,7 @@ package bus
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -342,6 +343,30 @@ func TestHub_StopConsumersCoalescesQueuedStop(t *testing.T) {
 	case reason := <-c.StopCh:
 		t.Fatalf("duplicate stop queued: %q", reason)
 	default:
+	}
+}
+
+func TestHub_ConcurrentStopConsumersRegisterUnregister(t *testing.T) {
+	h := NewHub(4)
+	const workers = 32
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			subscribeID := fmt.Sprintf("sub-%d", i)
+			c, err := h.Register(transport.Hello{SubscribeID: subscribeID})
+			if err != nil {
+				t.Errorf("register: %v", err)
+				return
+			}
+			h.StopConsumers([]string{subscribeID}, "concurrent-stop")
+			h.Unregister(c.ID)
+		}(i)
+	}
+	wg.Wait()
+	if got := h.Len(); got != 0 {
+		t.Fatalf("remaining consumers = %d", got)
 	}
 }
 

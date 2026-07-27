@@ -10,6 +10,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -449,9 +451,28 @@ func TestCrossPlatformCoverageHandleConnectionProtocolEdges(t *testing.T) {
 		}
 	})
 	run(newDaemon(), func(c net.Conn) {
-		w := transport.NewWriter(c)
+		w, r := transport.NewWriter(c), transport.NewReader(c)
 		_ = w.WriteJSON(transport.Hello{Type: transport.FrameTypeHello, Role: transport.HelloRoleConsumerStop})
 		_ = w.WriteJSON(transport.StatusReq{Type: transport.FrameTypeStatusReq})
+		var resp transport.ConsumerStopResp
+		if err := r.ReadJSON(&resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp.Type != transport.FrameTypeConsumerStopResp || !strings.Contains(resp.Error, "unexpected") {
+			t.Fatalf("consumer stop protocol error = %#v", resp)
+		}
+	})
+	run(newDaemon(), func(c net.Conn) {
+		w, r := transport.NewWriter(c), transport.NewReader(c)
+		_ = w.WriteJSON(transport.Hello{Type: transport.FrameTypeHello, Role: transport.HelloRoleConsumerStop})
+		_, _ = c.Write([]byte("{\n"))
+		var resp transport.ConsumerStopResp
+		if err := r.ReadJSON(&resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp.Type != transport.FrameTypeConsumerStopResp || resp.Error != "malformed consumer stop request" {
+			t.Fatalf("malformed consumer stop response = %#v", resp)
+		}
 	})
 	run(newDaemon(), func(c net.Conn) {
 		w, r := transport.NewWriter(c), transport.NewReader(c)
@@ -524,9 +545,10 @@ func TestCrossPlatformCoverageHandleConnectionPrioritizesQueuedConsumerStop(t *t
 		idleStop: make(chan struct{}),
 	}
 	server, client := net.Pipe()
+	countedServer := &countingCloseConn{Conn: server}
 	done := make(chan struct{})
 	go func() {
-		d.handleConnection(context.Background(), server)
+		d.handleConnection(context.Background(), countedServer)
 		close(done)
 	}()
 
@@ -565,6 +587,38 @@ func TestCrossPlatformCoverageHandleConnectionPrioritizesQueuedConsumerStop(t *t
 	case <-time.After(time.Second):
 		t.Fatal("connection handler did not stop")
 	}
+	if got := countedServer.closeCount.Load(); got != 1 {
+		t.Fatalf("underlying connection close count = %d, want 1", got)
+	}
+}
+
+func TestCrossPlatformCoverageEnsureCloseOnceReusesWrapper(t *testing.T) {
+	server, client := net.Pipe()
+	defer client.Close()
+	counted := &countingCloseConn{Conn: server}
+	wrapped := ensureCloseOnce(counted)
+	if got := ensureCloseOnce(wrapped); got != wrapped {
+		t.Fatal("ensureCloseOnce wrapped an already managed connection")
+	}
+	if err := wrapped.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := wrapped.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := counted.closeCount.Load(); got != 1 {
+		t.Fatalf("underlying connection close count = %d, want 1", got)
+	}
+}
+
+type countingCloseConn struct {
+	net.Conn
+	closeCount atomic.Int32
+}
+
+func (c *countingCloseConn) Close() error {
+	c.closeCount.Add(1)
+	return c.Conn.Close()
 }
 
 type queryConn struct{}

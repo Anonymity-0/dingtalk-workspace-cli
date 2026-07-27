@@ -81,6 +81,16 @@ func TestConsumerStopFrames_Roundtrip(t *testing.T) {
 	if outResp.Type != FrameTypeConsumerStopResp || strings.Join(outResp.Stopped, ",") != "sub-a" || strings.Join(outResp.NotFound, ",") != "sub-b" {
 		t.Fatalf("response roundtrip = %#v", outResp)
 	}
+
+	inError := ConsumerStopResp{
+		Type:  FrameTypeConsumerStopResp,
+		Error: "malformed consumer stop request",
+	}
+	var outError ConsumerStopResp
+	roundTrip(t, inError, &outError)
+	if outError.Type != FrameTypeConsumerStopResp || outError.Error != inError.Error {
+		t.Fatalf("error response roundtrip = %#v", outError)
+	}
 }
 
 func roundTrip(t *testing.T, in any, dst any) {

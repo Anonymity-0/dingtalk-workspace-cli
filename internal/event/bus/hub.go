@@ -218,6 +218,7 @@ func (h *Hub) StopConsumers(subscribeIDs []string, reason string) []string {
 	}
 
 	matched := make(map[string]struct{}, len(targets))
+	stopTargets := make([]*Consumer, 0, len(targets))
 	h.mu.RLock()
 	for _, c := range h.consumers {
 		id := strings.TrimSpace(c.SubscribeID)
@@ -225,13 +226,17 @@ func (h *Hub) StopConsumers(subscribeIDs []string, reason string) []string {
 			continue
 		}
 		matched[id] = struct{}{}
+		stopTargets = append(stopTargets, c)
+	}
+	h.mu.RUnlock()
+
+	for _, target := range stopTargets {
 		select {
-		case c.StopCh <- reason:
+		case target.StopCh <- reason:
 		default:
 			// A stop is already queued for this consumer.
 		}
 	}
-	h.mu.RUnlock()
 
 	out := make([]string, 0, len(matched))
 	for id := range matched {

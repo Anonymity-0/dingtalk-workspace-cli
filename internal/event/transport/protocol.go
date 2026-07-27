@@ -143,6 +143,7 @@ type ConsumerStopResp struct {
 	Type     FrameType `json:"type"`
 	Stopped  []string  `json:"stopped,omitempty"`
 	NotFound []string  `json:"not_found,omitempty"`
+	Error    string    `json:"error,omitempty"`
 }
 
 // StatusReq is an empty JSON frame ad-hoc tooling sends after Hello to

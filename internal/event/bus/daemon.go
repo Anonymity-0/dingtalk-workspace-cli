@@ -276,6 +276,28 @@ type daemon struct {
 	idleStop     chan struct{}
 }
 
+// closeOnceConn makes every connection close path idempotent. A live consumer
+// can be closed by its writer, the connection handler, or daemon shutdown.
+type closeOnceConn struct {
+	net.Conn
+	once sync.Once
+	err  error
+}
+
+func (c *closeOnceConn) Close() error {
+	c.once.Do(func() {
+		c.err = c.Conn.Close()
+	})
+	return c.err
+}
+
+func ensureCloseOnce(conn net.Conn) net.Conn {
+	if _, ok := conn.(*closeOnceConn); ok {
+		return conn
+	}
+	return &closeOnceConn{Conn: conn}
+}
+
 // acceptLoop drives the IPC accept goroutine. Each accepted connection is
 // passed to handleConnection in its own goroutine; the accept loop returns
 // when the listener Close()s (typically during shutdown).
@@ -294,6 +316,7 @@ func (d *daemon) acceptLoop(ctx context.Context) {
 			d.log.Warn("bus: accept error", "err", err)
 			continue
 		}
+		conn = ensureCloseOnce(conn)
 		// Track the connection before publishing the handler goroutine. Once
 		// acceptLoop returns, shutdown can therefore close every accepted
 		// connection before waiting for handlers to drain.
@@ -310,9 +333,10 @@ func (d *daemon) acceptLoop(ctx context.Context) {
 // Hello → register with Hub → spawn writer goroutine → read until EOF/Bye.
 // Always Unregisters and Closes on exit (plan invariant #5).
 func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
+	conn = ensureCloseOnce(conn)
 	defer func() {
 		d.conns.Delete(conn)
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	r := transport.NewReader(conn)
@@ -432,7 +456,19 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 
 func (d *daemon) handleConsumerStopRPC(w *transport.Writer, r *transport.Reader) {
 	var req transport.ConsumerStopReq
-	if err := r.ReadJSON(&req); err != nil || req.Type != transport.FrameTypeConsumerStopReq {
+	if err := r.ReadJSON(&req); err != nil {
+		d.log.Debug("bus: malformed consumer stop request", "err", err)
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: "malformed consumer stop request",
+		})
+		return
+	}
+	if req.Type != transport.FrameTypeConsumerStopReq {
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: fmt.Sprintf("unexpected consumer stop request type %q", req.Type),
+		})
 		return
 	}
 	stopped := d.hub.StopConsumers(req.SubscribeIDs, transport.ByeReasonSubscriptionStopped)

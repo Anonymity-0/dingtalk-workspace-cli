@@ -90,6 +90,34 @@ func TestStopConsumersDetectsLegacyBus(t *testing.T) {
 	}
 }
 
+func TestStopConsumersReturnsServerProtocolError(t *testing.T) {
+	client, server := net.Pipe()
+	oldDial := consumerStopDial
+	consumerStopDial = func(string) (net.Conn, error) { return client, nil }
+	t.Cleanup(func() {
+		consumerStopDial = oldDial
+		_ = server.Close()
+	})
+
+	go func() {
+		r := transport.NewReader(server)
+		w := transport.NewWriter(server)
+		var hello transport.Hello
+		_ = r.ReadJSON(&hello)
+		var req transport.ConsumerStopReq
+		_ = r.ReadJSON(&req)
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: "malformed consumer stop request",
+		})
+	}()
+
+	_, err := StopConsumers("pipe", []string{"sub-a"})
+	if err == nil || !strings.Contains(err.Error(), "malformed consumer stop request") {
+		t.Fatalf("StopConsumers() error = %v", err)
+	}
+}
+
 func TestStopConsumersValidatesInputAndDialErrors(t *testing.T) {
 	if _, err := StopConsumers("", []string{"sub-a"}); err == nil {
 		t.Fatal("empty endpoint succeeded")

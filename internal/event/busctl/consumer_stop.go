@@ -71,5 +71,8 @@ func StopConsumers(endpoint string, subscribeIDs []string) (transport.ConsumerSt
 	if resp.Type != transport.FrameTypeConsumerStopResp {
 		return empty, fmt.Errorf("%w: unexpected response type %q", ErrConsumerStopUnsupported, resp.Type)
 	}
+	if strings.TrimSpace(resp.Error) != "" {
+		return empty, fmt.Errorf("busctl: consumer stop request rejected: %s", resp.Error)
+	}
 	return resp, nil
 }
