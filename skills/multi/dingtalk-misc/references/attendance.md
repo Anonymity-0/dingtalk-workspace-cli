@@ -1411,7 +1411,7 @@ dws attendance boss-check --plan-id 948964045503 --time "2026-05-13 18:00" --res
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service attendance --format json` 读取完整契约，再用 `dws attendance <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 leaf Schema（例如 `dws schema --cli-path "attendance +<shortcut>" --format json`）读取 Agent 选择、参数、约束、风险和确认语义；用 `dws shortcut list --service attendance --format json` 批量发现；最后以 `dws attendance <shortcut> --help` 核对当前 Cobra flags。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|

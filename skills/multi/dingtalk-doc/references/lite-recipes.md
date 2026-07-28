@@ -8,7 +8,7 @@
 
 1. 用户已提供 URL / `nodeId` 时直接使用原值；否则全局搜索 `dws drive search --query "<关键词>" --format json` → `nodeId`（聚合钉盘+文档空间），或在指定空间执行 `dws wiki node search --workspace <WS_ID> --query "<关键词>" --format json` → `nodeId`。
 2. 对选中的候选执行 `dws drive info --node <nodeId> --format json`，读取真实 `extension`。
-3. 按类型分流：`adoc` → `dws doc read --node <nodeId> --format json`（大文档只抽章节）；`md` → 按普通文件切 `dingtalk-drive` 用 `dws drive download` 下载后本地读取；`axls` → 切 `dingtalk-misc` 的 `references/sheet.md`；`able` → 切 `dingtalk-aitable`；xlsx/xls/xlsm/csv 和其他普通文件 → 切 `dingtalk-drive`。非 `adoc` 禁止执行 `doc read`。
+3. 按类型分流：`adoc` → `dws doc read --node <nodeId> --format json`（大文档只抽章节）；`md` → 切 `dingtalk-markdown` 用 `dws markdown fetch` 读取原文；`axls` → 切 `dingtalk-misc` 的 `references/sheet.md`；`able` → 切 `dingtalk-aitable`；xlsx/xls/xlsm/csv 和其他普通文件 → 切 `dingtalk-drive`。非 `adoc` 禁止执行 `doc read`。
 
 ### list-folder-docs
 

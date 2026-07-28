@@ -20,7 +20,7 @@ metadata:
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service chat --format json` 读取完整契约，再用 `dws chat <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 leaf Schema（例如 `dws schema --cli-path "chat +<shortcut>" --format json`）读取 Agent 选择、参数、约束、风险和确认语义；用 `dws shortcut list --service chat --format json` 批量发现；最后以 `dws chat <shortcut> --help` 核对当前 Cobra flags。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -29,7 +29,7 @@ metadata:
 | `dws chat +bot-search` | read | 搜索当前用户自己创建的机器人 |
 | `dws chat +broadcast` | write | 按姓名逐一给多个人群发同一条单聊消息（自动解析 userId、逐个发送） |
 | `dws chat +category-create` | write | 创建用户自定义会话分组 |
-| `dws chat +category-delete` | write | 删除用户自定义会话分组 |
+| `dws chat +category-delete` | high-risk-write | 删除用户自定义会话分组 |
 | `dws chat +category-list` | read | 获取用户自定义会话分组 |
 | `dws chat +category-rename` | write | 更新用户自定义会话分组的名称 |
 | `dws chat +chat-bots` | read | 查看群内所有机器人 |
@@ -49,7 +49,7 @@ metadata:
 | `dws chat +chat-set-history` | write | 设置新成员入群可查看历史消息范围 |
 | `dws chat +chat-update-alias` | write | 设置群备注（仅自己可见） |
 | `dws chat +chat-update-nick` | write | 设置当前用户在群内的群昵称 |
-| `dws chat +conversation-clear-all-red-point` | high-risk-write | 清除所有会话红点（全部已读） |
+| `dws chat +conversation-clear-all-red-point` | write | 清除所有会话红点（全部已读） |
 | `dws chat +conversation-info` | read | 获取会话信息（群聊传 --group，单聊传 --open-dingtalk-id） |
 | `dws chat +conversation-list` | read | 分页获取当前用户的全部会话列表（单聊+群聊） |
 | `dws chat +conversation-list-top` | read | 拉取置顶会话列表 |

@@ -12,7 +12,6 @@
 - `chat search` 在 `chat` 根下，不在 `chat group` 下。
 - 群成员操作中，`--users` 常为逗号分隔列表；具体要求以命令 `--help` 为准。
 - 解散群、踢人、转让群主、禁言、管理员设置都是高影响操作，执行前必须确认目标群和用户。
-- 创建群并指定群主时，`--owner` 必须是用户明确指定或确认过的 `openDingTalkId`。
 - 发布或修改群公告会触达群成员；公告正文是 Markdown，定时公告 `--run-at` 建议带时区。
 
 ## 命令明细
@@ -36,7 +35,6 @@
 dws chat group create --name "Q1 项目冲刺群" --users userId1,userId2,userId3
 dws chat group create --name "外部合作群" --users userId1,userId2 --type EXTERNAL
 dws chat group create --name "话题圈" --users userId1,userId2 --thread
-dws chat group create --name "项目群" --users userId1,userId2 --owner <openDingTalkId>
 ```
 
 关键 flags：
@@ -45,7 +43,6 @@ dws chat group create --name "项目群" --users userId1,userId2 --owner <openDi
 |------|------|
 | `--name` | 群名称，必填 |
 | `--users` | 成员 userId 或 openDingTalkId，逗号分隔，必填 |
-| `--owner` | 指定群主 openDingTalkId，可选；仅在用户明确指定群主时使用 |
 | `--type` | `INTERNAL` / `EXTERNAL` / `NORMAL`，默认 `INTERNAL` |
 | `--thread` | 开启话题模式，创建话题圈 |
 
@@ -192,13 +189,6 @@ dws chat message send --group <openConversationId> --text "请大家看一下最
 dws aisearch person --keyword "张三" --dimension name --format json
 dws chat group create --name "Q1 项目冲刺群" --users userId1,userId2 --format json
 dws chat group members add --id <openConversationId> --users userId3,userId4 --format json
-```
-
-### 建群并指定群主
-
-```bash
-dws aisearch person --keyword "群主姓名" --dimension name --format json
-dws chat group create --name "项目群" --users userId1,userId2 --owner <ownerOpenDingTalkId> --format json
 ```
 
 ### 分享群邀请并发布公告

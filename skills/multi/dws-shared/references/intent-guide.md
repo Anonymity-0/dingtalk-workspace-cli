@@ -20,7 +20,7 @@
 | "帮我把这个文件传到网盘" | 钉盘上传 | `drive upload` | — | 文件上传是存储层操作，归 drive |
 | "上传文件到钉盘/我的文件" | 钉盘上传 | `drive upload` | — | 提到"钉盘/网盘/我的文件"→ drive |
 | "上传文件"（未指定目标） | 默认钉盘 | `drive upload` | — | 未明确目标时默认上传到钉盘 |
-| "用本地文件覆盖钉盘/知识库里的文件" | 按目标节点类型更新已有文件 | 先 `dws drive info --node <目标> --format json` 并记录原 `name`；普通文件（含 `.md`）当前 CLI 不支持原地覆盖，用户确认后先删除旧文件再 `dws drive upload --file <本地文件> --folder <父目录> --file-name "<原name>" --format json`；`adoc` / `axls` / `able` 切对应内容 skill/reference 再决定写入方式 | 未探测类型就上传，或省略 `--file-name` | 省略 `--file-name` 会采用本地文件名；在线文档、在线表格和 AI 表格不能按普通文件覆盖 |
+| "用本地文件覆盖钉盘/知识库里的文件" | 按目标节点类型覆盖已有文件 | 先 `dws drive info --node <目标> --format json` 并记录原 `name`；`extension=md` 时先用 `dws markdown overwrite --node <目标> --file <本地.md> --dry-run --format json` 预览，确认后改用 `--yes` 执行；其他普通文件用 `dws drive upload --node <目标> --file <本地文件> --file-name "<原name>" --format json`；`adoc` / `axls` / `able` 切对应内容 skill/reference 再决定写入方式 | 未探测类型就固定走 `drive upload --node`，或普通文件覆盖时省略 `--file-name` | 原生 `.md` 覆盖必须保留 Markdown 专用 diff 预览与确认流程；普通文件省略 `--file-name` 会被隐式重命名；在线文档、在线表格和 AI 表格也不能按普通文件覆盖 |
 | "导入文件到我的文档" / "导入到个人文档" | 文件导入为在线文档 | `dws wiki space list --type myWikiSpace` → `dws doc import --workspace <workspaceId>` | `dws doc import`（不传目标参数） | **doc import 必须传 --folder 或 --workspace 至少一个**，不传会报错；导入到"我的文档"需先获取 workspaceId |
 | "把文件导入成在线文档" / "导入 Word/Excel" | 文件格式转换+创建在线文档 | `dws doc import --file <文件> --workspace <WS_ID>` | `dws drive upload` | doc import 是格式转换（docx→在线文档），drive upload 仅上传到钉盘不做转换 |
 | "帮我看看知识库里的文件" | 知识库节点列表 | `wiki node list --workspace` | `drive list` | 明确"知识库"上下文 → wiki node list |
@@ -31,7 +31,7 @@
 | "收藏这个文档/加个收藏/标星" | 收藏文档 | `drive star add` | — | 需提供 nodeId 或 URL |
 | "取消收藏/去掉收藏/不收藏了" | 取消收藏 | `drive star remove` | — | 需提供 nodeId 或 URL |
 | "在知识库里创建一个文档" | 创建空文件实体 | `wiki node create --type adoc` | `doc create` | 空间内创建节点归 wiki；doc create 是向已有文档写入内容，不是创建文件节点 |
-| "帮我建一个明天下午的日程" | 日历日程 | `calendar` | `conference` | 日历日程管理（可含参与者/会议室）|
+| "帮我建一个明天下午的日程" | 日历日程 | `calendar` | — | 日历日程管理（可含参与者/会议室）|
 | "明早 9 点提醒我提交周报" | 创建个人待办，但需先声明 reminder 边界 | `todo` | `calendar` | todo 当前只支持 dueTime 截止时间，不支持独立精确 reminder |
 | "通知群里的人都来开会" | 个人身份群发 | `chat message send` | `chat message send-by-bot` | 以个人身份向群发消息 |
 | "让机器人每天推送日报" | 机器人定时推送 | `chat message send-by-bot` | `chat message send` | 需要机器人身份定期发送 |
@@ -270,25 +270,16 @@ alidocs 链接表面长得一样（`https://alidocs.dingtalk.com/i/nodes/{id}`�
 
 ---
 
-### 4. conference vs calendar — 视频会议 vs 日历日程
+### 4. 视频会议已下线 — 一律走 calendar
 
-**用 `conference` 的场景**：
-- "帮我预约一个视频会议" — 需要入会链接的会议预约
-- "开个会" / "发起会议" — 即时发起视频会议
-- "静音" / "共享屏幕" / "开始录制" — 会中控制
-- "呼叫张三入会" / "邀请入会" — 会议邀请
-- "结束会议" / "退出会议" — 会议生命周期
+视频会议产品已从当前开源 CLI 下线，发起会议、邀请入会、会中控制请在钉钉客户端操作。涉及"开会/约会议"的诉求按日程处理：
 
-**用 `calendar` 的场景**：
-- "明天下午安排个会" — 日程管理（可含会议室）
+- "明天下午安排个会" — 日程管理（可含会议室），`calendar event create`
 - "给自己留两个小时写方案/建个个人日程" — 个人日历事件，仍用 `calendar event create`
 - "帮我约几个人开会" — 创建日程 + 添加参与者
 - "看看下午有没有空闲会议室" — 会议室管理
 - "帮我查一下同事有空吗" — 闲忙查询
-- 用户提到"日程"、"会议室"、"约会"
-
-**判断关键**：视频会议相关（发起/预约/控制/邀请）→ `conference`；日程/参与者/会议室管理→ `calendar`
-
+- "发起视频会议/共享屏幕/静音/邀请入会" — CLI 已下线，引导用户在钉钉客户端操作；如需预约时间改用 `calendar event create`
 ---
 
 ### 5. chat 内部 — 消息发送与撤回

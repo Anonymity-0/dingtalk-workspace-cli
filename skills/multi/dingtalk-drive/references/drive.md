@@ -157,7 +157,7 @@ Flags:
 | adoc | 在线文档 | 在线获取 Markdown 内容 | `dws doc read --node <fileId>` |
 | axls | 在线表格 | 在线读取表格数据 | `dws sheet list --node <ID>` → `dws sheet range read --node <ID> --sheet-id <SHEET_ID> --range <RANGE>` |
 | able | 多维表格 | 在线查询记录 | `dws aitable table list --base-id <BASE_ID>` → `dws aitable record query --base-id <BASE_ID> --table-id <TABLE_ID>` |
-| md | Markdown 文件 | 按普通文件下载后本地读取 | `dws drive download` |
+| md | Markdown 文件 | 读内容 / 创建 / 覆盖 / 局部替换 | `dws markdown fetch` / `dws markdown create` / `dws markdown overwrite` / `dws markdown patch` |
 | 其他（pdf/docx/txt/png 等） | 普通文件 | **不支持在线分析**，需用户主动下载后本地查看 | `dws drive download` |
 
 ### 下载文件到本地
@@ -218,7 +218,8 @@ Flags:
 > **覆盖保名规则（实测）**：使用 `--node` 覆盖普通文件前，先执行
 > `dws drive info --node <dentryUuid> --format json` 记录原 `name`，再把该值原样传给
 > `--file-name`。省略 `--file-name` 会采用本地文件名，并同时重命名远端目标。
-> `adoc` / `axls` / `able` 切对应内容产品，不按普通文件覆盖。
+> `extension=md` 不走本命令，切到 `dws markdown overwrite` 保留 Markdown diff
+> 预览；`adoc` / `axls` / `able` 切对应内容产品。
 
 ### 删除文件/文件夹到回收站
 
@@ -363,7 +364,9 @@ Flags:
 
 **版本管理**: 当前 CLI 仅支持钉钉在线文档（adoc）的版本管理（`dws doc version list/save/revert`）；普通文件的历史版本列出/下载/回滚暂不支持。
 
-**.md 文件的内容操作路由**: 当 `drive info` 返回 `extension=md` 时，按普通文件处理——用 `dws drive download --node <ID> --output <path> --format json` 下载后本地读取；修改后用 `dws drive upload` 回传。
+**.md 文件的内容操作路由**: 当 `drive info` 返回 `extension=md` 时，文件管理操作（移动/重命名/删除/下载文件）留在 `drive`，但**读取或改写原文内容必须切换到 `markdown` 产品**：
+- 用户说"读取/看一下 markdown 内容/获取 .md 原文" → `dws markdown fetch --node <ID>`（非 `drive download`）
+- 详见 `dingtalk-markdown` 的 [markdown.md](../../dingtalk-markdown/references/markdown.md)
 
 ## 核心工作流
 

@@ -20,7 +20,7 @@ metadata:
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service drive --format json` 读取完整契约，再用 `dws drive <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 leaf Schema（例如 `dws schema --cli-path "drive +<shortcut>" --format json`）读取 Agent 选择、参数、约束、风险和确认语义；用 `dws shortcut list --service drive --format json` 批量发现；最后以 `dws drive <shortcut> --help` 核对当前 Cobra flags。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -67,7 +67,7 @@ metadata:
 **触发**：上传文件/下载文件/传到钉盘/用本地文件覆盖已有文件。
 
 1. **上传（必须）**：`dws drive upload --file <本地路径> [--folder <dentryUuid>] --format json`；返回取 `dentryUuid`，用 `drive info --node` 回读确认。
-2. **覆盖（必须）**：当前 CLI 不支持原地覆盖已有文件。需要更新内容时，先 `dws drive info --node <dentryUuid> --format json` 确认类型：普通文件（含 `.md`）在用户确认后先 `dws drive delete --node <dentryUuid> --yes --format json` 删除旧文件（进回收站），再 `dws drive upload --file <本地路径> --folder <父目录dentryUuid> --file-name "<原name>" --format json` 上传新文件；`adoc` / `axls` / `able` 切对应内容 skill/reference，不按普通文件覆盖。
+2. **覆盖（必须）**：先 `dws drive info --node <dentryUuid> --format json`，记录真实 `extension` 和原 `name`。`extension=md` 切 `dingtalk-markdown`，先 `markdown overwrite --dry-run` 再确认执行；其他普通文件在用户确认后执行 `dws drive upload --node <dentryUuid> --file <本地路径> --file-name "<原name>" --format json`，随后再次 `drive info` 回读。`adoc` / `axls` / `able` 切对应内容 skill/reference，不按普通文件覆盖。
 3. **下载（必须）**：先 `dws drive info --node <dentryUuid> --format json` 判断类型——`extension=adoc` 切 `dingtalk-doc` 用 `doc export`；普通文件执行 `dws drive download --node <dentryUuid> --output <本地路径> --format json`。
 
 **禁止**：对在线文档用 `drive download`（会失败）、普通文件覆盖时省略 `--file-name` 导致隐式重命名、上传或覆盖后不回读。

@@ -90,7 +90,7 @@ dws doc export --node <DOC_ID> --export-format markdown --output ~/downloads/
 dws doc export --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --output ./exported.docx
 
 # 兜底：超时或中断后手动查任务
-dws doc export get --task-id <TASK_ID> --format json
+dws doc export get --job-id <JOB_ID> --format json
 ```
 
 ## 输出规范

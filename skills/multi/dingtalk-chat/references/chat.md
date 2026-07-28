@@ -165,7 +165,7 @@ dws chat bot --help
 |------|------|----------|------|
 | `search` | 按关键词搜索群聊 | `--query` | [chat-group](chat/chat-group.md#搜索与基础信息) |
 | `search-common` | 查询指定人共同群 | `--nicks` | [chat-group](chat/chat-group.md#搜索与基础信息) |
-| `group create` | 创建内部群/外部群/普通群/话题圈，可指定群主 | `--name` `--users`，可选 `--owner` | [chat-group](chat/chat-group.md#群创建与基础操作) |
+| `group create` | 创建内部群/外部群/普通群/话题圈 | `--name` `--users` | [chat-group](chat/chat-group.md#群创建与基础操作) |
 | `group members` | 查看群成员 | `--id` | [chat-group](chat/chat-group.md#成员与机器人) |
 | `group members add/remove` | 添加/移除群成员 | `--id` `--users` | [chat-group](chat/chat-group.md#成员与机器人) |
 | `group members add-bot/remove-bot` | 添加/移除群机器人 | `--id` + 机器人标识 | [chat-group](chat/chat-group.md#成员与机器人) |
@@ -255,7 +255,6 @@ dws chat bot --help
 | 用户说 | 路由 |
 |--------|------|
 | “建群 / 创建群聊” | `chat group create` |
-| “建群并指定群主 / 让某某当群主” | `chat group create --owner <openDingTalkId>`，群主必须来自用户指定或确认 |
 | “建外部群 / 建普通群 / 建话题圈” | `chat group create --type EXTERNAL` / `--type NORMAL` / `--thread` |
 | “找群 / 搜索群” | `chat search --query` |
 | “群成员 / 群里有谁” | `chat group members` |
