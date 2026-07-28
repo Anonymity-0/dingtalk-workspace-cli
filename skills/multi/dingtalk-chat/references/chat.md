@@ -256,6 +256,7 @@ dws chat bot --help
 |--------|------|
 | “建群 / 创建群聊” | `chat group create` |
 | “建外部群 / 建普通群 / 建话题圈” | `chat group create --type EXTERNAL` / `--type NORMAL` / `--thread` |
+| “建群并指定群主 / 让某某当群主” | 建群不支持指定群主；先 `chat group create`，再 `chat group transfer-owner --group <openConversationId> --user <userId>` |
 | “找群 / 搜索群” | `chat search --query` |
 | “群成员 / 群里有谁” | `chat group members` |
 | “群成员在群里的昵称 / 群昵称” | `chat group members --id <openConversationId>`，返回中包含群内昵称/展示名 |

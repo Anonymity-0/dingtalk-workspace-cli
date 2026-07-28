@@ -48,6 +48,8 @@ dws chat group create --name "话题圈" --users userId1,userId2 --thread
 
 创建成功后提取 `openConversationId`，用于发消息、成员管理、群设置。
 
+> **指定群主**：`group create` 不支持建群时指定群主。如需群主，建群后执行 `dws chat group transfer-owner --group <openConversationId> --user <userId> --format json`（或 `--new-owner <openDingTalkId>`）。
+
 | 命令 | 用途 | 必填参数 |
 |------|------|----------|
 | `group rename` | 更新群名称 | `--id` `--name` |
