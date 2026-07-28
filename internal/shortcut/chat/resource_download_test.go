@@ -86,6 +86,13 @@ func TestResolveResourceDownloadPath(t *testing.T) {
 	}
 }
 
+func TestValidateResourceDownloadOutputUsesOwningFlagName(t *testing.T) {
+	err := validateResourceDownloadOutputFlag("../escape", "--output-dir")
+	if err == nil || !strings.Contains(err.Error(), "--output-dir") {
+		t.Fatalf("error = %v, want --output-dir", err)
+	}
+}
+
 func TestResolveResourceDownloadPathRejectsSymlinkParentBeforeCreatingOutside(t *testing.T) {
 	base := t.TempDir()
 	outside := t.TempDir()

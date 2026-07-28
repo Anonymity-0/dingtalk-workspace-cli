@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-28T19:49:09.901212",
-  "count": 256,
+  "generated_at": "2026-07-29T00:06:19.285348",
+  "count": 265,
   "results": [
     {
       "suite": "read",
@@ -485,7 +485,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "primary_smart",
-      "semantic_delta": "自动构造时间窗，分页拉取跨会话 @我 消息，并保留身份、引用、reaction 与完整性。",
+      "semantic_delta": "自动构造时间窗，分页拉取跨会话 @我 消息，并保留身份、引用、reaction、resourceRefs 与完整性。",
       "availability": "available"
     },
     {
@@ -621,6 +621,16 @@
     {
       "suite": "semantic",
       "service": "chat",
+      "command": "+chat-create",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "自动解析当前用户并加入初始成员以满足群主约束，规范化创建结果，同时明确不支持 Lark-only owner/description/bot/visibility 语义。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
       "command": "+chat-dismiss",
       "risk": "high-risk-write",
       "status": "reviewed_available",
@@ -705,7 +715,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "primary_smart",
-      "semantic_delta": "统一群聊与两类单聊目标，输出稳定消息身份、引用、reaction、时间边界翻页和可读正文。",
+      "semantic_delta": "统一群聊与两类单聊目标，输出稳定消息身份、引用、reaction、resourceRefs、时间边界翻页和可读正文。",
       "availability": "available"
     },
     {
@@ -861,6 +871,16 @@
     {
       "suite": "semantic",
       "service": "chat",
+      "command": "+chat-update",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "只发布 DWS 与 lark-cli 共有的群名称更新子集；不接受或静默忽略 description。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
       "command": "+chat-update-alias",
       "risk": "write",
       "status": "reviewed_available",
@@ -1004,8 +1024,8 @@
       "command": "+conversation-set-top",
       "risk": "write",
       "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "会话置顶开关是一对一状态写入；Runtime Schema leaf 已表达目标与确认语义。",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "把会话置顶扩展为最多 10 个目标的逐项写入，统一输出 requested/succeeded/failed ledger。",
       "availability": "available"
     },
     {
@@ -1016,6 +1036,46 @@
       "status": "reviewed_available",
       "disposition": "primary_smart",
       "semantic_delta": "把自然语言姓名安全解析为唯一用户，再以当前用户身份发送并提供真实 dry-run 计划。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
+      "command": "+feed-group-query-item",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "读取 DingTalk 会话分组后按多个 openConversationId 本地精确过滤；只有完整响应才判定 notFound，若下层仍有后续页但无可执行游标则返回 unresolved 与失败 ledger，且不伪造 Lark deleted_items。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
+      "command": "+flag-cancel",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "批量取消当前用户的 DingTalk message favorite，并逐项报告失败；不伪造 Lark 的双层 best-effort 取消。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
+      "command": "+flag-create",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "把 Lark Flag 意图忠实映射到 DingTalk message favorite，并为同会话最多 10 条消息提供逐项成功/失败 ledger；不改写 Pin、会话置顶或 feed-layer thread flag。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
+      "command": "+flag-list",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "先创建真实 message favorite，再分别通过 native leaf 与 Shortcut 读取非空列表；两层返回相同收藏项且包含新建 Fixture，已完成非空结果证明。",
       "availability": "available"
     },
     {
@@ -1066,6 +1126,16 @@
       "status": "reviewed_available",
       "disposition": "schema_leaf",
       "semantic_delta": "机器人批量单聊是一对一批量发送；默认由 bot leaf 承担。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
+      "command": "+messages-combine-forward",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "使用两个真实群、两条非空源消息分别完成 native leaf 与 Shortcut 双层回归，并以 mget 回读确认两条目标合并消息均实际存在且包含完整 forwarded 子消息。",
       "availability": "available"
     },
     {
@@ -1144,8 +1214,8 @@
       "command": "+messages-mget",
       "risk": "read",
       "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "按消息 ID 批量读取是一对一透传；默认由 Runtime Schema leaf 承担。",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "按最多 50 个消息 ID 批量读取并输出稳定消息投影、reaction 与 resourceRefs；可用 --download-resources 复用 HTTPS、相对路径、无覆盖和原子落盘防护，逐资源返回下载失败 ledger。",
       "availability": "available"
     },
     {
@@ -1211,6 +1281,16 @@
     {
       "suite": "semantic",
       "service": "chat",
+      "command": "+messages-reply",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "提供当前用户纯文本引用回复的稳定入口、幂等键和 AI 标记，并通过 mget 自动补全原发送者；明确不支持 bot、富媒体或 thread writer。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
       "command": "+messages-resource-download",
       "risk": "read",
       "status": "reviewed_available",
@@ -1226,6 +1306,16 @@
       "status": "reviewed_available",
       "disposition": "schema_leaf",
       "semantic_delta": "仅换取临时资源 URL；尚未提供安全落盘、去重和局部失败隔离，不作为默认 Semantic Shortcut。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "chat",
+      "command": "+messages-send",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "用统一 identity 参数路由 current-user、bot、webhook 文本/Markdown 发送；按身份校验目标与凭据，幂等键只在真实支持的 user 分支开放，媒体上传仍诚实留在 native leaf。",
       "availability": "available"
     },
     {
@@ -1325,7 +1415,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "primary_smart",
-      "semantic_delta": "自动构造最近 N 天时间窗并保留消息身份、会话、引用、reaction 与游标分页。",
+      "semantic_delta": "统一关键词、发送者、@对象、会话、消息类型和机器人来源过滤；支持精确时间窗、page-all、50 条一组 mget 富化，并以 failure ledger 显式报告截断或富化失败。",
       "availability": "available"
     },
     {
@@ -1345,7 +1435,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "primary_smart",
-      "semantic_delta": "接受消息列表直接返回的 threadId（兼容 topicId），拉取回复并输出稳定身份、引用、reaction、可读正文和时间边界分页。",
+      "semantic_delta": "接受消息列表直接返回的 threadId（兼容 topicId），拉取回复并输出稳定身份、引用、reaction、resourceRefs、可读正文和时间边界分页。",
       "availability": "available"
     },
     {

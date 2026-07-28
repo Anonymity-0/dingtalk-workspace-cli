@@ -284,6 +284,48 @@ func TestApplyMessagePaginationUsesExecutableTimeBoundary(t *testing.T) {
 	}
 }
 
+func TestResourcesBuildsActionableDownloadReferences(t *testing.T) {
+	resources := Resources(map[string]any{
+		"openMessageId":      "msg-1",
+		"openConversationId": "cid-1",
+		"content":            `图片 [图片消息](mediaId=@image-a)`,
+		"attachments": []any{
+			map[string]any{"mediaId": "@image-b"},
+			map[string]any{"content": `{"mediaId":"@image-a"}`},
+		},
+	})
+	if len(resources) != 2 {
+		t.Fatalf("resources = %#v", resources)
+	}
+	first := resources[0]
+	if first["resourceId"] != "@image-a" || first["type"] != "mediaId" {
+		t.Fatalf("first resource = %#v", first)
+	}
+	download, _ := first["download"].(map[string]any)
+	arguments, _ := download["arguments"].(map[string]any)
+	if download["ready"] != true ||
+		arguments["message-id"] != "msg-1" ||
+		arguments["open-conversation-id"] != "cid-1" ||
+		arguments["resource-id"] != "@image-a" {
+		t.Fatalf("download = %#v", download)
+	}
+}
+
+func TestResourcesReportsMissingDownloadContext(t *testing.T) {
+	resources := Resources(map[string]any{"content": `{"mediaId":"@image-a"}`})
+	if len(resources) != 1 {
+		t.Fatalf("resources = %#v", resources)
+	}
+	download, _ := resources[0]["download"].(map[string]any)
+	if download["ready"] != false {
+		t.Fatalf("download = %#v", download)
+	}
+	missing, _ := download["missing"].([]string)
+	if len(missing) != 2 || missing[0] != "message-id" || missing[1] != "open-conversation-id" {
+		t.Fatalf("missing = %#v", missing)
+	}
+}
+
 func TestForwarded(t *testing.T) {
 	var project func(m map[string]any) map[string]any
 	project = func(m map[string]any) map[string]any {

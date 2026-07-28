@@ -546,7 +546,7 @@ func isBusinessError(body map[string]any) bool {
 	if v, ok := body["status"].(string); ok && strings.EqualFold(strings.TrimSpace(v), "error") {
 		return true
 	}
-	for _, key := range []string{"errorCode", "error_code", "code"} {
+	for _, key := range []string{"errorCode", "error_code", "errcode", "err_code", "code"} {
 		if isErrorCodeValue(body[key]) {
 			return true
 		}

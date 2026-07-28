@@ -17,6 +17,34 @@
       "public": true,
       "reviewed": true
     },
+    "+flag-create": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "把 Lark Flag 意图忠实映射到 DingTalk message favorite，并为同会话最多 10 条消息提供逐项成功/失败 ledger；不改写 Pin、会话置顶或 feed-layer thread flag。",
+      "risk": "write",
+      "public": true,
+      "reviewed": true
+    },
+    "+flag-cancel": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "批量取消当前用户的 DingTalk message favorite，并逐项报告失败；不伪造 Lark 的双层 best-effort 取消。",
+      "risk": "write",
+      "public": true,
+      "reviewed": true
+    },
+    "+flag-list": {
+      "disposition": "schema_leaf",
+      "semantic_delta": "先创建真实 message favorite，再分别通过 native leaf 与 Shortcut 读取非空列表；两层返回相同收藏项且包含新建 Fixture，已完成非空结果证明。",
+      "risk": "read",
+      "public": true,
+      "reviewed": true
+    },
+    "+feed-group-query-item": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "读取 DingTalk 会话分组后按多个 openConversationId 本地精确过滤；只有完整响应才判定 notFound，若下层仍有后续页但无可执行游标则返回 unresolved 与失败 ledger，且不伪造 Lark deleted_items。",
+      "risk": "read",
+      "public": true,
+      "reviewed": true
+    },
     "+conversation-info": {
       "disposition": "semantic_adapter",
       "semantic_delta": "统一群聊 openConversationId 与单聊 openDingTalkId 两种目标，并路由到对应读取工具。",
@@ -25,8 +53,8 @@
       "reviewed": true
     },
     "+conversation-set-top": {
-      "disposition": "schema_leaf",
-      "semantic_delta": "会话置顶开关是一对一状态写入；Runtime Schema leaf 已表达目标与确认语义。",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "把会话置顶扩展为最多 10 个目标的逐项写入，统一输出 requested/succeeded/failed ledger。",
       "risk": "write",
       "public": true,
       "reviewed": true
@@ -40,7 +68,7 @@
     },
     "+conversation-mute-at-all": {
       "disposition": "schema_leaf",
-      "semantic_delta": "@所有人提醒开关是一对一精确设置，默认由 Runtime Schema leaf 承担。",
+      "semantic_delta": "在真实双成员临时群中分别调用 native 与 Shortcut，两层均由 im/update_at_all_notification_off 返回 server_error_code=1002（系统繁忙）；路由和参数一致，但下层未恢复前继续隐藏。",
       "risk": "write",
       "availability": "unavailable",
       "public": false,
@@ -48,7 +76,7 @@
     },
     "+conversation-mute-red-envelope": {
       "disposition": "schema_leaf",
-      "semantic_delta": "红包提醒开关是一对一精确设置，默认由 Runtime Schema leaf 承担。",
+      "semantic_delta": "在真实双成员临时群中分别调用 native 与 Shortcut，两层均由 im/update_red_env_notification_off 返回 server_error_code=1002（系统繁忙）；路由和参数一致，但下层未恢复前继续隐藏。",
       "risk": "write",
       "availability": "unavailable",
       "public": false,
@@ -163,6 +191,20 @@
       "disposition": "schema_leaf",
       "semantic_delta": "群关键词搜索只做字段投影；底层 search_groups leaf 已提供分页。",
       "risk": "read",
+      "public": true,
+      "reviewed": true
+    },
+    "+chat-create": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "自动解析当前用户并加入初始成员以满足群主约束，规范化创建结果，同时明确不支持 Lark-only owner/description/bot/visibility 语义。",
+      "risk": "write",
+      "public": true,
+      "reviewed": true
+    },
+    "+chat-update": {
+      "disposition": "schema_leaf",
+      "semantic_delta": "只发布 DWS 与 lark-cli 共有的群名称更新子集；不接受或静默忽略 description。",
+      "risk": "write",
       "public": true,
       "reviewed": true
     },
@@ -384,6 +426,20 @@
       "public": true,
       "reviewed": true
     },
+    "+messages-reply": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "提供当前用户纯文本引用回复的稳定入口、幂等键和 AI 标记，并通过 mget 自动补全原发送者；明确不支持 bot、富媒体或 thread writer。",
+      "risk": "write",
+      "public": true,
+      "reviewed": true
+    },
+    "+messages-send": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "用统一 identity 参数路由 current-user、bot、webhook 文本/Markdown 发送；按身份校验目标与凭据，幂等键只在真实支持的 user 分支开放，媒体上传仍诚实留在 native leaf。",
+      "risk": "write",
+      "public": true,
+      "reviewed": true
+    },
     "+messages-recall": {
       "disposition": "schema_leaf",
       "semantic_delta": "当前用户撤回是一对一消息操作；默认由 leaf 承担。",
@@ -430,8 +486,8 @@
       "reviewed": true
     },
     "+messages-mget": {
-      "disposition": "schema_leaf",
-      "semantic_delta": "按消息 ID 批量读取是一对一透传；默认由 Runtime Schema leaf 承担。",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "按最多 50 个消息 ID 批量读取并输出稳定消息投影、reaction 与 resourceRefs；可用 --download-resources 复用 HTTPS、相对路径、无覆盖和原子落盘防护，逐资源返回下载失败 ledger。",
       "risk": "read",
       "public": true,
       "reviewed": true
@@ -522,10 +578,9 @@
     },
     "+messages-combine-forward": {
       "disposition": "schema_leaf",
-      "semantic_delta": "合并转发是一对一批量消息操作；默认由 leaf 承担。",
+      "semantic_delta": "使用两个真实群、两条非空源消息分别完成 native leaf 与 Shortcut 双层回归，并以 mget 回读确认两条目标合并消息均实际存在且包含完整 forwarded 子消息。",
       "risk": "write",
-      "availability": "unavailable",
-      "public": false,
+      "public": true,
       "reviewed": true
     },
     "+messages-forward-topic": {
@@ -572,7 +627,7 @@
     },
     "+at-me": {
       "disposition": "primary_smart",
-      "semantic_delta": "自动构造时间窗，分页拉取跨会话 @我 消息，并保留身份、引用、reaction 与完整性。",
+      "semantic_delta": "自动构造时间窗，分页拉取跨会话 @我 消息，并保留身份、引用、reaction、resourceRefs 与完整性。",
       "risk": "read",
       "public": true,
       "reviewed": true
@@ -586,7 +641,7 @@
     },
     "+chat-messages": {
       "disposition": "primary_smart",
-      "semantic_delta": "统一群聊与两类单聊目标，输出稳定消息身份、引用、reaction、时间边界翻页和可读正文。",
+      "semantic_delta": "统一群聊与两类单聊目标，输出稳定消息身份、引用、reaction、resourceRefs、时间边界翻页和可读正文。",
       "risk": "read",
       "public": true,
       "reviewed": true
@@ -622,7 +677,7 @@
     },
     "+search-msg": {
       "disposition": "primary_smart",
-      "semantic_delta": "自动构造最近 N 天时间窗并保留消息身份、会话、引用、reaction 与游标分页。",
+      "semantic_delta": "统一关键词、发送者、@对象、会话、消息类型和机器人来源过滤；支持精确时间窗、page-all、50 条一组 mget 富化，并以 failure ledger 显式报告截断或富化失败。",
       "risk": "read",
       "public": true,
       "reviewed": true
@@ -636,7 +691,7 @@
     },
     "+thread-replies": {
       "disposition": "primary_smart",
-      "semantic_delta": "接受消息列表直接返回的 threadId（兼容 topicId），拉取回复并输出稳定身份、引用、reaction、可读正文和时间边界分页。",
+      "semantic_delta": "接受消息列表直接返回的 threadId（兼容 topicId），拉取回复并输出稳定身份、引用、reaction、resourceRefs、可读正文和时间边界分页。",
       "risk": "read",
       "public": true,
       "reviewed": true

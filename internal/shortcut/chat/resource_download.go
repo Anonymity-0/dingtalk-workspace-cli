@@ -122,16 +122,20 @@ var MessagesResourceDownload = shortcut.Shortcut{
 }
 
 func validateResourceDownloadOutput(output string) error {
+	return validateResourceDownloadOutputFlag(output, "--output")
+}
+
+func validateResourceDownloadOutputFlag(output, flagName string) error {
 	output = strings.TrimSpace(output)
 	if output == "" {
-		return apperrors.NewValidation("--output 不能为空")
+		return apperrors.NewValidation(flagName + " 不能为空")
 	}
 	if filepath.IsAbs(output) {
-		return apperrors.NewValidation("--output 只接受工作目录内的相对路径")
+		return apperrors.NewValidation(flagName + " 只接受工作目录内的相对路径")
 	}
 	clean := filepath.Clean(output)
 	if clean == ".." || strings.HasPrefix(clean, ".."+string(os.PathSeparator)) {
-		return apperrors.NewValidation("--output 不允许使用 .. 逃逸工作目录")
+		return apperrors.NewValidation(flagName + " 不允许使用 .. 逃逸工作目录")
 	}
 	return nil
 }

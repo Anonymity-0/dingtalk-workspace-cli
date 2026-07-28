@@ -48,6 +48,7 @@ WRITE_COMMANDS = (
     "+category-rename",
     "+chat-add-bot",
     "+chat-audit-join",
+    "+chat-create",
     "+chat-dismiss",
     "+chat-mute",
     "+chat-mute-member",
@@ -61,6 +62,7 @@ WRITE_COMMANDS = (
     "+chat-set-admin",
     "+chat-set-history",
     "+chat-transfer-owner",
+    "+chat-update",
     "+chat-update-alias",
     "+chat-update-icon",
     "+chat-update-nick",
@@ -76,6 +78,8 @@ WRITE_COMMANDS = (
     "+conversation-mute-red-envelope",
     "+conversation-set-top",
     "+dm",
+    "+flag-cancel",
+    "+flag-create",
     "+messages-add-emoji",
     "+messages-add-text-emotion",
     "+messages-batch-recall-by-bot",
@@ -88,6 +92,8 @@ WRITE_COMMANDS = (
     "+messages-recall-by-bot",
     "+messages-remove-emoji",
     "+messages-remove-text-emotion",
+    "+messages-reply",
+    "+messages-send",
     "+messages-send-by-bot",
     "+messages-send-by-webhook",
     "+messages-send-card",
@@ -100,6 +106,7 @@ WRITE_COMMANDS = (
 )
 
 READ_TOOLS_ALLOWED_DURING_DRY_RUN = {
+    ("contact", "get_current_user_profile"),
     ("contact", "search_contact_by_key_word"),
     ("im", "search_groups"),
 }
@@ -204,7 +211,7 @@ def discover_fixtures(binary: Path, timeout: int) -> FixtureSet:
             "openDingTalkId",
             "memberDingtalkId",
         ),
-        "odid_dws_shortcut_audit",
+        "did_dws_shortcut_audit",
     )
 
     if messages is None:
@@ -388,6 +395,21 @@ def build_cases(fx: FixtureSet) -> list[DryRunCase]:
             "status",
             "auditDescription",
         ),
+        case(
+            "+chat-create",
+            [
+                "--name",
+                "DWS dry-run group",
+                "--users",
+                fx["user_id"],
+                "--type",
+                "INTERNAL",
+            ],
+            "create_group_conversation",
+            "groupName",
+            "groupMembers",
+            "groupType",
+        ),
         case("+chat-dismiss", ["--group", g], "dismiss_group", "openConversationId"),
         case("+chat-mute", ["--group", g], "set_group_mute", "openConversationId", "mute"),
         case(
@@ -468,6 +490,13 @@ def build_cases(fx: FixtureSet) -> list[DryRunCase]:
             "openConversationId",
             "cid",
             "newOwnerOpenDingTalkId",
+        ),
+        case(
+            "+chat-update",
+            ["--group", g, "--name", "DWS dry-run group"],
+            "update_group_name",
+            "openconversation_id",
+            "group_name",
         ),
         case(
             "+chat-update-alias",
@@ -563,6 +592,7 @@ def build_cases(fx: FixtureSet) -> list[DryRunCase]:
             "openConversationId",
             "cid",
             "top",
+            semantic_preview=True,
         ),
         case(
             "+dm",
@@ -571,6 +601,22 @@ def build_cases(fx: FixtureSet) -> list[DryRunCase]:
             "receiverOpenDingTalkId",
             "msgType",
             "content",
+        ),
+        case(
+            "+flag-cancel",
+            ["--message-id", m, "--conversation-id", g],
+            "remove_message_favorite",
+            "openMessageId",
+            "openConversationId",
+            semantic_preview=True,
+        ),
+        case(
+            "+flag-create",
+            ["--message-id", m, "--conversation-id", g],
+            "add_message_favorite",
+            "openMessageId",
+            "openConversationId",
+            semantic_preview=True,
         ),
         case(
             "+messages-add-emoji",
@@ -746,6 +792,45 @@ def build_cases(fx: FixtureSet) -> list[DryRunCase]:
             "emotionName",
             "text",
             "backgroundId",
+        ),
+        case(
+            "+messages-reply",
+            [
+                "--conversation-id",
+                g,
+                "--ref-msg-id",
+                m,
+                "--ref-sender",
+                u,
+                "--text",
+                text,
+                "--uuid",
+                fx["uuid"],
+            ],
+            "send_personal_message",
+            "openConversationId",
+            "msgType",
+            "content",
+            "uuid",
+        ),
+        case(
+            "+messages-send",
+            [
+                "--identity",
+                "user",
+                "--group",
+                g,
+                "--text",
+                text,
+                "--uuid",
+                fx["uuid"],
+            ],
+            "send_personal_message",
+            "openConversationId",
+            "msgType",
+            "content",
+            "uuid",
+            semantic_preview=True,
         ),
         case(
             "+messages-send-by-bot",
@@ -931,7 +1016,7 @@ def run_audit(binary: Path, timeout: int) -> tuple[FixtureSet, list[dict[str, An
     fixtures = discover_fixtures(binary, timeout)
     cases = build_cases(fixtures)
     if tuple(item.command for item in cases) != WRITE_COMMANDS:
-        raise RuntimeError("write Shortcut dry-run coverage drifted from expected 57")
+        raise RuntimeError("write Shortcut dry-run coverage drifted from expected 63")
     results: list[dict[str, Any]] = []
     for item in cases:
         capture = run_capture(

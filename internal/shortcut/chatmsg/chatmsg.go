@@ -31,8 +31,10 @@ package chatmsg
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -185,6 +187,9 @@ func QuotedMessage(m map[string]any) map[string]any {
 	if value := MessageType(quoted); value != nil {
 		out["messageType"] = value
 	}
+	if resources := Resources(quoted); len(resources) > 0 {
+		out["resourceRefs"] = resources
+	}
 	return out
 }
 
@@ -200,6 +205,127 @@ func firstMessageValue(m map[string]any, keys ...string) any {
 		return value
 	}
 	return nil
+}
+
+// Resources extracts actionable media references from both structured message
+// fields and the textual mediaId notation returned by older DingTalk message
+// APIs. Every reference publishes the exact Shortcut arguments already known
+// from the message, plus ready=false and missing fields when a follow-up lookup
+// is still required. This shared shape is used by list, search, mget, quoted
+// messages and thread replies.
+func Resources(m map[string]any) []map[string]any {
+	if m == nil {
+		return nil
+	}
+	ids := make([]string, 0)
+	collectMediaIDs(m, &ids)
+	ids = uniqueMediaIDs(ids)
+	sort.Strings(ids)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	messageID := strings.TrimSpace(fmt.Sprint(MessageID(m)))
+	conversationID := strings.TrimSpace(fmt.Sprint(ConversationID(m)))
+	if messageID == "<nil>" {
+		messageID = ""
+	}
+	if conversationID == "<nil>" {
+		conversationID = ""
+	}
+
+	out := make([]map[string]any, 0, len(ids))
+	for _, id := range ids {
+		arguments := map[string]any{
+			"type":        "mediaId",
+			"resource-id": id,
+		}
+		missing := make([]string, 0, 2)
+		if messageID != "" {
+			arguments["message-id"] = messageID
+		} else {
+			missing = append(missing, "message-id")
+		}
+		if conversationID != "" {
+			arguments["open-conversation-id"] = conversationID
+		} else {
+			missing = append(missing, "open-conversation-id")
+		}
+		out = append(out, map[string]any{
+			"type":       "mediaId",
+			"resourceId": id,
+			"download": map[string]any{
+				"shortcut":  "+messages-resource-download",
+				"arguments": arguments,
+				"ready":     len(missing) == 0,
+				"missing":   missing,
+			},
+		})
+	}
+	return out
+}
+
+var mediaIDTextRE = regexp.MustCompile(`(?i)media[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+
+func collectMediaIDs(value any, out *[]string) {
+	switch typed := value.(type) {
+	case map[string]any:
+		resourceType := strings.TrimSpace(fmt.Sprint(firstMessageValue(typed, "resourceType", "resource_type")))
+		for key, child := range typed {
+			normalizedKey := strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+			if normalizedKey == "mediaid" || (normalizedKey == "resourceid" && strings.EqualFold(resourceType, "mediaId")) {
+				if id := mediaIDScalar(child); id != "" {
+					*out = append(*out, id)
+				}
+			}
+			collectMediaIDs(child, out)
+		}
+	case []any:
+		for _, child := range typed {
+			collectMediaIDs(child, out)
+		}
+	case []map[string]any:
+		for _, child := range typed {
+			collectMediaIDs(child, out)
+		}
+	case string:
+		for _, match := range mediaIDTextRE.FindAllStringSubmatch(typed, -1) {
+			if len(match) > 1 {
+				if id := mediaIDScalar(match[1]); id != "" {
+					*out = append(*out, id)
+				}
+			}
+		}
+		trimmed := strings.TrimSpace(typed)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			var decoded any
+			if json.Unmarshal([]byte(trimmed), &decoded) == nil {
+				collectMediaIDs(decoded, out)
+			}
+		}
+	}
+}
+
+func mediaIDScalar(value any) string {
+	text, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return strings.Trim(strings.TrimSpace(text), `"'`)
+}
+
+func uniqueMediaIDs(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := map[string]bool{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }
 
 // UpdateTime reads an edited message's update time. Gateways sometimes echo

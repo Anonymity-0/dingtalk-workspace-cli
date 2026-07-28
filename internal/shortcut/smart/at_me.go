@@ -233,6 +233,9 @@ func atMeProjectWithReactions(m map[string]any, includeReactions bool) map[strin
 	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
 		row["quotedMessage"] = quoted
 	}
+	if resources := chatmsg.Resources(m); len(resources) > 0 {
+		row["resourceRefs"] = resources
+	}
 	projectForwarded := func(item map[string]any) map[string]any {
 		return atMeProjectWithReactions(item, includeReactions)
 	}

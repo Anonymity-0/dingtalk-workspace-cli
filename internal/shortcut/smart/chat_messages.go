@@ -198,6 +198,9 @@ func projectChatMessageWithReactions(m map[string]any, includeReactions bool) ma
 	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
 		row["quotedMessage"] = quoted
 	}
+	if resources := chatmsg.Resources(m); len(resources) > 0 {
+		row["resourceRefs"] = resources
+	}
 	projectForwarded := func(item map[string]any) map[string]any {
 		return projectChatMessageWithReactions(item, includeReactions)
 	}

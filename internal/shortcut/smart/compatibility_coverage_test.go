@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"reflect"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -166,24 +167,27 @@ func TestCrossPlatformCoverageBroadcastDryRunPublishesExecutablePlan(t *testing.
 
 func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 	tests := []struct {
-		name       string
-		argv       []string
-		wantTool   string
-		wantArgs   map[string]any
-		wantAbsent []string
+		name        string
+		argv        []string
+		wantProduct string
+		wantTool    string
+		wantArgs    map[string]any
+		wantAbsent  []string
 	}{
 		{
-			name:       "chat messages id and size",
-			argv:       []string{"chat", "+chat-messages", "--id", "cid-1", "--size", "9", "--yes"},
-			wantTool:   "list_conversation_message_v2",
-			wantArgs:   map[string]any{"openconversation_id": "cid-1", "limit": 9},
-			wantAbsent: []string{"openCid", "cid"},
+			name:        "chat messages id and size",
+			argv:        []string{"chat", "+chat-messages", "--id", "cid-1", "--size", "9", "--yes"},
+			wantProduct: "chat",
+			wantTool:    "list_conversation_message_v2",
+			wantArgs:    map[string]any{"openconversation_id": "cid-1", "limit": 9},
+			wantAbsent:  []string{"openCid", "cid"},
 		},
 		{
-			name:     "search message id and keyword",
-			argv:     []string{"chat", "+search-msg", "--id", "cid-1", "--keyword", "树莓派", "--yes"},
-			wantTool: "search_messages_by_keyword",
-			wantArgs: map[string]any{"openConversationId": "cid-1", "keyword": "树莓派"},
+			name:        "search message id and keyword",
+			argv:        []string{"chat", "+search-msg", "--id", "cid-1", "--keyword", "树莓派", "--no-enrich", "--yes"},
+			wantProduct: "im",
+			wantTool:    "search_messages",
+			wantArgs:    map[string]any{"openConversationIds": []string{"cid-1"}, "keyword": "树莓派"},
 		},
 	}
 
@@ -197,11 +201,11 @@ func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 				t.Fatal(err)
 			}
 			call := fake.calls[len(fake.calls)-1]
-			if call.product != "chat" || call.tool != tc.wantTool {
-				t.Fatalf("call = %s/%s, want chat/%s", call.product, call.tool, tc.wantTool)
+			if call.product != tc.wantProduct || call.tool != tc.wantTool {
+				t.Fatalf("call = %s/%s, want %s/%s", call.product, call.tool, tc.wantProduct, tc.wantTool)
 			}
 			for key, want := range tc.wantArgs {
-				if got := call.args[key]; got != want {
+				if got := call.args[key]; !reflect.DeepEqual(got, want) {
 					t.Errorf("%s = %#v, want %#v", key, got, want)
 				}
 			}

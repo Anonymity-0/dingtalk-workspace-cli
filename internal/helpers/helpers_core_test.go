@@ -159,6 +159,7 @@ func TestCrossPlatformCoverageMCPReturnTextClassification(t *testing.T) {
 		{"business-bool", `{"success":false,"message":"failed"}`},
 		{"business-string", `{"success":"false","errorMsg":"failed"}`},
 		{"business-error", `{"error":"failed"}`},
+		{"business-webhook-errcode", `{"errcode":300005,"errmsg":"token is not exist"}`},
 	}
 	for _, tc := range cases {
 		caller.result = textToolResult(tc.text)

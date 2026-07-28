@@ -1,4 +1,0 @@
-fixture_id,work_item,owner,status,keyword
-GSB-IM-FIXTURE-20260728,API contract review,GSB_MEMBER_A,done,GSB_RELEASE_PLAN
-GSB-IM-FIXTURE-20260728,Attachment verification,GSB_MEMBER_B,in_progress,GSB_MEDIA_CHECK
-GSB-IM-FIXTURE-20260728,Cleanup rehearsal,GSB_ADMIN,pending,GSB_CLEANUP

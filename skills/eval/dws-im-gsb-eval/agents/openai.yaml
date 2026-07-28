@@ -1,4 +1,0 @@
-interface:
-  display_name: "DWS IM GSB Eval"
-  short_description: "快速导出完整 IM 评测清单并生成可分析的覆盖率报告"
-  default_prompt: "Use $dws-im-gsb-eval to run the DWS IM evaluation and generate a coverage report."

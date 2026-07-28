@@ -2179,6 +2179,16 @@ func newChatCommand() *cobra.Command {
 				}
 			}
 
+			if v, _ := cmd.Flags().GetString("message-type"); v != "" {
+				toolArgs["messageType"] = v
+			}
+			if cmd.Flags().Changed("only-robot") {
+				toolArgs["onlyRobotMessages"], _ = cmd.Flags().GetBool("only-robot")
+			}
+			if v, _ := cmd.Flags().GetString("conversation-type"); v != "" {
+				toolArgs["searchConvType"] = v
+			}
+
 			// start -> startTime (ISO-8601 to milliseconds)
 			if v, _ := cmd.Flags().GetString("start"); v != "" {
 				ms, err := parseISOTimeToMillis("start", v)
@@ -2674,6 +2684,9 @@ func newChatCommand() *cobra.Command {
 	_ = chatMessageSearchAdvancedCmd.Flags().MarkHidden("groups")
 	chatMessageSearchAdvancedCmd.Flags().String("group", "", "")
 	_ = chatMessageSearchAdvancedCmd.Flags().MarkHidden("group")
+	chatMessageSearchAdvancedCmd.Flags().String("message-type", "", "下层消息类型过滤值（可选，以当前 IM Schema 支持值为准）")
+	chatMessageSearchAdvancedCmd.Flags().Bool("only-robot", false, "只搜索机器人消息（可选；显式传 false 时也会传给下层）")
+	chatMessageSearchAdvancedCmd.Flags().String("conversation-type", "", "下层会话类型过滤值（可选，以当前 IM Schema 支持值为准）")
 	chatMessageSearchAdvancedCmd.Flags().String("start", "", "开始时间，ISO-8601 格式（可选）")
 	chatMessageSearchAdvancedCmd.Flags().String("end", "", "结束时间，ISO-8601 格式（可选）")
 	chatMessageSearchAdvancedCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"）")

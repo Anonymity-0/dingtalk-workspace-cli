@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	publicShortcutCount          = 256
+	publicShortcutCount          = 265
 	schemaPublishedShortcutCount = 210
 )
 

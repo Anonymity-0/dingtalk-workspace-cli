@@ -8798,14 +8798,14 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "candidates": [
             {
               "value": "根据消息 ID 批量查询消息（最多 50 条）",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts."
             }
           ]
         },
@@ -8832,7 +8832,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "candidates": [
             {
               "value": [
@@ -8841,7 +8841,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts."
             }
           ]
         },
@@ -8884,7 +8884,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "candidates": [
             {
               "value": [
@@ -8893,7 +8893,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts."
             }
           ]
         },
@@ -8980,7 +8980,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts."
             }
           ]
         },
@@ -9002,21 +9002,21 @@
         },
         "use_when": {
           "value": [
-            "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+            "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "candidates": [
             {
               "value": [
-                "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+                "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts."
             }
           ]
         }
@@ -9034,7 +9034,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+        "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
       ]
     },
     "chat +messages-query-send-status": {

@@ -56,21 +56,56 @@ var ConversationSetTop = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+conversation-set-top",
 	Product:     "im",
-	Description: "会话置顶 / 取消置顶（支持单聊/群聊）",
-	Intent:      "当你想把某个单聊或群聊置顶到会话列表顶部、或取消其置顶时使用；会实际修改该会话的置顶状态，需传 openConversationId，加 --off 取消置顶。",
+	Description: "批量会话置顶 / 取消置顶（最多 10 个）",
+	Intent:      "当你想把一个或多个单聊/群聊置顶到会话列表顶部、或取消置顶时使用；支持 1-10 个 openConversationId，逐项执行并返回成功/失败 ledger，某一项失败不阻断其余项。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
+		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "单个会话 openConversationId"},
+		{Name: "conversation-ids", Type: shortcut.FlagStringSlice, Desc: "多个会话 openConversationId（最多 10 个）"},
 		{Name: "off", Type: shortcut.FlagBool, Desc: "取消置顶（不传则设置置顶）"},
 	},
-	Tips: []string{`dws chat +conversation-set-top --conversation-id <openConversationId>`},
-	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("set_top_conversation", map[string]any{
-			"openConversationId": rt.Str("conversation-id"),
-			"cid":                rt.Str("conversation-id"),
-			"top":                !rt.Bool("off"),
-		})
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"conversation-id", "conversation-ids"}},
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"conversation-id", "conversation-ids"},
+			Description: "会话 ID 去重后必须为 1-10 个",
+		},
 	},
+	Tips: []string{
+		`dws chat +conversation-set-top --conversation-id <openConversationId>`,
+		`dws chat +conversation-set-top --conversation-ids <cid1>,<cid2> --off`,
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		ids := conversationSetTopIDs(rt)
+		if len(ids) < 1 || len(ids) > 10 {
+			return apperrors.NewValidation(fmt.Sprintf("会话 ID 去重后必须为 1-10 个，当前 %d 个", len(ids)))
+		}
+		return nil
+	},
+	Execute: func(rt *shortcut.RuntimeContext) error {
+		ids := conversationSetTopIDs(rt)
+		items := make([]shortcutBatchWrite, 0, len(ids))
+		for _, id := range ids {
+			items = append(items, shortcutBatchWrite{
+				target: id,
+				arguments: map[string]any{
+					"openConversationId": id,
+					"cid":                id,
+					"top":                !rt.Bool("off"),
+				},
+			})
+		}
+		return executeShortcutBatchWrite(rt, "im", "set_top_conversation", items)
+	},
+}
+
+func conversationSetTopIDs(rt *shortcut.RuntimeContext) []string {
+	values := append([]string{}, rt.StrSlice("conversation-ids")...)
+	if value := rt.Str("conversation-id"); value != "" {
+		values = append(values, value)
+	}
+	return uniqueShortcutStrings(values)
 }
 
 // ConversationMute mutes/unmutes a conversation (update_notification_off, im).
