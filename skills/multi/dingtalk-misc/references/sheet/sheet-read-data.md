@@ -6,7 +6,7 @@
 - 快速查看纯值数据、批量处理、大表分批读 → `csv-get`（token 消耗低，防爆保护）
 - 需要 dataframe/table 结构（列名、二维 data、pandas-style dtypes、number formats）→ `table-get`
 - 需要结构化信息（值+样式+数据验证+富文本+单元格级超链接）、查看公式或原始值 → `range read`
-- 需要校验公式写入结果 → 先 `range read --value-render-option formula` 回读公式文本，再用 `formula-verify` 聚合扫描错误；需要确认业务数值时用 `raw_value` 抽样对账。完整流程见 [sheet-formula](./sheet-formula.md)
+- 需要校验公式写入结果 → 先 `range read --value-render-option formula` 回读公式文本；需要确认业务数值时用 `raw_value` 抽样对账。完整流程见 [sheet-formula](./sheet-formula.md)
 - 需要查看合并单元格 / 表头合并结构 → `sheet info`，读取返回的 `mergedRanges`；不要在 `csv-get` 或 `range read` 里找合并信息
 
 ## 命令选择

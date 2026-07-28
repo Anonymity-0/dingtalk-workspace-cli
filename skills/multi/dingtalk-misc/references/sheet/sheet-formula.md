@@ -14,8 +14,6 @@
 - 公式载体：公式写在 cell object 的 `text` 字段中，例如 `{"type":"text","text":"=SUM(B2:B10)"}`。
 - 读取公式文本：使用 `dws sheet range read --value-render-option formula`。
 - 读取计算结果：使用 `dws sheet range read --value-render-option raw_value` 或默认 `formatted_value`。
-- 聚合错误校验：使用 `dws sheet formula-verify`，支持整本表格、单个目标和多个目标。
-- `formula-verify` 扫描已经落表的公式计算结果，按 `#ERROR!` / `#NAME?` / `#DIV/0!` 等错误类型汇总；它不判断一个正常数值是否符合业务预期。
 - `csv-put` / `append` / `table-put` 不作为公式写入协议；`=` 开头内容可能按普通值或 table 数据处理。需要公式时用 `range update`。
 
 ## 命令选择
@@ -26,9 +24,6 @@
 | 查看已写入的公式文本 | `range read --value-render-option formula` | 确认公式本身是否落表、范围和引用是否正确 |
 | 查看公式计算结果 | `range read --value-render-option raw_value` | 用于数值对账、错误值检查 |
 | 查看格式化展示结果 | `range read` 或 `csv-get` 默认模式 | 用于用户肉眼看到的展示值检查 |
-| 扫描整本表格公式错误 | `formula-verify --node <NODE_ID>` | 不传目标时扫描全部工作表的非空范围 |
-| 扫描单个工作表或范围 | `formula-verify --sheet-id ... [--range ...]` | `--range` 只传 A1 范围，不带工作表前缀 |
-| 扫描多个目标 | `formula-verify --targets ...` | 每项为 `{"sheetId":"...","range":"..."}`，`range` 可省略 |
 
 ## 推荐流程
 
@@ -37,8 +32,6 @@
 3. 明确相对引用和绝对引用：向下填充时检查固定汇率、税率、查找表、标题行是否需要 `$` 锁定。
 4. 用 `range update` 写入公式矩阵；矩阵行列数必须与 `--range` 完全一致。
 5. 用 `range read --value-render-option formula` 回读公式文本，确认实际公式、范围和引用。
-6. 对本次写入目标运行 `formula-verify`；若返回 `partial` / `hasMore=true`，缩小目标或提高 `--max-cells` 后继续扫描，直到结果完整。
-7. 用 `range read --value-render-option raw_value` 抽样对账业务数值；正常数值不会被 `formula-verify` 判定为业务计算错误。
 8. 若发现错误，先定位依赖单元格、空值、除数为 0、引用范围越界或函数名错误，再重写公式并重新执行文本回读、错误扫描和数值抽样。
 
 ## 聚合式公式校验
@@ -48,7 +41,6 @@
 不指定 `--sheet-id`、`--range` 或 `--targets` 时，扫描整本表格的全部工作表：
 
 ```bash
-dws sheet formula-verify --node <NODE_ID> --format json
 ```
 
 ### 单个工作表或范围
@@ -56,9 +48,7 @@ dws sheet formula-verify --node <NODE_ID> --format json
 `--sheet-id` 支持工作表 ID 或名称；省略 `--range` 时扫描该工作表的非空范围：
 
 ```bash
-dws sheet formula-verify --node <NODE_ID> --sheet-id <SHEET_ID> --format json
 
-dws sheet formula-verify --node <NODE_ID> --sheet-id <SHEET_ID> \
   --range "D2:D100" --format json
 ```
 
@@ -67,7 +57,6 @@ dws sheet formula-verify --node <NODE_ID> --sheet-id <SHEET_ID> \
 ### 多个目标
 
 ```bash
-dws sheet formula-verify --node <NODE_ID> \
   --targets '[{"sheetId":"Sheet1","range":"D2:D100"},{"sheetId":"Summary"}]' \
   --format json
 ```
@@ -77,10 +66,8 @@ dws sheet formula-verify --node <NODE_ID> \
 ### 扫描限制与自动化
 
 ```bash
-dws sheet formula-verify --node <NODE_ID> \
   --max-locations-per-error 20 --max-cells 30000 --format json
 
-dws sheet formula-verify --node <NODE_ID> --exit-on-error --format json
 ```
 
 - `--max-locations-per-error` 只限制每类错误返回的 `locations` 和 `samples` 数量，`count` 与 `totalErrors` 仍保留实际扫描到的总数。
@@ -168,7 +155,6 @@ dws sheet range read --node <NODE_ID> --sheet-id <SHEET_ID> --range "D2:D5" \
 
 ### 3. 数值正确性边界
 
-`formula-verify` 负责聚合已经落表的公式错误值；`range read` 负责确认实际公式文本和具体计算结果。即使 `formula-verify` 返回 `success`，也仍需对金额、比例、汇率、边界行等关键业务结果做 `raw_value` 抽样对账，因为一个公式可能计算出合法数值但业务逻辑仍然写错。
 
 ## 常见错误
 
@@ -177,7 +163,6 @@ dws sheet range read --node <NODE_ID> --sheet-id <SHEET_ID> --range "D2:D5" \
 - 写整列公式时只写第一行，忘记把 `--range` 和 `--values` 扩成同样行数。
 - 复制公式时没有锁定固定引用，例如税率、汇率、查找表范围。
 - 没有回读 `formula` 模式，只看写入返回 `success`。
-- 只回读展示值，不运行 `formula-verify` 聚合扫描错误。
 - 把 `max-locations-per-error` 误解为错误计数上限；它只截断位置和样本。
 - 看到 `status=partial` 或 `hasMore=true` 仍声称整本表公式零错误。
 - 在 `--range` 中传 `Sheet1!A1:D10`，或把 `--targets` 与 `--sheet-id` 混用。
