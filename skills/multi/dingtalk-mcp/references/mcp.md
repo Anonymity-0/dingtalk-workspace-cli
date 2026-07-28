@@ -330,6 +330,7 @@ key 放 header 时把 `authQuery` 换成 `authHeaders`（key=<头名>）；凭�
 - `tool_already_listed_in_market`：已上架市场的工具不允许删除，需先在市场下架。
 - 调试「成功」但接口报缺参/返回空：映射静默失效——位置名大小写（须 Pascal）/ express 用了 `source` 字段（须 `expression`）/ 漏映射，见 mapping-rules.md。
 - 调试通过但发布后调用旧逻辑：调试时漏传草稿 `versionId`，实际测了线上旧版本。
+- 接入地址 `tools/list` 报 `-32603 [PARAM_ERROR] 参数不能为空`、`tools/call` 返回 `not found the specified tool` 且 `isError=false`：**真实根因大概率是该服务 0 个已发布工具**（全是 draft）——`url get --source PUBLISHED` 在 0 发布时仍返回完整 URL（平台缺口 Aone 84799867）；先 `tool list` 核对发布数，不要朝参数方向排查。
 - `service list` 偶发返回空列表：索引瞬态，重试一次即可。
 - 动态命令没出现：发现接口未返回 MCP，或接入地址 `tools/list` 不可访问。
 

@@ -31,6 +31,7 @@ metadata:
 7. 删除服务前必须先 `service get` + `tool list` 核对；服务下还有工具时先逐个删除工具。
 8. **写 `--input-mappings` / `--output-mappings` 前先读 [mapping-rules.md](references/mapping-rules.md)**——映射是最大坑源：位置名 Pascal 写错、express 用错字段、出参 rules 的 source 未在 apiOutputs 声明范围内（UI 标「变量已失效」）都**静默失效不报错**，只有 debug 真跑才暴露；出参三件套（api-outputs/tool-outputs/output-mappings）0720 起必填——漏传 apiOutputs＝下游复杂结构字段被整段吞掉（调用还"成功"），CLI 已硬拦。**CLI 双闸**：create/update 时 mappings 引用的字段必须在同批提交的 apiInputs/apiOutputs/toolInputs/toolOutputs 里可解析（整体透传也必须带 apiOutputs）；publish 前自动读回草稿复验出参 rules 可解析性，不过直接拒发。
 9. **两种 update 语义（V5 起，勿混用）**：http 型走 `tool update`＝**全量提交**（漏传即清空，必须先 `tool get` 读回——**读回即三段式可直接改**——在其基础上整包提交；仅 timeout/only-original-keys 例外：漏传=保留原值）；hsf 型走 `tool update-hsf`＝**部分更新**（只传要改的，未传保持原值），hsf 工具误走 http 版会被平台拒（hsf_tool_update_via_http）。判型看 `tool get` 返回的 `toolType`（http/hsf）。
+10. **debug 全通过 ≠ 任务完成（发布闸门后的交付防呆）**：用户目标含「让我能调用 / 给 agent 用 / 接入客户端」时，debug 通过只是进入**待发布确认**状态——必须显式列出待发布工具清单请求发布确认（「嗯/继续」不算），且此后每次汇报都要带「仍未发布、客户端不可用」直到发布完成。执行 `url get` 前先 `tool list` 回读已发布数量：**0 个已发布工具时 `url get --source PUBLISHED` 仍返回 success+完整 URL（平台缺口 Aone 84799867），该 URL 调 `tools/list` 报泛化 `PARAM_ERROR 参数不能为空`、`tools/call` 返回 `not found the specified tool` 且 `isError=false`**——这样的 URL 不是可用交付物，禁止交付。只有 `publish → refresh → tools/list → tools/call 真调一个工具` 全通过，才能宣称 MCP/CLI 闭环完成。
 
 ## 领域模型
 
@@ -67,14 +68,14 @@ MCP 开发脚手架（mcpdev 管理面）
 
 | 目标 | 快捷方案 |
 |------|----------|
-| **从 API 材料一键建 MCP（最高频）** | 收齐材料/业务目标/鉴权方式（缺就问）→ 按 [api-to-tool.md](references/api-to-tool.md) 拆三段式 + 设计整表给用户过目 → `service create`（`--name` 中文显示名 + **`--server-name` 必填**：kebab-case，就是顶层动态命令名，漏设则退化为 `mcp-<mcpId>`）→ 逐个 `tool create`（先建最简单的一个，`tool get` 读回核对再建其余）→ 逐个 `tool debug` 真跑（校验真实业务数据）→ 用户确认后逐个 `tool publish` → `url get --source PUBLISHED` → `connector mcp refresh` 验证动态命令 |
+| **从 API 材料一键建 MCP（最高频）** | 收齐材料/业务目标/鉴权方式（缺就问）→ 按 [api-to-tool.md](references/api-to-tool.md) 拆三段式 + 设计整表给用户过目 → `service create`（`--name` 中文显示名 + **`--server-name` 必填**：kebab-case，就是顶层动态命令名，漏设则退化为 `mcp-<mcpId>`）→ 逐个 `tool create`（先建最简单的一个，`tool get` 读回核对再建其余）→ 逐个 `tool debug` 真跑（校验真实业务数据）→ **debug 全通过＝进入待发布确认状态（不是完成）**：列待发布清单请求用户发布确认（「嗯/继续」不算）→ 确认后逐个 `tool publish` → `url get --source PUBLISHED` → `connector mcp refresh` → `tools/list`+真调一个工具通过＝闭环完成（MUST DO 10） |
 | 从零创建 MCP 服务 | `service create --dry-run`（**必带 `--server-name`**，kebab-case 一级命令名）→ 用户确认 → `service create --yes` → 记录返回 `mcpId` |
 | 给服务新增 HTTP 工具 | 读 mapping-rules.md → `tool create --dry-run` → 用户确认 → `tool create --yes` → `tool get` 取 `toolId/versionId` 并核对 rules |
 | 从 HSF 方法建工具（hsf 型） | `hsf method-list --interface-name <接口全限定名>` 发现方法与 DTO 字段名 → `tool create-hsf`（hsfInfo 三元组；无需 api-inputs/outputs，服务端自动生成；⚠️DTO 含 corpId/userId 必须显式写两条 $.system_node.* 注入映射）→ debug → publish |
 | 验证草稿工具能跑 | `tool get` 取草稿 `versionId` → `tool debug --version-id <versionId> --dry-run` → 用户确认 → `tool debug --version-id <versionId> --yes` → 核验返回真实业务数据 |
 | debug 失败排查 | 大概率映射问题：位置名大小写（Pascal）/ express 字段用错 / 漏映射 → 按 mapping-rules.md 修 → `tool update`（全量）→ 再 debug；同一工具自动修最多 2 轮，仍不行按 [mcp.md](references/mcp.md) §故障定位 五步法排查后升级给用户 |
 | 发布工具并可调用 | 确认最近一次 debug 成功 → `tool publish --dry-run` → 明确说明发布后使用方可调用 → 用户明确确认（「嗯/继续」不算）→ `tool publish --yes` → `tool get` 回读状态 |
-| 获取客户端接入地址 | 已发布未上架用 `url get --source PUBLISHED`；已上架市场用 `url get --source MARKET`；输出中的 `?key=` 只脱敏展示；**只返回 success 无 mcpUrl＝取址失败**（服务已删/不可用，平台缺口 Aone 84417179），先 `service get` 核实 |
+| 获取客户端接入地址 | **取址前先 `tool list` 回读已发布数量：published=0 时 URL 照样返回但不可用（MUST DO 10，Aone 84799867），先走发布流程**；已发布未上架用 `url get --source PUBLISHED`；已上架市场用 `url get --source MARKET`；输出中的 `?key=` 只脱敏展示；**只返回 success 无 mcpUrl＝取址失败**（服务已删/不可用，平台缺口 Aone 84417179），先 `service get` 核实 |
 | 配置下游接口鉴权 | `auth get` 查现状 → **先按 mcp.md「鉴权方式选型」选类型（静态 API key=SIGNATURE 自定义字段+直引）** → `auth save --dry-run` → 用户确认 → `auth save --yes`；auth save 只存「说明书」，真实密钥不要放鉴权配置，改用 `credential save` 存**开发者内置凭证** |
 | 管理凭证账号 | `credential list/get` 查账号元信息 → `credential save --content-file` 保存密钥（开发者内置凭证：归属当前用户+当前 MCP，密钥由开发者提供，配置调试与实例运行时两个场景都用它）→ `credential debug` 验证 → `credential bind` 选用（**仅对正式实例生效**；`tool debug` 不吃 bind，调试必须显式 `--credential-id`）；`credential unbind` 解绑实例凭证（bind 逆操作，delete 报 credential_in_use 时先 unbind 再删） |
 | 管理开发协作者 | `member list` 查现状 → `member add/remove --user-ids <staffId,...> --dry-run` → 用户确认 → `--yes` |
