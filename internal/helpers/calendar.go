@@ -63,12 +63,6 @@ func installUnknownVerbFallback(group *cobra.Command) {
 	// Cobra intercepts --help before RunE, so without this the fallback
 	// would never fire when --help is present.
 	origHelp := group.HelpFunc()
-	// captureBaseHelpFunc stores the unwrapped cobra default help renderer,
-	// captured once at install time (before configureRootHelp wraps root's
-	// HelpFunc). This avoids infinite recursion when calendar commands are
-	// tested in isolation (calendar IS the Root in test trees, so
-	// cmd.Root().HelpFunc() would return calendar's own wrapper → loop).
-	captureBaseHelpFunc := origHelp
 	group.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		if cmd == group {
 			// HelpFunc receives os.Args[1:] (full arg slice without binary).
@@ -83,10 +77,12 @@ func installUnknownVerbFallback(group *cobra.Command) {
 			origHelp(cmd, args)
 			return
 		}
-		// For non-group commands, call the base (unwrapped) help renderer,
-		// then apply safety annotation. We do NOT call cmd.Root().HelpFunc()
-		// because in test trees calendar IS the root — that would recurse.
-		captureBaseHelpFunc(cmd, args)
+		// For non-group commands, render base help then apply the safety
+		// annotation. Recursion safety hinges on NOT calling
+		// cmd.Root().HelpFunc(): in test trees calendar IS the root, so that
+		// would re-enter this wrapper. origHelp was captured before any
+		// wrapping and is the plain cobra renderer.
+		origHelp(cmd, args)
 		cli.RenderSafetyAnnotation(cmd)
 	})
 

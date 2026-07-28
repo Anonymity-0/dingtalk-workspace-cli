@@ -23,6 +23,7 @@
 package cli
 
 import (
+	"sort"
 	"strings"
 	"sync"
 )
@@ -70,6 +71,7 @@ func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
 	if loaded.Snapshot.Tools == nil {
 		return lookup
 	}
+	metas := make([]CommandMeta, 0, len(loaded.Snapshot.Tools))
 	for _, tool := range loaded.Snapshot.Tools {
 		cliPath := catalogStringVal(tool, "cli_path")
 		if cliPath == "" {
@@ -97,12 +99,21 @@ func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
 			},
 		}
 		lookup[cliPath] = meta
-		// Register each compat alias path (e.g. "report list") against the same
-		// metadata. Primary cli_path wins on collision so an alias can never
-		// shadow another command's canonical entry.
+		metas = append(metas, meta)
+	}
+	// Register compat alias paths (e.g. "report list") against the same
+	// metadata in a second pass, sorted by primary cli_path: primary paths
+	// always win (registered above, aliases only fill vacancies), and an
+	// alias-vs-alias collision resolves deterministically to the owner with
+	// the lexicographically smallest primary path — Snapshot.Tools is a map,
+	// so relying on iteration order would make the winner vary per process.
+	sort.Slice(metas, func(i, j int) bool {
+		return metas[i].Identity.CLIPath < metas[j].Identity.CLIPath
+	})
+	for _, meta := range metas {
 		for _, alias := range meta.Identity.Aliases {
 			alias = strings.TrimSpace(alias)
-			if alias == "" || alias == cliPath {
+			if alias == "" || alias == meta.Identity.CLIPath {
 				continue
 			}
 			if _, exists := lookup[alias]; !exists {
@@ -111,6 +122,14 @@ func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
 		}
 	}
 	return lookup
+}
+
+// catalogStringVal reads a string field from a catalog tool map[string]any.
+func catalogStringVal(tool map[string]any, key string) string {
+	if v, ok := tool[key].(string); ok {
+		return v
+	}
+	return ""
 }
 
 // catalogStringSliceVal reads a []string field from a catalog tool map.

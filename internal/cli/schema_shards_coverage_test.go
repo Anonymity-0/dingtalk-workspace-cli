@@ -203,7 +203,7 @@ func TestRenderSafetyAnnotation(t *testing.T) {
 	deleteCmd.SetOut(&out)
 	RenderSafetyAnnotation(deleteCmd)
 	rendered := out.String()
-	if !strings.Contains(rendered, "Safety: effect=destructive") || !strings.Contains(rendered, "(需 --yes)") {
+	if !strings.Contains(rendered, "Safety: effect=destructive") || !strings.Contains(rendered, "(requires --yes)") {
 		t.Fatalf("rendered = %q, want destructive annotation with confirmation hint", rendered)
 	}
 	if !strings.Contains(rendered, "idempotency=") {
@@ -229,5 +229,29 @@ func TestAssembleEmbeddedSchemaCatalogPropagatesAssemblyError(t *testing.T) {
 	embeddedSchemaCatalogEnvelopeJSON = []byte("{bad")
 	if _, err := assembleEmbeddedSchemaCatalog(); err == nil || !strings.Contains(err.Error(), "decode embedded schema catalog.json") {
 		t.Fatalf("err = %v, want assembly error passthrough", err)
+	}
+}
+
+// TestBuildMetaByCLIPathAliasCollisionDeterministic（CR C3）：alias-vs-alias
+// 冲突必须跨进程稳定——归属字典序最小的主 cli_path，而非 map 遍历顺序。
+func TestBuildMetaByCLIPathAliasCollisionDeterministic(t *testing.T) {
+	loaded := loadedSchemaCatalog{Snapshot: SchemaCatalogSnapshot{Tools: map[string]map[string]any{
+		"doc.zeta": {
+			"cli_path":       "doc zeta",
+			"canonical_path": "doc.zeta",
+			"aliases":        []any{"doc shared"},
+		},
+		"doc.alpha": {
+			"cli_path":       "doc alpha",
+			"canonical_path": "doc.alpha",
+			"aliases":        []any{"doc shared"},
+		},
+	}}}
+	// 多次构建，归属必须始终是字典序更小的 "doc alpha"。
+	for i := 0; i < 20; i++ {
+		lookup := buildMetaByCLIPath(loaded)
+		if got := lookup["doc shared"].Identity.Canonical; got != "doc.alpha" {
+			t.Fatalf("run %d: doc shared owned by %q, want deterministic doc.alpha", i, got)
+		}
 	}
 }

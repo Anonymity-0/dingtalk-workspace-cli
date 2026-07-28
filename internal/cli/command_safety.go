@@ -40,14 +40,6 @@ func (s CommandSafety) ShouldRender() bool {
 		(s.Risk != "" && s.Risk != "low")
 }
 
-// catalogStringVal reads a string field from a catalog tool map[string]any.
-func catalogStringVal(tool map[string]any, key string) string {
-	if v, ok := tool[key].(string); ok {
-		return v
-	}
-	return ""
-}
-
 // SafetyForCLIPath returns the safety metadata for a command identified by its
 // CLI path (e.g. "dev app delete"). Returns ok=false when the command is not
 // in the embedded catalog (utility commands, hidden commands, shortcuts).
@@ -79,7 +71,7 @@ func RenderSafetyAnnotation(cmd *cobra.Command) {
 		fmt.Fprintf(w, "  idempotency=%s", safety.Idempotency)
 	}
 	if safety.Confirmation == "user_required" {
-		fmt.Fprint(w, "  (需 --yes)")
+		fmt.Fprint(w, "  (requires --yes)")
 	}
 	fmt.Fprintln(w)
 }
