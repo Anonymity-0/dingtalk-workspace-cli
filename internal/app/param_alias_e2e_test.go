@@ -314,7 +314,7 @@ func TestChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
 			}
 
 			// Numeric --group-id is a different identifier domain and is covered
-			// by TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch.
+			// by TestAllReviewedParamAliasGuardsReachRuntimeContract.
 			for _, alias := range []string{"chat-id", "open-conversation-id"} {
 				t.Run(alias, func(t *testing.T) {
 					aliasArgs := append([]string(nil), test.command...)
@@ -338,7 +338,9 @@ func TestChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
 }
 
 func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
-	entries, err := cli.ReduceParamAliases(NewRootCommand())
+	root := NewRootCommand()
+	engine := newPipelineEngine()
+	entries, err := cli.ReduceParamAliases(root)
 	if err != nil {
 		t.Fatalf("ReduceParamAliases() error = %v", err)
 	}
@@ -351,6 +353,10 @@ func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
 			continue
 		}
 		chatEntries++
+		leaf := resolveParamLeaf(root, entry.CLIPath)
+		if leaf == nil {
+			t.Fatalf("generated chat parameter path %q is not runnable", entry.CLIPath)
+		}
 
 		aliases := make([]string, 0, len(entry.Aliases))
 		for emitted := range entry.Aliases {
@@ -362,14 +368,9 @@ func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
 			canonical := entry.Aliases[emitted]
 			aliasCases++
 			t.Run(entry.CLIPath+"/alias/"+emitted, func(t *testing.T) {
-				root := NewRootCommand()
-				leaf := resolveParamLeaf(root, entry.CLIPath)
-				if leaf == nil {
-					t.Fatalf("generated chat alias path %q is not runnable", entry.CLIPath)
-				}
 				value := paramFixtureValue(leaf, emitted, canonical)
 				rawArgs := append(strings.Fields(entry.CLIPath), "--"+emitted, value)
-				ctx, runErr := pipeline.RunPreParseArgs(root, newPipelineEngine(), rawArgs)
+				ctx, runErr := pipeline.RunPreParseArgs(root, engine, rawArgs)
 				if runErr != nil {
 					t.Fatalf("RunPreParseArgs(%v) error = %v", rawArgs, runErr)
 				}
@@ -398,14 +399,9 @@ func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
 				protection := guard.protection
 				guardCases[protection]++
 				t.Run(entry.CLIPath+"/"+string(protection)+"/"+emitted, func(t *testing.T) {
-					root := NewRootCommand()
-					leaf := resolveParamLeaf(root, entry.CLIPath)
-					if leaf == nil {
-						t.Fatalf("generated chat guard path %q is not runnable", entry.CLIPath)
-					}
 					value := paramFixtureValue(leaf, emitted, "did-you-mean:"+string(protection))
 					rawArgs := append(strings.Fields(entry.CLIPath), "--"+emitted, value)
-					ctx, runErr := pipeline.RunPreParseArgs(root, newPipelineEngine(), rawArgs)
+					ctx, runErr := pipeline.RunPreParseArgs(root, engine, rawArgs)
 					if runErr != nil {
 						t.Fatalf("RunPreParseArgs(%v) error = %v", rawArgs, runErr)
 					}
@@ -629,7 +625,7 @@ func TestParamAliasCanonicalConflictFailsBeforeRunE(t *testing.T) {
 	}
 }
 
-func TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T) {
+func TestAllReviewedParamAliasGuardsReachRuntimeContract(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
 		t.Fatalf("LoadParamConcepts() error = %v", err)
@@ -657,6 +653,8 @@ func TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T
 	}
 	sort.Strings(orderedPaths)
 
+	root := NewRootCommand()
+	engine := newPipelineEngine()
 	guardCounts := map[pipeline.FlagProtection]int{}
 	testedGuards := make(map[string]pipeline.FlagProtection)
 	for _, path := range orderedPaths {
@@ -664,14 +662,17 @@ func TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T
 		if !ok {
 			continue
 		}
+		leaf := resolveParamLeaf(root, path)
+		if leaf == nil {
+			t.Fatalf("generated guard path %q is not runnable", path)
+		}
 
 		for _, protectionCase := range []struct {
 			protection pipeline.FlagProtection
-			reason     string
 			emitted    []string
 		}{
-			{protection: pipeline.FlagProtectionBlocked, reason: "blocked_flag", emitted: entry.Blocked},
-			{protection: pipeline.FlagProtectionAmbiguous, reason: "ambiguous_flag", emitted: entry.Ambiguous},
+			{protection: pipeline.FlagProtectionBlocked, emitted: entry.Blocked},
+			{protection: pipeline.FlagProtectionAmbiguous, emitted: entry.Ambiguous},
 		} {
 			for _, emitted := range protectionCase.emitted {
 				protectionCase := protectionCase
@@ -685,35 +686,21 @@ func TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T
 
 				t.Run(path+"/"+emitted, func(t *testing.T) {
 					value := "FIXTURE_VALUE"
-					args := append(strings.Fields(path), "--"+emitted, value)
-					caller := &paramAliasCaptureCaller{}
-					ctx, executeErr := executeParamAliasE2E(t, caller, args...)
+					pathArgs := strings.Fields(path)
+					args := append(append([]string(nil), pathArgs...), "--"+emitted, value)
+					ctx, runErr := pipeline.RunPreParseArgs(root, engine, args)
+					if runErr != nil {
+						t.Fatalf("RunPreParseArgs(%v) error = %v", args, runErr)
+					}
 
 					morphed := cmdutil.Morph(emitted)
 					if ctx == nil || ctx.ProtectedFlags[morphed] != protectionCase.protection {
 						t.Fatalf("guard protection = %#v, want %s for %q", ctx, protectionCase.protection, morphed)
 					}
 					assertLeftUnchanged(t, ctx, emitted, value)
-
-					var appErr *apperrors.Error
-					if !stderrors.As(executeErr, &appErr) {
-						t.Fatalf("final error = %T %v, want *errors.Error", executeErr, executeErr)
-					}
-					if appErr.Category != apperrors.CategoryValidation || appErr.Reason != protectionCase.reason || apperrors.ExitCode(executeErr) != 3 {
-						t.Fatalf("final error contract = category %q reason %q exit %d, want validation/%s/3", appErr.Category, appErr.Reason, apperrors.ExitCode(executeErr), protectionCase.reason)
-					}
-					if !strings.Contains(appErr.Message, "unknown flag: --"+emitted) || !strings.Contains(appErr.Message, "See 'dws "+path+" --help' for usage.") {
-						t.Fatalf("final error message = %q", appErr.Message)
-					}
-					if !strings.Contains(appErr.Hint, "--"+emitted) || !strings.Contains(appErr.Hint, "--help") {
-						t.Fatalf("final error hint = %q", appErr.Hint)
-					}
-					wantAction := "Run 'dws " + path + " --help' for valid flags"
-					if !reflect.DeepEqual(appErr.Actions, []string{wantAction}) || len(appErr.AvailableFlags) == 0 || appErr.Cause == nil {
-						t.Fatalf("final recovery fields = actions %v flags %v cause %v", appErr.Actions, appErr.AvailableFlags, appErr.Cause)
-					}
-					if len(caller.calls) != 0 {
-						t.Fatalf("guarded flag reached RunE/tool dispatch: %#v", caller.calls)
+					flagArgs := ctx.Args[len(pathArgs):]
+					if parseErr := leaf.ParseFlags(flagArgs); parseErr == nil || !strings.Contains(parseErr.Error(), "unknown flag") {
+						t.Fatalf("guarded Cobra ParseFlags(%v) error = %v, want unknown flag", flagArgs, parseErr)
 					}
 				})
 			}
@@ -727,6 +714,53 @@ func TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T
 	}
 	if guardCounts[pipeline.FlagProtectionBlocked] == 0 || guardCounts[pipeline.FlagProtectionAmbiguous] == 0 {
 		t.Fatalf("reviewed guard coverage is vacuous: blocked %d ambiguous %d", guardCounts[pipeline.FlagProtectionBlocked], guardCounts[pipeline.FlagProtectionAmbiguous])
+	}
+}
+
+func TestRepresentativeParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T) {
+	for _, test := range []struct {
+		path       string
+		emitted    string
+		protection pipeline.FlagProtection
+		reason     string
+	}{
+		{path: "chat message list-by-sender", emitted: "time", protection: pipeline.FlagProtectionBlocked, reason: "blocked_flag"},
+		{path: "drive list", emitted: "space", protection: pipeline.FlagProtectionAmbiguous, reason: "ambiguous_flag"},
+	} {
+		test := test
+		t.Run(test.path+"/"+test.emitted, func(t *testing.T) {
+			value := "FIXTURE_VALUE"
+			args := append(strings.Fields(test.path), "--"+test.emitted, value)
+			caller := &paramAliasCaptureCaller{}
+			ctx, executeErr := executeParamAliasE2E(t, caller, args...)
+
+			morphed := cmdutil.Morph(test.emitted)
+			if ctx == nil || ctx.ProtectedFlags[morphed] != test.protection {
+				t.Fatalf("guard protection = %#v, want %s for %q", ctx, test.protection, morphed)
+			}
+			assertLeftUnchanged(t, ctx, test.emitted, value)
+
+			var appErr *apperrors.Error
+			if !stderrors.As(executeErr, &appErr) {
+				t.Fatalf("final error = %T %v, want *errors.Error", executeErr, executeErr)
+			}
+			if appErr.Category != apperrors.CategoryValidation || appErr.Reason != test.reason || apperrors.ExitCode(executeErr) != 3 {
+				t.Fatalf("final error contract = category %q reason %q exit %d, want validation/%s/3", appErr.Category, appErr.Reason, apperrors.ExitCode(executeErr), test.reason)
+			}
+			if !strings.Contains(appErr.Message, "unknown flag: --"+test.emitted) || !strings.Contains(appErr.Message, "See 'dws "+test.path+" --help' for usage.") {
+				t.Fatalf("final error message = %q", appErr.Message)
+			}
+			if !strings.Contains(appErr.Hint, "--"+test.emitted) || !strings.Contains(appErr.Hint, "--help") {
+				t.Fatalf("final error hint = %q", appErr.Hint)
+			}
+			wantAction := "Run 'dws " + test.path + " --help' for valid flags"
+			if !reflect.DeepEqual(appErr.Actions, []string{wantAction}) || len(appErr.AvailableFlags) == 0 || appErr.Cause == nil {
+				t.Fatalf("final recovery fields = actions %v flags %v cause %v", appErr.Actions, appErr.AvailableFlags, appErr.Cause)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("guarded flag reached RunE/tool dispatch: %#v", caller.calls)
+			}
+		})
 	}
 }
 

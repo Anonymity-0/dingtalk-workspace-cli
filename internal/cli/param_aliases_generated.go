@@ -843,12 +843,6 @@ var generatedParamAliases = []ParamAliasEntry{
 		Blocked: []string{"conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "name", "open-conversation-ids", "source", "src-conversation-id", "target"},
 	},
 	{
-		CLIPath: "chat media upload",
-		Aliases: map[string]string{
-			"file-path": "file",
-		},
-	},
-	{
 		CLIPath: "chat message add-emoji",
 		Aliases: map[string]string{
 			"chat-id":              "conversation-id",
@@ -901,8 +895,6 @@ var generatedParamAliases = []ParamAliasEntry{
 			"chat-id":         "open-conversation-id",
 			"conversation-id": "open-conversation-id",
 			"group":           "open-conversation-id",
-			"msg-id":          "message-id",
-			"open-message-id": "message-id",
 		},
 		Blocked: []string{"conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "id", "message-ids", "msg-ids", "name", "open-conversation-ids", "open-message-ids", "open-task-id", "ref-msg-id", "source", "src-conversation-id", "src-msg-id", "target", "topic-id"},
 	},

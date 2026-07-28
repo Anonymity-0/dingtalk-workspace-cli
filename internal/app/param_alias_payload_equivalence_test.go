@@ -4,9 +4,6 @@
 package app
 
 import (
-	"fmt"
-	"io"
-	"net/http"
 	"reflect"
 	"strings"
 	"testing"
@@ -71,7 +68,6 @@ var paramAliasCompleteCommands = map[string][]string{
 	"chat message send":                        {"chat", "message", "send", "--user", "D-recipient", "--text", "hello fixture", "--uuid", "param-alias-equivalence", "--yes"},
 	"chat message send-by-bot":                 {"chat", "message", "send-by-bot", "--robot-code", "robot-1", "--group", "fixture-conversation", "--title", "Fixture Alert", "--text", "@user-1 @user-2 fixture", "--at-user-ids", "user-1,user-2", "--yes"},
 	"chat message send-by-webhook":             {"chat", "message", "send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
-	"chat media upload":                        {"chat", "media", "upload", "--file", "../../go.mod", "--type", "image"},
 	"contact +dept-members":                    {"contact", "+dept-members", "--dept", "Fixture Dept"},
 	"contact +list-sub-depts":                  {"contact", "+list-sub-depts", "--dept", "1"},
 	"contact +resolve-dept":                    {"contact", "+resolve-dept", "--name", "Fixture Dept"},
@@ -140,7 +136,6 @@ var paramAliasNewIMCases = []struct {
 	{command: "chat category create", emitted: "name", canonical: "title"},
 	{command: "chat category create-smart", emitted: "title", canonical: "name"},
 	{command: "chat category rename", emitted: "name", canonical: "title"},
-	{command: "chat media upload", emitted: "file-path", canonical: "file"},
 	{command: "chat message list", emitted: "start", canonical: "time"},
 	{command: "chat message list-by-sender", emitted: "user-id", canonical: "sender-user-id"},
 	{command: "chat message list-by-sender", emitted: "open-dingtalk-id", canonical: "sender-open-dingtalk-id"},
@@ -278,71 +273,9 @@ func paramAliasCompleteCommand(command, canonical string) ([]string, bool) {
 	return complete, ok
 }
 
-type paramAliasRoundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f paramAliasRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-
-// executeParamAliasPayloadE2E captures the final HTTP multipart request for
-// chat media upload. Other commands continue to use the MCP/runner capture in
-// executeParamAliasE2E. This keeps the equivalence assertion at the actual
-// transport boundary for both kinds of command.
 func executeParamAliasPayloadE2E(t *testing.T, caller *paramAliasCaptureCaller, args ...string) (*pipeline.Context, error) {
 	t.Helper()
-	if len(args) < 3 || args[0] != "chat" || args[1] != "media" || args[2] != "upload" {
-		return executeParamAliasE2E(t, caller, args...)
-	}
-
-	t.Setenv("DWS_CLIENT_ID", "fixture-client")
-	t.Setenv("DWS_CLIENT_SECRET", "fixture-secret")
-	originalTransport := http.DefaultTransport
-	http.DefaultTransport = paramAliasRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		switch req.URL.Path {
-		case "/gettoken":
-			return paramAliasHTTPResponse(req, `{"access_token":"fixture-access-token","errcode":0}`), nil
-		case "/media/upload":
-			if err := req.ParseMultipartForm(1 << 20); err != nil {
-				return nil, fmt.Errorf("parse media upload multipart form: %w", err)
-			}
-			if req.MultipartForm != nil {
-				defer req.MultipartForm.RemoveAll()
-			}
-			file, header, err := req.FormFile("media")
-			if err != nil {
-				return nil, fmt.Errorf("read media upload part: %w", err)
-			}
-			defer file.Close()
-			content, err := io.ReadAll(file)
-			if err != nil {
-				return nil, fmt.Errorf("read media upload content: %w", err)
-			}
-			caller.calls = append(caller.calls, paramAliasToolCall{
-				server: "oapi.dingtalk.com",
-				tool:   "media/upload",
-				args: map[string]any{
-					"method":   req.Method,
-					"type":     req.URL.Query().Get("type"),
-					"filename": header.Filename,
-					"content":  string(content),
-				},
-			})
-			return paramAliasHTTPResponse(req, `{"media_id":"fixture-media-id","errcode":0}`), nil
-		default:
-			return nil, fmt.Errorf("unexpected parameter-alias HTTP request: %s %s", req.Method, req.URL.String())
-		}
-	})
-	defer func() { http.DefaultTransport = originalTransport }()
 	return executeParamAliasE2E(t, caller, args...)
-}
-
-func paramAliasHTTPResponse(req *http.Request, body string) *http.Response {
-	return &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader(body)),
-		Request:    req,
-	}
 }
 
 func replaceLongFlag(args []string, canonical, emitted string) ([]string, int) {
