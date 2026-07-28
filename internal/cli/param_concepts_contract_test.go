@@ -179,3 +179,134 @@ func TestDecodeParamConceptsEnforcesReviewedConstraints(t *testing.T) {
 		t.Fatalf("decodeParamConcepts() concepts = %#v", got.Concepts)
 	}
 }
+
+func validParamConceptSpecFixture() paramConceptSpec {
+	return paramConceptSpec{
+		Denotes:       "a reviewed value",
+		CanonicalHint: "query",
+		Members:       []string{"query"},
+		Excludes:      []string{"name"},
+		Commands:      []string{"demo run"},
+		Risk:          "green",
+	}
+}
+
+func TestDecodeParamConceptsRemainingSyntaxEdges(t *testing.T) {
+	valid := `{"$schema":"./param_concepts.schema.json","version":1,` +
+		`"concepts":{"c_one":{"denotes":"d","canonical_hint":"query","members":["query"],"commands":["demo run"],"risk":"green"}}}`
+	if _, err := decodeParamConcepts([]byte(valid + ` {}`)); err == nil || !strings.Contains(err.Error(), "multiple JSON values") {
+		t.Fatalf("multiple JSON values error = %v", err)
+	}
+
+	withEmptyMorphDescription := strings.Replace(
+		valid,
+		`"concepts":`,
+		`"morphological_rules":{"camel":{"desc":""}},"concepts":`,
+		1,
+	)
+	if _, err := decodeParamConcepts([]byte(withEmptyMorphDescription)); err == nil || !strings.Contains(err.Error(), "empty desc") {
+		t.Fatalf("empty morph description error = %v", err)
+	}
+}
+
+func TestDecodeParamConceptSpecsRemainingValidationEdges(t *testing.T) {
+	base := validParamConceptSpecFixture()
+	invalidCanonical := base
+	invalidCanonical.CanonicalHint = "bad token"
+	invalidMember := base
+	invalidMember.Members = []string{"bad token"}
+	repeatedMember := base
+	repeatedMember.Members = []string{"query", "query"}
+	invalidExclude := base
+	invalidExclude.Excludes = []string{"bad token"}
+	repeatedExclude := base
+	repeatedExclude.Excludes = []string{"name", "name"}
+	invalidCommand := base
+	invalidCommand.Commands = []string{"demo /bad"}
+	repeatedCommand := base
+	repeatedCommand.Commands = []string{"demo run", "demo run"}
+
+	tests := map[string]map[string]paramConceptSpec{
+		"invalid canonical hint": {"c_one": invalidCanonical},
+		"invalid member":         {"c_one": invalidMember},
+		"repeated member":        {"c_one": repeatedMember},
+		"invalid exclude":        {"c_one": invalidExclude},
+		"repeated exclude":       {"c_one": repeatedExclude},
+		"invalid command":        {"c_one": invalidCommand},
+		"repeated command":       {"c_one": repeatedCommand},
+		"cross-concept member": {
+			"c_one": base,
+			"c_two": base,
+		},
+	}
+	for name, specs := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := decodeParamConceptSpecs(specs); err == nil {
+				t.Fatal("decodeParamConceptSpecs() unexpectedly accepted invalid input")
+			}
+		})
+	}
+}
+
+func TestDecodeParamCommandOverridesRemainingValidationEdges(t *testing.T) {
+	byConcept := map[string]Concept{"c_one": {ID: "c_one"}}
+	tests := map[string]map[string]paramCommandOverride{
+		"invalid path": {
+			" demo run": {Block: []string{"name"}},
+		},
+		"invalid bind flag": {
+			"demo run": {Bind: map[string]string{"bad token": "c_one"}},
+		},
+		"invalid scoped emitted": {
+			"demo run": {ScopedAliases: map[string]string{"bad token": "query"}},
+		},
+		"invalid scoped target": {
+			"demo run": {ScopedAliases: map[string]string{"keyword": "bad token"}},
+		},
+		"invalid block token": {
+			"demo run": {Block: []string{"bad token"}},
+		},
+		"repeated ambiguous token": {
+			"demo run": {Ambiguous: []string{"uid", "uid"}},
+		},
+	}
+	for name, specs := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := decodeParamCommandOverrides(specs, byConcept); err == nil {
+				t.Fatal("decodeParamCommandOverrides() unexpectedly accepted invalid input")
+			}
+		})
+	}
+}
+
+func TestDecodeParamFixtureCasesRemainingValidationEdges(t *testing.T) {
+	tests := map[string]paramFixtureCaseSpec{
+		"invalid command": {Command: " demo run", Emitted: "query", Expect: "query"},
+		"invalid emitted": {Command: "demo run", Emitted: "bad token", Expect: "query"},
+		"empty expect":    {Command: "demo run", Emitted: "query", Expect: " "},
+		"invalid expect":  {Command: "demo run", Emitted: "query", Expect: "bad token"},
+		"negative occ":    {Command: "demo run", Emitted: "query", Expect: "query", Occ: -1},
+	}
+	for name, fixture := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := decodeParamFixtureCases(&paramValidationFixtureSpec{Cases: []paramFixtureCaseSpec{fixture}}); err == nil {
+				t.Fatal("decodeParamFixtureCases() unexpectedly accepted invalid input")
+			}
+		})
+	}
+}
+
+func TestParamConceptPathAndTokenValidationEdges(t *testing.T) {
+	if validParamCommandPath(" demo run") {
+		t.Fatal("command path with surrounding whitespace was accepted")
+	}
+	if validParamCommandPath("demo /bad") {
+		t.Fatal("command path with an invalid token was accepted")
+	}
+	if err := validParamTokenList("demo run", "block", []string{"bad token"}); err == nil {
+		t.Fatal("invalid parameter token was accepted")
+	}
+	if err := validParamTokenList("demo run", "block", []string{"uid", "uid"}); err == nil {
+		t.Fatal("repeated parameter token was accepted")
+	}
+}

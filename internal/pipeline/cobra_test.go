@@ -182,3 +182,30 @@ func TestRunPreParseResolvesCommandPastLeadingPersistentFlags(t *testing.T) {
 		})
 	}
 }
+
+func TestCommandTraversalFlagTokenEdges(t *testing.T) {
+	raw := []string{"child"}
+	if got := argsForCommandTraversal(nil, raw); !reflect.DeepEqual(got, raw) {
+		t.Fatalf("nil-root traversal args = %v", got)
+	}
+	root := &cobra.Command{Use: "root"}
+	if got := argsForCommandTraversal(root, nil); got != nil {
+		t.Fatalf("empty traversal args = %v", got)
+	}
+	root.PersistentFlags().BoolP("verbose", "v", false, "")
+	root.PersistentFlags().StringP("format", "f", "", "")
+	if got := argsForCommandTraversal(root, []string{"--", "--verbose", "child"}); !reflect.DeepEqual(got, []string{"--", "--verbose", "child"}) {
+		t.Fatalf("double-dash traversal args = %v", got)
+	}
+
+	if flag, inline, matched := persistentFlagToken(nil, "--verbose"); flag != nil || inline || matched {
+		t.Fatalf("nil flag set matched: %#v, %v, %v", flag, inline, matched)
+	}
+	if flag, inline, matched := persistentFlagToken(root.PersistentFlags(), "-x"); flag != nil || inline || matched {
+		t.Fatalf("unknown shorthand matched: %#v, %v, %v", flag, inline, matched)
+	}
+	flag, inline, matched := persistentFlagToken(root.PersistentFlags(), "-vv")
+	if !matched || !inline || flag == nil || flag.Name != "verbose" {
+		t.Fatalf("boolean shorthand cluster = %#v, %v, %v", flag, inline, matched)
+	}
+}

@@ -313,7 +313,9 @@ func TestChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
 				t.Fatalf("canonical payload = %#v", canonicalCaller.calls[0].args)
 			}
 
-			for _, alias := range []string{"group-id", "chat-id", "open-conversation-id"} {
+			// Numeric --group-id is a different identifier domain and is covered
+			// by TestAllReviewedParamAliasGuardsReachFinalErrorsWithoutDispatch.
+			for _, alias := range []string{"chat-id", "open-conversation-id"} {
 				t.Run(alias, func(t *testing.T) {
 					aliasArgs := append([]string(nil), test.command...)
 					aliasArgs = append(aliasArgs, "--"+alias, "conversation-1")
@@ -332,6 +334,176 @@ func TestChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
+	entries, err := cli.ReduceParamAliases(NewRootCommand())
+	if err != nil {
+		t.Fatalf("ReduceParamAliases() error = %v", err)
+	}
+
+	chatEntries := 0
+	aliasCases := 0
+	guardCases := map[pipeline.FlagProtection]int{}
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.CLIPath, "chat ") {
+			continue
+		}
+		chatEntries++
+
+		aliases := make([]string, 0, len(entry.Aliases))
+		for emitted := range entry.Aliases {
+			aliases = append(aliases, emitted)
+		}
+		sort.Strings(aliases)
+		for _, emitted := range aliases {
+			emitted := emitted
+			canonical := entry.Aliases[emitted]
+			aliasCases++
+			t.Run(entry.CLIPath+"/alias/"+emitted, func(t *testing.T) {
+				root := NewRootCommand()
+				leaf := resolveParamLeaf(root, entry.CLIPath)
+				if leaf == nil {
+					t.Fatalf("generated chat alias path %q is not runnable", entry.CLIPath)
+				}
+				value := paramFixtureValue(leaf, emitted, canonical)
+				rawArgs := append(strings.Fields(entry.CLIPath), "--"+emitted, value)
+				ctx, runErr := pipeline.RunPreParseArgs(root, newPipelineEngine(), rawArgs)
+				if runErr != nil {
+					t.Fatalf("RunPreParseArgs(%v) error = %v", rawArgs, runErr)
+				}
+				if ctx == nil {
+					t.Fatal("RunPreParseArgs returned nil context")
+				}
+				flagArgs := ctx.Args[len(strings.Fields(entry.CLIPath)):]
+				if len(flagArgs) < 2 || flagArgs[0] != "--"+canonical || flagArgs[1] != value {
+					t.Fatalf("runtime alias %q => %q produced args %v", emitted, canonical, ctx.Args)
+				}
+				if parseErr := leaf.ParseFlags(flagArgs); parseErr != nil {
+					t.Fatalf("canonical Cobra ParseFlags(%v) error = %v", flagArgs, parseErr)
+				}
+			})
+		}
+
+		for _, guard := range []struct {
+			protection pipeline.FlagProtection
+			emitted    []string
+		}{
+			{protection: pipeline.FlagProtectionBlocked, emitted: entry.Blocked},
+			{protection: pipeline.FlagProtectionAmbiguous, emitted: entry.Ambiguous},
+		} {
+			for _, emitted := range guard.emitted {
+				emitted := emitted
+				protection := guard.protection
+				guardCases[protection]++
+				t.Run(entry.CLIPath+"/"+string(protection)+"/"+emitted, func(t *testing.T) {
+					root := NewRootCommand()
+					leaf := resolveParamLeaf(root, entry.CLIPath)
+					if leaf == nil {
+						t.Fatalf("generated chat guard path %q is not runnable", entry.CLIPath)
+					}
+					value := paramFixtureValue(leaf, emitted, "did-you-mean:"+string(protection))
+					rawArgs := append(strings.Fields(entry.CLIPath), "--"+emitted, value)
+					ctx, runErr := pipeline.RunPreParseArgs(root, newPipelineEngine(), rawArgs)
+					if runErr != nil {
+						t.Fatalf("RunPreParseArgs(%v) error = %v", rawArgs, runErr)
+					}
+					morphed := cmdutil.Morph(emitted)
+					if ctx == nil || ctx.ProtectedFlags[morphed] != protection {
+						t.Fatalf("runtime guard %q protection = %#v, want %s", emitted, ctx, protection)
+					}
+					assertLeftUnchanged(t, ctx, emitted, value)
+					flagArgs := ctx.Args[len(strings.Fields(entry.CLIPath)):]
+					if parseErr := leaf.ParseFlags(flagArgs); parseErr == nil || !strings.Contains(parseErr.Error(), "unknown flag") {
+						t.Fatalf("guarded Cobra ParseFlags(%v) error = %v, want unknown flag", flagArgs, parseErr)
+					}
+				})
+			}
+		}
+	}
+
+	if chatEntries == 0 || aliasCases == 0 || guardCases[pipeline.FlagProtectionBlocked] == 0 || guardCases[pipeline.FlagProtectionAmbiguous] == 0 {
+		t.Fatalf("chat parameter coverage is vacuous: entries=%d aliases=%d blocked=%d ambiguous=%d", chatEntries, aliasCases, guardCases[pipeline.FlagProtectionBlocked], guardCases[pipeline.FlagProtectionAmbiguous])
+	}
+	t.Logf("verified generated chat parameter routes: entries=%d aliases=%d blocked=%d ambiguous=%d", chatEntries, aliasCases, guardCases[pipeline.FlagProtectionBlocked], guardCases[pipeline.FlagProtectionAmbiguous])
+}
+
+func TestIMUserIDHallucinationRoutes(t *testing.T) {
+	tests := []struct {
+		command string
+		want    string
+	}{
+		// These paths are reduced by the reviewed user_id concept.
+		{command: "chat +chat-role-query-user", want: "user"},
+		{command: "chat +chat-role-set-user", want: "user"},
+		{command: "chat +messages-list-direct", want: "user"},
+		{command: "chat chmod", want: "user"},
+		{command: "chat message list", want: "user"},
+		{command: "chat message send", want: "user"},
+
+		// These commands already own a hidden --userId compatibility flag.
+		// The format/spelling handler rewrites --user-id to that real flag, and
+		// the command's existing flagOrFallback wiring preserves its semantics.
+		{command: "chat conversation-info", want: "userId"},
+		{command: "chat group transfer-owner", want: "userId"},
+		{command: "chat group-role query-user", want: "userId"},
+		{command: "chat group-role remove-user", want: "userId"},
+		{command: "chat group-role set-user", want: "userId"},
+		{command: "chat group set-admin", want: "userId"},
+		{command: "chat group-mute-member", want: "userId"},
+		{command: "chat message read-status", want: "userId"},
+		{command: "chat message search-advanced", want: "userId"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.command, func(t *testing.T) {
+			root := NewRootCommand()
+			leaf := resolveParamLeaf(root, test.command)
+			if leaf == nil {
+				t.Fatalf("IM command %q is not runnable", test.command)
+			}
+			rawArgs := append(strings.Fields(test.command), "--user-id", "fixture-user")
+			ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), rawArgs)
+			if err != nil {
+				t.Fatalf("RunPreParseArgs(%v) error = %v", rawArgs, err)
+			}
+			if ctx == nil {
+				t.Fatal("RunPreParseArgs returned nil context")
+			}
+			flagArgs := ctx.Args[len(strings.Fields(test.command)):]
+			if len(flagArgs) != 2 || flagArgs[0] != "--"+test.want || flagArgs[1] != "fixture-user" {
+				t.Fatalf("--user-id route = %v, want --%s fixture-user", flagArgs, test.want)
+			}
+			if err := leaf.ParseFlags(flagArgs); err != nil {
+				t.Fatalf("Cobra ParseFlags(%v) error = %v", flagArgs, err)
+			}
+		})
+	}
+}
+
+func TestHiddenIMListDirectRemainsOutsideCentralAliasTable(t *testing.T) {
+	const command = "chat message list-direct"
+	if _, ok := cli.LookupParamAlias(command); ok {
+		t.Fatalf("hidden command %q unexpectedly entered the public generated alias table", command)
+	}
+
+	root := NewRootCommand()
+	leaf := resolveParamLeaf(root, command)
+	if leaf == nil || !leaf.Hidden {
+		t.Fatalf("%q must remain a live hidden compatibility command", command)
+	}
+	rawArgs := append(strings.Fields(command), "--user-id", "fixture-user")
+	ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), rawArgs)
+	if err != nil {
+		t.Fatalf("RunPreParseArgs(%v) error = %v", rawArgs, err)
+	}
+	if ctx == nil {
+		t.Fatal("RunPreParseArgs returned nil context")
+	}
+	flagArgs := ctx.Args[len(strings.Fields(command)):]
+	if err := leaf.ParseFlags(flagArgs); err == nil || !strings.Contains(err.Error(), "unknown flag") {
+		t.Fatalf("hidden command ParseFlags(%v) error = %v, want unknown flag", flagArgs, err)
 	}
 }
 

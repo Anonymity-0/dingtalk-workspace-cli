@@ -5,10 +5,13 @@
 package cli
 
 import (
+	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
+	"github.com/spf13/cobra"
 )
 
 // realMap builds a per-leaf real-flag table keyed by the shared Morph so the
@@ -29,6 +32,229 @@ func conceptFixture() []Concept {
 		{ID: "pagination_size", CanonicalHint: "limit", Members: []string{"limit", "size", "page-size", "max-results"}},
 		{ID: "base_id", CanonicalHint: "base-id", Members: []string{"base", "base-id", "base-token"}},
 		{ID: "user_id", CanonicalHint: "user-id", Members: []string{"user", "users", "user-id", "uid"}},
+	}
+}
+
+func useParamConceptLoader(t *testing.T, concepts ParamConcepts, err error) {
+	t.Helper()
+	previous := loadReviewedParamConcepts
+	loadReviewedParamConcepts = func() (ParamConcepts, error) { return concepts, err }
+	t.Cleanup(func() { loadReviewedParamConcepts = previous })
+}
+
+func TestReduceParamAliasesLoadsAndValidatesSourceTree(t *testing.T) {
+	t.Run("load failure", func(t *testing.T) {
+		useParamConceptLoader(t, ParamConcepts{}, errors.New("fixture load"))
+		if _, err := ReduceParamAliases(&cobra.Command{Use: "dws"}); err == nil || !strings.Contains(err.Error(), "fixture load") {
+			t.Fatalf("ReduceParamAliases() error = %v", err)
+		}
+	})
+
+	t.Run("nil root", func(t *testing.T) {
+		useParamConceptLoader(t, ParamConcepts{Version: 1}, nil)
+		if _, err := ReduceParamAliases(nil); err == nil || !strings.Contains(err.Error(), "root is nil") {
+			t.Fatalf("ReduceParamAliases(nil) error = %v", err)
+		}
+	})
+
+	t.Run("real tree", func(t *testing.T) {
+		concepts := ParamConcepts{
+			Version: 1,
+			Concepts: []Concept{
+				{ID: "query", Members: []string{"query", "keyword"}, Commands: []string{"demo run"}},
+				{ID: "user_id", Members: []string{"user-id", "uid"}, Commands: []string{"demo run"}},
+			},
+			Overrides: []CommandOverride{
+				{CommandPath: "alpha", Block: []string{"unsafe"}},
+				{CommandPath: "demo run", Bind: map[string]string{"id": "user_id"}},
+			},
+		}
+		useParamConceptLoader(t, concepts, nil)
+
+		root := &cobra.Command{Use: "dws"}
+		alpha := &cobra.Command{Use: "alpha", Run: func(*cobra.Command, []string) {}}
+		alpha.Flags().String("name", "", "name")
+		demo := &cobra.Command{Use: "demo", Run: func(*cobra.Command, []string) {}}
+		run := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
+		run.Flags().String("query", "", "query")
+		run.Flags().String("id", "", "id")
+		demo.AddCommand(run)
+		root.AddCommand(alpha, demo)
+		root.AddCommand(&cobra.Command{Use: "help", Run: func(*cobra.Command, []string) {}})
+		root.AddCommand(&cobra.Command{Use: "hidden", Hidden: true, Run: func(*cobra.Command, []string) {}})
+
+		entries, err := ReduceParamAliases(root)
+		if err != nil {
+			t.Fatalf("ReduceParamAliases() error = %v", err)
+		}
+		if len(entries) != 2 || entries[0].CLIPath != "alpha" || entries[1].CLIPath != "demo run" {
+			t.Fatalf("entries = %#v", entries)
+		}
+		if entries[1].Aliases["keyword"] != "query" || entries[1].Aliases["uid"] != "id" {
+			t.Fatalf("demo aliases = %#v", entries[1].Aliases)
+		}
+	})
+
+	t.Run("stale and unbound review inputs", func(t *testing.T) {
+		concepts := ParamConcepts{
+			Version: 1,
+			Concepts: []Concept{
+				{ID: "missing", Members: []string{"missing"}, Commands: []string{"demo run"}},
+				{ID: "stale", Members: []string{"stale"}, Commands: []string{"ghost run"}},
+			},
+			Overrides: []CommandOverride{{CommandPath: "ghost run", Block: []string{"unsafe"}}},
+		}
+		useParamConceptLoader(t, concepts, nil)
+		root := &cobra.Command{Use: "dws"}
+		demo := &cobra.Command{Use: "demo"}
+		run := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
+		run.Flags().String("query", "", "query")
+		demo.AddCommand(run)
+		root.AddCommand(demo)
+
+		_, err := ReduceParamAliases(root)
+		for _, want := range []string{"has no matching real flag", "does not match any runnable Cobra leaf", "does not match any runnable Cobra command"} {
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("ReduceParamAliases() error = %v, want %q", err, want)
+			}
+		}
+	})
+}
+
+func TestParamAliasHelperEdges(t *testing.T) {
+	walkRunnableParamCommands(nil, func(*cobra.Command) { t.Fatal("nil root was visited") })
+	helpOnly := &cobra.Command{Use: "demo"}
+	helpOnly.Flags().String("help", "", "help")
+	if got := realFlagsByMorph(helpOnly); len(got) != 0 {
+		t.Fatalf("help flag entered the real parameter table: %#v", got)
+	}
+
+	flags := []realFlag{{name: "same", hidden: true}}
+	flags = appendRealFlag(flags, realFlag{name: "same"})
+	if len(flags) != 1 || flags[0].hidden {
+		t.Fatalf("visible duplicate did not replace hidden registration: %#v", flags)
+	}
+	flags = appendRealFlag(flags, realFlag{name: "same", hidden: true})
+	if len(flags) != 1 || flags[0].hidden {
+		t.Fatalf("hidden duplicate replaced visible registration: %#v", flags)
+	}
+	flags = appendRealFlag(flags, realFlag{name: "alpha"})
+	if !reflect.DeepEqual([]string{flags[0].name, flags[1].name}, []string{"alpha", "same"}) {
+		t.Fatalf("new real flags are not sorted: %#v", flags)
+	}
+
+	candidates := []realFlag{{name: "hidden", hidden: true}, {name: "visible"}, {name: "visible"}}
+	if got := distinctRealNames(candidates, true); !reflect.DeepEqual(got, []string{"visible"}) {
+		t.Fatalf("visible names = %v", got)
+	}
+	if got := canonicalRealName([]realFlag{{name: "hidden", hidden: true}}); got != "hidden" {
+		t.Fatalf("hidden-only canonical = %q", got)
+	}
+	if got := canonicalRealName(nil); got != "" {
+		t.Fatalf("empty canonical = %q", got)
+	}
+	if got := sortedUnique(nil); got != nil {
+		t.Fatalf("sortedUnique(nil) = %#v", got)
+	}
+	if got := sortedUnique([]string{"b", "a", "b"}); !reflect.DeepEqual(got, []string{"a", "b"}) {
+		t.Fatalf("sortedUnique() = %v", got)
+	}
+
+	real := realMap(realFlag{name: "query"}, realFlag{name: "id"})
+	if !conceptHasRealFlag(Concept{ID: "query", Members: []string{"query"}}, CommandOverride{}, real) {
+		t.Fatal("concept member did not match a real flag")
+	}
+	if !conceptHasRealFlag(Concept{ID: "user", Members: []string{"user-id"}}, CommandOverride{Bind: map[string]string{"id": "user"}}, real) {
+		t.Fatal("reviewed bind did not match a real flag")
+	}
+	if conceptHasRealFlag(Concept{ID: "user", Members: []string{"user-id"}}, CommandOverride{Bind: map[string]string{"missing": "user"}}, real) {
+		t.Fatal("missing reviewed bind matched a real flag")
+	}
+}
+
+func TestReduceLeafParamAliasesRemainingEdges(t *testing.T) {
+	t.Run("pending reviewed bind blocks non-real members", func(t *testing.T) {
+		entry, problems := reduceLeafParamAliases(
+			"demo cmd",
+			realMap(realFlag{name: "id"}),
+			[]Concept{{ID: "user_id", Members: []string{"user-id", "uid"}}},
+			CommandOverride{Bind: map[string]string{"id": "user_id"}, Investigate: true},
+		)
+		if len(problems) != 0 || entry == nil ||
+			!containsParamAlias(entry.Blocked, "user-id") || !containsParamAlias(entry.Blocked, "uid") {
+			t.Fatalf("pending bind entry = %#v, problems = %v", entry, problems)
+		}
+	})
+
+	t.Run("hidden-only canonical", func(t *testing.T) {
+		entry, problems := reduceLeafParamAliases(
+			"demo cmd",
+			realMap(realFlag{name: "query", hidden: true}),
+			[]Concept{{ID: "query", Members: []string{"query", "keyword"}}},
+			CommandOverride{},
+		)
+		if len(problems) != 0 || entry == nil || entry.Aliases["keyword"] != "query" {
+			t.Fatalf("hidden-only entry = %#v, problems = %v", entry, problems)
+		}
+	})
+
+	t.Run("multiple hidden candidates stay unresolved", func(t *testing.T) {
+		entry, problems := reduceLeafParamAliases(
+			"demo cmd",
+			realMap(realFlag{name: "first", hidden: true}, realFlag{name: "second", hidden: true}),
+			[]Concept{{ID: "choice", Members: []string{"first", "second", "choice"}}},
+			CommandOverride{},
+		)
+		if len(problems) != 0 || entry != nil {
+			t.Fatalf("multiple hidden candidates entry = %#v, problems = %v", entry, problems)
+		}
+	})
+
+	t.Run("two concepts cannot claim one emitted spelling", func(t *testing.T) {
+		_, problems := reduceLeafParamAliases(
+			"demo cmd",
+			realMap(realFlag{name: "first"}, realFlag{name: "second"}),
+			[]Concept{
+				{ID: "first", Members: []string{"first", "shared"}},
+				{ID: "second", Members: []string{"second", "shared"}},
+			},
+			CommandOverride{},
+		)
+		if len(problems) == 0 || !strings.Contains(strings.Join(problems, "\n"), "reduces to both") {
+			t.Fatalf("alias collision problems = %v", problems)
+		}
+	})
+
+	t.Run("unclaimed exclude becomes blocked", func(t *testing.T) {
+		entry, problems := reduceLeafParamAliases(
+			"demo cmd",
+			realMap(realFlag{name: "query"}),
+			[]Concept{{ID: "query", Members: []string{"query", "keyword"}, Excludes: []string{"name"}}},
+			CommandOverride{},
+		)
+		if len(problems) != 0 || entry == nil || !containsParamAlias(entry.Blocked, "name") {
+			t.Fatalf("exclude entry = %#v, problems = %v", entry, problems)
+		}
+	})
+}
+
+func TestParamAliasEntryLookupMethods(t *testing.T) {
+	entry := ParamAliasEntry{
+		Aliases:   map[string]string{"uid": "user"},
+		Blocked:   []string{"count"},
+		Ambiguous: []string{"user-id"},
+	}
+	if got, ok := entry.ResolveAlias("uid"); !ok || got != "user" {
+		t.Fatalf("ResolveAlias(uid) = %q, %v", got, ok)
+	}
+	if _, ok := entry.ResolveAlias("missing"); ok {
+		t.Fatal("ResolveAlias(missing) unexpectedly matched")
+	}
+	if !entry.IsBlocked("count") || entry.IsBlocked("missing") {
+		t.Fatalf("blocked lookup mismatch: %#v", entry.Blocked)
+	}
+	if !entry.IsAmbiguous("user-id") || entry.IsAmbiguous("missing") {
+		t.Fatalf("ambiguous lookup mismatch: %#v", entry.Ambiguous)
 	}
 }
 

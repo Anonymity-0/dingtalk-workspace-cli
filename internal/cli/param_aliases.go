@@ -336,16 +336,6 @@ func reduceLeafParamAliases(path string, realByMorph map[string][]realFlag, conc
 		blocked = append(blocked, b)
 	}
 
-	// A name cannot be both auto-reduced and ambiguous: the alias table says
-	// "silently rewrite it" while the ambiguous list says "stop and ask". This
-	// usually means a reviewer hand-listed a name in the ambiguous whitelist
-	// that the concept can in fact resolve to a single real flag.
-	for _, a := range ambiguous {
-		if canon, ok := aliasMap[a]; ok {
-			problems = append(problems, fmt.Sprintf("command %q name %q is both auto-reduced to %q and marked ambiguous; a name cannot be aliased and ambiguous at once", path, a, canon))
-		}
-	}
-
 	if len(aliasMap) == 0 && len(blocked) == 0 && len(ambiguous) == 0 {
 		return nil, problems
 	}

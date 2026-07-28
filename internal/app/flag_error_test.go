@@ -128,3 +128,20 @@ func TestFlagErrorWithSuggestionsReviewedProtectionRoutes(t *testing.T) {
 		})
 	}
 }
+
+func TestReviewedFlagProtectionAndInstallerEdges(t *testing.T) {
+	if flag, protection, ok := reviewedFlagProtection(nil, "unknown flag: --time"); ok || flag != "" || protection != "" {
+		t.Fatalf("nil command protection = %q, %q, %v", flag, protection, ok)
+	}
+	installReviewedFlagProtectionHandlers(nil)
+
+	root := NewRootCommand()
+	cmd := mustFindCommand(t, root, "chat", "message", "list-by-sender")
+	flag, protection, ok := reviewedFlagProtection(cmd, "unknown flag: --time=value")
+	if !ok || flag != "time" || protection != "blocked" {
+		t.Fatalf("delimited protected flag = %q, %q, %v", flag, protection, ok)
+	}
+	if flag, protection, ok := reviewedFlagProtection(cmd, "unknown flag: --not-reviewed"); ok || flag != "" || protection != "" {
+		t.Fatalf("unreviewed flag protection = %q, %q, %v", flag, protection, ok)
+	}
+}

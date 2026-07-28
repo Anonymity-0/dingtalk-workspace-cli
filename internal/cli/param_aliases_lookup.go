@@ -24,8 +24,9 @@ var (
 )
 
 func buildParamAliasIndex() {
-	paramAliasIndex = make(map[string]ParamAliasEntry, len(generatedParamAliases))
-	for _, e := range generatedParamAliases {
+	entries := loadGeneratedParamAliases()
+	paramAliasIndex = make(map[string]ParamAliasEntry, len(entries))
+	for _, e := range entries {
 		paramAliasIndex[e.CLIPath] = e
 	}
 }

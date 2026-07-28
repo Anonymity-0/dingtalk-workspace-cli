@@ -4,11 +4,15 @@
 package app
 
 import (
+	"fmt"
+	"io"
+	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 )
 
 // paramAliasCompleteCommands is deliberately keyed by the exact reviewed
@@ -18,50 +22,134 @@ import (
 // target canonical flag must occur exactly once so the test can replace only
 // its spelling while holding every other input constant.
 var paramAliasCompleteCommands = map[string][]string{
-	"aitable +base-search":         {"aitable", "+base-search", "--query", "fixture"},
-	"aitable +field-get":           {"aitable", "+field-get", "--base-id", "base-1", "--table-id", "table-1"},
-	"aitable +list-tables":         {"aitable", "+list-tables", "--base", "base-1"},
-	"aitable +record-query":        {"aitable", "+record-query", "--base-id", "base-1", "--table-id", "table-1", "--query", "fixture"},
-	"aitable +record-share-url":    {"aitable", "+record-share-url", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1"},
-	"aitable +table-get":           {"aitable", "+table-get", "--base-id", "base-1"},
-	"aitable record query":         {"aitable", "record", "query", "--base-id", "base-1", "--table-id", "table-1", "--limit", "7"},
-	"attendance check result":      {"attendance", "check", "result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
-	"calendar event list":          {"calendar", "event", "list", "--start", "2026-03-10T14:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--calendar-id", "primary", "--cursor", "cursor-1", "--limit", "7"},
-	"chat +group-members":          {"chat", "+group-members", "--group", "Fixture Group"},
-	"chat group members":           {"chat", "group", "members", "--id", "fixture-conversation"},
-	"chat group members add":       {"chat", "group", "members", "add", "--id", "fixture-conversation", "--users", "D-user-1"},
-	"chat group members remove":    {"chat", "group", "members", "remove", "--id", "fixture-conversation", "--users", "D-user-1", "--yes"},
-	"chat group rename":            {"chat", "group", "rename", "--id", "fixture-conversation", "--name", "Fixture Renamed Group", "--yes"},
-	"chat group set-admin":         {"chat", "group", "set-admin", "--group", "fixture-conversation", "--user", "user-1", "--yes"},
-	"chat message list":            {"chat", "message", "list", "--group", "fixture-conversation", "--time", "2026-03-10 00:00:00", "--limit", "7"},
-	"chat message list-all":        {"chat", "message", "list-all", "--start", "2026-03-10 00:00:00", "--end", "2026-03-11 00:00:00"},
-	"chat message search-advanced": {"chat", "message", "search-advanced", "--conversation-ids", "fixture-conversation", "--query", "fixture"},
-	"chat message send":            {"chat", "message", "send", "--user", "D-recipient", "--text", "hello fixture", "--uuid", "param-alias-equivalence", "--yes"},
-	"contact +dept-members":        {"contact", "+dept-members", "--dept", "Fixture Dept"},
-	"contact +list-sub-depts":      {"contact", "+list-sub-depts", "--dept", "1"},
-	"contact +resolve-dept":        {"contact", "+resolve-dept", "--name", "Fixture Dept"},
-	"contact +search-user":         {"contact", "+search-user", "--query", "Fixture User"},
-	"contact dept list-children":   {"contact", "dept", "list-children", "--dept", "1"},
-	"contact user profile get":     {"contact", "user", "profile", "get", "--staff-id", "user-1"},
-	"dev app get":                  {"dev", "app", "get", "--unified-app-id", "app-1"},
-	"devdoc article search":        {"devdoc", "article", "search", "--query", "fixture", "--page", "2", "--size", "7"},
-	"ding +receiver-status":        {"ding", "+receiver-status", "--ding-id", "ding-1"},
-	"ding message receiver-status": {"ding", "message", "receiver-status", "--ding-id", "ding-1"},
-	"ding message send":            {"ding", "message", "send", "--robot-code", "robot-1", "--content", "fixture", "--users", "user-1", "--yes"},
-	"doc +template-search":         {"doc", "+template-search", "--query", "fixture", "--source", "MY", "--limit", "7"},
-	"doc block insert":             {"doc", "block", "insert", "--node", "node-1", "--text", "fixture paragraph", "--yes"},
-	"doc block update":             {"doc", "block", "update", "--node", "node-1", "--block-id", "block-1", "--text", "fixture paragraph", "--yes"},
-	"drive info":                   {"drive", "info", "--node", "node-1", "--space-id", "space-1"},
-	"drive list":                   {"drive", "list", "--folder", "folder-1", "--limit", "7"},
-	"mail +find-mail-user":         {"mail", "+find-mail-user", "--query", "fixture", "--limit", "7"},
-	"mail folder update":           {"mail", "folder", "update", "--email", "fixture@example.com", "--id", "folder-1", "--name", "Fixture Folder", "--yes"},
-	"mail message search":          {"mail", "message", "search", "--email", "fixture@example.com", "--query", "subject:fixture"},
-	"mail thread list":             {"mail", "thread", "list", "--email", "fixture@example.com", "--folder", "folder-1", "--limit", "7"},
-	"mail user search":             {"mail", "user", "search", "--keyword", "fixture"},
-	"oa +list-executed":            {"oa", "+list-executed", "--limit", "7", "--page", "1"},
-	"oa +search-forms":             {"oa", "+search-forms", "--query", "fixture"},
-	"oa approval search-forms":     {"oa", "approval", "search-forms", "--query", "fixture"},
-	"report list":                  {"report", "list", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-10T23:59:59+08:00"},
+	"aitable +base-search":                     {"aitable", "+base-search", "--query", "fixture"},
+	"aitable +field-get":                       {"aitable", "+field-get", "--base-id", "base-1", "--table-id", "table-1"},
+	"aitable +list-tables":                     {"aitable", "+list-tables", "--base", "base-1"},
+	"aitable +record-query":                    {"aitable", "+record-query", "--base-id", "base-1", "--table-id", "table-1", "--query", "fixture"},
+	"aitable +record-share-url":                {"aitable", "+record-share-url", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1"},
+	"aitable +table-get":                       {"aitable", "+table-get", "--base-id", "base-1"},
+	"aitable record query":                     {"aitable", "record", "query", "--base-id", "base-1", "--table-id", "table-1", "--limit", "7"},
+	"attendance check result":                  {"attendance", "check", "result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
+	"attendance +check-result":                 {"attendance", "+check-result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
+	"calendar event list":                      {"calendar", "event", "list", "--start", "2026-03-10T14:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--calendar-id", "primary", "--cursor", "cursor-1", "--limit", "7"},
+	"chat +bot-find":                           {"chat", "+bot-find", "--query", "fixture", "--limit", "7"},
+	"chat +bot-search":                         {"chat", "+bot-search", "--name", "Fixture Bot", "--page", "2", "--size", "7"},
+	"chat +category-create":                    {"chat", "+category-create", "--title", "Fixture Category", "--yes"},
+	"chat +category-rename":                    {"chat", "+category-rename", "--category-id", "7", "--title", "Fixture Renamed Category", "--yes"},
+	"chat +group-members":                      {"chat", "+group-members", "--group", "Fixture Group"},
+	"chat +messages-list-direct":               {"chat", "+messages-list-direct", "--user", "user-1", "--time", "2026-03-10 00:00:00", "--limit", "7"},
+	"chat +messages-list-unread-conversations": {"chat", "+messages-list-unread-conversations", "--count", "7", "--exclude-muted"},
+	"chat +messages-send-by-webhook":           {"chat", "+messages-send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
+	"chat +send-to-group":                      {"chat", "+send-to-group", "--group", "Fixture Group", "--text", "hello fixture", "--yes"},
+	"chat +unread-chats":                       {"chat", "+unread-chats", "--count", "7", "--exclude-muted"},
+	"chat bot find":                            {"chat", "bot", "find", "--query", "fixture", "--limit", "7"},
+	"chat bot search":                          {"chat", "bot", "search", "--name", "Fixture Bot", "--page", "2", "--size", "7"},
+	"chat category create":                     {"chat", "category", "create", "--title", "Fixture Category", "--yes"},
+	"chat category create-smart":               {"chat", "category", "create-smart", "--name", "Fixture Smart Category", "--keywords", "fixture,priority", "--yes"},
+	"chat category rename":                     {"chat", "category", "rename", "--category-id", "7", "--title", "Fixture Renamed Category", "--yes"},
+	"chat group members":                       {"chat", "group", "members", "--id", "fixture-conversation"},
+	"chat group members add":                   {"chat", "group", "members", "add", "--id", "fixture-conversation", "--users", "D-user-1"},
+	"chat group members add-bot":               {"chat", "group", "members", "add-bot", "--id", "fixture-conversation", "--robot-code", "robot-1", "--yes"},
+	"chat group members list-by-ids":           {"chat", "group", "members", "list-by-ids", "--id", "fixture-conversation", "--users", "D-user-1,D-user-2"},
+	"chat group members remove":                {"chat", "group", "members", "remove", "--id", "fixture-conversation", "--users", "D-user-1", "--yes"},
+	"chat group members remove-bot":            {"chat", "group", "members", "remove-bot", "--id", "fixture-conversation", "--bot-id", "bot-1", "--yes"},
+	"chat group rename":                        {"chat", "group", "rename", "--id", "fixture-conversation", "--name", "Fixture Renamed Group", "--yes"},
+	"chat group set-admin":                     {"chat", "group", "set-admin", "--group", "fixture-conversation", "--user", "user-1", "--yes"},
+	"chat message add-emoji":                   {"chat", "message", "add-emoji", "--conversation-id", "fixture-conversation", "--msg-id", "message-1", "--emoji", "赞", "--yes"},
+	"chat message add-favorite":                {"chat", "message", "add-favorite", "--open-message-id", "message-1", "--open-conversation-id", "fixture-conversation", "--yes"},
+	"chat message combine-forward":             {"chat", "message", "combine-forward", "--src-conversation-id", "fixture-source", "--msg-ids", "message-1,message-2", "--dest-conversation-id", "fixture-destination", "--yes"},
+	"chat message forward-topic":               {"chat", "message", "forward-topic", "--src-msg-id", "message-1", "--src-conversation-id", "fixture-source", "--src-thread-id", "convThread-fixture", "--dest-conversation-id", "fixture-destination", "--yes"},
+	"chat message list":                        {"chat", "message", "list", "--group", "fixture-conversation", "--time", "2026-03-10 00:00:00", "--limit", "7"},
+	"chat message list-all":                    {"chat", "message", "list-all", "--start", "2026-03-10 00:00:00", "--end", "2026-03-11 00:00:00"},
+	"chat message list-by-sender":              {"chat", "message", "list-by-sender", "--sender-user-id", "user-1", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--limit", "7", "--cursor", "0"},
+	"chat message list-favorites":              {"chat", "message", "list-favorites", "--cursor", "2", "--size", "7"},
+	"chat message list-by-ids":                 {"chat", "message", "list-by-ids", "--msg-ids", "message-1,message-2"},
+	"chat message list-unread-conversations":   {"chat", "message", "list-unread-conversations", "--count", "7", "--exclude-muted"},
+	"chat message recall":                      {"chat", "message", "recall", "--conversation-id", "fixture-conversation", "--msg-id", "message-1", "--yes"},
+	"chat message reply":                       {"chat", "message", "reply", "--conversation-id", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", "D-sender", "--text", "hello fixture", "--yes"},
+	"chat message search-advanced":             {"chat", "message", "search-advanced", "--conversation-ids", "fixture-conversation", "--query", "fixture"},
+	"chat message send":                        {"chat", "message", "send", "--user", "D-recipient", "--text", "hello fixture", "--uuid", "param-alias-equivalence", "--yes"},
+	"chat message send-by-bot":                 {"chat", "message", "send-by-bot", "--robot-code", "robot-1", "--group", "fixture-conversation", "--title", "Fixture Alert", "--text", "@user-1 @user-2 fixture", "--at-user-ids", "user-1,user-2", "--yes"},
+	"chat message send-by-webhook":             {"chat", "message", "send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
+	"chat media upload":                        {"chat", "media", "upload", "--file", "../../go.mod", "--type", "image"},
+	"contact +dept-members":                    {"contact", "+dept-members", "--dept", "Fixture Dept"},
+	"contact +list-sub-depts":                  {"contact", "+list-sub-depts", "--dept", "1"},
+	"contact +resolve-dept":                    {"contact", "+resolve-dept", "--name", "Fixture Dept"},
+	"contact +search-user":                     {"contact", "+search-user", "--query", "Fixture User"},
+	"contact dept list-children":               {"contact", "dept", "list-children", "--dept", "1"},
+	"contact user profile get":                 {"contact", "user", "profile", "get", "--staff-id", "user-1"},
+	"dev app get":                              {"dev", "app", "get", "--unified-app-id", "app-1"},
+	"devdoc article search":                    {"devdoc", "article", "search", "--query", "fixture", "--page", "2", "--size", "7"},
+	"ding +receiver-status":                    {"ding", "+receiver-status", "--ding-id", "ding-1"},
+	"ding message receiver-status":             {"ding", "message", "receiver-status", "--ding-id", "ding-1"},
+	"ding message send":                        {"ding", "message", "send", "--robot-code", "robot-1", "--content", "fixture", "--users", "user-1", "--yes"},
+	"doc +template-search":                     {"doc", "+template-search", "--query", "fixture", "--source", "MY", "--limit", "7"},
+	"doc block insert":                         {"doc", "block", "insert", "--node", "node-1", "--text", "fixture paragraph", "--yes"},
+	"doc block update":                         {"doc", "block", "update", "--node", "node-1", "--block-id", "block-1", "--text", "fixture paragraph", "--yes"},
+	"drive info":                               {"drive", "info", "--node", "node-1", "--space-id", "space-1"},
+	"drive list":                               {"drive", "list", "--folder", "folder-1", "--limit", "7"},
+	"mail +find-mail-user":                     {"mail", "+find-mail-user", "--query", "fixture", "--limit", "7"},
+	"mail folder update":                       {"mail", "folder", "update", "--email", "fixture@example.com", "--id", "folder-1", "--name", "Fixture Folder", "--yes"},
+	"mail message search":                      {"mail", "message", "search", "--email", "fixture@example.com", "--query", "subject:fixture"},
+	"mail thread list":                         {"mail", "thread", "list", "--email", "fixture@example.com", "--folder", "folder-1", "--limit", "7"},
+	"mail user search":                         {"mail", "user", "search", "--keyword", "fixture"},
+	"oa +list-executed":                        {"oa", "+list-executed", "--limit", "7", "--page", "1"},
+	"oa +search-forms":                         {"oa", "+search-forms", "--query", "fixture"},
+	"oa approval search-forms":                 {"oa", "approval", "search-forms", "--query", "fixture"},
+	"report list":                              {"report", "list", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-10T23:59:59+08:00"},
+}
+
+// A command can expose more than one mutually exclusive canonical route. In
+// that case the shared command template above cannot contain every canonical
+// flag at once, so select a fixture-specific complete invocation here.
+var paramAliasCompleteCommandVariants = map[string]map[string][]string{
+	"chat message list": {
+		"user": {"chat", "message", "list", "--user", "user-1", "--time", "2026-03-10 00:00:00", "--limit", "7"},
+	},
+	"chat message list-by-sender": {
+		"sender-open-dingtalk-id": {"chat", "message", "list-by-sender", "--sender-open-dingtalk-id", "D-sender", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--limit", "7", "--cursor", "0"},
+	},
+	"chat message send": {
+		"group":     {"chat", "message", "send", "--group", "fixture-conversation", "--text", "hello fixture", "--uuid", "param-alias-equivalence-group", "--yes"},
+		"file-path": {"chat", "message", "send", "--group", "fixture-conversation", "--msg-type", "file", "--file-path", "../../go.mod", "--dentry-id", "1", "--space-id", "2", "--uuid", "param-alias-equivalence-file", "--yes"},
+	},
+}
+
+// paramAliasNewIMCases is the exact set of aliases added by the reviewed IM
+// optimization. The dedicated gate below requires every one to remain active
+// in the embedded generated table and equivalent at the final transport.
+var paramAliasNewIMCases = []struct {
+	command   string
+	emitted   string
+	canonical string
+}{
+	{command: "chat +bot-find", emitted: "name", canonical: "query"},
+	{command: "chat bot find", emitted: "name", canonical: "query"},
+	{command: "chat +bot-search", emitted: "query", canonical: "name"},
+	{command: "chat +bot-search", emitted: "current-page", canonical: "page"},
+	{command: "chat +category-create", emitted: "name", canonical: "title"},
+	{command: "chat +category-rename", emitted: "name", canonical: "title"},
+	{command: "chat +messages-list-direct", emitted: "start", canonical: "time"},
+	{command: "chat +messages-list-unread-conversations", emitted: "limit", canonical: "count"},
+	{command: "chat +messages-list-unread-conversations", emitted: "size", canonical: "count"},
+	{command: "chat +messages-send-by-webhook", emitted: "at-user-ids", canonical: "at-users"},
+	{command: "chat +unread-chats", emitted: "limit", canonical: "count"},
+	{command: "chat +unread-chats", emitted: "size", canonical: "count"},
+	{command: "chat bot search", emitted: "query", canonical: "name"},
+	{command: "chat bot search", emitted: "current-page", canonical: "page"},
+	{command: "chat category create", emitted: "name", canonical: "title"},
+	{command: "chat category create-smart", emitted: "title", canonical: "name"},
+	{command: "chat category rename", emitted: "name", canonical: "title"},
+	{command: "chat media upload", emitted: "file-path", canonical: "file"},
+	{command: "chat message list", emitted: "start", canonical: "time"},
+	{command: "chat message list-by-sender", emitted: "user-id", canonical: "sender-user-id"},
+	{command: "chat message list-by-sender", emitted: "open-dingtalk-id", canonical: "sender-open-dingtalk-id"},
+	{command: "chat message list-favorites", emitted: "limit", canonical: "size"},
+	{command: "chat message list-unread-conversations", emitted: "limit", canonical: "count"},
+	{command: "chat message list-unread-conversations", emitted: "size", canonical: "count"},
+	{command: "chat message send", emitted: "file", canonical: "file-path"},
+	{command: "chat message send-by-bot", emitted: "at-users", canonical: "at-user-ids"},
+	{command: "chat message send-by-webhook", emitted: "at-user-ids", canonical: "at-users"},
 }
 
 func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.T) {
@@ -79,7 +167,7 @@ func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.
 		activeCommands[fixture.Command] = true
 		activeCases++
 		t.Run(fixture.Command+"/"+fixture.Emitted, func(t *testing.T) {
-			complete, ok := paramAliasCompleteCommands[fixture.Command]
+			complete, ok := paramAliasCompleteCommand(fixture.Command, fixture.Expect)
 			if !ok {
 				t.Fatalf("reviewed active fixture has no complete-command E2E template")
 			}
@@ -90,7 +178,7 @@ func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.
 			}
 
 			canonicalCaller := &paramAliasCaptureCaller{}
-			_, canonicalErr := executeParamAliasE2E(t, canonicalCaller, canonicalArgs...)
+			_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
 			if canonicalErr != nil {
 				t.Fatalf("complete canonical command failed: %v\nargs=%v\ncalls=%#v", canonicalErr, canonicalArgs, canonicalCaller.calls)
 			}
@@ -99,7 +187,7 @@ func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.
 			}
 
 			aliasCaller := &paramAliasCaptureCaller{}
-			ctx, aliasErr := executeParamAliasE2E(t, aliasCaller, aliasArgs...)
+			ctx, aliasErr := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
 			if aliasErr != nil {
 				t.Fatalf("complete alias command failed: %v\nargs=%v\ncalls=%#v", aliasErr, aliasArgs, aliasCaller.calls)
 			}
@@ -120,8 +208,140 @@ func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.
 			t.Errorf("complete-command E2E template %q has no active reviewed fixture", command)
 		}
 	}
+	for command := range activeCommands {
+		if _, ok := paramAliasCompleteCommands[command]; !ok {
+			t.Errorf("active reviewed command %q has no complete-command E2E template", command)
+		}
+	}
 	if len(activeCommands) != len(paramAliasCompleteCommands) {
 		t.Fatalf("complete-command coverage = %d templates for %d active commands (%d active cases)", len(paramAliasCompleteCommands), len(activeCommands), activeCases)
+	}
+}
+
+func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
+	activeAliases := 0
+	for _, test := range paramAliasNewIMCases {
+		test := test
+		t.Run(test.command+"/"+test.emitted, func(t *testing.T) {
+			complete, ok := paramAliasCompleteCommand(test.command, test.canonical)
+			if !ok {
+				t.Fatal("reviewed IM alias has no complete-command E2E template")
+			}
+			canonicalArgs := append([]string(nil), complete...)
+			aliasArgs, replacements := replaceLongFlag(canonicalArgs, test.canonical, test.emitted)
+			if replacements != 1 {
+				t.Fatalf("complete command must contain canonical --%s exactly once; replacements=%d args=%v", test.canonical, replacements, canonicalArgs)
+			}
+
+			canonicalCaller := &paramAliasCaptureCaller{}
+			if _, err := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...); err != nil {
+				t.Fatalf("complete canonical command failed: %v\nargs=%v\ncalls=%#v", err, canonicalArgs, canonicalCaller.calls)
+			}
+			if len(canonicalCaller.calls) == 0 {
+				t.Fatalf("complete canonical command reached no final transport payload: args=%v", canonicalArgs)
+			}
+
+			entry, exists := cli.LookupParamAlias(test.command)
+			target, active := entry.ResolveAlias(test.emitted)
+			if !exists || !active {
+				return
+			}
+			if target != test.canonical {
+				t.Fatalf("active reviewed IM alias --%s resolves to --%s, want --%s", test.emitted, target, test.canonical)
+			}
+			activeAliases++
+			aliasCaller := &paramAliasCaptureCaller{}
+			ctx, err := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
+			if err != nil {
+				t.Fatalf("complete alias command failed: %v\nargs=%v\ncalls=%#v", err, aliasArgs, aliasCaller.calls)
+			}
+			if ctx == nil {
+				t.Fatal("complete alias command skipped PreParse")
+			}
+			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
+				t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
+			}
+		})
+	}
+	if activeAliases != len(paramAliasNewIMCases) {
+		t.Fatalf("new IM aliases active in embedded table = %d, want %d", activeAliases, len(paramAliasNewIMCases))
+	}
+}
+
+func paramAliasCompleteCommand(command, canonical string) ([]string, bool) {
+	complete, ok := paramAliasCompleteCommands[command]
+	if variants := paramAliasCompleteCommandVariants[command]; variants != nil {
+		if variant, exists := variants[canonical]; exists {
+			return variant, true
+		}
+	}
+	return complete, ok
+}
+
+type paramAliasRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f paramAliasRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+// executeParamAliasPayloadE2E captures the final HTTP multipart request for
+// chat media upload. Other commands continue to use the MCP/runner capture in
+// executeParamAliasE2E. This keeps the equivalence assertion at the actual
+// transport boundary for both kinds of command.
+func executeParamAliasPayloadE2E(t *testing.T, caller *paramAliasCaptureCaller, args ...string) (*pipeline.Context, error) {
+	t.Helper()
+	if len(args) < 3 || args[0] != "chat" || args[1] != "media" || args[2] != "upload" {
+		return executeParamAliasE2E(t, caller, args...)
+	}
+
+	t.Setenv("DWS_CLIENT_ID", "fixture-client")
+	t.Setenv("DWS_CLIENT_SECRET", "fixture-secret")
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = paramAliasRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.Path {
+		case "/gettoken":
+			return paramAliasHTTPResponse(req, `{"access_token":"fixture-access-token","errcode":0}`), nil
+		case "/media/upload":
+			if err := req.ParseMultipartForm(1 << 20); err != nil {
+				return nil, fmt.Errorf("parse media upload multipart form: %w", err)
+			}
+			if req.MultipartForm != nil {
+				defer req.MultipartForm.RemoveAll()
+			}
+			file, header, err := req.FormFile("media")
+			if err != nil {
+				return nil, fmt.Errorf("read media upload part: %w", err)
+			}
+			defer file.Close()
+			content, err := io.ReadAll(file)
+			if err != nil {
+				return nil, fmt.Errorf("read media upload content: %w", err)
+			}
+			caller.calls = append(caller.calls, paramAliasToolCall{
+				server: "oapi.dingtalk.com",
+				tool:   "media/upload",
+				args: map[string]any{
+					"method":   req.Method,
+					"type":     req.URL.Query().Get("type"),
+					"filename": header.Filename,
+					"content":  string(content),
+				},
+			})
+			return paramAliasHTTPResponse(req, `{"media_id":"fixture-media-id","errcode":0}`), nil
+		default:
+			return nil, fmt.Errorf("unexpected parameter-alias HTTP request: %s %s", req.Method, req.URL.String())
+		}
+	})
+	defer func() { http.DefaultTransport = originalTransport }()
+	return executeParamAliasE2E(t, caller, args...)
+}
+
+func paramAliasHTTPResponse(req *http.Request, body string) *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Request:    req,
 	}
 }
 

@@ -55,6 +55,13 @@ func TestSemanticAliasHandlerRewritesSynonym(t *testing.T) {
 	}
 }
 
+func TestSemanticAliasHandlerNameAndPhase(t *testing.T) {
+	h := SemanticAliasHandler{}
+	if h.Name() != "semantic-alias" || h.Phase() != pipeline.PreParse {
+		t.Fatalf("handler identity = %q / %s", h.Name(), h.Phase())
+	}
+}
+
 func TestSemanticAliasHandlerPreservesEqualsValueSyntax(t *testing.T) {
 	ctx := &pipeline.Context{Command: "dws demo cmd", Args: []string{"--pageSize=50"}}
 	if err := newSemanticHandler().Handle(ctx); err != nil {
@@ -145,9 +152,9 @@ func TestSemanticAliasHandlerNoOpCases(t *testing.T) {
 	}
 
 	// A real flag that also appears nowhere in the table is left alone.
-	ctx = &pipeline.Context{Command: "dws demo cmd", Args: []string{"--query", "x", "positional", "-n"}}
+	ctx = &pipeline.Context{Command: "dws demo cmd", Args: []string{"--query", "x", "--unknown", "y", "positional", "-n"}}
 	_ = h.Handle(ctx)
-	if !reflect.DeepEqual(ctx.Args, []string{"--query", "x", "positional", "-n"}) {
+	if !reflect.DeepEqual(ctx.Args, []string{"--query", "x", "--unknown", "y", "positional", "-n"}) {
 		t.Fatalf("canonical/positional/short tokens must be untouched: %v", ctx.Args)
 	}
 }

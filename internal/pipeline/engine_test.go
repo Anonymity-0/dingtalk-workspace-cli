@@ -240,6 +240,33 @@ func TestContextAddCorrection(t *testing.T) {
 	}
 }
 
+func TestContextFlagProtectionAndConflictError(t *testing.T) {
+	var nilContext *Context
+	nilContext.ProtectFlag("uid", FlagProtectionBlocked)
+	if nilContext.IsFlagProtected("uid") {
+		t.Fatal("nil context reported a protected flag")
+	}
+
+	ctx := &Context{}
+	ctx.ProtectFlag("", FlagProtectionBlocked)
+	if ctx.ProtectedFlags != nil {
+		t.Fatalf("empty flag initialized protection map: %#v", ctx.ProtectedFlags)
+	}
+	ctx.ProtectFlag("uid", FlagProtectionAmbiguous)
+	if !ctx.IsFlagProtected("uid") || ctx.IsFlagProtected("missing") {
+		t.Fatalf("protection lookup mismatch: %#v", ctx.ProtectedFlags)
+	}
+
+	err := (&FlagConflictError{
+		Command:   "dws demo run",
+		Canonical: "user",
+		Spellings: []string{"--user-id", "uid"},
+	}).Error()
+	if !strings.Contains(err, `for --user on "dws demo run": --user-id, --uid`) {
+		t.Fatalf("FlagConflictError.Error() = %q", err)
+	}
+}
+
 func TestPhaseString(t *testing.T) {
 	tests := []struct {
 		phase Phase

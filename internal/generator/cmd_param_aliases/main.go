@@ -39,6 +39,14 @@ import (
 
 const defaultOutput = "internal/cli/param_aliases_generated.go"
 
+var (
+	newParamAliasRoot       = app.NewRootCommand
+	reduceParamAliasEntries = cli.ReduceParamAliases
+	formatParamAliasSource  = format.Source
+	writeParamAliasFile     = os.WriteFile
+	exitParamAliasProcess   = os.Exit
+)
+
 func main() {
 	var rootPath string
 	var outputPath string
@@ -46,25 +54,31 @@ func main() {
 	flag.StringVar(&outputPath, "output", defaultOutput, "Output generated parameter-alias table")
 	flag.Parse()
 
-	if err := validateOutputIsolation(rootPath, outputPath); err != nil {
+	if err := generateParamAliases(rootPath, outputPath); err != nil {
 		fail(err)
 	}
+}
 
-	root := app.NewRootCommand()
-	entries, err := cli.ReduceParamAliases(root)
+func generateParamAliases(rootPath, outputPath string) error {
+	if err := validateOutputIsolation(rootPath, outputPath); err != nil {
+		return err
+	}
+
+	entries, err := reduceParamAliasEntries(newParamAliasRoot())
 	if err != nil {
-		fail(err)
+		return err
 	}
 
 	source, err := renderParamAliases(entries)
 	if err != nil {
-		fail(err)
+		return err
 	}
-	if err := os.WriteFile(outputPath, source, 0o644); err != nil {
-		fail(fmt.Errorf("write generated parameter aliases: %w", err))
+	if err := writeParamAliasFile(outputPath, source, 0o644); err != nil {
+		return fmt.Errorf("write generated parameter aliases: %w", err)
 	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "generated parameter aliases: output=%s commands=%d\n", outputPath, len(entries))
+	return nil
 }
 
 func validateOutputIsolation(rootPath, outputPath string) error {
@@ -113,8 +127,11 @@ func renderParamAliases(entries []cli.ParamAliasEntry) ([]byte, error) {
 		b.WriteString("\t},\n")
 	}
 	b.WriteString("}\n")
+	b.WriteString("\nfunc loadGeneratedParamAliases() []ParamAliasEntry {\n")
+	b.WriteString("\treturn generatedParamAliases\n")
+	b.WriteString("}\n")
 
-	formatted, err := format.Source(b.Bytes())
+	formatted, err := formatParamAliasSource(b.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("format generated parameter aliases: %w", err)
 	}
@@ -140,5 +157,5 @@ func sortedKeys(m map[string]string) []string {
 
 func fail(err error) {
 	_, _ = fmt.Fprintln(os.Stderr, "error:", err)
-	os.Exit(1)
+	exitParamAliasProcess(1)
 }

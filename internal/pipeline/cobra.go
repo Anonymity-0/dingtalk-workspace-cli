@@ -139,9 +139,6 @@ func persistentFlagToken(flags *pflag.FlagSet, argument string) (*pflag.Flag, bo
 	}
 
 	body := strings.TrimPrefix(argument, "-")
-	if body == "" {
-		return nil, false, false
-	}
 	shorthands := []rune(body)
 	for index, shorthand := range shorthands {
 		flag := flags.ShorthandLookup(string(shorthand))
