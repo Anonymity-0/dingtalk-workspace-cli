@@ -91,6 +91,7 @@ func TestParseAgentHost(t *testing.T) {
 func TestResolveIdentityHeadersAddsAgentHostBeforeEditionMerge(t *testing.T) {
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
 	t.Setenv(envDWSAgentHost, " qwenwork_desktop ")
+	t.Setenv("DWS_AGENT_PRODUCT", "")
 	t.Setenv(envDWSChannel, "channel-test")
 	t.Setenv(envDingtalkAgent, "agent-test")
 	t.Setenv(authpkg.AgentCodeEnv, "agent-code-test")

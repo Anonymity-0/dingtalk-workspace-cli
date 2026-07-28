@@ -33,7 +33,7 @@ func init() {
 		Name:        envDWSAgentHost,
 		Category:    configmeta.CategoryExternal,
 		Description: "调用 DWS 的 Agent 宿主标识；仅用于日志和 BI 观测",
-		Example:     "qwenwork_cloud",
+		Example:     "cloud",
 	})
 }
 

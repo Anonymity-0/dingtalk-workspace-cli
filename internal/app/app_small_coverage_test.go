@@ -346,6 +346,7 @@ func TestCrossPlatformCoverageOverlayRecoveryHostAndHelperRemainingCoverage(t *t
 		t.Fatal("host control enabled without agent code")
 	}
 	t.Setenv(authpkg.AgentCodeEnv, "agent")
+	t.Setenv("DWS_AGENT_PRODUCT", "")
 	edition.Override(&edition.Hooks{MergeHeaders: func(headers map[string]string) map[string]string { return headers }})
 	if got := hostControlProviderFromEnv(); got != edition.DefaultOSSClawType {
 		t.Fatalf("default claw type = %q", got)

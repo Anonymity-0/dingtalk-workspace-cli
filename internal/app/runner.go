@@ -986,10 +986,10 @@ func resolveIdentityHeaders() map[string]string {
 
 	// Inject environment variable based headers for MCP gateway tracking.
 	// DINGTALK_AGENT, if set by the caller, is forwarded verbatim as the
-	// x-dingtalk-agent header. It does NOT influence claw-type (which the
-	// open-source edition pins to edition.DefaultOSSClawType via the
-	// MergeHeaders hook below) and it does NOT influence the host-owned
-	// PAT decision (driven solely by DINGTALK_DWS_AGENTCODE).
+	// x-dingtalk-agent header. It does NOT influence claw-type (which comes
+	// from the edition default plus the explicit DWS_AGENT_PRODUCT override)
+	// and it does NOT influence the host-owned PAT decision (driven solely by
+	// DINGTALK_DWS_AGENTCODE).
 	sessionID := os.Getenv(envDingtalkSessionID)
 	if sessionID == "" {
 		sessionID = os.Getenv(envDWSSessionID)
@@ -1052,6 +1052,12 @@ func resolveIdentityHeaders() map[string]string {
 	if fn := edition.Get().EnterpriseCredentialHeaders; fn != nil {
 		headers = fn(headers)
 	}
+	// DWS_AGENT_PRODUCT is the explicit caller override for the existing
+	// claw-type wire header. Apply it after edition hooks so unset/empty input
+	// preserves each edition's current default, while a valid value wins
+	// consistently. Invalid values are ignored on this best-effort library
+	// path; root command execution rejects them before network access.
+	headers = applyAgentProductOverride(headers)
 	return headers
 }
 

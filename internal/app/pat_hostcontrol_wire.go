@@ -17,6 +17,7 @@ import (
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pat"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -27,11 +28,11 @@ import (
 //
 // Decision rule:
 //   - Host-owned is triggered iff DINGTALK_DWS_AGENTCODE is non-empty.
-//   - When triggered, `clawType` in the emitted hostControl block MUST
-//     be the exact value the CLI actually injects on the wire into the
-//     `claw-type` HTTP header. The open-source build pins that to
-//     edition.DefaultOSSClawType ("openClaw") unconditionally — there
-//     is no per-spawn env override.
+//   - When triggered, `clawType` in the emitted hostControl block MUST be the
+//     exact value the CLI actually injects on the wire. Each edition supplies
+//     its existing default and an optional valid DWS_AGENT_PRODUCT overrides
+//     it. Invalid input falls back here for library compatibility; root command
+//     execution rejects it before network access.
 //   - When DINGTALK_DWS_AGENTCODE is empty the provider returns "" so
 //     HostControlBlock yields nil and no hostControl block is emitted.
 func init() {
@@ -48,15 +49,23 @@ func hostControlProviderFromEnv() string {
 	return effectiveClawType()
 }
 
-// effectiveClawType returns the literal value that MergeHeaders will
-// inject into outbound `claw-type` headers. Going through the edition
-// hook (instead of a hard-coded constant) keeps this site correct for
-// downstream editions that override MergeHeaders.
+// effectiveClawType returns the literal value injected into outbound
+// `claw-type` headers. It follows the same edition-hook and environment
+// override order as resolveIdentityHeaders so PAT hostControl cannot drift
+// from the request wire identity.
 func effectiveClawType() string {
-	if h := edition.Get(); h != nil && h.MergeHeaders != nil {
-		if v, ok := h.MergeHeaders(map[string]string{})["claw-type"]; ok && v != "" {
-			return v
+	headers := make(map[string]string)
+	if h := edition.Get(); h != nil {
+		if h.MergeHeaders != nil {
+			headers = h.MergeHeaders(headers)
 		}
+		if h.EnterpriseCredentialHeaders != nil {
+			headers = h.EnterpriseCredentialHeaders(headers)
+		}
+	}
+	headers = applyAgentProductOverride(headers)
+	if v, ok := headers[agentproduct.HeaderName]; ok && v != "" {
+		return v
 	}
 	return edition.DefaultOSSClawType
 }

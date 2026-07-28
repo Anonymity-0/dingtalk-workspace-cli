@@ -5,7 +5,8 @@
 | Variable | Purpose / 用途 |
 |---------|---------|
 | `DWS_CONFIG_DIR` | Override default config directory / 覆盖默认配置目录 |
-| `DWS_AGENT_HOST` | Optional Agent host observation label sent as `x-dws-agent-host` (for example `qwenwork_cloud`). Values are trimmed and must match `^[a-z0-9][a-z0-9_-]*$`; unset values are omitted. Used only for logs and BI, never for authentication or routing. / 可选 Agent 宿主观测标识，经裁剪并校验后作为 `x-dws-agent-host` 发送；仅用于日志与 BI，不参与鉴权或路由 |
+| `DWS_AGENT_PRODUCT` | Optional Agent product identity sent through the existing `claw-type` header (for example `qwenwork`). Values are trimmed and must match `^[A-Za-z0-9][A-Za-z0-9_-]*$`. Unset or empty values preserve the current edition default (`openClaw` for the open-source build). / 可选 Agent 产品标识，经裁剪和校验后覆盖现有 `claw-type` 请求头；未设置或为空时保持当前发行版默认值 |
+| `DWS_AGENT_HOST` | Optional Agent runtime host observation label sent as `x-dws-agent-host` (for example `cloud` or `desktop`). Values are trimmed and must match `^[a-z0-9][a-z0-9_-]*$`; unset values are omitted. Used only for logs and BI, never for authentication or routing. / 可选 Agent 运行形态观测标识，经裁剪并校验后作为 `x-dws-agent-host` 发送；仅用于日志与 BI，不参与鉴权或路由 |
 | `DWS_<PRODUCT>_MCP_URL` | Override a product MCP endpoint for local development / 本地开发时覆盖指定产品 MCP endpoint |
 | `DWS_CLIENT_ID` | OAuth client ID (DingTalk AppKey) |
 | `DWS_CLIENT_SECRET` | OAuth client secret (DingTalk AppSecret) |
