@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
 
 // ChatSearch searches groups by keyword (search_groups on the im server).
@@ -306,7 +307,9 @@ var ChatListMine = shortcut.Shortcut{
 			return err
 		}
 		groups := chatListMineProject(data)
-		return rt.Output(map[string]any{"count": len(groups), "groups": groups})
+		payload := map[string]any{"count": len(groups), "groups": groups}
+		chatmsg.ApplyPagination(payload, data)
+		return rt.Output(payload)
 	},
 }
 
@@ -370,12 +373,7 @@ var ChatListAll = shortcut.Shortcut{
 		}
 		groups := chatListAllProject(data)
 		payload := map[string]any{"count": len(groups), "groups": groups}
-		if v, ok := chatGroupFirst(data, "nextCursor", "next_cursor", "cursor"); ok {
-			payload["nextCursor"] = v
-		}
-		if v, ok := chatGroupFirst(data, "hasMore", "has_more"); ok {
-			payload["hasMore"] = v
-		}
+		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
 }

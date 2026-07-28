@@ -14,7 +14,9 @@
 package smart
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"testing"
 
@@ -32,6 +34,7 @@ type platformCoverageCall struct {
 
 type platformCoverageCaller struct {
 	calls []platformCoverageCall
+	dry   bool
 }
 
 func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -48,8 +51,12 @@ func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool strin
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
+func (f *platformCoverageCaller) CallReadTool(ctx context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
+	return f.CallTool(ctx, product, tool, args)
+}
+
 func (f *platformCoverageCaller) Format() string { return "json" }
-func (f *platformCoverageCaller) DryRun() bool   { return false }
+func (f *platformCoverageCaller) DryRun() bool   { return f.dry }
 func (f *platformCoverageCaller) Fields() string { return "" }
 func (f *platformCoverageCaller) JQ() string     { return "" }
 
@@ -110,6 +117,51 @@ func TestCrossPlatformCoverageAIMessageTag(t *testing.T) {
 			t.Fatalf("clawType unexpectedly present with --ai-tag=false: %#v", send.args)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageBroadcastDryRunPublishesExecutablePlan(t *testing.T) {
+	fake := &platformCoverageCaller{dry: true}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+broadcast",
+		"--to", "张三",
+		"--text", "你好",
+		"--dry-run",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 ||
+		fake.calls[0].product != "contact" ||
+		fake.calls[0].tool != "search_contact_by_key_word" {
+		t.Fatalf("dry-run calls = %#v, want one read-only contact lookup", fake.calls)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatalf("decode dry-run output: %v\n%s", err, output.String())
+	}
+	if payload["dry_run"] != true ||
+		payload["executed"] != false ||
+		payload["preview_kind"] != "plan" ||
+		payload["tool"] != "send_personal_message" {
+		t.Fatalf("dry-run payload = %#v", payload)
+	}
+	actions, _ := payload["actions"].([]any)
+	if len(actions) != 1 {
+		t.Fatalf("dry-run actions = %#v", payload["actions"])
+	}
+	action, _ := actions[0].(map[string]any)
+	arguments, _ := action["arguments"].(map[string]any)
+	for _, key := range []string{"receiverOpenDingTalkId", "msgType", "content", "clawType"} {
+		if _, ok := arguments[key]; !ok {
+			t.Errorf("dry-run action arguments missing %q: %#v", key, arguments)
+		}
+	}
 }
 
 func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {

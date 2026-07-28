@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 func TestToolCallerAdapterDryRunNeverInvokesRunner(t *testing.T) {
@@ -36,6 +37,40 @@ func TestToolCallerAdapterDryRunNeverInvokesRunner(t *testing.T) {
 	}
 }
 
+func TestToolCallerAdapterDryRunAllowsOnlyExplicitReadCapability(t *testing.T) {
+	runner := &readOnlyDryRunRunner{}
+	caller := newToolCallerAdapter(runner, &GlobalFlags{DryRun: true, Format: "json"})
+
+	result, err := caller.(edition.ReadToolCaller).CallReadTool(
+		context.Background(),
+		"im",
+		"search_groups",
+		map[string]any{"keyword": "project"},
+	)
+	if err != nil {
+		t.Fatalf("CallReadTool() error = %v", err)
+	}
+	if got := runner.readCalls.Load(); got != 1 {
+		t.Fatalf("read calls = %d, want 1", got)
+	}
+	if got := runner.regularCalls.Load(); got != 0 {
+		t.Fatalf("regular calls = %d, want 0", got)
+	}
+	if runner.invocation.DryRun {
+		t.Fatal("read-only invocation was left in dry-run mode")
+	}
+	if result == nil || len(result.Content) != 1 || !strings.Contains(result.Content[0].Text, `"read":true`) {
+		t.Fatalf("read result = %#v", result)
+	}
+
+	failClosed := newToolCallerAdapter(&countingErrorRunner{}, &GlobalFlags{DryRun: true})
+	if _, err := failClosed.(edition.ReadToolCaller).CallReadTool(
+		context.Background(), "im", "search_groups", nil,
+	); err == nil {
+		t.Fatal("runner without read-only capability was accepted")
+	}
+}
+
 func TestRuntimeRunnerGlobalDryRunStopsBeforeInjectedFallback(t *testing.T) {
 	fallback := &countingErrorRunner{}
 	runner := &runtimeRunner{globalFlags: &GlobalFlags{DryRun: true}, fallback: fallback}
@@ -56,6 +91,38 @@ func TestRuntimeRunnerGlobalDryRunStopsBeforeInjectedFallback(t *testing.T) {
 	}
 }
 
+func TestRuntimeRunnerReadOnlyClonePreservesGlobalDryRunBarrier(t *testing.T) {
+	fallback := &capturingSuccessRunner{}
+	flags := &GlobalFlags{DryRun: true}
+	runner := &runtimeRunner{globalFlags: flags, fallback: fallback}
+	invocation := executor.NewHelperInvocation(
+		"test",
+		"im",
+		"search_groups",
+		map[string]any{"keyword": "project"},
+	)
+
+	if _, err := runner.RunReadOnly(context.Background(), invocation); err != nil {
+		t.Fatalf("RunReadOnly() error = %v", err)
+	}
+	if got := fallback.calls.Load(); got != 1 {
+		t.Fatalf("fallback calls = %d, want 1", got)
+	}
+	if fallback.invocation.DryRun {
+		t.Fatal("read-only fallback invocation was left in dry-run mode")
+	}
+	if !flags.DryRun {
+		t.Fatal("RunReadOnly mutated the process-wide dry-run flag")
+	}
+
+	if _, err := runner.Run(context.Background(), invocation); err != nil {
+		t.Fatalf("ordinary Run() error = %v", err)
+	}
+	if got := fallback.calls.Load(); got != 1 {
+		t.Fatalf("ordinary dry-run reached fallback; calls = %d", got)
+	}
+}
+
 type countingErrorRunner struct {
 	calls atomic.Int64
 }
@@ -63,4 +130,38 @@ type countingErrorRunner struct {
 func (r *countingErrorRunner) Run(context.Context, executor.Invocation) (executor.Result, error) {
 	r.calls.Add(1)
 	return executor.Result{}, errors.New("runner must not be called")
+}
+
+type readOnlyDryRunRunner struct {
+	regularCalls atomic.Int64
+	readCalls    atomic.Int64
+	invocation   executor.Invocation
+}
+
+func (r *readOnlyDryRunRunner) Run(context.Context, executor.Invocation) (executor.Result, error) {
+	r.regularCalls.Add(1)
+	return executor.Result{}, errors.New("regular runner must not be called")
+}
+
+func (r *readOnlyDryRunRunner) RunReadOnly(_ context.Context, invocation executor.Invocation) (executor.Result, error) {
+	r.readCalls.Add(1)
+	r.invocation = invocation
+	return executor.Result{
+		Invocation: invocation,
+		Response:   map[string]any{"read": true},
+	}, nil
+}
+
+type capturingSuccessRunner struct {
+	calls      atomic.Int64
+	invocation executor.Invocation
+}
+
+func (r *capturingSuccessRunner) Run(_ context.Context, invocation executor.Invocation) (executor.Result, error) {
+	r.calls.Add(1)
+	r.invocation = invocation
+	return executor.Result{
+		Invocation: invocation,
+		Response:   map[string]any{"read": true},
+	}, nil
 }

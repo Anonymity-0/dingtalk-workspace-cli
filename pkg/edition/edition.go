@@ -59,6 +59,18 @@ type ToolCaller interface {
 	JQ() string
 }
 
+// ReadToolCaller is an optional capability for a narrowly classified read
+// lookup that must still execute while the outer command is rendering a
+// dry-run plan. Implementations must fail closed unless they can bypass the
+// global write barrier without weakening it for ordinary CallTool calls.
+//
+// The Shortcut runtime uses this only after rejecting write-like tool names.
+// Keeping it separate from ToolCaller means existing callers remain protected
+// by the default "dry-run executes nothing" contract.
+type ReadToolCaller interface {
+	CallReadTool(ctx context.Context, productID, toolName string, args map[string]any) (*ToolResult, error)
+}
+
 // RuntimeDefaultFn resolves a single runtimeDefault placeholder (e.g.
 // "$currentUserId") to a concrete string value. Called lazily at RunE time.
 // Returning (_, false) is equivalent to "not registered" and falls through

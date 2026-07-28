@@ -214,6 +214,7 @@ var MessagesList = shortcut.Shortcut{
 		{Name: "forward", Type: shortcut.FlagBool, Default: "true", Desc: "true=从给定时间往现在拉，false=往以前拉"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量"},
 		{Name: "size", Type: shortcut.FlagInt, Desc: "--limit 的旧版别名", Hidden: true},
+		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id"}},
@@ -233,8 +234,14 @@ var MessagesList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		messages := listMessagesProject(data)
-		return rt.Output(map[string]any{"count": len(messages), "messages": messages})
+		messages := listMessagesProjectWithReactions(data, !rt.Bool("no-reactions"))
+		payload := map[string]any{"count": len(messages), "messages": messages}
+		direction := "older"
+		if rt.Bool("forward") {
+			direction = "newer"
+		}
+		chatmsg.ApplyMessagePagination(payload, data, listMessagesResolveMaps(data), direction)
+		return rt.Output(payload)
 	},
 }
 
@@ -249,6 +256,10 @@ var MessagesList = shortcut.Shortcut{
 // records ("聊天记录") expand their nested messages under "forwarded" instead of
 // collapsing to a "[卡片]" summary.
 func listMessagesProject(data map[string]any) []map[string]any {
+	return listMessagesProjectWithReactions(data, true)
+}
+
+func listMessagesProjectWithReactions(data map[string]any, includeReactions bool) []map[string]any {
 	raw := listMessagesResolveList(data)
 	out := make([]map[string]any, 0, len(raw))
 	for _, item := range raw {
@@ -256,7 +267,7 @@ func listMessagesProject(data map[string]any) []map[string]any {
 		if !ok {
 			continue
 		}
-		if row := listMessageProjectOne(m); len(row) > 0 {
+		if row := listMessageProjectOneWithReactions(m, includeReactions); len(row) > 0 {
 			out = append(out, row)
 		}
 	}
@@ -267,6 +278,10 @@ func listMessagesProject(data map[string]any) []map[string]any {
 // {messageId, senderId, msgType, createTime, text(, forwarded)} shape, reused
 // recursively for forwarded chat records.
 func listMessageProjectOne(m map[string]any) map[string]any {
+	return listMessageProjectOneWithReactions(m, true)
+}
+
+func listMessageProjectOneWithReactions(m map[string]any, includeReactions bool) map[string]any {
 	row := map[string]any{}
 	if v, ok := listMessagesFirst(m, "openMessageId", "openMsgId", "messageId", "msgId"); ok {
 		row["messageId"] = v
@@ -283,7 +298,27 @@ func listMessageProjectOne(m map[string]any) map[string]any {
 	if text := chatmsg.Text(m); text != nil {
 		row["text"] = text
 	}
-	if forwarded := chatmsg.Forwarded(m, listMessageProjectOne); len(forwarded) > 0 {
+	if conversationID := chatmsg.ConversationID(m); conversationID != nil {
+		row["conversationId"] = conversationID
+	}
+	if threadID := chatmsg.ThreadID(m); threadID != nil {
+		row["threadId"] = threadID
+	}
+	if updateTime := chatmsg.UpdateTime(m); updateTime != nil {
+		row["updateTime"] = updateTime
+	}
+	if includeReactions {
+		if reactions := chatmsg.Reactions(m); len(reactions) > 0 {
+			row["reactions"] = reactions
+		}
+	}
+	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
+		row["quotedMessage"] = quoted
+	}
+	projectForwarded := func(item map[string]any) map[string]any {
+		return listMessageProjectOneWithReactions(item, includeReactions)
+	}
+	if forwarded := chatmsg.Forwarded(m, projectForwarded); len(forwarded) > 0 {
 		row["forwarded"] = forwarded
 	}
 	return row
@@ -311,6 +346,17 @@ func listMessagesResolveList(data map[string]any) []any {
 	return []any{}
 }
 
+func listMessagesResolveMaps(data map[string]any) []map[string]any {
+	raw := listMessagesResolveList(data)
+	out := make([]map[string]any, 0, len(raw))
+	for _, item := range raw {
+		if message, ok := item.(map[string]any); ok {
+			out = append(out, message)
+		}
+	}
+	return out
+}
+
 // listMessagesFirst returns the first present candidate key's value.
 func listMessagesFirst(m map[string]any, keys ...string) (any, bool) {
 	for _, k := range keys {
@@ -335,6 +381,7 @@ var MessagesListDirect = shortcut.Shortcut{
 		{Name: "forward", Type: shortcut.FlagBool, Default: "true", Desc: "true=往现在拉，false=往以前拉"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量"},
 		{Name: "size", Type: shortcut.FlagInt, Desc: "--limit 的旧版别名", Hidden: true},
+		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
 	},
 	Tips: []string{`dws chat +messages-list-direct --user <userId> --time "2025-03-01 00:00:00"`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -357,8 +404,14 @@ var MessagesListDirect = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		messages := listMessagesProject(data)
-		return rt.Output(map[string]any{"count": len(messages), "messages": messages})
+		messages := listMessagesProjectWithReactions(data, !rt.Bool("no-reactions"))
+		payload := map[string]any{"count": len(messages), "messages": messages}
+		direction := "older"
+		if rt.Bool("forward") {
+			direction = "newer"
+		}
+		chatmsg.ApplyMessagePagination(payload, data, listMessagesResolveMaps(data), direction)
+		return rt.Output(payload)
 	},
 }
 
@@ -899,7 +952,9 @@ var MessagesListPin = shortcut.Shortcut{
 			return err
 		}
 		pins := listPinProject(data)
-		return rt.Output(map[string]any{"count": len(pins), "pins": pins})
+		payload := map[string]any{"count": len(pins), "pins": pins}
+		chatmsg.ApplyPagination(payload, data)
+		return rt.Output(payload)
 	},
 }
 
@@ -928,6 +983,9 @@ func listPinProject(data map[string]any) []map[string]any {
 		}
 		if v, ok := listPinFirst(m, "openConversationId", "conversationId", "openConvId"); ok {
 			row["conversationId"] = v
+		}
+		if threadID := chatmsg.ThreadID(m); threadID != nil {
+			row["threadId"] = threadID
 		}
 		if len(row) > 0 {
 			out = append(out, row)

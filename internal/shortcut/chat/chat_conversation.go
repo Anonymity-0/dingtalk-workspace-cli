@@ -15,8 +15,12 @@ package chat
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
 
 // ConversationInfo gets conversation info (get_conversation_info, chat server).
@@ -107,7 +111,6 @@ var ConversationMuteAtAll = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		return rt.CallMCP("update_at_all_notification_off", map[string]any{
 			"openConversationId": rt.Str("conversation-id"),
-			"cid":                rt.Str("conversation-id"),
 			"mute":               !rt.Bool("off"),
 		})
 	},
@@ -129,7 +132,6 @@ var ConversationMuteRedEnvelope = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		return rt.CallMCP("update_red_env_notification_off", map[string]any{
 			"openConversationId": rt.Str("conversation-id"),
-			"cid":                rt.Str("conversation-id"),
 			"mute":               !rt.Bool("off"),
 		})
 	},
@@ -220,13 +222,7 @@ var ConversationList = shortcut.Shortcut{
 		}
 		convs := conversationListProject(data)
 		payload := map[string]any{"count": len(convs), "conversations": convs}
-		// carry pagination hints when present so翻页仍可继续（字段防御式探测）。
-		if v, ok := conversationListFirst(data, "nextCursor", "cursor"); ok {
-			payload["nextCursor"] = v
-		}
-		if v, ok := conversationListFirst(data, "hasMore", "has_more"); ok {
-			payload["hasMore"] = v
-		}
+		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
 }
@@ -323,12 +319,7 @@ var ConversationListTop = shortcut.Shortcut{
 		}
 		convs := conversationListTopProject(data)
 		payload := map[string]any{"count": len(convs), "conversations": convs}
-		if v, ok := conversationListTopFirst(data, "nextCursor", "cursor"); ok {
-			payload["nextCursor"] = v
-		}
-		if v, ok := conversationListTopFirst(data, "hasMore", "has_more"); ok {
-			payload["hasMore"] = v
-		}
+		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
 }
@@ -561,12 +552,7 @@ var CategoryListConversations = shortcut.Shortcut{
 		}
 		convs := categoryConversationsProject(data)
 		payload := map[string]any{"count": len(convs), "conversations": convs}
-		if v, ok := categoryConversationsFirst(data, "nextCursor", "cursor"); ok {
-			payload["nextCursor"] = v
-		}
-		if v, ok := categoryConversationsFirst(data, "hasMore", "has_more"); ok {
-			payload["hasMore"] = v
-		}
+		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
 }
@@ -634,20 +620,44 @@ func categoryConversationsFirst(m map[string]any, keys ...string) (any, bool) {
 	return nil, false
 }
 
+const maxConversationCategoryTitleRunes = 15
+
+func validateConversationCategoryTitle(rt *shortcut.RuntimeContext) error {
+	title := strings.TrimSpace(rt.Str("title"))
+	if title == "" {
+		return apperrors.NewValidation("--title 不能为空")
+	}
+	if utf8.RuneCountInString(title) > maxConversationCategoryTitleRunes {
+		return apperrors.NewValidation(fmt.Sprintf(
+			"--title 最多 %d 个字符", maxConversationCategoryTitleRunes))
+	}
+	return nil
+}
+
 // CategoryCreate creates a conversation category (create_conv_category, im).
 var CategoryCreate = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+category-create",
 	Product:     "im",
 	Description: "创建用户自定义会话分组",
-	Intent:      "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。",
+	Intent:      "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "title", Type: shortcut.FlagString, Desc: "分组名称", Required: true},
+		{Name: "title", Type: shortcut.FlagString, Desc: "分组名称（最多 15 个字符）", Required: true},
 	},
-	Tips: []string{`dws chat +category-create --title "工作群"`},
+	Constraints: []shortcut.Constraint{
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"title"},
+			Description: "--title 去除首尾空白后必须非空，且最多 15 个字符",
+		},
+	},
+	Tips:     []string{`dws chat +category-create --title "工作群"`},
+	Validate: validateConversationCategoryTitle,
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("create_conv_category", map[string]any{"title": rt.Str("title")})
+		return rt.CallMCP("create_conv_category", map[string]any{
+			"title": strings.TrimSpace(rt.Str("title")),
+		})
 	},
 }
 
@@ -674,17 +684,25 @@ var CategoryRename = shortcut.Shortcut{
 	Command:     "+category-rename",
 	Product:     "im",
 	Description: "更新用户自定义会话分组的名称",
-	Intent:      "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。",
+	Intent:      "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "category-id", Type: shortcut.FlagInt, Desc: "会话分组 ID", Required: true},
-		{Name: "title", Type: shortcut.FlagString, Desc: "新的分组名称", Required: true},
+		{Name: "title", Type: shortcut.FlagString, Desc: "新的分组名称（最多 15 个字符）", Required: true},
 	},
-	Tips: []string{`dws chat +category-rename --category-id <分组ID> --title "新名称"`},
+	Constraints: []shortcut.Constraint{
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"title"},
+			Description: "--title 去除首尾空白后必须非空，且最多 15 个字符",
+		},
+	},
+	Tips:     []string{`dws chat +category-rename --category-id <分组ID> --title "新名称"`},
+	Validate: validateConversationCategoryTitle,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		return rt.CallMCP("rename_conv_category", map[string]any{
 			"categoryId": rt.Int("category-id"),
-			"title":      rt.Str("title"),
+			"title":      strings.TrimSpace(rt.Str("title")),
 		})
 	},
 }

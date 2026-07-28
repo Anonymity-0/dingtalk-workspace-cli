@@ -62,6 +62,9 @@ var SearchMsg = shortcut.Shortcut{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词（必填）"},
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "--query 的别名", Hidden: true},
 		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（可选，默认 7）", Default: "7", Required: false},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 100）", Default: "100"},
+		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传上次的 nextCursor", Default: "0"},
+		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出命中消息的 reaction（默认输出）"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id"}},
@@ -93,8 +96,8 @@ var SearchMsg = shortcut.Shortcut{
 			"keyword":            query,
 			"startTime":          startMs,
 			"endTime":            endMs,
-			"limit":              100,
-			"cursor":             "0",
+			"limit":              rt.Int("limit"),
+			"cursor":             rt.Str("cursor"),
 			"openConversationId": group,
 		})
 		if err != nil {
@@ -109,9 +112,11 @@ var SearchMsg = shortcut.Shortcut{
 		}
 		results := make([]map[string]any, 0, len(items))
 		for _, m := range items {
-			results = append(results, searchMsgProject(m))
+			results = append(results, searchMsgProjectWithReactions(m, !rt.Bool("no-reactions")))
 		}
-		return rt.Output(map[string]any{"messages": results})
+		payload := map[string]any{"messages": results}
+		chatmsg.ApplyPagination(payload, data)
+		return rt.Output(payload)
 	},
 }
 
@@ -153,13 +158,40 @@ func searchMsgToMaps(arr []any) []map[string]any {
 // JSON → readable, ciphertext → marker) and recursively expanding any forwarded
 // chat record under "forwarded".
 func searchMsgProject(m map[string]any) map[string]any {
+	return searchMsgProjectWithReactions(m, true)
+}
+
+func searchMsgProjectWithReactions(m map[string]any, includeReactions bool) map[string]any {
 	row := map[string]any{
 		"sender":    searchMsgSender(m),
 		"time":      searchMsgTime(m),
 		"text":      searchMsgCleanText(m),
 		"messageId": searchMsgMessageID(m),
 	}
-	if forwarded := chatmsg.Forwarded(m, searchMsgProject); len(forwarded) > 0 {
+	if conversationID := chatmsg.ConversationID(m); conversationID != nil {
+		row["conversationId"] = conversationID
+	}
+	if threadID := chatmsg.ThreadID(m); threadID != nil {
+		row["threadId"] = threadID
+	}
+	if messageType := chatmsg.MessageType(m); messageType != nil {
+		row["messageType"] = messageType
+	}
+	if updateTime := chatmsg.UpdateTime(m); updateTime != nil {
+		row["updateTime"] = updateTime
+	}
+	if includeReactions {
+		if reactions := chatmsg.Reactions(m); len(reactions) > 0 {
+			row["reactions"] = reactions
+		}
+	}
+	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
+		row["quotedMessage"] = quoted
+	}
+	projectForwarded := func(item map[string]any) map[string]any {
+		return searchMsgProjectWithReactions(item, includeReactions)
+	}
+	if forwarded := chatmsg.Forwarded(m, projectForwarded); len(forwarded) > 0 {
 		row["forwarded"] = forwarded
 	}
 	return row
