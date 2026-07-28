@@ -268,7 +268,7 @@ Example:
   dws todo task reset-reminder --task-id <taskId>
   dws todo task reset-reminder --task-id <taskId> --reminder-rules '[{"dueDateOffset":-30,"baseTime":"dueTime"},{"reminderTimeStamp":"2026-03-10T18:00:00+08:00","baseTime":"customTime"}]'
 Flags:
-      --reminder-rules string   提醒规则 JSON 数组 (可选，为空则清除提醒)
+      --reminder-rules string   提醒规则 JSON 数组 (不传则清除；显式传值必须合法)
       --task-id string          待办任务 ID (必填)
 ```
 
@@ -290,6 +290,8 @@ JSON 数组，每个元素为一条提醒规则，支持两种 `baseTime` 模式
 ]
 ```
 以上表示两条提醒规则：第一条在截止时间前 30 分钟提醒，第二条在指定时间（ISO-8601）提醒。
+
+不传 `--reminder-rules` 或显式传 `[]` 表示清除提醒。其他显式值必须是合法对象数组：每条规则必须提供 `baseTime`；`dueTime` 必须带整数 `dueDateOffset`，`customTime` 必须带 ISO-8601 `reminderTimeStamp`。非法 JSON、`null`、标量元素或缺失模式字段都会在调用远端前报错，不会静默按 `null` 清空提醒。
 
 ### 给待办打标签
 ```
@@ -472,7 +474,8 @@ dws todo task list-sub --task-id <taskId> --format json
 - `task add-participant` / `task remove-participant` 用于管理待办的参与人，`--participants` 支持逗号分隔的多个 userId
 - 执行人 (executor) 与参与人 (participant) 的区别：执行人负责完成待办，参与人仅关注待办进度
 - `task add-reminder` 用于为待办添加提醒，`--base-time` 支持 `dueTime`（基于截止时间偏移，待办必须有截止时间）和 `customTime`（自定义时间戳）两种模式
-- `task reset-reminder` 用于重置待办提醒规则，不传 `--reminder-rules` 则清除所有提醒
+- `customTime` 直接使用 `--reminder-time-stamp`，不要求先设置 `--due`；只有 `dueTime` 模式依赖待办截止时间
+- `task reset-reminder` 用于重置待办提醒规则，不传 `--reminder-rules` 或传 `[]` 则清除所有提醒；其他值会严格校验，非法输入不会发出远端调用
 - `task add-attachment` / `list-attachment` / `remove-attachment` 三条附件命令均可用；`add-attachment` 会真实上传文件，勿用于试探性调用，先确认待办存在
 - 附件 ID 的取法：`add-attachment` 从 `result.attachmentIds[]` 取，`list-attachment` 从顶层 `attachments[].attachmentId` 取；`remove-attachment` 用 `--attachment-id` + `--yes`
 - 子待办 ID 只能从 `task list-sub` 的顶层 `subTasks[].taskId` 取；`task get` 的 `result.todoDetailModel.subTodos[]` 没有 taskId 字段

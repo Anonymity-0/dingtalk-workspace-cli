@@ -6,6 +6,8 @@ package helpers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -15,13 +17,23 @@ import (
 )
 
 type contractDefectCaller struct {
-	dryRun bool
-	calls  []guardedMutationCall
+	dryRun    bool
+	calls     []guardedMutationCall
+	responses map[string]string
+	errors    map[string]error
 }
 
 func (c *contractDefectCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, guardedMutationCall{productID: productID, toolName: toolName, args: args})
-	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{}`}}}, nil
+	key := productID + "/" + toolName
+	if err := c.errors[key]; err != nil {
+		return nil, err
+	}
+	text := c.responses[key]
+	if text == "" {
+		text = `{}`
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
 func (*contractDefectCaller) Format() string { return "json" }
@@ -85,42 +97,175 @@ func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T)
 	}
 }
 
-func TestRenameDocumentRemovesOnePreservedExtension(t *testing.T) {
+func TestDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
+	caller := &contractDefectCaller{}
+	if _, err := executeContractDefectCommand(t, caller, newDocCommand,
+		"rename", "--node", "node-1", "--name", "release.v2"); err != nil {
+		t.Fatalf("doc rename returned error: %v", err)
+	}
+	if len(caller.calls) != 1 {
+		t.Fatalf("tool calls = %#v, want one rename call", caller.calls)
+	}
+	if got := caller.calls[0].args["newName"]; got != "release.v2" {
+		t.Fatalf("newName = %#v, want release.v2", got)
+	}
+}
+
+func TestDriveRenameUsesNodeTypeAndCurrentExtension(t *testing.T) {
 	tests := []struct {
-		name  string
-		build func() *cobra.Command
-		args  []string
+		name        string
+		metadata    string
+		nodeID      string
+		wantFileID  string
+		requested   string
+		wantNewName string
 	}{
 		{
-			name:  "doc",
-			build: newDocCommand,
-			args:  []string{"rename", "--node", "node-1", "--name", "report.txt"},
+			name:        "file strips matching extension outside old whitelist",
+			metadata:    `{"result":{"type":"file","extension":"heic"}}`,
+			nodeID:      "https://alidocs.dingtalk.com/i/nodes/node-1",
+			wantFileID:  "node-1",
+			requested:   "photo.HEIC",
+			wantNewName: "photo",
 		},
 		{
-			name:  "drive",
-			build: newDriveCommand,
-			args:  []string{"rename", "--node", "node-1", "--name", "report.txt"},
+			name:        "folder preserves dotted display name",
+			metadata:    `{"result":{"type":"folder","extension":"v2"}}`,
+			requested:   "release.v2",
+			wantNewName: "release.v2",
+		},
+		{
+			name:        "different current extension is preserved",
+			metadata:    `{"result":{"nodeType":"file","fileExtension":"txt"}}`,
+			requested:   "report.final",
+			wantNewName: "report.final",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			caller := &contractDefectCaller{}
-			if _, err := executeContractDefectCommand(t, caller, test.build, test.args...); err != nil {
-				t.Fatalf("rename returned error: %v", err)
+			caller := &contractDefectCaller{responses: map[string]string{
+				"drive/get_file_info": test.metadata,
+			}}
+			nodeID := test.nodeID
+			if nodeID == "" {
+				nodeID = "node-1"
 			}
-			if len(caller.calls) != 1 {
-				t.Fatalf("tool calls = %#v, want one rename call", caller.calls)
+			if _, err := executeContractDefectCommand(t, caller, newDriveCommand,
+				"rename", "--node", nodeID, "--name", test.requested); err != nil {
+				t.Fatalf("drive rename returned error: %v", err)
 			}
-			if got := caller.calls[0].args["newName"]; got != "report" {
-				t.Fatalf("newName = %#v, want report", got)
+			if len(caller.calls) != 2 {
+				t.Fatalf("tool calls = %#v, want metadata read plus rename", caller.calls)
+			}
+			if caller.calls[0].productID != "drive" || caller.calls[0].toolName != "get_file_info" {
+				t.Fatalf("first call = %#v, want drive/get_file_info", caller.calls[0])
+			}
+			wantFileID := test.wantFileID
+			if wantFileID == "" {
+				wantFileID = nodeID
+			}
+			if got := caller.calls[0].args["fileId"]; got != wantFileID {
+				t.Fatalf("metadata fileId = %#v, want %q", got, wantFileID)
+			}
+			if caller.calls[1].productID != "doc" || caller.calls[1].toolName != "rename_document" {
+				t.Fatalf("second call = %#v, want doc/rename_document", caller.calls[1])
+			}
+			if got := caller.calls[1].args["newName"]; got != test.wantNewName {
+				t.Fatalf("newName = %#v, want %q", got, test.wantNewName)
 			}
 		})
 	}
+}
 
-	if got := renameBaseName("release.v2"); got != "release.v2" {
-		t.Fatalf("unknown dotted suffix = %q, want release.v2", got)
+func TestDriveRenameMetadataFailuresDoNotMutate(t *testing.T) {
+	tests := []struct {
+		name      string
+		responses map[string]string
+		errors    map[string]error
+	}{
+		{
+			name:   "metadata call error",
+			errors: map[string]error{"drive/get_file_info": errors.New("metadata unavailable")},
+		},
+		{
+			name:      "invalid metadata JSON",
+			responses: map[string]string{"drive/get_file_info": `{`},
+		},
+		{
+			name:      "metadata result missing",
+			responses: map[string]string{"drive/get_file_info": `{}`},
+		},
 	}
-	if got := renameBaseName("REPORT.XLSX"); got != "REPORT" {
-		t.Fatalf("case-insensitive extension normalization = %q, want REPORT", got)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &contractDefectCaller{responses: test.responses, errors: test.errors}
+			_, err := executeContractDefectCommand(t, caller, newDriveCommand,
+				"rename", "--node", "node-1", "--name", "report.txt")
+			if err == nil {
+				t.Fatal("drive rename returned nil error")
+			}
+			if len(caller.calls) != 1 || caller.calls[0].toolName != "get_file_info" {
+				t.Fatalf("tool calls = %#v, want metadata read only", caller.calls)
+			}
+		})
+	}
+}
+
+func TestDriveRenameDryRunDefersMetadataNormalization(t *testing.T) {
+	caller := &contractDefectCaller{dryRun: true}
+	output, err := executeContractDefectCommand(t, caller, newDriveCommand,
+		"rename", "--node", "node-1", "--name", "photo.heic", "--dry-run")
+	if err != nil {
+		t.Fatalf("drive rename dry-run returned error: %v", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run tool calls = %#v, want none", caller.calls)
+	}
+	if !strings.Contains(output, `"newName": "photo.heic"`) {
+		t.Fatalf("dry-run output = %q, want unmodified input name", output)
+	}
+}
+
+func TestDriveRenameBaseNameConservativeEdges(t *testing.T) {
+	tests := []struct {
+		name      string
+		nodeType  string
+		extension string
+		want      string
+	}{
+		{name: ".txt", nodeType: "file", extension: "txt", want: ".txt"},
+		{name: "report.txt", nodeType: "directory", extension: "txt", want: "report.txt"},
+		{name: "report.txt", nodeType: "dir", extension: "txt", want: "report.txt"},
+		{name: " report.txt ", nodeType: "file", extension: "", want: "report.txt"},
+		{name: "report.txt", nodeType: "file", extension: ".txt", want: "report"},
+	}
+	for _, test := range tests {
+		if got := driveRenameBaseName(test.name, test.nodeType, test.extension); got != test.want {
+			t.Fatalf("driveRenameBaseName(%q, %q, %q) = %q, want %q",
+				test.name, test.nodeType, test.extension, got, test.want)
+		}
+	}
+}
+
+func TestDriveInfoRestoresFileSizeWhenDocMetadataIsNull(t *testing.T) {
+	caller := &contractDefectCaller{responses: map[string]string{
+		"drive/get_file_info":   `{"result":{"fileId":"node-1","extension":"adoc","fileSize":93682}}`,
+		"doc/get_document_info": `{"result":{"title":"Doc","fileSize":null}}`,
+	}}
+	output, err := executeContractDefectCommand(t, caller, newDriveCommand,
+		"info", "--node", "node-1")
+	if err != nil {
+		t.Fatalf("drive info returned error: %v", err)
+	}
+	var payload struct {
+		Result struct {
+			FileSize int64 `json:"fileSize"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(output), &payload); err != nil {
+		t.Fatalf("decode drive info output %q: %v", output, err)
+	}
+	if payload.Result.FileSize != 93682 {
+		t.Fatalf("fileSize = %d, want 93682", payload.Result.FileSize)
 	}
 }

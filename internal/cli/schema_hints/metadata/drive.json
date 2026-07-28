@@ -206,10 +206,10 @@
       "reviewed": true,
       "parameters": {
         "name": {
-          "description": "新显示名称；服务端保留节点原扩展名，若传入常见文件扩展名，CLI 会自动去掉一层以避免双扩展名"
+          "description": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
         }
       },
-      "review_reason": "The reviewed CLI normalizes one familiar extension from --name because rename_document preserves the node's existing extension.",
+      "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist.",
       "cli_path": "drive rename"
     },
     "drive.search_files": {

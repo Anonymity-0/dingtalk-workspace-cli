@@ -1548,7 +1548,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			}
 			return callMCPTool("rename_document", map[string]any{
 				"nodeId":  nodeID,
-				"newName": renameBaseName(flagOrFallback(cmd, "name", "title")),
+				"newName": flagOrFallback(cmd, "name", "title"),
 			})
 		},
 	}
