@@ -109,39 +109,50 @@ type schemaCatalogToolShard struct {
 // whole payload: if any shard is missing, stale, or tampered, the content hash
 // check in loadSchemaCatalogSnapshot fails exactly as before.
 func assembleEmbeddedSchemaCatalog() (loadedSchemaCatalog, error) {
-	var envelope schemaCatalogEnvelope
-	if err := decodeStrictSchemaJSON(embeddedSchemaCatalogEnvelopeJSON, &envelope); err != nil {
-		return loadedSchemaCatalog{}, fmt.Errorf("decode embedded schema catalog.json: %w", err)
-	}
-	entries, err := embeddedSchemaCatalogTools.ReadDir("schema_catalog/tools")
+	snapshot, err := assembleSchemaCatalogSnapshot(embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
 	if err != nil {
-		return loadedSchemaCatalog{}, fmt.Errorf("read embedded schema catalog tools directory: %w", err)
+		return loadedSchemaCatalog{}, err
+	}
+	return loadSchemaCatalogSnapshot(snapshot)
+}
+
+// assembleSchemaCatalogSnapshot merges an envelope document and a directory of
+// per-product tool shards back into the single-document snapshot shape. Split
+// from assembleEmbeddedSchemaCatalog so shard failure modes stay testable
+// against fake filesystems.
+func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string) (SchemaCatalogSnapshot, error) {
+	var envelope schemaCatalogEnvelope
+	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
+		return SchemaCatalogSnapshot{}, fmt.Errorf("decode embedded schema catalog.json: %w", err)
+	}
+	entries, err := fs.ReadDir(shards, dir)
+	if err != nil {
+		return SchemaCatalogSnapshot{}, fmt.Errorf("read embedded schema catalog tools directory: %w", err)
 	}
 	tools := make(map[string]map[string]any, len(entries)*8)
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
-		data, readErr := fs.ReadFile(embeddedSchemaCatalogTools, "schema_catalog/tools/"+entry.Name())
+		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
 		if readErr != nil {
-			return loadedSchemaCatalog{}, fmt.Errorf("read embedded schema catalog shard %s: %w", entry.Name(), readErr)
+			return SchemaCatalogSnapshot{}, fmt.Errorf("read embedded schema catalog shard %s: %w", entry.Name(), readErr)
 		}
 		var shard schemaCatalogToolShard
 		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
-			return loadedSchemaCatalog{}, fmt.Errorf("decode embedded schema catalog shard %s: %w", entry.Name(), err)
+			return SchemaCatalogSnapshot{}, fmt.Errorf("decode embedded schema catalog shard %s: %w", entry.Name(), err)
 		}
 		for canonical, spec := range shard.Tools {
 			tools[canonical] = spec
 		}
 	}
-	snapshot := SchemaCatalogSnapshot{
+	return SchemaCatalogSnapshot{
 		Version:     envelope.Version,
 		SurfaceHash: envelope.SurfaceHash,
 		SourceHash:  envelope.SourceHash,
 		Catalog:     envelope.Catalog,
 		Tools:       tools,
-	}
-	return loadSchemaCatalogSnapshot(snapshot)
+	}, nil
 }
 
 func embeddedSchemaCatalogError() error {

@@ -60,10 +60,15 @@ var (
 // initMetaByCLIPath builds the cli_path → CommandMeta lookup from the embedded
 // catalog. Runs once (sync.Once); the catalog is already decoded at package init.
 func initMetaByCLIPath() {
-	metaByCLIPath = make(map[string]CommandMeta)
-	loaded := embeddedSchemaCatalog()
+	metaByCLIPath = buildMetaByCLIPath(embeddedSchemaCatalog())
+}
+
+// buildMetaByCLIPath constructs the lookup from a loaded catalog snapshot.
+// Split from initMetaByCLIPath so malformed-snapshot guards stay testable.
+func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
+	lookup := make(map[string]CommandMeta)
 	if loaded.Snapshot.Tools == nil {
-		return
+		return lookup
 	}
 	for _, tool := range loaded.Snapshot.Tools {
 		cliPath := catalogStringVal(tool, "cli_path")
@@ -91,7 +96,7 @@ func initMetaByCLIPath() {
 				Examples:     catalogStringSliceVal(tool, "examples"),
 			},
 		}
-		metaByCLIPath[cliPath] = meta
+		lookup[cliPath] = meta
 		// Register each compat alias path (e.g. "report list") against the same
 		// metadata. Primary cli_path wins on collision so an alias can never
 		// shadow another command's canonical entry.
@@ -100,11 +105,12 @@ func initMetaByCLIPath() {
 			if alias == "" || alias == cliPath {
 				continue
 			}
-			if _, exists := metaByCLIPath[alias]; !exists {
-				metaByCLIPath[alias] = meta
+			if _, exists := lookup[alias]; !exists {
+				lookup[alias] = meta
 			}
 		}
 	}
+	return lookup
 }
 
 // catalogStringSliceVal reads a []string field from a catalog tool map.

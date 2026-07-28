@@ -524,3 +524,40 @@ func TestDevAppLeafToolArgsTable(t *testing.T) {
 		})
 	}
 }
+
+// TestDevAppMemberRemoveValidateChain 覆盖 member remove Validate 钩子的逐级
+// 必填校验：unified-app-id → user-ids → member-type。
+func TestDevAppMemberRemoveValidateChain(t *testing.T) {
+	newCmd := func() *cobra.Command {
+		cmd := newDevAppMemberRemoveCommand(&fakeDevAppRunner{})
+		cmd.Flags().Bool("yes", false, "")
+		if err := cmd.Flags().Set("yes", "true"); err != nil {
+			t.Fatal(err)
+		}
+		return cmd
+	}
+
+	cmd := newCmd()
+	if err := cmd.RunE(cmd, nil); err == nil || !strings.Contains(err.Error(), "unified-app-id") {
+		t.Fatalf("missing unified-app-id err = %v", err)
+	}
+
+	cmd = newCmd()
+	if err := cmd.Flags().Set("unified-app-id", "APP-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, nil); err == nil || !strings.Contains(err.Error(), "user-ids") {
+		t.Fatalf("missing user-ids err = %v", err)
+	}
+
+	cmd = newCmd()
+	if err := cmd.Flags().Set("unified-app-id", "APP-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("user-ids", "u1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, nil); err == nil || !strings.Contains(err.Error(), "member-type") {
+		t.Fatalf("missing member-type err = %v", err)
+	}
+}

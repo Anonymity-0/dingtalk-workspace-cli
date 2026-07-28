@@ -15,6 +15,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -121,6 +122,12 @@ func TestValidateCatalogStructureRejectsViolations(t *testing.T) {
 			want:   `"effect" = "mutate"`,
 		},
 		{
+			// 非字符串枚举字段：类型错误由字符串校验报告，枚举循环跳过。
+			name:   "non-string enum field skips enum check",
+			mutate: func(e map[string]any) { e["effect"] = float64(1) },
+			want:   `"effect" must be a non-empty string`,
+		},
+		{
 			name:   "mcp without interface_ref",
 			mutate: func(e map[string]any) { delete(e, "interface_ref") },
 			want:   "interface_mode=mcp requires interface_ref",
@@ -193,6 +200,91 @@ func TestValidateCatalogStructureRejectsViolations(t *testing.T) {
 			mutate: func(e map[string]any) { e["examples"] = []any{"ok", float64(1)} },
 			want:   `"examples" must be an array of strings`,
 		},
+		{
+			name:   "use_when must be an array at all",
+			mutate: func(e map[string]any) { e["use_when"] = "单个字符串" },
+			want:   `"use_when" must be an array of strings`,
+		},
+		{
+			name:   "field_provenance must be object",
+			mutate: func(e map[string]any) { e["field_provenance"] = "not-an-object" },
+			want:   `"field_provenance" must be an object`,
+		},
+		{
+			name:   "parameters must be object",
+			mutate: func(e map[string]any) { e["parameters"] = []any{"x"} },
+			want:   `"parameters" must be an object`,
+		},
+		{
+			name:   "parameter_count must be number",
+			mutate: func(e map[string]any) { e["parameter_count"] = "1" },
+			want:   `"parameter_count" must be a number`,
+		},
+		{
+			name: "parameter entry must be object",
+			mutate: func(e map[string]any) {
+				e["parameters"] = map[string]any{"base-id": "not-an-object"}
+				e["parameter_count"] = float64(1)
+			},
+			want: `parameter "base-id" must be an object`,
+		},
+		{
+			name:   "interface_ref must be object",
+			mutate: func(e map[string]any) { e["interface_ref"] = "aitable.create_records" },
+			want:   "interface_ref must be an object",
+		},
+		{
+			name: "interface_ref keys must be non-empty",
+			mutate: func(e map[string]any) {
+				e["interface_ref"] = map[string]any{"product_id": "  ", "rpc_name": float64(1)}
+			},
+			want: "interface_ref.product_id must be a non-empty string",
+		},
+		{
+			name:   "mcp must not set interface_reason",
+			mutate: func(e map[string]any) { e["interface_reason"] = "多余理由" },
+			want:   "interface_mode=mcp must not set interface_reason",
+		},
+		{
+			name: "param description must be non-empty",
+			mutate: func(e map[string]any) {
+				params := e["parameters"].(map[string]any)
+				params["base-id"].(map[string]any)["description"] = "   "
+			},
+			want: `parameter "base-id": description must be a non-empty string`,
+		},
+		{
+			name: "param field_provenance must be object",
+			mutate: func(e map[string]any) {
+				params := e["parameters"].(map[string]any)
+				params["base-id"].(map[string]any)["field_provenance"] = "x"
+			},
+			want: `parameter "base-id": field_provenance must be an object`,
+		},
+		{
+			name: "param cli_required must be bool",
+			mutate: func(e map[string]any) {
+				params := e["parameters"].(map[string]any)
+				params["base-id"].(map[string]any)["cli_required"] = "yes"
+			},
+			want: `parameter "base-id": cli_required must be a boolean`,
+		},
+		{
+			name: "param enum must be array",
+			mutate: func(e map[string]any) {
+				params := e["parameters"].(map[string]any)
+				params["base-id"].(map[string]any)["enum"] = "A,B"
+			},
+			want: `parameter "base-id": enum must be an array`,
+		},
+		{
+			name: "param enum items must be strings",
+			mutate: func(e map[string]any) {
+				params := e["parameters"].(map[string]any)
+				params["base-id"].(map[string]any)["enum"] = []any{"A", float64(2)}
+			},
+			want: `parameter "base-id": enum[1] must be a string`,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -218,5 +310,49 @@ func TestValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
 	}
 	if err := ValidateCatalogStructure([]byte(`not json`)); err == nil {
 		t.Fatal("ValidateCatalogStructure() = nil, want decode error")
+	}
+}
+
+func TestValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
+	// 两个工具各制造两条违规，驱动排序比较器的 tool 与 message 两个分支。
+	bad1 := validCatalogToolEntry()
+	bad1["effect"] = "mutate"
+	bad1["risk"] = "extreme"
+	bad2 := validCatalogToolEntry()
+	bad2["canonical_path"] = "zz.last_tool"
+	bad2["effect"] = "mutate"
+	bad2["risk"] = "extreme"
+	payload, err := json.Marshal(map[string]any{
+		"version": SchemaCatalogSnapshotVersion,
+		"tools":   map[string]any{"zz.last_tool": bad2, "aitable.record_create": bad1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	verr := ValidateCatalogStructure(payload)
+	if verr == nil {
+		t.Fatal("ValidateCatalogStructure() = nil, want sorted violations")
+	}
+	msg := verr.Error()
+	if !strings.Contains(msg, "(4 total)") {
+		t.Fatalf("error = %v, want 4 total violations", verr)
+	}
+	if first, second := strings.Index(msg, "aitable.record_create"), strings.Index(msg, "zz.last_tool"); first < 0 || second < 0 || first > second {
+		t.Fatalf("violations not sorted by tool: %v", verr)
+	}
+}
+
+func TestValidateCatalogStructureTruncatesViolationList(t *testing.T) {
+	// 单工具制造超过 25 条违规，验证截断提示。
+	entry := validCatalogToolEntry()
+	for i := 0; i < 30; i++ {
+		entry[fmt.Sprintf("unknown_field_%02d", i)] = true
+	}
+	err := ValidateCatalogStructure(catalogPayload(t, entry))
+	if err == nil {
+		t.Fatal("ValidateCatalogStructure() = nil, want truncated violation list")
+	}
+	if !strings.Contains(err.Error(), "more violations") {
+		t.Fatalf("error = %v, want truncation marker", err)
 	}
 }

@@ -16,7 +16,6 @@ package cli
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/spf13/cobra"
 )
@@ -39,34 +38,6 @@ type CommandSafety struct {
 func (s CommandSafety) ShouldRender() bool {
 	return s.Confirmation == "user_required" ||
 		(s.Risk != "" && s.Risk != "low")
-}
-
-var (
-	safetyByCLIPathOnce sync.Once
-	safetyByCLIPath     map[string]CommandSafety
-)
-
-// initSafetyByCLIPath builds a cli_path → CommandSafety lookup from the
-// embedded catalog. Runs once (sync.Once); the catalog is already decoded at
-// package init, so this is a cheap map iteration.
-func initSafetyByCLIPath() {
-	safetyByCLIPath = make(map[string]CommandSafety)
-	loaded := embeddedSchemaCatalog()
-	if loaded.Snapshot.Tools == nil {
-		return
-	}
-	for _, tool := range loaded.Snapshot.Tools {
-		cliPath := catalogStringVal(tool, "cli_path")
-		if cliPath == "" {
-			continue
-		}
-		safetyByCLIPath[cliPath] = CommandSafety{
-			Effect:       catalogStringVal(tool, "effect"),
-			Risk:         catalogStringVal(tool, "risk"),
-			Confirmation: catalogStringVal(tool, "confirmation"),
-			Idempotency:  catalogStringVal(tool, "idempotency"),
-		}
-	}
 }
 
 // catalogStringVal reads a string field from a catalog tool map[string]any.

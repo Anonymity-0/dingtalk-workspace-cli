@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"regexp"
 	"sort"
 	"strings"
@@ -108,15 +109,22 @@ func loadEmbeddedCommandRegistry() (CommandRegistry, error) {
 // and reassembles them into a single CommandRegistry, identical to the previous
 // single-file layout. Mirrors assembleEmbeddedSchemaCatalog for catalog shards.
 func assembleCommandRegistry() (CommandRegistry, error) {
+	return assembleCommandRegistryFrom(embeddedSchemaCommandRegistryEnvelopeJSON, embeddedSchemaCommandRegistryProducts, "schema_command_registry/products")
+}
+
+// assembleCommandRegistryFrom reassembles an envelope plus product shard
+// directory. Split from assembleCommandRegistry so shard failure modes stay
+// testable against fake filesystems.
+func assembleCommandRegistryFrom(envelopeJSON []byte, shards fs.FS, dir string) (CommandRegistry, error) {
 	var envelope struct {
 		Schema  string `json:"$schema,omitempty"`
 		Version int    `json:"version"`
 	}
-	if err := json.Unmarshal(embeddedSchemaCommandRegistryEnvelopeJSON, &envelope); err != nil {
+	if err := json.Unmarshal(envelopeJSON, &envelope); err != nil {
 		return CommandRegistry{}, fmt.Errorf("decode embedded command registry envelope: %w", err)
 	}
 
-	entries, err := embeddedSchemaCommandRegistryProducts.ReadDir("schema_command_registry/products")
+	entries, err := fs.ReadDir(shards, dir)
 	if err != nil {
 		return CommandRegistry{}, fmt.Errorf("read embedded command registry products: %w", err)
 	}
@@ -128,7 +136,7 @@ func assembleCommandRegistry() (CommandRegistry, error) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
-		data, readErr := embeddedSchemaCommandRegistryProducts.ReadFile("schema_command_registry/products/" + entry.Name())
+		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
 		if readErr != nil {
 			return CommandRegistry{}, fmt.Errorf("read embedded command registry shard %s: %w", entry.Name(), readErr)
 		}
@@ -141,10 +149,8 @@ func assembleCommandRegistry() (CommandRegistry, error) {
 
 	// Encode to bytes and decode via the existing pipeline so all validation
 	// (canonical patterns, duplicate detection, visibility) runs identically.
-	data, err := json.Marshal(snapshot)
-	if err != nil {
-		return CommandRegistry{}, fmt.Errorf("marshal reassembled command registry: %w", err)
-	}
+	// Marshal of this plain struct cannot fail.
+	data, _ := json.Marshal(snapshot)
 	return decodeCommandRegistry(data)
 }
 
@@ -152,14 +158,20 @@ func assembleCommandRegistry() (CommandRegistry, error) {
 // into a single JSON document matching the pre-split layout. Used by tests that
 // need the full registry bytes.
 func EmbeddedCommandRegistryMergedJSON() ([]byte, error) {
+	return mergedCommandRegistryJSON(embeddedSchemaCommandRegistryEnvelopeJSON, embeddedSchemaCommandRegistryProducts, "schema_command_registry/products")
+}
+
+// mergedCommandRegistryJSON is the injectable core of
+// EmbeddedCommandRegistryMergedJSON.
+func mergedCommandRegistryJSON(envelopeJSON []byte, shards fs.FS, dir string) ([]byte, error) {
 	var envelope struct {
 		Schema  string `json:"$schema,omitempty"`
 		Version int    `json:"version"`
 	}
-	if err := json.Unmarshal(embeddedSchemaCommandRegistryEnvelopeJSON, &envelope); err != nil {
+	if err := json.Unmarshal(envelopeJSON, &envelope); err != nil {
 		return nil, err
 	}
-	entries, err := embeddedSchemaCommandRegistryProducts.ReadDir("schema_command_registry/products")
+	entries, err := fs.ReadDir(shards, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +180,7 @@ func EmbeddedCommandRegistryMergedJSON() ([]byte, error) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
-		data, err := embeddedSchemaCommandRegistryProducts.ReadFile("schema_command_registry/products/" + entry.Name())
+		data, err := fs.ReadFile(shards, dir+"/"+entry.Name())
 		if err != nil {
 			return nil, err
 		}

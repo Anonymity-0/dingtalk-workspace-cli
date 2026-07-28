@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -28,32 +29,53 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 )
 
+// toolLister is the tools/list capability consumed by run; production code
+// uses transport.Client, tests inject fakes.
+type toolLister interface {
+	ListTools(ctx context.Context, endpoint string) (transport.ToolsListResult, error)
+}
+
+// Injection points so run() is fully testable without network/keychain/exit.
+var (
+	osExit           = os.Exit
+	getenv           = os.Getenv
+	loadTokenData    = auth.LoadTokenDataKeychain
+	staticServers    = syncdata.StaticServers
+	registrySource   = cli.EmbeddedCommandRegistryMergedJSON
+	listToolsTimeout = 30 * time.Second
+	gitHeadPath      = ".git/HEAD"
+	newToolLister    = func(token string) toolLister {
+		return transport.NewClient(&http.Client{Timeout: 60 * time.Second}).WithAuth(token, nil)
+	}
+)
+
 func main() {
-	output := flag.String("output", "internal/cli/schema_mcp_metadata.json", "output file path")
-	flag.Parse()
+	osExit(run(os.Args[1:], os.Stderr))
+}
 
-	token := strings.TrimSpace(os.Getenv("DWS_ACCESS_TOKEN"))
-	if token == "" {
-		td, err := auth.LoadTokenDataKeychain()
-		if err == nil && td != nil && td.AccessToken != "" {
-			token = td.AccessToken
-			fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: loaded token from keychain (%d chars)\n", len(token))
-		}
-	}
-	if token == "" {
-		fmt.Fprintln(os.Stderr, "fetch_mcp_metadata: no auth token. Run 'dws auth login' first.")
-		os.Exit(1)
+func run(args []string, stderr io.Writer) int {
+	flags := flag.NewFlagSet("fetch_mcp_metadata", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	output := flags.String("output", "internal/cli/schema_mcp_metadata.json", "output file path")
+	if err := flags.Parse(args); err != nil {
+		return 2
 	}
 
-	client := transport.NewClient(&http.Client{Timeout: 60 * time.Second}).WithAuth(token, nil)
+	token := resolveToken(stderr)
+	if token == "" {
+		fmt.Fprintln(stderr, "fetch_mcp_metadata: no auth token. Run 'dws auth login' first.")
+		return 1
+	}
+
+	client := newToolLister(token)
 
 	// Iterate ALL static server endpoints (26 servers covering all products).
-	servers := syncdata.StaticServers()
-	fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: querying %d server endpoints\n", len(servers))
+	servers := staticServers()
+	fmt.Fprintf(stderr, "fetch_mcp_metadata: querying %d server endpoints\n", len(servers))
 
 	// Load CLI registry to build tool_name → interface_ref mapping.
-	registryMap := loadRegistryInterfaceRefs()
-	fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: registry mapping: %d entries\n", len(registryMap))
+	registryMap := loadRegistryInterfaceRefs(stderr)
+	fmt.Fprintf(stderr, "fetch_mcp_metadata: registry mapping: %d entries\n", len(registryMap))
 
 	// Load the previous schema_mcp_metadata.json to preserve hand-curated
 	// cross-server interface_ref mappings that automated matching can't derive.
@@ -82,15 +104,15 @@ func main() {
 		if endpoint == "" {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), listToolsTimeout)
 		result, err := client.ListTools(ctx, endpoint)
 		cancel()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  [skip] %s: %v\n", srv.ID, err)
+			fmt.Fprintf(stderr, "  [skip] %s: %v\n", srv.ID, err)
 			failedServices = append(failedServices, srv.ID)
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "  [ok]   %s: %d tools\n", srv.ID, len(result.Tools))
+		fmt.Fprintf(stderr, "  [ok]   %s: %d tools\n", srv.ID, len(result.Tools))
 		totalRaw += len(result.Tools)
 		for _, tool := range result.Tools {
 			name := strings.TrimSpace(tool.Name)
@@ -113,7 +135,7 @@ func main() {
 			matched++
 		}
 	}
-	fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: MCP matched=%d, with interface_ref=%d\n", len(allTools), matched)
+	fmt.Fprintf(stderr, "fetch_mcp_metadata: MCP matched=%d, with interface_ref=%d\n", len(allTools), matched)
 
 	// Fill gaps: for registry canonicals not covered by MCP tools/list OR
 	// previous data, add stub entries (interface_ref only).
@@ -128,13 +150,13 @@ func main() {
 		stubs++
 	}
 	if stubs > 0 {
-		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: added %d registry stubs (no MCP data, interface_ref only)\n", stubs)
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: added %d registry stubs (no MCP data, interface_ref only)\n", stubs)
 	}
 
 	// Compute coverage fields required by check-schema-catalog.sh. Failed
 	// services must be reported honestly so policy can spot snapshot gaps.
 	if len(failedServices) > 0 {
-		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: %d/%d services unreachable: %s\n",
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: %d/%d services unreachable: %s\n",
 			len(failedServices), len(servers), strings.Join(failedServices, ", "))
 	}
 
@@ -146,22 +168,44 @@ func main() {
 	}
 
 	// source_revision: git commit hash (proves provenance).
-	if rev, err := os.ReadFile(".git/HEAD"); err == nil {
+	if rev, err := os.ReadFile(gitHeadPath); err == nil {
 		metadata["source_revision"] = strings.TrimSpace(string(rev))
 	}
 
+	if err := writeMetadata(*output, metadata); err != nil {
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stderr, "fetch_mcp_metadata: wrote %d tools to %s\n", len(allTools), *output)
+	return 0
+}
+
+// resolveToken returns the access token from DWS_ACCESS_TOKEN or, as a
+// fallback, the DWS keychain.
+func resolveToken(stderr io.Writer) string {
+	token := strings.TrimSpace(getenv("DWS_ACCESS_TOKEN"))
+	if token != "" {
+		return token
+	}
+	td, err := loadTokenData()
+	if err != nil || td == nil || td.AccessToken == "" {
+		return ""
+	}
+	fmt.Fprintf(stderr, "fetch_mcp_metadata: loaded token from keychain (%d chars)\n", len(td.AccessToken))
+	return td.AccessToken
+}
+
+// writeMetadata marshals the snapshot and writes it to the output path.
+func writeMetadata(path string, metadata map[string]any) error {
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: marshal failed: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("marshal failed: %w", err)
 	}
 	data = append(data, '\n')
-
-	if err := os.WriteFile(*output, data, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: write %s failed: %v\n", *output, err)
-		os.Exit(1)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write %s failed: %w", path, err)
 	}
-	fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: wrote %d tools to %s\n", len(allTools), *output)
+	return nil
 }
 
 // buildCoverage reports snapshot coverage honestly: snapshot_services only
@@ -211,10 +255,10 @@ func mergeLiveMCPTool(allTools map[string]map[string]any, canonicalKey string, t
 // loadRegistryInterfaceRefs loads the reviewed split CommandRegistry through
 // the cli package's reassembly API and builds a canonical_path →
 // {product_id, rpc_name} mapping for interface_ref injection.
-func loadRegistryInterfaceRefs() map[string]map[string]string {
-	data, err := cli.EmbeddedCommandRegistryMergedJSON()
+func loadRegistryInterfaceRefs(stderr io.Writer) map[string]map[string]string {
+	data, err := registrySource()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: warning: cannot load registry: %v\n", err)
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: warning: cannot load registry: %v\n", err)
 		return map[string]map[string]string{}
 	}
 	var reg struct {
