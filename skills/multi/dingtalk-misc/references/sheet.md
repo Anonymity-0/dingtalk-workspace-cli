@@ -33,6 +33,7 @@
 3. **按目的选择读取方式**：快速看值和大表分批用 `csv-get`；需要 `columns` / `data` / `dtypes` / `formats` 用 `table-get`；需要公式、样式、数据验证、超链接、富文本等 per-cell 元数据用 `range read`。
 4. **写返回不等于完成**：任何写操作完成后都要用独立读命令回读确认。值写入用 `csv-get` / `range read` / `table-get`，结构变更用 `sheet info`，对象类操作用对应 `list` / `get`。
 5. **大批量纯值不要拼大 JSON**：超过 5 行或 20 个单元格的纯值写入优先 `csv-put`；需要 table/dataframe 语义时用 `table-put`。
+6. **公式写入后分层校验**：写公式前读 [sheet-formula](./sheet/sheet-formula.md)。写后先用 `range read --value-render-option formula` 确认公式文本，再用 `formula-verify` 聚合扫描计算错误；需要确认业务数值时再用 `raw_value` 抽样对账。
 7. **专用操作用专用命令**：搜索用 `find`、替换用 `replace`、清空用 `range clear`、排序用 `range sort`、复制/移动区域用 `range copy-to` / `range move-to`，不要用 `range read` + `range update` 客户端模拟。
 8. **大整数按文本写**：超过 `9007199254740991` 的整数、长数字 ID、订单号、手机号等需要逐位精确的值，不要按 JSON number 或 `int64` / `uint64` 写入；用字符串值 + `object` dtype + 文本格式 `@`。
 
@@ -43,6 +44,7 @@
 | 快速查看数据 / 大表分批读取 | `csv-get` | [sheet-read-data](sheet/sheet-read-data.md) | 不传 `--range` 全量 `range read` 大表 |
 | 按表格结构读写列名、类型、格式 | `table-get` / `table-put` | [sheet-read-data](sheet/sheet-read-data.md)、[sheet-write-data](sheet/sheet-write-data.md) | 把 table spec 塞进 `batch-update` |
 | 少量精确写入、公式、超链接、富文本、数据验证 | `range update` | [sheet-write-data](sheet/sheet-write-data.md)、[sheet-formula](sheet/sheet-formula.md) | 用 `csv-put` / `append` 写公式或富格式 |
+| 校验公式错误 / 全表公式检查 | `formula-verify` | [sheet-formula](sheet/sheet-formula.md) | 全表 `range read` 后由 Agent 自行枚举错误值 |
 | 批量纯值写入 / CSV 粘贴 | `csv-put` | [sheet-write-data](sheet/sheet-write-data.md) | 为大块纯值手写巨大 `--values` JSON |
 | 追加记录到末尾 | `append` | [sheet-write-data](sheet/sheet-write-data.md) | 手算最后一行后 `range update` |
 | 查找 / 替换 | `find` / `replace` | [sheet-search-replace](sheet/sheet-search-replace.md) | 读全表后本地过滤或手写替换 |
@@ -51,10 +53,11 @@
 | 多个原子写操作组合 | `batch-update` | [sheet-batch-operations](sheet/sheet-batch-operations.md) | 多次独立调用导致半成品 |
 | 图片写入单元格 / 浮动图片 | `write-image` / `media-upload` + `create-float-image` | [sheet-media-image](sheet/sheet-media-image.md) | 用 `range update` 写图片 |
 | 条件高亮 / 标红 / 数据条 / 色阶 | `cond-format` | [sheet-conditional-format](sheet/sheet-conditional-format.md) | 用静态 `set-style` 冒充条件格式 |
+| 单元格评论 / 批注 / @人讨论 | `comment list/create/reply/update/delete` | [sheet-comment](sheet/sheet-comment.md) | 把评论内容写进单元格值 |
 
 ## 触发必读
 
-- 涉及公式、计算列、辅助列、占比、增长率、查找计算：先读 [sheet-formula](./sheet/sheet-formula.md)。
+- 涉及公式、计算列、辅助列、占比、增长率、查找计算、公式校验、公式错误扫描：先读 [sheet-formula](./sheet/sheet-formula.md)。
 - 涉及 `range update --values`、超链接、富文本、数据验证、少量样式随值写入：先读 [sheet-write-data](./sheet/sheet-write-data.md)。
 - 涉及公式文本 / 原始值 / 格式化值回读、per-cell 元数据、大表分页：先读 [sheet-read-data](./sheet/sheet-read-data.md)。
 - 涉及合并、冻结、工作表增删改、最后非空边界：先读 [sheet-workbook](./sheet/sheet-workbook.md)。
@@ -68,7 +71,7 @@
 | [sheet-workbook](sheet/sheet-workbook.md) | 管理表格文档与工作表。当用户说"创建表格"、"有哪些工作表"、"新建/重命名/隐藏/冻结/复制/删除工作表"、"显示/隐藏网格线"时使用；`info` 可回读冻结行列等工作表结构信息。命令：`create`/`list`/`info`/`new`/`update`/`copy`/`delete-sheet`/`show-gridline`/`hide-gridline` |
 | [sheet-read-data](sheet/sheet-read-data.md) | 读取工作表数据。当用户说"读数据"、"看表格内容"、"查看数据"时使用。推荐 `csv-get`（CSV 格式、token 低、防爆保护）；需按 table/dataframe 结构读取列名、data、dtypes、formats 时用 `table-get`；需 value + dataValidation / hyperlink / richText / cellStyles 等 per-cell 元数据时用 `range read`。大范围数据建议分页读取（单次 ≤5000 单元格）。命令：`csv-get`/`table-get`/`range read` |
 | [sheet-write-data](sheet/sheet-write-data.md) | 写入数据到工作表。当用户说"写数据"、"填表"、"更新单元格"、"写公式"、"超链接"、"写值同时设样式/数据验证"、"追加数据"、"导入CSV"、"写入结构化 table"时使用。大批量纯值（>5行或>20单元格）必须用 `csv-put` 而非 `range update`；结构化 table/dataframe 输入用 `table-put`。命令：`range update`/`append`/`csv-put`/`table-put` |
-| [sheet-formula](sheet/sheet-formula.md) | 公式写入、文本回读、错误聚合与结果抽样。当用户说"写公式"、"计算列"、"辅助列"、"总计/占比/增长率/查找计算"、"校验公式"、"检查公式错误"时使用。命令：`range update` / `range read --value-render-option formula/raw_value` |
+| [sheet-formula](sheet/sheet-formula.md) | 公式写入、文本回读、错误聚合与结果抽样。当用户说"写公式"、"计算列"、"辅助列"、"总计/占比/增长率/查找计算"、"校验公式"、"检查公式错误"时使用。命令：`range update` / `range read --value-render-option formula/raw_value` / `formula-verify` |
 | [sheet-search-replace](sheet/sheet-search-replace.md) | 搜索和替换文本。当用户说"搜索"、"查找"、"替换"、"把A改成B"时使用。禁止用 `range read` 全量读取后客户端过滤代替 `find`，禁止用 `range update` 模拟 `replace`。命令：`find`/`replace` |
 | [sheet-range-operations](sheet/sheet-range-operations.md) | 区域结构性操作。当用户说"清空"、"排序"、"自动填充"、"复制区域到"、"移动数据到"时使用。均为服务端原子操作，禁止 `range read`+`range update` 组合模拟。排序前必须先读前几行判断表头。命令：`range clear`/`range sort`/`range fill`/`range copy-to`/`range move-to` |
 | [sheet-batch-operations](sheet/sheet-batch-operations.md) | 批量操作。当用户说"批量清除多个区域"、"组合多个写操作"、"先清除再写入"、"插行列再写数据"、"批量创建/取消分组"时使用。`batch-update` 只支持已列明的原子写操作；`table-put` / `table-get` 不放进 batch，结构化 table 请用独立 `table-put`。命令：`range batch-clear`/`batch-update` |
@@ -113,6 +116,7 @@
 - **视觉规范**：当前不维护独立的表格视觉方案文档；样式、条件格式、图表分别按对应子文档执行。
 - **结构化 table**：`table-get` / `table-put` 是 table/dataframe 语义入口，不嵌入 `batch-update`；需要原子组合时只组合已支持的单元格/结构写操作。
 - **历史版本**：支持通过 `version save`/`list`/`revert` 手动保存快照、查看版本列表、回滚到指定版本（底层复用 doc 域版本能力）；回滚为危险操作，需二次确认。
+- **单元格评论**：支持通过 `comment create`/`list`/`reply`/`update`/`delete` 管理单元格评论（锚定 `--sheet-id`+`--range`，内容复用 `doc-comment` 服务、与前端评论同桶，单元格位置由 flex-table-app 承载并以 `customCategory`(cmt-*) 关联），详见 [sheet-comment](sheet/sheet-comment.md)。
 - **未暴露或未确认能力**：迷你图、历史 changeset 等能力未在本入口承诺；只有出现稳定 DWS 命令和可回读语义后再补充。
 
 ## URL 粘贴场景

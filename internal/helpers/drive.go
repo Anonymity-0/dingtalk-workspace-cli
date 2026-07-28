@@ -302,6 +302,22 @@ func newDriveCommand() *cobra.Command {
   dws drive list --workspace <workspaceId>
   dws drive list --workspace <workspaceId> --folder <folderId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// --versions 模式：列出文件历史版本（仅普通文件）
+			if cmd.Flags().Changed("versions") {
+				nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+				if err != nil {
+					return err
+				}
+				toolArgs := map[string]any{"nodeId": nodeID}
+				if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+					toolArgs["maxResults"] = v
+				}
+				if v := flagOrFallback(cmd, "cursor", "next-token", "page-token"); v != "" {
+					toolArgs["nextCursor"] = v
+				}
+				return callMCPToolOnServer("drive", "list_file_versions", toolArgs)
+			}
+
 			// 如果指定了 --workspace，路由到文档空间（doc MCP server）
 			workspaceID := flagOrFallback(cmd, "workspace", "workspace-id")
 			if workspaceID != "" {
@@ -408,6 +424,9 @@ func newDriveCommand() *cobra.Command {
 			if v, _ := cmd.Flags().GetString("space-id"); v != "" {
 				argsMap["spaceId"] = v
 			}
+			if v, _ := cmd.Flags().GetInt("version"); v > 0 {
+				argsMap["version"] = v
+			}
 
 			if deps.Caller.DryRun() {
 				deps.Out.PrintKeyValue("操作", "下载钉盘文件")
@@ -420,7 +439,11 @@ func newDriveCommand() *cobra.Command {
 
 			// Step 1: 获取下载 URL 和签名请求头
 			deps.Out.PrintInfo("[1/2] 获取下载链接...")
-			text, err := callMCPToolReturnText(ctx, "download_file", argsMap)
+			toolName := "download_file"
+			if v, _ := cmd.Flags().GetInt("version"); v > 0 {
+				toolName = "download_file_version"
+			}
+			text, err := callMCPToolReturnText(ctx, toolName, argsMap)
 			if err != nil {
 				return err
 			}
@@ -547,6 +570,8 @@ func newDriveCommand() *cobra.Command {
 	driveListCmd.Flags().String("order-by", "", "排序字段: createTime|modifyTime|name (可选，仅钉盘)")
 	driveListCmd.Flags().String("order", "", "排序方向: asc|desc，默认 desc (可选，仅钉盘)")
 	driveListCmd.Flags().Bool("thumbnail", false, "是否返回缩略图信息 (可选，仅钉盘)")
+	driveListCmd.Flags().Bool("versions", false, "列出文件历史版本而非文件列表 (需配合 --node)")
+	driveListCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (--versions 模式必填)")
 
 	driveInfoCmd.Flags().String("node", "", "节点 ID (dentryUuid) (必填)")
 	driveInfoCmd.Flags().String("space-id", "", "节点所属空间 ID (可选)")
@@ -554,6 +579,7 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadCmd.Flags().Int("version", 0, "历史版本号 (可选，正整数，从 list --versions 获取)")
 
 	driveMkdirCmd.Flags().String("name", "", "文件夹名称，最长 50 字符 (必填)")
 	driveMkdirCmd.Flags().String("space-id", "", "目标空间 ID，不传则使用「我的文件」 (可选)")
@@ -1124,7 +1150,127 @@ func newDriveCommand() *cobra.Command {
 		_ = c.Flags().MarkHidden("file-id")
 	}
 
-	drivePermissionCmd.AddCommand(drivePermAddCmd, drivePermUpdateCmd, drivePermListCmd, drivePermRemoveCmd)
+	drivePermTransferOwnerCmd := &cobra.Command{
+		Use:   "transfer-owner",
+		Short: "[危险] 转交所有者",
+		Long: `转交文档或知识库的所有者给指定用户。此操作不可逆，执行前需要确认。
+
+--node 和 --workspace 二选一。转交后原所有者保留角色由 --reserve-role 指定。
+使用 --yes 跳过确认时，--reserve-role 和 --recursive 必须显式指定。`,
+		Example: `  dws drive permission transfer-owner --node DOC_ID --new-owner uid123 --reserve-role EDITOR --recursive=false --yes`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, _ := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			workspaceID := flagOrFallback(cmd, "workspace", "workspace-id")
+			if nodeID == "" && workspaceID == "" {
+				return fmt.Errorf("--node or --workspace is required")
+			}
+			if err := validateRequiredFlags(cmd, "new-owner"); err != nil {
+				return err
+			}
+			newOwnerID := mustGetFlag(cmd, "new-owner")
+
+			if commandDryRun(cmd) {
+				deps.Out.PrintKeyValue("操作", "转交所有者")
+				deps.Out.PrintKeyValue("新所有者", newOwnerID)
+				return nil
+			}
+
+			yesMode, _ := cmd.Flags().GetBool("yes")
+			if yesMode {
+				if !cmd.Flags().Changed("reserve-role") {
+					return fmt.Errorf("--reserve-role is required when using --yes")
+				}
+				if !cmd.Flags().Changed("recursive") {
+					return fmt.Errorf("--recursive is required when using --yes")
+				}
+			}
+
+			reserveRole := mustGetFlag(cmd, "reserve-role")
+			recursive, _ := cmd.Flags().GetBool("recursive")
+
+			if !yesMode && !confirmDelete("转交所有者", nodeID+workspaceID) {
+				return nil
+			}
+
+			toolArgs := map[string]any{"newOwnerId": newOwnerID}
+			if nodeID != "" {
+				toolArgs["nodeId"] = nodeID
+			} else {
+				toolArgs["workspaceId"] = workspaceID
+			}
+			if reserveRole != "" {
+				toolArgs["reserveOldOwnerRole"] = reserveRole
+			}
+			if recursive {
+				toolArgs["recursiveChange"] = true
+			}
+			return callMCPToolOnServer("doc", "transfer_owner", toolArgs)
+		},
+	}
+	drivePermTransferOwnerCmd.Flags().String("node", "", "目标节点 ID 或 URL（与 --workspace 二选一）")
+	drivePermTransferOwnerCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（与 --node 二选一）")
+	drivePermTransferOwnerCmd.Flags().String("new-owner", "", "新所有者的用户 userId (必填)")
+	drivePermTransferOwnerCmd.Flags().String("reserve-role", "", "转交后原所有者保留角色: MANAGER / EDITOR / DOWNLOADER / READER / NONE")
+	drivePermTransferOwnerCmd.Flags().Bool("recursive", false, "是否递归变更所有子节点的所有者")
+	drivePermTransferOwnerCmd.Flags().Bool("yes", false, "跳过确认提示")
+
+	drivePermApplyInfoCmd := &cobra.Command{
+		Use:     "apply-info",
+		Short:   "查询节点可申请的角色与审批人",
+		Example: `  dws drive permission apply-info --node DOC_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "query_permission_apply_info", map[string]any{"nodeId": nodeID})
+		},
+	}
+	drivePermApplyInfoCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
+
+	drivePermApplyCmd := &cobra.Command{
+		Use:   "apply",
+		Short: "发起权限申请",
+		Long: `向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。
+
+注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。`,
+		Example: `  dws drive permission apply --node DOC_ID --role READER --users uid1
+  dws drive permission apply --node DOC_ID --role EDITOR --users uid1,uid2 --reason "需要编辑该文档"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			if err := validateRequiredFlags(cmd, "role"); err != nil {
+				return err
+			}
+			userIds, err := collectUserIDs(cmd)
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"nodeId":    nodeID,
+				"roleId":    normalizePermissionRole(mustGetFlag(cmd, "role")),
+				"receivers": userIds,
+			}
+			if v := mustGetFlag(cmd, "notify-mode"); v != "" {
+				toolArgs["notifyMode"] = v
+			}
+			if v := mustGetFlag(cmd, "reason"); v != "" {
+				toolArgs["reason"] = v
+			}
+			return callMCPToolOnServer("drive", "apply_permission", toolArgs)
+		},
+	}
+	drivePermApplyCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
+	drivePermApplyCmd.Flags().String("role", "", "申请的角色: EDITOR / DOWNLOADER / READER (必填)")
+	drivePermApplyCmd.Flags().String("users", "", "审批人 userId 列表，逗号分隔 (必填)")
+	drivePermApplyCmd.Flags().String("user", "", "")
+	_ = drivePermApplyCmd.Flags().MarkHidden("user")
+	drivePermApplyCmd.Flags().String("notify-mode", "", "通知方式: DEFAULT / MSG_ACCOUNT / SINGLE_CHAT")
+	drivePermApplyCmd.Flags().String("reason", "", "申请理由，最长 200 字符")
+
+	drivePermissionCmd.AddCommand(drivePermAddCmd, drivePermUpdateCmd, drivePermListCmd, drivePermRemoveCmd, drivePermTransferOwnerCmd, drivePermApplyInfoCmd, drivePermApplyCmd)
 
 	// --node 隐藏别名（保持与迁移前 doc 命令一致）
 	driveNodeAliasCmds := []*cobra.Command{
@@ -1397,6 +1543,119 @@ func newDriveCommand() *cobra.Command {
 	driveRecentCmd.Flags().String("page-token", "", "")
 	_ = driveRecentCmd.Flags().MarkHidden("page-token")
 
+	// ── drive star (文档收藏管理) ──
+	driveStarCmd := &cobra.Command{
+		Use:   "star",
+		Short: "文档收藏管理",
+		RunE:  groupRunE,
+	}
+	driveStarAddCmd := &cobra.Command{
+		Use:     "add",
+		Short:   "收藏文档",
+		Example: `  dws drive star add --node <nodeId_or_URL>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "mark_star", map[string]any{"nodeId": nodeID})
+		},
+	}
+	driveStarAddCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
+	driveStarRemoveCmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "取消收藏文档",
+		Example: `  dws drive star remove --node <nodeId_or_URL>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "unmark_star", map[string]any{"nodeId": nodeID})
+		},
+	}
+	driveStarRemoveCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
+	driveStarListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "获取收藏列表",
+		Example: `  dws drive star list
+  dws drive star list --content-types doc,sheet --limit 10`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			toolArgs := map[string]any{}
+			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+				toolArgs["limit"] = v
+			}
+			if v, _ := cmd.Flags().GetString("cursor"); v != "" {
+				toolArgs["cursor"] = v
+			}
+			if v, _ := cmd.Flags().GetString("order-by"); v != "" {
+				toolArgs["orderBy"] = v
+			}
+			if v, _ := cmd.Flags().GetString("sort"); v != "" {
+				toolArgs["sortType"] = v
+			}
+			if v, _ := cmd.Flags().GetStringSlice("resource-types"); len(v) > 0 {
+				toolArgs["supportResourceTypes"] = v
+			}
+			if v, _ := cmd.Flags().GetStringSlice("content-types"); len(v) > 0 {
+				toolArgs["contentTypes"] = v
+			}
+			return callMCPToolOnServer("drive", "get_star_list", toolArgs)
+		},
+	}
+	driveStarListCmd.Flags().Int("limit", 0, "每页条数 (默认 20，最大 20)")
+	driveStarListCmd.Flags().String("cursor", "", "分页游标")
+	driveStarListCmd.Flags().String("order-by", "", "排序字段: createTime")
+	driveStarListCmd.Flags().String("sort", "", "排序方向: asc|desc")
+	driveStarListCmd.Flags().StringSlice("resource-types", nil, "资源大类: DENTRY, TEAM, WORKSPACE")
+	driveStarListCmd.Flags().StringSlice("content-types", nil, "内容类型: doc,sheet,ppt,whiteboard,mind,notable,pdf,other,folder")
+	driveStarCmd.AddCommand(driveStarAddCmd, driveStarRemoveCmd, driveStarListCmd)
+
+	// ── drive cover (获取节点封面地址) ──
+	driveCoverCmd := &cobra.Command{
+		Use:     "cover",
+		Short:   "获取节点封面地址",
+		Example: "  dws drive cover --node <dentryUuid>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "get_cover", map[string]any{"nodeId": nodeID})
+		},
+	}
+	driveCoverCmd.Flags().String("node", "", "节点 ID (dentryUuid) 或文档 URL (必填)")
+
+	// ── drive revert (回滚文件到指定历史版本) ──
+	driveRevertCmd := &cobra.Command{
+		Use:   "revert",
+		Short: "[危险] 回滚文件到指定历史版本",
+		Long: `将指定文件回滚到某个历史版本。仅支持普通文件（Word、Excel、PDF、图片等）。
+在线文档请用 dws doc version revert，在线表格请用 dws sheet version revert。`,
+		Example: `  dws drive revert --node <dentryUuid> --version 3 --yes`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			versionNum, err := cmd.Flags().GetInt("version")
+			if err != nil || versionNum <= 0 {
+				return fmt.Errorf("flag --version is required and must be a positive integer")
+			}
+			if !commandDryRun(cmd) && !confirmDelete("回滚文件版本", fmt.Sprintf("节点 %s 回滚到版本 %d", nodeID, versionNum)) {
+				return nil
+			}
+			return callMCPToolOnServer("drive", "revert_file_version", map[string]any{
+				"nodeId":  nodeID,
+				"version": versionNum,
+			})
+		},
+	}
+	driveRevertCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
+	driveRevertCmd.Flags().Int("version", 0, "要回滚到的历史版本号 (必填，正整数)")
+	driveRevertCmd.Flags().Bool("yes", false, "跳过确认提示")
+
 	driveCmd.AddCommand(
 		driveListCmd,
 		driveListSpacesCmd,
@@ -1418,6 +1677,9 @@ func newDriveCommand() *cobra.Command {
 		drivePermissionCmd,
 		drivePublishCmd,
 		recycleCmd,
+		driveStarCmd,
+		driveCoverCmd,
+		driveRevertCmd,
 		// deprecated 兼容命令（Phase 2）— 隐藏，保留向后兼容
 		driveFolderCmd,
 	)

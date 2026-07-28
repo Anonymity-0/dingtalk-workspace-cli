@@ -151,6 +151,7 @@ func newSheetCommand() *cobra.Command {
 	// Add all to root
 	root.AddCommand(standaloneCmds...)
 	root.AddCommand(rangeCmd, filterCmd, filterViewCmd, condFormatCmd, chartCmd, templateCmd, pivotTableCmd)
+	root.AddCommand(newSheetVersionCmd(), newSheetCommentCmd(), newSheetFormulaVerifyCmd())
 
 	// This is the reviewed runtime counterpart of the final Sheet Schema
 	// confirmation=user_required set. It is intentionally command-local: there

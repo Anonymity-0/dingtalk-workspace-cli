@@ -111,6 +111,8 @@ dws chat group create --name "话题圈" --users userId1,userId2 --thread
 dws chat group share-invite --source <sourceOpenConversationId> --target <targetOpenConversationId>
 dws chat group share-invite --source <sourceOpenConversationId> --receiver <receiverOpenDingTalkId>
 dws chat group share-invite --source <sourceOpenConversationId> --target <targetOpenConversationId> --expires-seconds 86400 --uuid <uuid>
+dws chat group user-settings query --groups <openConversationId1>,<openConversationId2>
+dws chat group user-settings set --items '[{"openConversationId":"cid1","top":true,"mute":false}]'
 ```
 
 ### 群公告

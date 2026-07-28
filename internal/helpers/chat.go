@@ -5274,6 +5274,61 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	chatTextCmd.AddCommand(chatTextTranslateCmd)
 
 	chatGroupCmd.AddCommand(chatGroupBotsCmd, chatGroupDismissCmd, chatGroupSetHistoryCmd, chatGroupListMyGroupsCmd, chatGroupUpdateNickCmd, chatGroupUpdateAliasCmd, chatGroupListAllCmd, chatGroupListJoinValidationsCmd, chatGroupAuditJoinValidationCmd, chatGroupNoticeCmd, chatGroupShareInviteCmd, chatGroupUpgradeToExternalCmd)
+
+	// ── chat group user-settings ──
+	chatGroupUserSettingsCmd := &cobra.Command{
+		Use:   "user-settings",
+		Short: "批量查询或更新当前用户的群会话设置",
+		RunE:  groupRunE,
+	}
+	chatGroupUserSettingsQueryCmd := &cobra.Command{
+		Use:   "query",
+		Short: "批量查询当前用户的群会话设置",
+		Example: `  dws chat group user-settings query --groups cid1,cid2`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "groups"); err != nil {
+				return err
+			}
+			convIds := parseCSVValues(mustGetFlag(cmd, "groups"))
+			if len(convIds) == 0 {
+				return fmt.Errorf("--groups must not be empty")
+			}
+			if len(convIds) > 100 {
+				return fmt.Errorf("--groups batch size %d exceeds limit 100", len(convIds))
+			}
+			return callMCPToolOnServer("im", "batch_query_group_chat_settings", map[string]any{
+				"openConversationIds": convIds,
+			})
+		},
+	}
+	chatGroupUserSettingsQueryCmd.Flags().String("groups", "", "群会话 openConversationId 列表，逗号分隔，最多 100 个 (必填)")
+	chatGroupUserSettingsSetCmd := &cobra.Command{
+		Use:   "set",
+		Short: "批量更新当前用户的群会话设置",
+		Example: `  dws chat group user-settings set --items '[{"openConversationId":"cid1","top":true,"mute":false}]'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "items"); err != nil {
+				return err
+			}
+			itemsJSON := mustGetFlag(cmd, "items")
+			var items []map[string]any
+			if err := json.Unmarshal([]byte(itemsJSON), &items); err != nil {
+				return fmt.Errorf("--items JSON parse error: %w", err)
+			}
+			if len(items) == 0 {
+				return fmt.Errorf("--items must not be empty")
+			}
+			if len(items) > 100 {
+				return fmt.Errorf("--items batch size %d exceeds limit 100", len(items))
+			}
+			return callMCPToolOnServer("im", "batch_update_group_chat_settings", map[string]any{
+				"items": items,
+			})
+		},
+	}
+	chatGroupUserSettingsSetCmd.Flags().String("items", "", `JSON 数组，每项 {"openConversationId":"cid","top":bool,"mute":bool,"groupNick":"...","groupAlias":"..."} (必填)`)
+	chatGroupUserSettingsCmd.AddCommand(chatGroupUserSettingsQueryCmd, chatGroupUserSettingsSetCmd)
+	chatGroupCmd.AddCommand(chatGroupUserSettingsCmd)
 	chatGroupMembersCmd.AddCommand(chatGroupMembersRemoveBotCmd, chatGroupMembersListByIdsCmd)
 	chatBotCmd.AddCommand(chatBotFindCmd)
 	chatCategoryCmd.AddCommand(chatCategoryCreateSmartCmd)
