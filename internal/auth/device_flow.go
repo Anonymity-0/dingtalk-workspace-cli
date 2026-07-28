@@ -75,15 +75,16 @@ var (
 )
 
 type DeviceFlowProvider struct {
-	configDir       string
-	clientID        string
-	scope           string
-	baseURL         string
-	terminalBaseURL string
-	logger          *slog.Logger
-	Output          io.Writer
-	httpClient      *http.Client
-	NoBrowser       bool
+	configDir        string
+	clientID         string
+	scope            string
+	baseURL          string
+	terminalBaseURL  string
+	logger           *slog.Logger
+	Output           io.Writer
+	httpClient       *http.Client
+	NoBrowser        bool
+	IdentityEnricher func(context.Context, *TokenData) error
 }
 
 func NewDeviceFlowProvider(configDir string, logger *slog.Logger) *DeviceFlowProvider {
@@ -267,9 +268,10 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 	dfPrintStep(p.output(), 3, i18n.T("使用授权码换取 Access Token..."), 0)
 
 	oauthProvider := &OAuthProvider{
-		configDir: p.configDir,
-		clientID:  p.clientID,
-		logger:    p.logger,
+		configDir:        p.configDir,
+		clientID:         p.clientID,
+		logger:           p.logger,
+		IdentityEnricher: p.IdentityEnricher,
 	}
 	tokenData, err := deviceExchangeCode(oauthProvider, ctx, tokenResult.AuthCode)
 	if err != nil {
@@ -352,6 +354,9 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 
 	// Save token data with associated client ID for refresh
 	tokenData.ClientID = p.clientID
+	if err := oauthProvider.prepareLoginToken(ctx, tokenData); err != nil {
+		return nil, fmt.Errorf("%s: %w", i18n.T("保存 token 失败"), err)
+	}
 	if err := deviceSaveToken(p.configDir, tokenData); err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("保存 token 失败"), err)
 	}
@@ -717,6 +722,6 @@ func isInvalidGrantError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := strings.ToLower(err.Error())
+	msg := strings.ToLower(err.Error() + " " + httpStatusResponseBody(err))
 	return strings.Contains(msg, "invalid_grant") || (strings.Contains(msg, "code") && strings.Contains(msg, "expired"))
 }

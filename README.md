@@ -283,16 +283,22 @@ Credentials are securely persisted after first login (Keychain). Subsequent runs
 <details>
 <summary><strong>Multiple organizations (profiles)</strong></summary>
 
-`dws` can stay logged in to several DingTalk organizations at once. Each organization is one **profile**; the current profile decides which org a command runs against (credentials are stored per organization).
+`dws` can stay logged in to several DingTalk accounts at once, including multiple accounts in the same organization. A profile is uniquely identified by `corpId:userId`; the current profile decides which identity a command runs as.
 
 ```bash
-dws auth login                              # log in to another org → adds a profile (first login becomes the primary)
-dws profile list                            # list logged-in orgs (primary / current marker, status)
-dws profile switch <name|corpId>            # switch the default org (use - to toggle back to the previous one)
-dws --profile <name|corpId> contact user search --query "..."   # run one command against a specific org, without changing the default
+dws auth login                              # add or refresh one account
+dws profile list                            # list every logged-in account
+dws profile switch <corpId:userId>          # persistently switch; use - to toggle back
+dws profile switch "<corpName>:<userName>"  # friendly input; names must be unique
+dws --profile <corpId> contact user search --query "..."        # use that org's explicitly recorded current account
+dws --profile <corpId:userId> contact user search --query "..." # use one exact account without changing the default
 ```
 
-Cross-org reads are orchestrated by the agent rather than a built-in `--all-orgs`: list the profiles, run the query per org with `--profile`, then merge. Writes default to the current org only — confirm the target org before writing across orgs.
+Selectors support `corpId:userId`, `corpId:userName`, `corpName:userId`, and `corpName:userName`. Friendly names are input aliases only; use the stable `profile` value returned by `profile list` for automation. Duplicate organization or account names fail with explicit `corpId:userId` candidates. If an organization has multiple accounts but no recorded current account, `--profile <corpId>` fails instead of choosing the first or most recently used account.
+
+`currentProfile`, `previousProfile`, and per-organization defaults are stored as exact identities. `primaryProfile` remains in JSON only for compatibility and is not used for selection. `profile list` reads status and expiry from each real identity Token without refreshing it. `auth logout --profile <corpId>` removes all local accounts in that organization; an exact selector or local profile name removes one account.
+
+Cross-org reads are orchestrated by the agent rather than a built-in `--all-orgs`: list profiles, group by `corpId`, and use the unique `isOrgCurrent=true` account for each organization. If a multi-account organization has no default, ask the user to choose an account first. Writes default to the current account — confirm both organization and account before cross-org writes.
 
 On macOS, an unreadable registered token slot blocks a new OAuth login rather than risking a mixed Keychain/file-DEK state. If normal terminal commands can still read the login while a sandbox using `DWS_DISABLE_KEYCHAIN=1` cannot, migrate the legacy and profile auth entries without exposing tokens:
 
@@ -302,7 +308,7 @@ env -u DWS_DISABLE_KEYCHAIN dws auth migrate-keychain --to file-dek --yes --form
 DWS_DISABLE_KEYCHAIN=1 dws auth status --format json
 ```
 
-The migration validates every selected auth ciphertext before writing, ignores unrelated application secrets, and can be rerun after an interrupted commit. If validation identifies genuinely damaged ciphertext, remove only the affected profile with `dws auth logout --profile <name|corpId>`, then log in again. Use `dws auth reset` only when you intend to discard every local profile.
+The migration validates every selected auth ciphertext before writing, ignores unrelated application secrets, and can be rerun after an interrupted commit. If validation identifies genuinely damaged ciphertext, remove only the affected account with `dws auth logout --profile <corpId:userId>`, or all accounts in one organization with `--profile <corpId>`, then log in again. Use `dws auth reset` only when you intend to discard every local profile.
 
 </details>
 
@@ -470,6 +476,8 @@ Env vars: `DWS_SKILL_MODE=mono|multi` (also honored by `install.sh` / `install.p
 
 `dws event consume` subscribes as the currently logged-in user over a managed Stream WebSocket and emits each event as one NDJSON line on stdout. The public catalog currently covers messages that mention the current user, one-to-one messages with a specified user, and messages in a specified group.
 
+The default `ndjson`, `json`, and `pretty` output preserves the transport envelope (`type`, `event_type`, string `data`, and `headers`) for existing scripts; `compact` retains its existing processor. Add `--flatten` to emit the stable top-level business fields used by Agent workflows. `--format` controls JSON serialization; `--flatten` controls the data structure and cannot be combined with `-f raw` or `--debug-raw-events`.
+
 > **Prerequisite**: run `dws auth login`. Personal identity is resolved from the OAuth token and cannot be supplied through command-line identity flags.
 
 For an event-focused installation, use the official convenience installer:
@@ -481,21 +489,26 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 ```bash
 # Inspect the public personal event catalog and schema
 dws event list
-dws event schema user_im_message_receive_o2o
+dws event schema user_im_message_receive_o2o --flatten
 
 # Listen for messages that mention the current user
-dws event consume user_im_message_receive_at -f ndjson
+dws event consume user_im_message_receive_at --flatten -f ndjson
 
 # Listen for one-to-one messages with a specified user
-dws event consume user_im_message_receive_o2o --user <userId> -f ndjson
+dws event consume user_im_message_receive_o2o --user <userId> --flatten -f ndjson
+
+# Listen by openDingtalkId (external contact, bot, or cross-organization identity)
+dws event consume user_im_message_receive_o2o --open-dingtalk-id <openDingtalkId> --flatten -f ndjson
 
 # Listen for messages in a specified group
-dws event consume user_im_message_receive_group --group <openConversationId> -f ndjson
+dws event consume user_im_message_receive_group --group <openConversationId> --flatten -f ndjson
 
 # Inspect local consumers and cancel a subscription
 dws event status
 dws event stop <subscribe_id>
 ```
+
+For one-to-one and specified-sender events, use exactly one target identity: `--user` for an internal `userId`, or `--open-dingtalk-id` for an `openDingtalkId`. The CLI does not infer or convert between these identity types.
 
 | Feature | Details |
 |---------|---------|

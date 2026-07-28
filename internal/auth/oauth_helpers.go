@@ -237,12 +237,21 @@ func (p *OAuthProvider) postJSON(ctx context.Context, endpoint string, body any)
 	}
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(io.LimitReader(resp.Body, config.MaxResponseBodySize))
-	if err != nil {
-		return nil, fmt.Errorf("reading response: %w", err)
-	}
+	data, readErr := io.ReadAll(io.LimitReader(resp.Body, config.MaxResponseBodySize))
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncateBody(data, 200))
+		// Preserve structured HTTP status semantics even when the response
+		// body is truncated. The body is diagnostic-only here, so read it
+		// best-effort and classify retryability from the status code.
+		if readErr != nil {
+			data = nil
+		}
+		return nil, &HTTPStatusError{
+			StatusCode:   resp.StatusCode,
+			responseBody: truncateBody(data, 200),
+		}
+	}
+	if readErr != nil {
+		return nil, fmt.Errorf("reading response: %w", readErr)
 	}
 	return data, nil
 }
@@ -293,6 +302,8 @@ func (p *OAuthProvider) parseMCPTokenResponse(body []byte) (*TokenData, error) {
 		CorpName       string `json:"corpName"`
 		CorpNameSnake  string `json:"corp_name"`
 		OrgName        string `json:"orgName"`
+		UserID         string `json:"userId"`
+		UserName       string `json:"userName"`
 		// Error fields (when request fails)
 		ErrorCode string `json:"errorCode,omitempty"`
 		ErrorMsg  string `json:"errorMsg,omitempty"`
@@ -320,6 +331,8 @@ func (p *OAuthProvider) parseMCPTokenResponse(body []byte) (*TokenData, error) {
 		RefreshExpAt: now.Add(config.DefaultRefreshTokenLifetime),
 		CorpID:       resp.CorpID,
 		CorpName:     firstNonEmpty(resp.CorpName, resp.CorpNameSnake, resp.OrgName),
+		UserID:       resp.UserID,
+		UserName:     resp.UserName,
 	}
 	if resp.PersistentCode != "" {
 		data.PersistentCode = resp.PersistentCode

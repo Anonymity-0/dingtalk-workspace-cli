@@ -56,6 +56,7 @@ var (
 	eventNewEventSource        = newEventSource
 	eventNewDingtalkSource     = source.New
 	eventResolveAccessToken    = ResolveAuxiliaryAccessToken
+	eventForceRefreshRejected  = forceRefreshRejectedAccessToken
 	eventBusRun                = bus.Run
 	eventReadyFDFromEnv        = busctl.ReadyFDFromEnv
 	eventResolvePersonal       = resolvePersonalEventIdentity
@@ -111,6 +112,7 @@ func newEventConsumeCommand() *cobra.Command {
 		dryRun       bool
 		foreground   bool
 		asIdentity   string
+		flatten      bool
 		personalOpts personalConsumeOptions
 		streamOpts   eventStreamTicketOptions
 	)
@@ -126,7 +128,11 @@ func newEventConsumeCommand() *cobra.Command {
   json            每事件多行美化 JSON（必须配 --max-events 或 --duration）
   pretty          同 json，未来加颜色
   raw             仅 SDK 原始 payload，无外层封装
-  compact         扁平化 + 解析嵌套 + 抽取语义字段（Agent 友好）
+  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor
+
+数据结构：
+  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）
+  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费
 
 默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加
 --profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用
@@ -143,6 +149,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 			}
 			if as == "user" {
 				personalOpts.EventKey = firstArg(args)
+				personalOpts.Flatten = flatten
 				personalOpts.Common = commonConsumeOptions{
 					EventTypes: eventTypes,
 					Filter:     filter,
@@ -166,6 +173,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 				return fmt.Errorf("event consume: --debug-raw-events is only supported with --as user")
 			}
 			if err := rejectChangedFlags(c, "user",
+				"flatten",
 				"subscribe-id",
 				"rule",
 				"name",
@@ -174,6 +182,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 				"ttl",
 				"ephemeral",
 				"user",
+				"open-dingtalk-id",
 				"group",
 				"personal-event-base-url",
 			); err != nil {
@@ -278,6 +287,8 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 		"提示 bus 客户端期望 compact 渲染（语义透传，bus 仍按原 payload 投递）")
 	f.StringVarP(&formatRaw, "format", "f", "ndjson",
 		"输出格式 (ndjson/json/pretty/raw/compact)；事件流默认 ndjson")
+	f.BoolVar(&flatten, "flatten", false,
+		"将个人事件 transport envelope 投影为稳定的顶层业务字段")
 	f.StringVar(&outputDir, "output-dir", "",
 		"每事件写一个文件到该目录 ({type}_{id}_{ts}.json)；与 stdout 互斥")
 	f.StringArrayVar(&routesRaw, "route", nil,
@@ -312,7 +323,9 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 			"或从外部先用 dws event stop <subscribe_id> --dry-run 预览、确认后加 --yes（会一并退订）；"+
 			"请勿 kill -9（会跳过退订、泄漏服务端订阅）")
 	f.StringVar(&personalOpts.UserID, "user", "",
-		"个人单聊对端 userId")
+		"单聊对端或指定发送人的 userId（与 --open-dingtalk-id 二选一）")
+	f.StringVar(&personalOpts.OpenDingTalkID, "open-dingtalk-id", "",
+		"单聊对端或指定发送人的 openDingtalkId（与 --user 二选一）")
 	f.StringVar(&personalOpts.GroupID, "group", "",
 		"group 规则：openConversationId")
 	f.StringVar(&personalOpts.ControlBaseURL, "personal-event-base-url", "",
@@ -410,20 +423,12 @@ func eventStreamBusID(streamOpts eventStreamTicketOptions) string {
 	return "portal-ticket-normal:" + sourceID
 }
 
-func newEventSource(ctx context.Context, configDir, clientID, clientSecret string, streamOpts eventStreamTicketOptions) (*source.DingtalkSource, error) {
+func newEventSource(_ context.Context, configDir, clientID, clientSecret string, streamOpts eventStreamTicketOptions) (*source.DingtalkSource, error) {
 	if !streamOpts.enabled() {
 		return eventNewDingtalkSource(source.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
 		})
-	}
-
-	token, err := eventResolveAccessToken(ctx, configDir, "")
-	if err != nil {
-		return nil, fmt.Errorf("event stream ticket: resolve user token: %w", err)
-	}
-	if strings.TrimSpace(token) == "" {
-		return nil, errors.New("event stream ticket: empty user token")
 	}
 
 	portalClientID := clientID
@@ -437,8 +442,13 @@ func newEventSource(ctx context.Context, configDir, clientID, clientSecret strin
 		ClientID:     portalClientID,
 		ClientSecret: portalClientSecret,
 		PortalTicket: &source.PortalTicketConfig{
-			TicketURL:    eventStreamTicketURL(streamOpts.TicketURL),
-			AccessToken:  token,
+			TicketURL: eventStreamTicketURL(streamOpts.TicketURL),
+			AccessTokenProvider: func(ctx context.Context) (string, error) {
+				return eventResolveAccessToken(ctx, configDir, "")
+			},
+			ForceRefreshToken: func(ctx context.Context, rejectedToken string) (string, error) {
+				return eventForceRefreshRejected(ctx, configDir, rejectedToken)
+			},
 			SourceID:     eventStreamSourceID(streamOpts.SourceID),
 			Mode:         streamOpts.Mode,
 			ClientID:     portalClientID,

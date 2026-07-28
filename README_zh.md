@@ -280,16 +280,22 @@ dws auth login --client-id <your-app-key> --client-secret <your-app-secret>
 <details>
 <summary><strong>多组织（profile）</strong></summary>
 
-`dws` 可以同时登录多个钉钉组织。一个组织就是一个 **profile**，当前 profile 决定本次命令操作哪个组织（凭证按组织分别存储）。
+`dws` 可以同时登录多个钉钉账号，同一组织也能保留多个账号。一个 profile 由 `corpId + userId` 唯一确定。
 
 ```bash
-dws auth login                              # 再登录一个组织 → 新增一个 profile（首次登录的为主组织）
-dws profile list                            # 列出已登录组织（主 / 当前标记、状态）
-dws profile switch <名称|corpId>            # 切换默认组织（用 - 切回上一个）
-dws --profile <名称|corpId> contact user search --query "..."   # 单次对指定组织执行，不改默认组织
+dws auth login                              # 新增或刷新一个账号
+dws profile list                            # 列出全部账号，profile 字段是稳定的 corpId:userId
+dws profile switch <corpId:userId>          # 持久切换账号；用 - 切回上一个
+dws profile switch "组织名:用户名"          # 名称输入要求唯一
+dws --profile <corpId> contact user search --query "..."        # 使用该组织明确记录的当前账号
+dws --profile <corpId:userId> contact user search --query "..." # 单次精确指定账号，不改默认账号
 ```
 
-跨组织读取由 agent 编排，而非内置 `--all-orgs`：先 `dws profile list` 拿到组织，再对每个组织带 `--profile` 各查一遍，然后合并。写操作默认只在当前组织进行——跨组织写之前先确认目标组织。
+支持 `corpId:userId`、`corpId:userName`、`corpName:userId`、`corpName:userName`。名称只用于输入，自动化应使用 `profile list` 返回的稳定 `profile`。组织名或用户名重名时会列出候选并报错；同组织多账号但没有明确当前账号时，只传组织也会报错，不会选择第一项或最近使用账号。
+
+`currentProfile`、`previousProfile` 和组织默认账号都保存精确身份。`primaryProfile` 只为 JSON 兼容保留，不再参与选择。`profile list` 直接读取各身份 Token 计算状态和到期时间，不触发刷新。`auth logout --profile <corpId>` 退出该组织全部账号；精确选择器或本地 profile 名只退出一个账号。
+
+跨组织读取由 agent 编排，而非内置 `--all-orgs`：先 `dws profile list`，每个组织使用唯一的 `isOrgCurrent=true` 账号；若多账号组织没有默认账号，先让用户指定账号。写操作默认只在当前账号执行——跨组织写之前先确认目标组织和账号。
 
 macOS 下，如果已登记的 token slot 无法解密，为避免把系统 Keychain 和 file-DEK 写成混合状态，新的 OAuth 登录会直接拒绝。如果普通终端仍能读取登录态、只有设置 `DWS_DISABLE_KEYCHAIN=1` 的沙箱读不到，可在不暴露 token 的情况下迁移 legacy 与各 profile 的认证条目：
 
@@ -299,7 +305,7 @@ env -u DWS_DISABLE_KEYCHAIN dws auth migrate-keychain --to file-dek --yes --form
 DWS_DISABLE_KEYCHAIN=1 dws auth status --format json
 ```
 
-迁移会先验证全部认证密文再写入、忽略无关的应用密钥；提交中断后可安全重跑。如果预检确认是密文本身损坏，报错会给出对应 `corpId`；只清理这个组织可执行 `dws auth logout --profile <名称|corpId>`，再重新登录。只有确认要丢弃全部本地 profile 时才用 `dws auth reset`。
+迁移会先验证全部认证密文再写入、忽略无关的应用密钥；提交中断后可安全重跑。如果预检确认是密文本身损坏，优先使用 `dws auth logout --profile <corpId:userId>` 只清理受影响账号；只有确认要丢弃全部本地 profile 时才用 `dws auth reset`。
 
 </details>
 
@@ -464,6 +470,8 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 
 `dws event consume` 使用当前 OAuth 登录用户建立托管的 Stream WebSocket 长连接，并把每条事件以 NDJSON 一行输出到 stdout。当前公开目录包括：当前用户被 @ 的消息、与指定用户的单聊消息、指定群的消息。
 
+默认 `ndjson`、`json`、`pretty` 输出保留兼容 transport envelope（`type`、`event_type`、字符串 `data`、`headers`），`compact` 继续沿用原 processor。Agent 或新脚本显式加 `--flatten` 后，输出稳定的顶层业务字段。`--format` 控制 JSON 序列化，`--flatten` 控制数据结构，且不能与 `-f raw` 或 `--debug-raw-events` 同时使用。
+
 > **前置条件**：先运行 `dws auth login`。个人身份从 OAuth token 解析，不允许通过命令行伪造。
 
 只需要 event 能力时，可以使用官方便捷安装脚本：
@@ -475,21 +483,26 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 ```bash
 # 查看公开个人事件目录和 schema
 dws event list
-dws event schema user_im_message_receive_o2o
+dws event schema user_im_message_receive_o2o --flatten
 
 # 监听当前用户被 @ 的消息
-dws event consume user_im_message_receive_at -f ndjson
+dws event consume user_im_message_receive_at --flatten -f ndjson
 
 # 监听与指定用户的单聊消息
-dws event consume user_im_message_receive_o2o --user <userId> -f ndjson
+dws event consume user_im_message_receive_o2o --user <userId> --flatten -f ndjson
+
+# 使用 openDingtalkId 监听外部联系人、机器人或跨组织身份
+dws event consume user_im_message_receive_o2o --open-dingtalk-id <openDingtalkId> --flatten -f ndjson
 
 # 监听指定群的消息
-dws event consume user_im_message_receive_group --group <openConversationId> -f ndjson
+dws event consume user_im_message_receive_group --group <openConversationId> --flatten -f ndjson
 
 # 查看本地 consume，并取消指定订阅
 dws event status
 dws event stop <subscribe_id>
 ```
+
+单聊和指定发送人事件必须且只能选择一种目标身份：企业内部 `userId` 使用 `--user`，`openDingtalkId` 使用 `--open-dingtalk-id`。CLI 不会自动猜测或转换身份类型。
 
 | 特性 | 说明 |
 |------|------|

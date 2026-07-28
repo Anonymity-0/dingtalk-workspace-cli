@@ -16,6 +16,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: dws-release [version] [options]
        dws-release config [--remote <name>]
+       dws-release recover <version> [--failed-run <run-id>] [--failed-attempt <attempt>] [--remote <name>]
 
 With no arguments, starts an interactive release guide. For a version that has
 no CHANGELOG section yet, prepares the template and stops. Otherwise, runs the
@@ -34,6 +35,7 @@ Examples:
   dws-release v1.2.3-beta.1 --publish
   dws-release v1.2.3 --from-beta v1.2.3-beta.1
   dws-release v1.2.3 --from-beta v1.2.3-beta.1 --publish
+  dws-release recover v1.2.3-beta.1
 EOF
 }
 
@@ -126,13 +128,8 @@ require_remote() {
 }
 
 sync_main_if_safe() {
-  current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-  [ "$current_branch" = "main" ] || {
-    printf 'release validation must run from the main worktree (current: %s)\n' "${current_branch:-detached HEAD}" >&2
-    exit 1
-  }
   [ -z "$(git status --porcelain --untracked-files=all)" ] || {
-    printf '%s\n' 'release main worktree must be clean before synchronization' >&2
+    printf '%s\n' 'release worktree must be clean before synchronization' >&2
     exit 1
   }
 
@@ -143,6 +140,14 @@ sync_main_if_safe() {
   remote_commit="$(git rev-parse "$remote_main^{commit}")"
   if [ "$head_commit" = "$remote_commit" ]; then
     return 0
+  fi
+  current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [ "$current_branch" != "main" ]; then
+    if git merge-base --is-ancestor HEAD "$remote_main"; then
+      return 0
+    fi
+    printf 'HEAD is not contained in %s/main history; merge it through a reviewed PR before release\n' "$REMOTE" >&2
+    exit 1
   fi
   if git merge-base --is-ancestor HEAD "$remote_main"; then
     git merge --ff-only "$remote_main"
@@ -191,8 +196,54 @@ configure_remote() {
   exit 0
 }
 
+recover_release() {
+  shift
+  recovery_version="${1:-}"
+  [ -n "$recovery_version" ] || die_usage 'recover requires a release version'
+  case "$recovery_version" in -h|--help) usage; exit 0 ;; esac
+  shift
+  recovery_failed_run=""
+  recovery_failed_attempt=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --failed-run)
+        [ "$#" -ge 2 ] || die_usage '--failed-run requires a workflow run ID'
+        recovery_failed_run="$2"
+        shift 2
+        ;;
+      --failed-attempt)
+        [ "$#" -ge 2 ] || die_usage '--failed-attempt requires a run attempt'
+        recovery_failed_attempt="$2"
+        shift 2
+        ;;
+      --remote)
+        [ "$#" -ge 2 ] || die_usage '--remote requires a value'
+        REMOTE="$2"
+        shift 2
+        ;;
+      -h|--help) usage; exit 0 ;;
+      *) die_usage "unknown recovery argument: $1" ;;
+    esac
+  done
+
+  cd "$ROOT"
+  require_remote
+  sync_main_if_safe
+  set -- "$recovery_version" --remote "$REMOTE"
+  if [ -n "$recovery_failed_run" ]; then
+    set -- "$@" --failed-run "$recovery_failed_run"
+  fi
+  if [ -n "$recovery_failed_attempt" ]; then
+    set -- "$@" --failed-attempt "$recovery_failed_attempt"
+  fi
+  exec "$SCRIPT_DIR/recover-release.sh" "$@"
+}
+
 if [ "${1:-}" = "config" ]; then
   configure_remote "$@"
+fi
+if [ "${1:-}" = "recover" ]; then
+  recover_release "$@"
 fi
 
 [ "$#" -gt 0 ] || WIZARD=1
