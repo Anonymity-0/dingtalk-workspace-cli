@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -182,7 +183,11 @@ func newTodoCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				return callMCPTool("get_user_todos_in_current_org", toolArgs)
+				toolName := "get_user_todos_in_current_org"
+				if queryAll, _ := cmd.Flags().GetBool("query-all"); queryAll {
+					toolName = "get_user_todos"
+				}
+				return callMCPTool(toolName, toolArgs)
 			}
 			return todoListAutoPage(cmd, pageStr, size)
 		},
@@ -277,6 +282,10 @@ func newTodoCommand() *cobra.Command {
 	todoTaskGetCmd := &cobra.Command{
 		Use:   "get",
 		Short: "待办详情",
+		Long: `查询单条待办的详情。
+
+当前上游详情接口不返回 reminderRules；本命令不能读取或验证 add-reminder /
+reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作为写入回执。`,
 		Example: `  dws todo task get --task-id <taskId>
 
   # 查询 taskId: dws todo task list`,
@@ -422,6 +431,10 @@ func newTodoCommand() *cobra.Command {
 	todoTaskAddReminderCmd := &cobra.Command{
 		Use:   "add-reminder",
 		Short: "添加待办提醒",
+		Long: `为已有待办写入一条提醒规则。
+
+当前上游没有提醒规则查询接口，task get/list 也不返回 reminderRules；
+成功响应是写入回执，不代表 CLI 能再次读取并核验该规则。`,
 		Example: `  dws todo task add-reminder --task-id <taskId> --base-time dueTime --due-date-offset -30
 			dws todo task add-reminder --task-id <taskId> --base-time customTime --reminder-time-stamp 2026-03-10T18:00:00+08:00
   # 查询 taskId: dws todo task list
@@ -468,6 +481,11 @@ func newTodoCommand() *cobra.Command {
 	todoTaskUpdateReminderCmd := &cobra.Command{
 		Use:   "reset-reminder",
 		Short: "重置待办提醒",
+		Long: `整体替换待办提醒规则；不传 --reminder-rules 时清除提醒。显式传值必须是合法 JSON 数组，
+每条规则必须按 baseTime 提供 dueDateOffset 或 reminderTimeStamp；非法输入会在远端调用前失败。
+
+当前上游没有提醒规则查询接口，task get/list 也不返回 reminderRules；
+成功响应是写入回执，不代表 CLI 能再次读取并核验最终规则。`,
 		Example: `  dws todo task reset-reminder --task-id <taskId>
 			dws todo task reset-reminder --task-id <taskId> --reminder-rules <reminderRules>
   # 查询 taskId: dws todo task list
@@ -476,28 +494,14 @@ func newTodoCommand() *cobra.Command {
 			if err := validateRequiredFlags(cmd, "task-id"); err != nil {
 				return err
 			}
-			var reminderRules []any
-			if v, _ := cmd.Flags().GetString("reminder-rules"); v != "" {
-				var att []any
-				if err := json.Unmarshal([]byte(v), &att); err == nil && len(att) > 0 {
-					for i, item := range att {
-						m, ok := item.(map[string]any)
-						if !ok {
-							continue
-						}
-						if m["baseTime"] == "customTime" {
-							if ts, ok := m["reminderTimeStamp"].(string); ok && ts != "" {
-								ms, err := parseISOTimeToMillis("reminderTimeStamp", ts)
-								if err != nil {
-									return err
-								}
-								m["reminderTimeStamp"] = ms
-								att[i] = m
-							}
-						}
-					}
-					reminderRules = att
+			var reminderRules []map[string]any
+			if cmd.Flags().Changed("reminder-rules") {
+				value, _ := cmd.Flags().GetString("reminder-rules")
+				parsedRules, err := parseTodoReminderRules(value)
+				if err != nil {
+					return err
 				}
+				reminderRules = parsedRules
 			}
 			return callMCPTool("reset_todo_reminder", map[string]any{
 				"todoReminderUpdateRequest": map[string]any{
@@ -628,6 +632,7 @@ func newTodoCommand() *cobra.Command {
 	todoTaskListCmd.Flags().String("role-types", "", "角色类型: creator/executor/participant")
 	todoTaskListCmd.Flags().String("plan-finish-date-start", "", "截止时间范围查询开始 ISO-8601 (如 2026-03-10T18:00:00+08:00)")
 	todoTaskListCmd.Flags().String("plan-finish-date-end", "", "截止时间范围查询结束 ISO-8601 (如 2026-03-10T18:00:00+08:00)")
+	todoTaskListCmd.Flags().Bool("query-all", false, "查询所有待办，而不是仅查询当前组织待办")
 
 	todoTaskUpdateCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
 	todoTaskUpdateCmd.Flags().String("title", "", "新标题")
@@ -668,7 +673,7 @@ func newTodoCommand() *cobra.Command {
 	todoTaskAddReminderCmd.Flags().String("reminder-time-stamp", "", "自定义提醒时间 ISO-8601 (如 2026-03-10T18:00:00+08:00，baseTime=customTime 时必填)")
 
 	todoTaskUpdateReminderCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
-	todoTaskUpdateReminderCmd.Flags().String("reminder-rules", "", "提醒规则 JSON 数组 (可选，为空则清除提醒)")
+	todoTaskUpdateReminderCmd.Flags().String("reminder-rules", "", "提醒规则 JSON 数组 (不传则清除；显式传值必须合法)")
 	todoTaskListSubCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
 	todoTaskListAttachmentCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
 	todoTaskAddAttachment.Flags().String("task-id", "", "待办任务 ID (必填)")
@@ -771,6 +776,132 @@ func newTodoCommand() *cobra.Command {
 	todoCommentCmd.AddCommand(todoCommentAddCmd, todoCommentListCmd, todoCommentDeleteCmd)
 	todoCmd.AddCommand(todoCommentCmd)
 
+	// ──────────────────────────────────────────────────────────
+	// dws todo tag — 待办标签
+	// 对应 MCP：tag_todo / delete_todo_tag / update_todo_tag / list_todo_tags / create_todo_tag
+	// ──────────────────────────────────────────────────────────
+	todoTagCmd := &cobra.Command{Use: "tag", Short: "待办标签：打标 / 列表 / 创建 / 更新 / 删除", RunE: groupRunE}
+
+	todoTagAddCmd := &cobra.Command{
+		Use:   "add",
+		Short: "给待办打标",
+		Example: `  dws todo tag add --task-id <taskId> --tag-codes code1,code2
+
+  # 查询 taskId: dws todo task list`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "task-id", "tag-codes"); err != nil {
+				return err
+			}
+			tagCodes := parseStringList(mustGetFlag(cmd, "tag-codes"))
+			if len(tagCodes) == 0 {
+				return apperrors.NewValidation("--tag-codes must contain at least one non-empty code")
+			}
+			return callMCPTool("tag_todo", map[string]any{
+				"TodoTagRequest": map[string]any{
+					"taskId":   mustGetFlag(cmd, "task-id"),
+					"tagCodes": tagCodes,
+				},
+			})
+		},
+	}
+
+	todoTagDeleteCmd := &cobra.Command{
+		Use:   "delete",
+		Short: "删除待办标签",
+		Long:  `删除当前用户的待办标签。该操作不可逆；正式执行必须先获得用户确认并追加 --yes，可先使用 --dry-run 预览。`,
+		Example: `  dws todo tag delete --tag-codes code1,code2 --yes
+  # 查询 tag code: dws todo tag list`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "tag-codes"); err != nil {
+				return err
+			}
+			tagCodes := parseStringList(mustGetFlag(cmd, "tag-codes"))
+			if len(tagCodes) == 0 {
+				return apperrors.NewValidation("--tag-codes must contain at least one non-empty code")
+			}
+			if !deps.Caller.DryRun() && !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"删除待办标签不可逆；获得用户确认后加 --yes 执行，或加 --dry-run 预览",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认要删除的标签编码；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认标签编码", "获得用户确认后使用 --yes 执行"),
+				)
+			}
+			return callMCPTool("delete_todo_tag", map[string]any{
+				"UserTagDeleteRequest": map[string]any{
+					"tagCodes": tagCodes,
+				},
+			})
+		},
+	}
+
+	todoTagUpdateCmd := &cobra.Command{
+		Use:   "update",
+		Short: "更新待办标签",
+		Example: `  dws todo tag update --user-tags '[{"code":"code1","name":"新名称"}]'
+  # 查询 code: dws todo tag list`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "user-tags"); err != nil {
+				return err
+			}
+			var userTags []any
+			if err := json.Unmarshal([]byte(mustGetFlag(cmd, "user-tags")), &userTags); err != nil {
+				return &CLIError{
+					Code:       CodeMissingParam,
+					Message:    fmt.Sprintf("--user-tags 必须是合法的 JSON 数组: %v", err),
+					Suggestion: `示例: --user-tags '[{"code":"code1","name":"新名称"}]'`,
+					Operation:  "todo.tag.update.user-tags",
+				}
+			}
+			if userTags == nil {
+				return apperrors.NewValidation("--user-tags must be a JSON array")
+			}
+			return callMCPTool("update_todo_tag", map[string]any{
+				"UserTagAddRequest": map[string]any{
+					"userTags": userTags,
+				},
+			})
+		},
+	}
+
+	todoTagListCmd := &cobra.Command{
+		Use:     "list",
+		Short:   "查询待办标签列表",
+		Example: `  dws todo tag list`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return callMCPTool("list_todo_tags", map[string]any{})
+		},
+	}
+
+	todoTagCreateCmd := &cobra.Command{
+		Use:     "create",
+		Short:   "创建待办标签",
+		Example: `  dws todo tag create --name "标签名"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "name"); err != nil {
+				return err
+			}
+			name := strings.TrimSpace(mustGetFlag(cmd, "name"))
+			if name == "" {
+				return apperrors.NewValidation("--name must not be blank")
+			}
+			return callMCPTool("create_todo_tag", map[string]any{
+				"UserTagAddRequest": map[string]any{
+					"userTags": []map[string]any{{"name": name}},
+				},
+			})
+		},
+	}
+
+	todoTagAddCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
+	todoTagAddCmd.Flags().String("tag-codes", "", "标签编码列表，逗号分隔 (必填)")
+	todoTagDeleteCmd.Flags().String("tag-codes", "", "要删除的标签编码列表，逗号分隔 (必填)")
+	todoTagUpdateCmd.Flags().String("user-tags", "", "标签列表 JSON 数组 (必填)")
+	todoTagCreateCmd.Flags().String("name", "", "标签名称 (必填)")
+
+	todoTagCmd.AddCommand(todoTagAddCmd, todoTagDeleteCmd, todoTagUpdateCmd, todoTagListCmd, todoTagCreateCmd)
+	todoCmd.AddCommand(todoTagCmd)
+
 	todoCmd.AddCommand(
 		hintSubCmd("create", "use: dws todo task create"),
 		hintSubCmd("list", "use: dws todo task list"),
@@ -790,21 +921,93 @@ func rejectUnsupportedTodoReminderFlags(cmd *cobra.Command) error {
 		return nil
 	}
 	return &CLIError{
-		Code:       CodeMissingParam,
+		Code:       CodeInvalidParam,
 		Message:    fmt.Sprintf("todo 当前不支持独立 reminder 参数: %s", strings.Join(unsupported, ", ")),
-		Suggestion: "请使用 --due 表示截止时间；如果用户要的是精确提醒时间，请明确说明该能力当前不支持，而不是把 --due 当作 reminder。",
+		Suggestion: "需要截止时间请改用 --due；需要独立提醒请用 dws todo task add-reminder。dueTime 模式要求待办已有截止时间，customTime 模式直接传 --reminder-time-stamp，不必先设置 --due。当前上游不支持读取提醒规则，不能用 task get/list 验证写入结果。",
 		Operation:  "todo.task.reminder",
+	}
+}
+
+func parseTodoReminderRules(raw string) ([]map[string]any, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return nil, invalidTodoReminderRules(CodeInvalidParam, "显式传入的 --reminder-rules 不能为空；清除提醒请省略该参数或传 []", nil)
+	}
+	if !json.Valid([]byte(value)) {
+		return nil, invalidTodoReminderRules(CodeInvalidJSON, "--reminder-rules 必须是合法 JSON 数组", nil)
+	}
+
+	var rules []map[string]any
+	if err := unmarshalJSONUseNumber(value, &rules); err != nil {
+		return nil, invalidTodoReminderRules(CodeInvalidParam, "--reminder-rules 必须是由对象组成的 JSON 数组", err)
+	}
+	if rules == nil {
+		return nil, invalidTodoReminderRules(CodeInvalidParam, "--reminder-rules 不能是 null；清除提醒请省略该参数或传 []", nil)
+	}
+
+	for i, rule := range rules {
+		position := i + 1
+		if rule == nil {
+			return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条必须是对象", position), nil)
+		}
+		baseTime, ok := rule["baseTime"].(string)
+		baseTime = strings.TrimSpace(baseTime)
+		if !ok || baseTime == "" {
+			return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条缺少字符串 baseTime", position), nil)
+		}
+		rule["baseTime"] = baseTime
+
+		switch baseTime {
+		case "dueTime":
+			offset, ok := rule["dueDateOffset"].(json.Number)
+			if !ok {
+				return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条在 baseTime=dueTime 时必须提供整数 dueDateOffset", position), nil)
+			}
+			parsed, err := strconv.ParseInt(offset.String(), 10, 64)
+			if err != nil {
+				return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条的 dueDateOffset 必须是整数", position), err)
+			}
+			rule["dueDateOffset"] = parsed
+		case "customTime":
+			timestamp, ok := rule["reminderTimeStamp"].(string)
+			timestamp = strings.TrimSpace(timestamp)
+			if !ok || timestamp == "" {
+				return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条在 baseTime=customTime 时必须提供 ISO8601 字符串 reminderTimeStamp", position), nil)
+			}
+			parsed, err := parseISOTimeToMillis("reminderTimeStamp", timestamp)
+			if err != nil {
+				return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条的 reminderTimeStamp 无效", position), err)
+			}
+			rule["reminderTimeStamp"] = parsed
+		default:
+			return nil, invalidTodoReminderRules(CodeInvalidParam, fmt.Sprintf("--reminder-rules 第 %d 条的 baseTime 必须是 dueTime 或 customTime", position), nil)
+		}
+	}
+	return rules, nil
+}
+
+func invalidTodoReminderRules(code, message string, cause error) error {
+	return &CLIError{
+		Code:       code,
+		Message:    message,
+		Suggestion: "使用 dueTime + 整数 dueDateOffset，或 customTime + ISO8601 reminderTimeStamp；清除提醒请省略 --reminder-rules 或传 []。",
+		Operation:  "todo.task.reset-reminder.reminder-rules",
+		Cause:      cause,
 	}
 }
 
 // todoListAutoPage 当 size > 20 时自动分页请求并合并结果。pageStr 为起始页码，wantSize 为期望条数。
 func todoListAutoPage(cmd *cobra.Command, pageStr string, wantSize int) error {
 	ctx := context.Background()
+	toolName := "get_user_todos_in_current_org"
+	if queryAll, _ := cmd.Flags().GetBool("query-all"); queryAll {
+		toolName = "get_user_todos"
+	}
 	if deps.Caller.DryRun() {
 		numPages := (wantSize + todoListPageSizeMax - 1) / todoListPageSizeMax
 		bold := color.New(color.FgYellow, color.Bold)
 		bold.Println("[DRY-RUN] 自动分页待办列表:")
-		deps.Out.PrintKeyValue("Tool", "get_user_todos_in_current_org")
+		deps.Out.PrintKeyValue("Tool", toolName)
 		deps.Out.PrintKeyValue("预计请求次数", fmt.Sprintf("%d (每页最多 %d 条)", numPages, todoListPageSizeMax))
 		return nil
 	}
@@ -822,7 +1025,7 @@ func todoListAutoPage(cmd *cobra.Command, pageStr string, wantSize int) error {
 		if err != nil {
 			return err
 		}
-		text, err := callMCPToolReturnText(ctx, "get_user_todos_in_current_org", toolArgs)
+		text, err := callMCPToolReturnText(ctx, toolName, toolArgs)
 		if err != nil {
 			return err
 		}

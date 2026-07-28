@@ -59,7 +59,7 @@
     "doc.create_comment": {
       "agent_summary": "创建文档评论",
       "use_when": [
-        "在文档上创建不绑定具体划词位置的全文评论，可 --mention 时"
+        "在文档上创建不绑定具体划词位置的全文评论，可 @用户或通过 --mentioned-open-conversation-id @群"
       ],
       "avoid_when": [
         "针对某段选中文本的划词评论改用 create-inline（需 blockId+start/end）",
@@ -67,7 +67,7 @@
       ],
       "examples": [
         "dws doc comment create --node <DOC_ID> --content \"这里需要修改\" --format json",
-        "dws doc comment create --node <DOC_ID> --content \"请review\" --mention uid1,uid2 --format json"
+        "dws doc comment create --node <DOC_ID> --content \"请review\" --mention uid1,uid2 --mentioned-open-conversation-id <openConversationId> --format json"
       ],
       "reviewed": true,
       "review_reason": "人工审阅：结合本机 dws schema 实时 MCP description/parameters（经 interface_ref）、产品 Skill、Cobra Long 与 Runtime 确认门禁，按飞书风格重写选型文案；不改变命令身份、参数契约或接口绑定。",
@@ -293,10 +293,11 @@
       ]
     },
     "doc.get_document_content": {
-      "agent_summary": "读取文档内容（Markdown）",
+      "agent_summary": "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
       "use_when": [
         "用户要读取钉钉在线文字文档(adoc)正文（Markdown）时",
-        "用户直接粘贴文档 URL 且无其他指令时（默认读内容）"
+        "用户直接粘贴文档 URL 且无其他指令时（默认读内容）",
+        "只需标题大纲、指定块区间/单块或特定 JSONML tags 时使用 --content-format jsonml 与 --scope"
       ],
       "avoid_when": [
         "非 adoc（表格/多维表/普通文件）不要用本命令；先 doc info 再路由",
@@ -304,7 +305,8 @@
         "Markdown 为有损投影：保形复制模板请用 doc copy，不要 read→create"
       ],
       "examples": [
-        "dws doc read --node <DOC_ID> --format json"
+        "dws doc read --node <DOC_ID> --format json",
+        "dws doc read --node <DOC_ID> --content-format jsonml --scope outline --max-depth 3"
       ],
       "reviewed": true,
       "review_reason": "人工审阅：结合本机 dws schema 实时 MCP description/parameters（经 interface_ref）、产品 Skill、Cobra Long 与 Runtime 确认门禁，按飞书风格重写选型文案；不改变命令身份、参数契约或接口绑定。",
@@ -326,7 +328,8 @@
       ],
       "avoid_when": [
         "已确认是 adoc 且只要正文改用 dws doc read",
-        "只要目录列表改用 dws drive list / wiki node list"
+        "只要目录列表改用 dws drive list / wiki node list",
+        "需要可靠文件大小 fileSize 时改用 dws drive info；文档元信息接口可能不返回大小"
       ],
       "examples": [
         "dws doc info --node <DOC_ID> --format json",
@@ -579,11 +582,12 @@
     "doc.rename_document": {
       "agent_summary": "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
       "use_when": [
-        "用户要改文档/文件在列表与链接中展示的名称时"
+        "用户要改在线文档在列表与链接中展示的名称时"
       ],
       "avoid_when": [
         "改正文标题/章节标题改用 doc block update",
-        "不要用 update 或重新 create 来改名"
+        "不要用 update 或重新 create 来改名",
+        "文件或文件夹重命名优先用 dws drive rename，由该命令读取真实节点类型和当前扩展名"
       ],
       "examples": [
         "dws doc rename --node <DOC_ID> --name \"新名称\" --format json"
@@ -602,13 +606,13 @@
     "doc.reply_comment": {
       "agent_summary": "回复文档评论",
       "use_when": [
-        "回复已有评论（文字或 --emoji 表情）；commentKey 来自 list/create"
+        "回复已有评论（文字、可 @用户/@群，或 --emoji 表情）；commentKey 来自 list/create"
       ],
       "avoid_when": [
         "新建评论用 create/create-inline；删评论用 delete"
       ],
       "examples": [
-        "dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"同意\" --format json",
+        "dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"同意\" --mentioned-open-conversation-id <openConversationId> --format json",
         "dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"比心\" --emoji --format json"
       ],
       "reviewed": true,
@@ -713,15 +717,16 @@
       ]
     },
     "doc.update_comment": {
-      "agent_summary": "更新指定文档评论的文字内容和可选 @提及用户。",
+      "agent_summary": "更新指定文档评论的文字内容和可选 @用户/@群。",
       "use_when": [
-        "修改已有评论正文；可选更新 --mention"
+        "修改已有评论正文；可选更新 --mention 或 --mentioned-open-conversation-id"
       ],
       "avoid_when": [
         "删除评论用 delete；回复用 reply"
       ],
       "examples": [
-        "dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"已按最新数据修正\" --format json"
+        "dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"已按最新数据修正\" --format json",
+        "dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"请群内确认\" --mentioned-open-conversation-id <openConversationId>"
       ],
       "reviewed": true,
       "review_reason": "人工审阅：结合本机 dws schema 实时 MCP description/parameters（经 interface_ref）、产品 Skill、Cobra Long 与 Runtime 确认门禁，按飞书风格重写选型文案；不改变命令身份、参数契约或接口绑定。",
@@ -892,6 +897,334 @@
         "Skill:skills/mono/references/products/doc.md",
         "structured-hint:internal/cli/schema_hints/products/doc.json",
         "live-mcp:dws schema doc.save_doc_version"
+      ]
+    },
+    "doc.shortcut_search": {
+      "agent_summary": "按关键词搜索有权限的文档 (不传则返回最近访问)",
+      "use_when": [
+        "当你只记得文档的标题或主题词、需要先定位到某篇钉钉文档拿到它的 nodeId/URL 以便后续阅读或编辑时使用；可按关键词、扩展名、创建/访问时间、创建者等条件过滤，不传关键词则返回最近访问的文档，返回匹配的文档列表。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +search --query \"会议纪要\"",
+        "dws doc +search --extensions pdf,docx"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_search",
+        "cobra-help:dws doc +search",
+        "ShortcutRegistry:doc +search"
+      ]
+    },
+    "doc.shortcut_list": {
+      "agent_summary": "列出文件夹或知识库下的直接子节点",
+      "use_when": [
+        "当你已知某个文档文件夹或知识库的 ID、想浏览它下面直接包含的文档与子文件夹（不递归深层）以便逐层导航时使用；输入 folder 或 workspace，返回该层级的子节点列表。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +list --folder DOC_FOLDER_NODE_ID",
+        "dws doc +list --workspace WS_ID --limit 20"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_list",
+        "cobra-help:dws doc +list",
+        "ShortcutRegistry:doc +list"
+      ]
+    },
+    "doc.shortcut_copy": {
+      "agent_summary": "复制文档/文件到指定文件夹或知识库",
+      "use_when": [
+        "当你想保留原件、在另一个文件夹或知识库里生成一份文档/文件副本（例如以某篇文档为模板另存）时使用；输入源 node 与目标 folder/workspace，会实际创建一个副本。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +copy --node DOC_ID --folder TARGET_FOLDER_NODE_ID"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_copy",
+        "cobra-help:dws doc +copy",
+        "ShortcutRegistry:doc +copy"
+      ]
+    },
+    "doc.shortcut_move": {
+      "agent_summary": "移动文档/文件到指定文件夹或知识库",
+      "use_when": [
+        "当你要整理文档归属、把某篇文档/文件从当前位置挪到另一个文件夹或知识库（原位置不再保留）时使用；输入 node 与目标 folder/workspace，会实际改变文件的存放位置。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +move --node DOC_ID --folder TARGET_FOLDER_NODE_ID"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_move",
+        "cobra-help:dws doc +move",
+        "ShortcutRegistry:doc +move"
+      ]
+    },
+    "doc.shortcut_comment_list": {
+      "agent_summary": "查询文档评论列表",
+      "use_when": [
+        "当你想查看某篇文档上已有的评论、了解有哪些反馈或待处理意见（可按全文/划词、已解决/未解决过滤）时使用；输入 node，返回评论列表及其 commentKey 以便后续回复。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +comment-list --node DOC_ID",
+        "dws doc +comment-list --node DOC_ID --type inline --resolve-status unresolved"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_comment_list",
+        "cobra-help:dws doc +comment-list",
+        "ShortcutRegistry:doc +comment-list"
+      ]
+    },
+    "doc.shortcut_comment_create": {
+      "agent_summary": "在文档上创建一条评论",
+      "use_when": [
+        "当你想对整篇文档留一条全文评论、给出反馈或 @ 相关同事时使用；输入 node 与评论 content（可带 mention），会实际在文档上发布一条新评论。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +comment-create --node DOC_ID --content \"这里需要修改\""
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_comment_create",
+        "cobra-help:dws doc +comment-create",
+        "ShortcutRegistry:doc +comment-create"
+      ]
+    },
+    "doc.shortcut_comment_reply": {
+      "agent_summary": "回复文档中的一条评论",
+      "use_when": [
+        "当你要针对某条已有评论进行回复、参与讨论或用表情贴图回应时使用；先从评论列表拿到 comment-key，再输入 node、comment-key 与 content（--emoji 则作为表情回复），会实际发布一条回复。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +comment-reply --node DOC_ID --comment-key COMMENT_KEY --content \"同意\""
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_comment_reply",
+        "cobra-help:dws doc +comment-reply",
+        "ShortcutRegistry:doc +comment-reply"
+      ]
+    },
+    "doc.shortcut_export_submit": {
+      "agent_summary": "提交在线文档导出任务 (docx/markdown/pdf)，返回 jobId",
+      "use_when": [
+        "当你想把在线文档导出成 docx/markdown/pdf 文件（例如离线保存或外发）时使用；这是异步任务的第一步，输入 node 与 export-format 提交导出，返回 jobId，随后用 +export-get 轮询结果。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +export-submit --node DOC_ID --export-format markdown"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_export_submit",
+        "cobra-help:dws doc +export-submit",
+        "ShortcutRegistry:doc +export-submit"
+      ]
+    },
+    "doc.shortcut_export_get": {
+      "agent_summary": "根据 jobId 查询文档导出任务结果",
+      "use_when": [
+        "当你已用 +export-submit 提交了导出任务、想查询它是否完成并拿到导出文件的下载链接时使用；输入上一步返回的 job-id，返回任务状态与结果。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +export-get --job-id JOB_ID"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_export_get",
+        "cobra-help:dws doc +export-get",
+        "ShortcutRegistry:doc +export-get"
+      ]
+    },
+    "doc.shortcut_version_save": {
+      "agent_summary": "手动保存文档版本快照",
+      "use_when": [
+        "当你在做重大改动前后、想手动打一个可回滚的版本存档点时使用；输入 node，会实际为该文档保存一个当前内容的历史版本快照。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +version-save --node DOC_ID"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_version_save",
+        "cobra-help:dws doc +version-save",
+        "ShortcutRegistry:doc +version-save"
+      ]
+    },
+    "doc.shortcut_version_list": {
+      "agent_summary": "查看文档历史版本列表",
+      "use_when": [
+        "当你想查看某篇文档有哪些历史版本、以便挑一个版本号用于回滚时使用；输入 node，返回历史版本列表及其版本号。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +version-list --node DOC_ID"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_version_list",
+        "cobra-help:dws doc +version-list",
+        "ShortcutRegistry:doc +version-list"
+      ]
+    },
+    "doc.shortcut_version_revert": {
+      "agent_summary": "回滚文档到指定历史版本",
+      "use_when": [
+        "当文档被误改、你想把它整体恢复到某个历史版本时使用；先用 +version-list 找到目标版本号，再输入 node 与 version，会实际把文档内容覆盖回该版本，属于高风险写操作，需谨慎确认。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +version-revert --node DOC_ID --version 3"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_version_revert",
+        "cobra-help:dws doc +version-revert",
+        "ShortcutRegistry:doc +version-revert"
+      ]
+    },
+    "doc.shortcut_template_list": {
+      "agent_summary": "获取文档模板列表",
+      "use_when": [
+        "当你想基于模板新建文档、需要先浏览可用的模板（自己的 MY 或公共 PUBLIC）并拿到 templateId 时使用；返回模板列表，随后可配合 +template-apply 套用。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +template-list --source PUBLIC"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_template_list",
+        "cobra-help:dws doc +template-list",
+        "ShortcutRegistry:doc +template-list"
+      ]
+    },
+    "doc.shortcut_template_search": {
+      "agent_summary": "根据关键词搜索文档模板",
+      "use_when": [
+        "当模板较多、你想按关键词（如“周报”“合同”）快速找到合适的模板并拿到 templateId 时使用；输入 query，返回匹配的模板列表，随后可配合 +template-apply 套用。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +template-search --query \"周报\""
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_template_search",
+        "cobra-help:dws doc +template-search",
+        "ShortcutRegistry:doc +template-search"
+      ]
+    },
+    "doc.shortcut_doc_append": {
+      "agent_summary": "在文档末尾追加一段文本（安全追加，不改动原有内容）",
+      "use_when": [
+        "当你只想往一篇钉钉文档的最后面补一段文字、又不想动原有内容时使用；内部用文档更新的“追加(append)”模式，把你给的文本安全地拼到文档末尾，不需要你先去查文档块列表、算末尾位置或手工拼块结构。会真实写入文档内容。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +doc-append --doc DOC_ID --text \"补充说明：本方案已评审通过。\"",
+        "dws doc +doc-append --doc \"https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>\" --text \"追加一行备注\""
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_doc_append",
+        "cobra-help:dws doc +doc-append",
+        "ShortcutRegistry:doc +doc-append"
+      ]
+    },
+    "doc.shortcut_find_doc": {
+      "agent_summary": "按关键词搜索云文档并投影关键字段（只读）",
+      "use_when": [
+        "当你只记得云文档标题或内容里的某个关键词，想快速按关键词找到匹配的文档、拿到它的标题、URL、类型和 token 以便后续查看或编辑，却不想拿到一大坨原始字段时使用；内部调用云文档的 search_documents 工具，把 --query 作为搜索关键词(keyword)，可选地用 --limit 限制返回条数(pageSize)，再在本地把每条命中结果精简为「标题、URL、类型、token」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、修改或删除任何文档；未命中时提示「没搜到文档」。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +find-doc --query 季度汇报",
+        "dws doc +find-doc --query 合同 --limit 10"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_find_doc",
+        "cobra-help:dws doc +find-doc",
+        "ShortcutRegistry:doc +find-doc"
+      ]
+    },
+    "doc.shortcut_share_doc": {
+      "agent_summary": "按姓名把文档链接私信发给某人（自动解析 userId）",
+      "use_when": [
+        "当你手上已经有一个文档链接、想直接私信发给某个人而不必先查 userId 时使用；内部先按姓名搜通讯录解析出唯一用户，再用 openDingTalkId 把链接拼成一条 Markdown 消息发出去，姓名匹配到多人时会列出候选让你区分。只发链接、不读取或改动文档本身，会真实发出消息。"
+      ],
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "examples": [
+        "dws doc +share-doc --to 张三 --url https://docs.dingtalk.com/xxx --note \"帮忙过一下\""
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#doc.shortcut_share_doc",
+        "cobra-help:dws doc +share-doc",
+        "ShortcutRegistry:doc +share-doc"
       ]
     }
   },

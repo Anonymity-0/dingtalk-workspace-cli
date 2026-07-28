@@ -26,7 +26,7 @@
 | "搜一下有没有叫XX的文件" | 全局搜索 | `drive search` | `wiki node search` | 未指定空间 → drive search 全局聚合搜索 |
 | "在知识库里创建一个文档" | 创建空文件实体 | `wiki node create --type adoc` | `doc create` | 空间内创建节点归 wiki；doc create 是向已有文档写入内容，不是创建文件节点 |
 | "帮我建一个明天下午的日程" | 日历日程 | `calendar` | — | 日历日程管理（可含参与者/会议室）；视频会议(conference)当前开源 CLI 不支持 |
-| "明早 9 点提醒我提交周报" | 创建个人待办，但需先声明 reminder 边界 | `todo` | `calendar` | todo 当前只支持 dueTime 截止时间，不支持独立精确 reminder |
+| "明早 9 点提醒我提交周报" | 创建个人待办后添加提醒 | `todo task create` + `todo task add-reminder` | `calendar` | `+remind --at` 只写截止时间；提醒可写入，但上游不支持规则读回 |
 | "帮我建一个项目群" | 创建群聊 | `chat group create` | — | 群聊管理，不是日历日程 |
 | "把张三拉进群" | 添加群成员 | `chat group members add` | — | 先查 userId，再添加 |
 | "通知群里的人都来开会" | 个人身份群发 | `chat message send` | `chat message send-by-bot` | 以个人身份向群发消息 |
@@ -273,8 +273,8 @@ alidocs 链接表面长得一样（`https://alidocs.dingtalk.com/i/nodes/{id}`�
   - 已有 userId 时直接使用 `--user`；已有 openDingTalkId 时使用 `--open-dingtalk-id`
   - 纯文本/Markdown 单聊传 `--user` 时直接走 userId 发送能力，不需要先手动查询 openDingTalkId
   - 富媒体消息（image/file）单聊优先使用 `--open-dingtalk-id`；传 `--user` 时 CLI 会尝试解析为 openDingTalkId 后发送
-- "发文件/语音/视频到群里" — `dws chat message send ... --msg-type file --file-path <本地路径>`，CLI 内部自动上传并发送（png/jpg/pdf/mp4/zip… 任意扩展名都走这条，但**都作为「文件」消息**发出，接收方看到的是可下载的文件条目）
-- "发张图片/截图（要在聊天里内联渲染成图，不是文件）" — 走图片消息链路：先 `dt_media_upload` 拿 mediaId，再 `dws chat message send ... --msg-type image --media-id <mediaId>`。**注意**：用 `--msg-type file` 发 .png 只会显示为[文件]（fileId），不会渲染成图片；要图片效果必须走 `--msg-type image`
+- "发本地图片/文件/语音/视频到群里" — `dws chat message send ... --msg-type file --file-path <本地路径>`，CLI 内部自动上传并发送；png/jpg/pdf/mp4/zip 等任意扩展名都走这条，接收方看到的是可下载的文件附件。图片不会内联渲染，也不会生成 mediaId
+- "用已有 mediaId 发内联图片" — 仅当上游已经提供有效 mediaId 时，使用 `dws chat message send ... --msg-type image --media-id <mediaId>`；DWS CLI 不能把本地图片转换成 mediaId
 - "发图片+文字说明" — 不要硬塞进一条命令；先发图片/文件消息再补一条 `--text "..."` 即可
 
 ```bash
@@ -282,7 +282,7 @@ dws chat message send --group <openConversationId> --msg-type file --file-path .
 dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path ./report.pdf --format json
 ```
 
-> ❌ 反模式：调 `dt_media_upload` / `extract_media_id.py` / `drive upload` / `drive download` 等前置工具再 `--msg-type image --media-id`。这是**旧链路**，仅当上游已持有 mediaId 才用；新场景一律 `--file-path` 直发，避免长链路与"空白图"现象。
+> ❌ 反模式：先把本地文件转换成 mediaId，或先经钉盘上传再拼装聊天消息。本地图片/文件一律用 `--msg-type file --file-path` 直发；`--msg-type image --media-id` 只接受上游已经提供的有效 mediaId。
 > 富媒体消息单聊优先使用 `--open-dingtalk-id`；传 `--user` 时 CLI 会尝试解析为 openDingTalkId 后发送。
 
 **用 `chat message send-by-bot` 的场景**：
@@ -330,7 +330,7 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file
 
 **用 `todo` 的场景**：
 - "记一下这周要做的事" — 个人任务管理
-- "创建一个待办提醒" — 仍归 `todo`，但要先说明当前只有 dueTime 截止时间，没有独立 reminder schedule
+- "创建一个待办提醒" — 仍归 `todo`：先创建待办，再用 `task add-reminder` 写入；需说明上游不支持读取 reminderRules，不能写后读回核验
 
 **判断关键**：钉钉日志系统(日报/周报模版，含按模版创建汇报)→ `report`；文档/知识库长文→ `doc`；任务清单→ `todo`
 
@@ -453,7 +453,7 @@ dws chat message send --group <openConversationId> --msg-type file --file-path <
 dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path <本地路径> --format json
 ```
 
-支持任意扩展名（`.png/.jpg/.gif/.bmp/.webp/.pdf/.doc/.xls/.zip/.mp3/.wav/.mp4/.avi` …），CLI 自动识别并处理。**无需** `dt_media_upload` / `extract_media_id.py` / `drive upload` / `drive download` / `chat conversation-info` / `chat file upload` 等任何前置工具调用。
+支持任意扩展名（`.png/.jpg/.gif/.bmp/.webp/.pdf/.doc/.xls/.zip/.mp3/.wav/.mp4/.avi` …），CLI 自动完成上传与发送，不需要任何前置工具调用。图片文件同样作为可下载的 file 附件发送，不会内联渲染，也不会生成 mediaId。
 
 ### 图片/文件 + 文字说明
 
@@ -464,9 +464,9 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file
 dws chat message send --open-dingtalk-id <openDingTalkId> --text "这是本周数据汇总" --format json
 ```
 
-### 旧链路（mediaId）— 仅兼容场景
+### 上游 mediaId — 仅兼容场景
 
-仅当上游已经通过 `dt_media_upload` 拿到 `@lQL...` 形式的 mediaId 时使用：
+仅当上游已经提供有效的 `@lQL...` 形式 mediaId 时使用；DWS CLI 不提供本地文件到 mediaId 的转换能力：
 
 ```bash
 dws chat message send --group <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
