@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -96,6 +97,15 @@ func run(args []string, stderr io.Writer) int {
 	for k, v := range prevTools {
 		allTools[k] = v
 	}
+
+	// Reviewed cross-server interface_refs live only in the previous snapshot
+	// (the registry stores canonical paths, not MCP identities). Build a
+	// live-key → canonicals index so those tools get refreshed instead of
+	// being skipped and frozen at the previous snapshot forever.
+	crossRefs := buildCrossServerRefs(prevTools, registryMap)
+	if len(crossRefs) > 0 {
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: cross-server ref index: %d live keys\n", len(crossRefs))
+	}
 	totalRaw := 0
 	failedServices := []string{}
 
@@ -119,13 +129,18 @@ func run(args []string, stderr io.Writer) int {
 			if name == "" {
 				continue
 			}
-			// Try matching by server-prefixed canonical (e.g., "doc.copy_document").
+			// Direct match: CLI canonical equals server-prefixed tool name
+			// (e.g., "doc.copy_document").
 			canonicalKey := srv.ID + "." + name
-			ref, hasRef := registryMap[canonicalKey]
-			if !hasRef {
-				continue // skip MCP tools not in the CLI registry
+			if ref, hasRef := registryMap[canonicalKey]; hasRef {
+				mergeLiveMCPTool(allTools, canonicalKey, tool, ref)
 			}
-			mergeLiveMCPTool(allTools, canonicalKey, tool, ref)
+			// Cross-server match: registry canonicals whose reviewed
+			// interface_ref points at this live tool (one live tool may feed
+			// several canonicals, e.g. advperm_enable/disable → set_advanced_permission).
+			for _, canonical := range crossRefs[canonicalKey] {
+				mergeLiveMCPTool(allTools, canonical, tool, registryMap[canonical])
+			}
 		}
 	}
 
@@ -251,6 +266,38 @@ func mergeLiveMCPTool(allTools map[string]map[string]any, canonicalKey string, t
 		entry["parameters"] = extractParams(tool.InputSchema)
 	}
 	allTools[canonicalKey] = entry
+}
+
+// buildCrossServerRefs indexes reviewed cross-server mappings from the
+// previous snapshot: for every registry canonical whose interface_ref names a
+// different MCP identity (product_id.rpc_name != canonical), the live key is
+// mapped back to that canonical. One live tool may serve several canonicals,
+// so values are slices, sorted for deterministic merge order.
+func buildCrossServerRefs(prevTools map[string]map[string]any, registryMap map[string]map[string]string) map[string][]string {
+	index := map[string][]string{}
+	for canonical, entry := range prevTools {
+		if _, inRegistry := registryMap[canonical]; !inRegistry {
+			continue
+		}
+		ref, ok := entry["interface_ref"].(map[string]any)
+		if !ok {
+			continue
+		}
+		productID, _ := ref["product_id"].(string)
+		rpcName, _ := ref["rpc_name"].(string)
+		if productID == "" || rpcName == "" {
+			continue
+		}
+		liveKey := productID + "." + rpcName
+		if liveKey == canonical {
+			continue
+		}
+		index[liveKey] = append(index[liveKey], canonical)
+	}
+	for _, canonicals := range index {
+		sort.Strings(canonicals)
+	}
+	return index
 }
 
 // loadRegistryInterfaceRefs loads the reviewed split CommandRegistry through

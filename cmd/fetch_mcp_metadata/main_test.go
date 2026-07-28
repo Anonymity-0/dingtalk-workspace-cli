@@ -36,6 +36,113 @@ func TestLoadRegistryInterfaceRefsUsesSplitRegistry(t *testing.T) {
 	}
 }
 
+func TestBuildCrossServerRefs(t *testing.T) {
+	registryMap := map[string]map[string]string{
+		"aitable.advperm_enable":  {"product_id": "aitable", "rpc_name": "advperm_enable"},
+		"aitable.advperm_disable": {"product_id": "aitable", "rpc_name": "advperm_disable"},
+		"doc.copy_document":       {"product_id": "doc", "rpc_name": "copy_document"},
+	}
+	prevTools := map[string]map[string]any{
+		// Fan-out: two canonicals share one live tool; insertion order must
+		// not affect the sorted result.
+		"aitable.advperm_enable": {
+			"interface_ref": map[string]any{"product_id": "aitable-helper", "rpc_name": "set_advanced_permission"},
+		},
+		"aitable.advperm_disable": {
+			"interface_ref": map[string]any{"product_id": "aitable-helper", "rpc_name": "set_advanced_permission"},
+		},
+		// Identity ref (live key == canonical) needs no cross entry.
+		"doc.copy_document": {
+			"interface_ref": map[string]any{"product_id": "doc", "rpc_name": "copy_document"},
+		},
+		// Not in the registry: must be ignored.
+		"ghost.tool": {
+			"interface_ref": map[string]any{"product_id": "ghost-helper", "rpc_name": "haunt"},
+		},
+	}
+	got := buildCrossServerRefs(prevTools, registryMap)
+	want := map[string][]string{
+		"aitable-helper.set_advanced_permission": {"aitable.advperm_disable", "aitable.advperm_enable"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("index = %#v, want %#v", got, want)
+	}
+	for k, v := range want {
+		if gv := got[k]; len(gv) != len(v) || gv[0] != v[0] || gv[1] != v[1] {
+			t.Fatalf("index[%q] = %v, want %v", k, gv, v)
+		}
+	}
+}
+
+func TestBuildCrossServerRefsSkipsMalformedRefs(t *testing.T) {
+	registryMap := map[string]map[string]string{
+		"a.x": {"product_id": "a", "rpc_name": "x"},
+		"a.y": {"product_id": "a", "rpc_name": "y"},
+		"a.z": {"product_id": "a", "rpc_name": "z"},
+	}
+	prevTools := map[string]map[string]any{
+		"a.x": {"interface_ref": "not-a-map"},
+		"a.y": {"interface_ref": map[string]any{"product_id": "", "rpc_name": "r"}},
+		"a.z": {"title": "no ref at all"},
+	}
+	if got := buildCrossServerRefs(prevTools, registryMap); len(got) != 0 {
+		t.Fatalf("index = %#v, want empty", got)
+	}
+}
+
+func TestRunRefreshesCrossServerTools(t *testing.T) {
+	registry := func() ([]byte, error) {
+		return []byte(`{"version":1,"products":[{"id":"aitable","tools":[{"canonical_path":"aitable.advperm_enable"},{"canonical_path":"aitable.advperm_disable"}]}]}`), nil
+	}
+	servers := []syncdata.ServerInfo{{ID: "aitable-helper", Endpoint: "https://helper.example"}}
+	lister := &fakeLister{
+		results: map[string]transport.ToolsListResult{
+			"https://helper.example": {Tools: []transport.ToolDescriptor{
+				{Name: "set_advanced_permission", Title: "live title", Description: "live desc"},
+			}},
+		},
+	}
+	stubDeps(t, "env-token", nil, servers, lister, registry)
+
+	output := filepath.Join(t.TempDir(), "snapshot.json")
+	prev := `{"tools":{
+		"aitable.advperm_enable":{"title":"stale","interface_ref":{"product_id":"aitable-helper","rpc_name":"set_advanced_permission"}},
+		"aitable.advperm_disable":{"title":"stale","interface_ref":{"product_id":"aitable-helper","rpc_name":"set_advanced_permission"}}
+	}}`
+	if err := os.WriteFile(output, []byte(prev), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stderr bytes.Buffer
+	if code := run([]string{"--output", output}, &stderr); code != 0 {
+		t.Fatalf("run() = %d, stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "cross-server ref index: 1 live keys") {
+		t.Fatalf("stderr = %q, want cross-server index log", stderr.String())
+	}
+
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot struct {
+		Tools map[string]map[string]any `json:"tools"`
+	}
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	for _, canonical := range []string{"aitable.advperm_enable", "aitable.advperm_disable"} {
+		entry := snapshot.Tools[canonical]
+		if entry["title"] != "live title" || entry["description"] != "live desc" {
+			t.Fatalf("%s = %#v, want live refresh", canonical, entry)
+		}
+		ref := entry["interface_ref"].(map[string]any)
+		if ref["product_id"] != "aitable-helper" || ref["rpc_name"] != "set_advanced_permission" {
+			t.Fatalf("%s reviewed ref lost: %#v", canonical, ref)
+		}
+	}
+}
+
 func TestMergeLiveMCPToolRefreshesExistingMetadata(t *testing.T) {
 	const canonical = "calendar.list_calendars"
 	reviewedRef := map[string]any{
