@@ -1287,11 +1287,6 @@ func newDevAppVersionStatusCommand(runner executor.Runner) *cobra.Command {
 	})
 }
 
-func addDevAppVersionLocatorFlags(cmd *cobra.Command) {
-	addDevAppUnifiedIDFlag(cmd)
-	cmd.Flags().String("version-id", "", "版本 ID (必填)")
-}
-
 func devAppVersionLocator(cmd *cobra.Command) (map[string]any, error) {
 	appID, err := requiredDevAppUnifiedID(cmd)
 	if err != nil {
@@ -1317,14 +1312,6 @@ func requiredDevAppUnifiedID(cmd *cobra.Command) (string, error) {
 		return "", apperrors.NewValidation("--unified-app-id 为必填")
 	}
 	return appID, nil
-}
-
-func registerDevAppMemberMutationFlags(cmd *cobra.Command) {
-	addDevAppUnifiedIDFlag(cmd)
-	cmd.Flags().String("user-ids", "", "成员 userId 列表，多个用逗号分隔 (必填)")
-	cmd.Flags().String("member-user-ids", "", "成员 userId 列表，多个用逗号分隔 (兼容旧参数)")
-	_ = cmd.Flags().MarkHidden("member-user-ids")
-	cmd.Flags().String("member-type", "", "成员类型，如 DEVELOPER (必填)")
 }
 
 // annotateDevAppTool tags a leaf command with the MCP tool name it invokes, so
