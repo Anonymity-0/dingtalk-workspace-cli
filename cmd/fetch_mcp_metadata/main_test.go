@@ -94,7 +94,7 @@ func TestMergeLiveMCPToolRefreshesExistingMetadata(t *testing.T) {
 }
 
 func TestBuildCoverageReportsFailedServices(t *testing.T) {
-	got := buildCoverage(26, []string{"doc", "sheet"}, 800, 813)
+	got := buildCoverage(26, []string{"doc", "sheet"}, 800, 813, 40)
 	if got["source_services"] != 26 {
 		t.Fatalf("source_services = %v, want 26", got["source_services"])
 	}
@@ -104,18 +104,25 @@ func TestBuildCoverageReportsFailedServices(t *testing.T) {
 	if !reflect.DeepEqual(got["missing_services"], []string{"doc", "sheet"}) {
 		t.Fatalf("missing_services = %#v, want failed service IDs", got["missing_services"])
 	}
-	if got["source_tools"] != 800 || got["surface_tools"] != 813 || got["matched_tools"] != 813 {
+	// matched 必须剔除 stub 占位，unmatched 据实等于 stub 数。
+	if got["matched_tools"] != 773 || got["unmatched_tools"] != 40 {
+		t.Fatalf("matched/unmatched = %v/%v, want 773/40 (813 surface - 40 stubs)", got["matched_tools"], got["unmatched_tools"])
+	}
+	if got["source_tools"] != 800 || got["surface_tools"] != 813 {
 		t.Fatalf("tool counts = %#v", got)
 	}
 }
 
 func TestBuildCoverageFullSnapshotHasNoMissingServices(t *testing.T) {
-	got := buildCoverage(26, nil, 813, 813)
+	got := buildCoverage(26, nil, 813, 813, 0)
 	if got["snapshot_services"] != 26 {
 		t.Fatalf("snapshot_services = %v, want 26", got["snapshot_services"])
 	}
 	if !reflect.DeepEqual(got["missing_services"], []string{}) {
 		t.Fatalf("missing_services = %#v, want empty non-nil slice", got["missing_services"])
+	}
+	if got["matched_tools"] != 813 || got["unmatched_tools"] != 0 {
+		t.Fatalf("matched/unmatched = %v/%v, want 813/0 for stub-free snapshot", got["matched_tools"], got["unmatched_tools"])
 	}
 }
 
@@ -309,6 +316,10 @@ func TestRunUnparsableRegistryYieldsNoRefs(t *testing.T) {
 	stubDeps(t, "env-token", nil, nil, &fakeLister{}, func() ([]byte, error) { return []byte("{bad"), nil })
 	if refs := loadRegistryInterfaceRefs(&stderr); len(refs) != 0 {
 		t.Fatalf("refs = %v, want empty for unparsable registry", refs)
+	}
+	// 解析失败必须有告警，不得静默产出空映射。
+	if !strings.Contains(stderr.String(), "cannot parse registry") {
+		t.Fatalf("stderr = %q, want parse warning", stderr.String())
 	}
 }
 

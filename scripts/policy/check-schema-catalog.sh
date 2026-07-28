@@ -47,7 +47,8 @@ if ! jq -e '
   .coverage.source_services == (.coverage.snapshot_services + (.coverage.missing_services | length)) and
   .coverage.surface_tools == (.coverage.matched_tools + .coverage.unmatched_tools) and
   .coverage.source_tools >= .coverage.surface_tools and
-  .coverage.matched_tools == (.tools | length) and
+  .coverage.matched_tools <= (.tools | length) and
+  (.tools | length) <= .coverage.surface_tools and
   .coverage.aliased_tools <= .coverage.matched_tools
 ' internal/cli/schema_mcp_metadata.json >/dev/null; then
 	printf 'MCP source-revision snapshot coverage is inconsistent: snapshot_registry=%s\n' \

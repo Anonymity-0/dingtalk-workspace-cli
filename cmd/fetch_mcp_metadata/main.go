@@ -163,7 +163,7 @@ func run(args []string, stderr io.Writer) int {
 	metadata := map[string]any{
 		"version":  1,
 		"source":   "mcp-tools-list+cli-registry",
-		"coverage": buildCoverage(len(servers), failedServices, totalRaw, len(allTools)),
+		"coverage": buildCoverage(len(servers), failedServices, totalRaw, len(allTools), stubs),
 		"tools":    allTools,
 	}
 
@@ -209,9 +209,10 @@ func writeMetadata(path string, metadata map[string]any) error {
 }
 
 // buildCoverage reports snapshot coverage honestly: snapshot_services only
-// counts services whose tools/list succeeded, and missing_services names the
-// failures so downstream policy checks can detect an incomplete snapshot.
-func buildCoverage(sourceServices int, failedServices []string, sourceTools, surfaceTools int) map[string]any {
+// counts services whose tools/list succeeded, missing_services names the
+// failures, and matched_tools excludes registry stubs (entries carrying no
+// live MCP metadata) so a stub-heavy snapshot cannot claim full matching.
+func buildCoverage(sourceServices int, failedServices []string, sourceTools, surfaceTools, stubs int) map[string]any {
 	missing := failedServices
 	if missing == nil {
 		missing = []string{}
@@ -223,9 +224,9 @@ func buildCoverage(sourceServices int, failedServices []string, sourceTools, sur
 		"missing_services":  missing,
 		"source_tools":      sourceTools,
 		"surface_tools":     surfaceTools,
-		"matched_tools":     surfaceTools,
+		"matched_tools":     surfaceTools - stubs,
 		"aliased_tools":     0,
-		"unmatched_tools":   0,
+		"unmatched_tools":   stubs,
 	}
 }
 
@@ -270,6 +271,9 @@ func loadRegistryInterfaceRefs(stderr io.Writer) map[string]map[string]string {
 		} `json:"products"`
 	}
 	if err := json.Unmarshal(data, &reg); err != nil {
+		// 与读文件失败同等告警：静默返回空映射会让所有 live tool 被丢弃、
+		// 产出 stub-only 快照且零提示（P1#1 的故障模式）。
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: warning: cannot parse registry: %v\n", err)
 		return map[string]map[string]string{}
 	}
 	out := make(map[string]map[string]string)
