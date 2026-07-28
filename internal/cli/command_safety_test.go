@@ -94,3 +94,39 @@ func TestResolveMetaUnknownSkips(t *testing.T) {
 		t.Fatal("ResolveMeta for unknown command returned ok=true")
 	}
 }
+
+func TestResolveMetaCopiesAliases(t *testing.T) {
+	// report inbox list 在 Catalog 中声明了兼容别名 "report list"。
+	m, ok := ResolveMeta("report inbox list")
+	if !ok {
+		t.Fatal("ResolveMeta(\"report inbox list\") returned ok=false")
+	}
+	found := false
+	for _, alias := range m.Identity.Aliases {
+		if alias == "report list" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Identity.Aliases = %v, want to contain \"report list\"", m.Identity.Aliases)
+	}
+}
+
+func TestResolveMetaAliasLookup(t *testing.T) {
+	// 兼容别名路径必须解析到与主 cli_path 同一份元数据。
+	primary, ok := ResolveMeta("report inbox list")
+	if !ok {
+		t.Fatal("primary path lookup failed")
+	}
+	aliased, ok := ResolveMeta("report list")
+	if !ok {
+		t.Fatal("ResolveMeta(\"report list\") alias lookup returned ok=false")
+	}
+	if aliased.Identity.CLIPath != primary.Identity.CLIPath || aliased.Identity.Canonical != primary.Identity.Canonical {
+		t.Fatalf("alias metadata = %+v, want same identity as primary %+v", aliased.Identity, primary.Identity)
+	}
+	if aliased.Safety != primary.Safety {
+		t.Fatalf("alias safety = %+v, want %+v", aliased.Safety, primary.Safety)
+	}
+}

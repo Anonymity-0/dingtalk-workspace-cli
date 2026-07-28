@@ -74,6 +74,7 @@ func initMetaByCLIPath() {
 			Identity: CommandIdentity{
 				CLIPath:   cliPath,
 				Canonical: catalogStringVal(tool, "canonical_path"),
+				Aliases:   catalogStringSliceVal(tool, "aliases"),
 				ProductID: catalogStringVal(tool, "product_id"),
 				Title:     catalogStringVal(tool, "title"),
 			},
@@ -91,6 +92,18 @@ func initMetaByCLIPath() {
 			},
 		}
 		metaByCLIPath[cliPath] = meta
+		// Register each compat alias path (e.g. "report list") against the same
+		// metadata. Primary cli_path wins on collision so an alias can never
+		// shadow another command's canonical entry.
+		for _, alias := range meta.Identity.Aliases {
+			alias = strings.TrimSpace(alias)
+			if alias == "" || alias == cliPath {
+				continue
+			}
+			if _, exists := metaByCLIPath[alias]; !exists {
+				metaByCLIPath[alias] = meta
+			}
+		}
 	}
 }
 
@@ -110,8 +123,9 @@ func catalogStringSliceVal(tool map[string]any, key string) []string {
 }
 
 // ResolveMeta returns the complete metadata for a command identified by its CLI
-// path (e.g. "dev app delete"). Returns ok=false for commands not in the
-// embedded catalog (utility commands, hidden commands, shortcuts).
+// path (e.g. "dev app delete") or one of its compat aliases (e.g. "report list"
+// for "report inbox list"). Returns ok=false for commands not in the embedded
+// catalog (utility commands, hidden commands, shortcuts).
 func ResolveMeta(cliPath string) (CommandMeta, bool) {
 	metaByCLIPathOnce.Do(initMetaByCLIPath)
 	m, ok := metaByCLIPath[strings.TrimSpace(cliPath)]
