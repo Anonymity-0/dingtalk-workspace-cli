@@ -75,6 +75,7 @@ func main() {
 		allTools[k] = v
 	}
 	totalRaw := 0
+	failedServices := []string{}
 
 	for _, srv := range servers {
 		endpoint := strings.TrimSpace(srv.Endpoint)
@@ -86,6 +87,7 @@ func main() {
 		cancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  [skip] %s: %v\n", srv.ID, err)
+			failedServices = append(failedServices, srv.ID)
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "  [ok]   %s: %d tools\n", srv.ID, len(result.Tools))
@@ -129,25 +131,18 @@ func main() {
 		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: added %d registry stubs (no MCP data, interface_ref only)\n", stubs)
 	}
 
-	// Compute coverage fields required by check-schema-catalog.sh.
-	sourceServices := len(servers)
-	surfaceTools := len(allTools)
+	// Compute coverage fields required by check-schema-catalog.sh. Failed
+	// services must be reported honestly so policy can spot snapshot gaps.
+	if len(failedServices) > 0 {
+		fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: %d/%d services unreachable: %s\n",
+			len(failedServices), len(servers), strings.Join(failedServices, ", "))
+	}
 
 	metadata := map[string]any{
-		"version": 1,
-		"source":  "mcp-tools-list+cli-registry",
-		"coverage": map[string]any{
-			"surface_scope":     "source_revision",
-			"source_services":   sourceServices,
-			"snapshot_services": sourceServices,
-			"missing_services":  []string{},
-			"source_tools":      totalRaw,
-			"surface_tools":     surfaceTools,
-			"matched_tools":     surfaceTools,
-			"aliased_tools":     0,
-			"unmatched_tools":   0,
-		},
-		"tools": allTools,
+		"version":  1,
+		"source":   "mcp-tools-list+cli-registry",
+		"coverage": buildCoverage(len(servers), failedServices, totalRaw, len(allTools)),
+		"tools":    allTools,
 	}
 
 	// source_revision: git commit hash (proves provenance).
@@ -167,6 +162,27 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stderr, "fetch_mcp_metadata: wrote %d tools to %s\n", len(allTools), *output)
+}
+
+// buildCoverage reports snapshot coverage honestly: snapshot_services only
+// counts services whose tools/list succeeded, and missing_services names the
+// failures so downstream policy checks can detect an incomplete snapshot.
+func buildCoverage(sourceServices int, failedServices []string, sourceTools, surfaceTools int) map[string]any {
+	missing := failedServices
+	if missing == nil {
+		missing = []string{}
+	}
+	return map[string]any{
+		"surface_scope":     "source_revision",
+		"source_services":   sourceServices,
+		"snapshot_services": sourceServices - len(missing),
+		"missing_services":  missing,
+		"source_tools":      sourceTools,
+		"surface_tools":     surfaceTools,
+		"matched_tools":     surfaceTools,
+		"aliased_tools":     0,
+		"unmatched_tools":   0,
+	}
 }
 
 // mergeLiveMCPTool replaces stale live-derived fields while retaining an

@@ -81,3 +81,29 @@ func TestMergeLiveMCPToolRefreshesExistingMetadata(t *testing.T) {
 		t.Fatalf("cursor parameter = %#v", cursor)
 	}
 }
+
+func TestBuildCoverageReportsFailedServices(t *testing.T) {
+	got := buildCoverage(26, []string{"doc", "sheet"}, 800, 813)
+	if got["source_services"] != 26 {
+		t.Fatalf("source_services = %v, want 26", got["source_services"])
+	}
+	if got["snapshot_services"] != 24 {
+		t.Fatalf("snapshot_services = %v, want 24 (26 sources - 2 failures)", got["snapshot_services"])
+	}
+	if !reflect.DeepEqual(got["missing_services"], []string{"doc", "sheet"}) {
+		t.Fatalf("missing_services = %#v, want failed service IDs", got["missing_services"])
+	}
+	if got["source_tools"] != 800 || got["surface_tools"] != 813 || got["matched_tools"] != 813 {
+		t.Fatalf("tool counts = %#v", got)
+	}
+}
+
+func TestBuildCoverageFullSnapshotHasNoMissingServices(t *testing.T) {
+	got := buildCoverage(26, nil, 813, 813)
+	if got["snapshot_services"] != 26 {
+		t.Fatalf("snapshot_services = %v, want 26", got["snapshot_services"])
+	}
+	if !reflect.DeepEqual(got["missing_services"], []string{}) {
+		t.Fatalf("missing_services = %#v, want empty non-nil slice", got["missing_services"])
+	}
+}
