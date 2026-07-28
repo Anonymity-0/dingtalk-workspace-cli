@@ -16,6 +16,7 @@ package helpers
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -53,7 +54,7 @@ type LeafFlag struct {
 	Name    string       // flag 名（kebab-case）
 	Usage   string       // 注册 usage 文案
 	Kind    LeafFlagKind // 值类型，默认 LeafString
-	Default string       // 注册默认值（仅 LeafString 有效）
+	Default string       // 注册默认值（仅 LeafString 有效）；回退链链尾兜底，不遮蔽别名/env
 
 	// Required 为 true 时在 RunE 期校验有效值非空。普通 Required 汇聚为
 	// cmdutil.ValidateRequiredFlags 兼容的统一报错；配置 EnvVar 时回退读
@@ -64,8 +65,8 @@ type LeafFlag struct {
 	// 投影的硬下限），cobra 会在 RunE 之前先行报错。
 	MarkRequired bool
 
-	Aliases []string // 隐藏别名，主 flag 为空时按序回退（字符串）
-	EnvVar  string   // 有效值为空时回退读取的环境变量
+	Aliases []string // 隐藏别名，按主 flag 的 Kind 注册；主 flag 未显式提供时按序回退
+	EnvVar  string   // 有效值为空时回退读取的环境变量（整型 flag 的 env 值必须可解析）
 	// ArgDefault：注册默认值为空、但 toolArgs 需要兜底的场景（如 list type
 	// 注册默认 "ALL" 之外的旧命令）；有效值为空时以 ArgDefault 入参。
 	ArgDefault string
@@ -134,8 +135,16 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 		default:
 			cmd.Flags().String(flag.Name, flag.Default, flag.Usage)
 		}
+		// 别名按主 flag 的 Kind 注册，否则整型别名的值永远读不到（静默丢弃）。
 		for _, alias := range flag.Aliases {
-			cmd.Flags().String(alias, "", flag.Usage+" (alias)")
+			switch flag.Kind {
+			case LeafInt64:
+				cmd.Flags().Int64(alias, 0, flag.Usage+" (alias)")
+			case LeafInt:
+				cmd.Flags().Int(alias, 0, flag.Usage+" (alias)")
+			default:
+				cmd.Flags().String(alias, "", flag.Usage+" (alias)")
+			}
 			_ = cmd.Flags().MarkHidden(alias)
 		}
 		if flag.MarkRequired {
@@ -210,15 +219,17 @@ func leafArgs(cmd *cobra.Command, spec LeafSpec) (map[string]any, error) {
 		if bind == "" {
 			bind = flag.Name
 		}
-		if flag.Kind == LeafInt64 {
-			if v, _ := cmd.Flags().GetInt64(flag.Name); v > 0 {
-				toolArgs[bind] = v
+		if flag.Kind == LeafInt64 || flag.Kind == LeafInt {
+			v, err := leafIntegerValue(cmd, flag)
+			if err != nil {
+				return nil, err
 			}
-			continue
-		}
-		if flag.Kind == LeafInt {
-			if v, _ := cmd.Flags().GetInt(flag.Name); v != 0 {
+			// LeafInt64 保持「值 > 0 才入参」（分页游标语义）；LeafInt 保持
+			// 「非零才入参」（putInt 语义）。
+			if flag.Kind == LeafInt64 && v > 0 {
 				toolArgs[bind] = v
+			} else if flag.Kind == LeafInt && v != 0 {
+				toolArgs[bind] = int(v)
 			}
 			continue
 		}
@@ -245,8 +256,9 @@ func leafArgs(cmd *cobra.Command, spec LeafSpec) (map[string]any, error) {
 	return toolArgs, nil
 }
 
-// leafEffectiveValue 按「主 flag → 别名 → 环境变量」顺序取有效值；Trim 为
-// true 时对结果统一 TrimSpace。
+// leafEffectiveValue 按「显式主 flag → 别名 → 环境变量 → 注册默认值」顺序取
+// 有效值（字符串形态，整型 flag 统一格式化）；Trim 为 true 时对结果统一
+// TrimSpace。
 func leafEffectiveValue(cmd *cobra.Command, flag LeafFlag) string {
 	v := leafRawValue(cmd, flag)
 	if flag.Trim {
@@ -255,18 +267,55 @@ func leafEffectiveValue(cmd *cobra.Command, flag LeafFlag) string {
 	return v
 }
 
-// leafRawValue 取未 trim 的原始有效值（主 flag → 别名 → 环境变量）。
+// leafRawValue 取未 trim 的原始有效值。主 flag 仅在用户显式提供（Changed）
+// 且非空时命中；注册默认值降级为链尾兜底，不再遮蔽别名与环境变量。
 func leafRawValue(cmd *cobra.Command, flag LeafFlag) string {
-	if v := mustGetFlag(cmd, flag.Name); v != "" {
-		return v
+	if cmd.Flags().Changed(flag.Name) {
+		if v := leafFlagString(cmd, flag.Kind, flag.Name); v != "" {
+			return v
+		}
 	}
 	for _, alias := range flag.Aliases {
-		if v, _ := cmd.Flags().GetString(alias); v != "" {
+		if !cmd.Flags().Changed(alias) {
+			continue
+		}
+		if v := leafFlagString(cmd, flag.Kind, alias); v != "" {
 			return v
 		}
 	}
 	if flag.EnvVar != "" {
-		return os.Getenv(flag.EnvVar)
+		if v := os.Getenv(flag.EnvVar); v != "" {
+			return v
+		}
 	}
-	return ""
+	return flag.Default
+}
+
+// leafFlagString 按注册类型读取 flag 并统一为字符串形态，使整型 flag 能复用
+// 同一条回退链（required 校验、别名、env）。
+func leafFlagString(cmd *cobra.Command, kind LeafFlagKind, name string) string {
+	switch kind {
+	case LeafInt64:
+		v, _ := cmd.Flags().GetInt64(name)
+		return strconv.FormatInt(v, 10)
+	case LeafInt:
+		v, _ := cmd.Flags().GetInt(name)
+		return strconv.Itoa(v)
+	default:
+		return mustGetFlag(cmd, name)
+	}
+}
+
+// leafIntegerValue 按回退链取整型 flag 的有效值；环境变量提供的字符串必须
+// 可解析，否则报错而非静默丢弃。
+func leafIntegerValue(cmd *cobra.Command, flag LeafFlag) (int64, error) {
+	raw := leafEffectiveValue(cmd, flag)
+	if raw == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("flag --%s: invalid integer value %q", flag.Name, raw)
+	}
+	return v, nil
 }

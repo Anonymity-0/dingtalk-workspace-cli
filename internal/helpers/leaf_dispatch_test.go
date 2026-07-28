@@ -116,3 +116,127 @@ func TestLeafValidateRequiredEnvDefaultHint(t *testing.T) {
 		t.Fatalf("leafValidateRequired() = %v, want default hint", err)
 	}
 }
+
+// ── CR 探针回归：A1/A2/A3 ──────────────────────────────────────────────
+
+// TestLeafIntRequiredAcceptsExplicitValue（A1 探针）：LeafInt + Required
+// 传了值必须通过校验，不得报「missing required flag(s)」。
+func TestLeafIntRequiredAcceptsExplicitValue(t *testing.T) {
+	spec := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "n", Usage: "数量", Kind: LeafInt, Required: true, Bind: "count"}},
+	}
+	cmd := NewLeafCommand(spec)
+	if err := cmd.Flags().Set("n", "5"); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafValidateRequired(cmd, spec); err != nil {
+		t.Fatalf("leafValidateRequired() = %v, want nil for --n 5", err)
+	}
+	args, err := leafArgs(cmd, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := args["count"]; got != 5 {
+		t.Fatalf("count = %v (%T), want int 5", got, got)
+	}
+	// 未提供值时仍按主 flag 名报缺失。
+	missing := NewLeafCommand(spec)
+	if err := leafValidateRequired(missing, spec); err == nil || !strings.Contains(err.Error(), "missing required flag(s): --n") {
+		t.Fatalf("leafValidateRequired() = %v, want missing --n", err)
+	}
+}
+
+// TestLeafIntAliasAndEnvFallback（A2 探针）：整型 flag 的别名与 env 回退
+// 必须生效，不得静默丢值。
+func TestLeafIntAliasAndEnvFallback(t *testing.T) {
+	spec := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "page-size", Usage: "分页大小", Kind: LeafInt, Aliases: []string{"limit"}, EnvVar: "DWS_LEAF_TEST_PAGE_SIZE", Bind: "pageSize"}},
+	}
+	// 别名提供值。
+	cmd := NewLeafCommand(spec)
+	if err := cmd.Flags().Set("limit", "7"); err != nil {
+		t.Fatal(err)
+	}
+	args, err := leafArgs(cmd, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := args["pageSize"]; got != 7 {
+		t.Fatalf("pageSize = %v (%T), want int 7 from alias", got, got)
+	}
+	// env 提供值。
+	t.Setenv("DWS_LEAF_TEST_PAGE_SIZE", "9")
+	cmd = NewLeafCommand(spec)
+	args, err = leafArgs(cmd, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := args["pageSize"]; got != 9 {
+		t.Fatalf("pageSize = %v (%T), want int 9 from env", got, got)
+	}
+	// env 值不可解析必须报错而非静默丢弃。
+	t.Setenv("DWS_LEAF_TEST_PAGE_SIZE", "not-a-number")
+	cmd = NewLeafCommand(spec)
+	if _, err := leafArgs(cmd, spec); err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+		t.Fatalf("leafArgs() = %v, want parse error for garbage env", err)
+	}
+}
+
+// TestLeafInt64AliasRegisteredTyped：LeafInt64 别名按 Kind 注册且回退生效。
+func TestLeafInt64AliasRegisteredTyped(t *testing.T) {
+	spec := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "cursor", Usage: "游标", Kind: LeafInt64, Aliases: []string{"offset"}, Bind: "cursor"}},
+	}
+	cmd := NewLeafCommand(spec)
+	if f := cmd.Flags().Lookup("offset"); f == nil || f.Value.Type() != "int64" {
+		t.Fatalf("alias offset = %+v, want registered as int64", f)
+	}
+	if err := cmd.Flags().Set("offset", "11"); err != nil {
+		t.Fatal(err)
+	}
+	args, err := leafArgs(cmd, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := args["cursor"]; got != int64(11) {
+		t.Fatalf("cursor = %v (%T), want int64 11 from alias", got, got)
+	}
+}
+
+// TestLeafDefaultDoesNotShadowFallback（A3 探针）：注册默认值不得遮蔽
+// 别名与环境变量，只能作为链尾兜底。
+func TestLeafDefaultDoesNotShadowFallback(t *testing.T) {
+	spec := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "type", Usage: "类型", Default: "ALL", Aliases: []string{"kind"}, EnvVar: "DWS_LEAF_TEST_TYPE", Bind: "type"}},
+	}
+	// env 覆盖注册默认值。
+	t.Setenv("DWS_LEAF_TEST_TYPE", "from-env")
+	cmd := NewLeafCommand(spec)
+	if got := leafEffectiveValue(cmd, spec.Flags[0]); got != "from-env" {
+		t.Fatalf("effective = %q, want env to beat registered default", got)
+	}
+	// 别名覆盖 env 与默认值。
+	if err := cmd.Flags().Set("kind", "from-alias"); err != nil {
+		t.Fatal(err)
+	}
+	if got := leafEffectiveValue(cmd, spec.Flags[0]); got != "from-alias" {
+		t.Fatalf("effective = %q, want alias to beat env", got)
+	}
+	// 显式主 flag 最高优先。
+	if err := cmd.Flags().Set("type", "explicit"); err != nil {
+		t.Fatal(err)
+	}
+	if got := leafEffectiveValue(cmd, spec.Flags[0]); got != "explicit" {
+		t.Fatalf("effective = %q, want explicit primary to win", got)
+	}
+	// 全部缺席时回落注册默认值。
+	bare := NewLeafCommand(spec)
+	t.Setenv("DWS_LEAF_TEST_TYPE", "")
+	if got := leafEffectiveValue(bare, spec.Flags[0]); got != "ALL" {
+		t.Fatalf("effective = %q, want registered default as tail fallback", got)
+	}
+}
