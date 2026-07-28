@@ -153,7 +153,11 @@ func run(
 		}
 		changed = filterChangedFiles(changed, buildable)
 	}
-	changed = exemptNonExecutableFiles(changed, fileHasExecutableStatements)
+	var exempted []string
+	changed, exempted = exemptNonExecutableFiles(changed, fileHasExecutableStatements)
+	for _, path := range exempted {
+		fmt.Fprintf(stderr, "coverage-gate: exempting %s (no executable statements)\n", path)
+	}
 	result := evaluate(gateInput{
 		Overall:          overall,
 		Diff:             diff,
@@ -244,15 +248,20 @@ func filterChangedFiles(changed map[string][]lineRange, allowed map[string]bool)
 // exemptNonExecutableFiles drops changed files that contain no executable
 // statements (pragma carriers such as gen.go, doc-only files). The Go coverage
 // tool never emits profile blocks for them, so requiring their presence in a
-// profile would fail every PR that touches such a file.
-func exemptNonExecutableFiles(changed map[string][]lineRange, hasExecutable func(string) bool) map[string][]lineRange {
+// profile would fail every PR that touches such a file. Exempted paths are
+// returned sorted so the caller can log them instead of dropping silently.
+func exemptNonExecutableFiles(changed map[string][]lineRange, hasExecutable func(string) bool) (map[string][]lineRange, []string) {
 	filtered := map[string][]lineRange{}
+	var exempted []string
 	for path, ranges := range changed {
 		if hasExecutable(path) {
 			filtered[path] = ranges
+		} else {
+			exempted = append(exempted, path)
 		}
 	}
-	return filtered
+	sort.Strings(exempted)
+	return filtered, exempted
 }
 
 // fileHasExecutableStatements reports whether the Go file declares at least
