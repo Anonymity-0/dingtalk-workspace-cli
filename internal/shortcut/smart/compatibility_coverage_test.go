@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -34,8 +35,9 @@ type platformCoverageCall struct {
 }
 
 type platformCoverageCaller struct {
-	calls []platformCoverageCall
-	dry   bool
+	calls               []platformCoverageCall
+	dry                 bool
+	contactSearchResult string
 }
 
 func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -43,7 +45,10 @@ func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool strin
 	text := `{"result":[]}`
 	switch product + "/" + tool {
 	case "contact/search_contact_by_key_word":
-		text = `{"result":[{"userId":"u1","name":"张三","openDingTalkId":"open1"}]}`
+		text = f.contactSearchResult
+		if text == "" {
+			text = `{"result":[{"userId":"u1","name":"张三","openDingTalkId":"open1"}]}`
+		}
 	case "contact/get_current_user_profile":
 		text = `{"result":{"userId":"u1"}}`
 	case "im/search_groups":
@@ -54,6 +59,27 @@ func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool strin
 
 func (f *platformCoverageCaller) CallReadTool(ctx context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
 	return f.CallTool(ctx, product, tool, args)
+}
+
+func TestCrossPlatformCoverageExternalContactAmbiguity(t *testing.T) {
+	fake := &platformCoverageCaller{
+		contactSearchResult: `{"result":[
+			{"userId":"u1","name":"张三","openDingTalkId":"open1"},
+			{"openDingtalkId":"open-external","nick":"外部张三"}
+		]}`,
+	}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+dm", "--to", "张三", "--text", "你好", "--yes"})
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("ambiguous internal and external contacts unexpectedly resolved")
+	}
+	for _, want := range []string{"张三(u1)", "外部张三(open-external)"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("ambiguity error %q does not contain %q", err, want)
+		}
+	}
 }
 
 func (f *platformCoverageCaller) Format() string { return "json" }

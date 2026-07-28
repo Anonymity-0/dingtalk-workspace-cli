@@ -68,7 +68,7 @@ var Broadcast = shortcut.Shortcut{
 
 			// Step 1 — resolve this name to a unique userId. On failure
 			// (unknown / ambiguous) record it and keep going.
-			user, err := resolveUser(rt, name)
+			user, err := resolveOpenDingTalkUser(rt, name)
 			if err != nil {
 				failed = append(failed, fmt.Sprintf("%s（%s）", name, err.Error()))
 				continue
