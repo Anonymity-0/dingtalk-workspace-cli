@@ -8,18 +8,10 @@
 """
 
 import sys
-import re
 import json
 import subprocess
 import argparse
 from typing import List, Any, Optional
-
-
-def strip_highlight(text: str) -> str:
-    """去除 dept search 返回名称中的 <red>…</red> 高亮标签。"""
-    if not isinstance(text, str):
-        return text
-    return re.sub(r'</?red>', '', text)
 
 
 def run_dws(
@@ -62,7 +54,7 @@ def main():
     if args.dry_run:
         run_dws([
             'contact', 'dept', 'list-members',
-            '--depts', '<DEPT_ID>', '--format', 'json',
+            '--ids', '<DEPT_ID>', '--format', 'json',
         ], dry_run=True)
         return
 
@@ -75,10 +67,7 @@ def main():
     elif isinstance(dept_data, dict):
         inner = dept_data.get('result', dept_data)
         if isinstance(inner, dict):
-            depts = (inner.get('deptList')
-                     or inner.get('items')
-                     or inner.get('depts')
-                     or [])
+            depts = inner.get('items', inner.get('depts', []))
         elif isinstance(inner, list):
             depts = inner
         else:
@@ -91,9 +80,7 @@ def main():
 
     for dept in depts:
         dept_id = dept.get('id') or dept.get('deptId')
-        dept_name = strip_highlight(
-            dept.get('name') or dept.get('deptName', '未知')
-        )
+        dept_name = dept.get('name') or dept.get('deptName', '未知')
         if not dept_id:
             continue
 
@@ -102,7 +89,7 @@ def main():
 
         members_data = run_dws([
             'contact', 'dept', 'list-members',
-            '--depts', str(dept_id), '--format', 'json',
+            '--ids', str(dept_id), '--format', 'json',
         ])
         if not members_data:
             print('  无法获取成员列表')
@@ -113,10 +100,8 @@ def main():
         elif isinstance(members_data, dict):
             inner = members_data.get('result', members_data)
             if isinstance(inner, dict):
-                members = (inner.get('deptUserList')
-                           or inner.get('userlist')
-                           or inner.get('list')
-                           or [])
+                members = inner.get('userlist',
+                                    inner.get('list', []))
             elif isinstance(inner, list):
                 members = inner
             else:
@@ -128,10 +113,9 @@ def main():
             continue
 
         for m in members:
-            info = m.get('userInfo', m)
-            name = info.get('name') or info.get('userName', '未知')
-            title = info.get('title') or info.get('position', '')
-            uid = info.get('userId') or info.get('userid', '')
+            name = m.get('name') or m.get('userName', '未知')
+            title = m.get('title') or m.get('position', '')
+            uid = m.get('userId') or m.get('userid', '')
             line = f"  👤 {name}"
             if title:
                 line += f" ({title})"

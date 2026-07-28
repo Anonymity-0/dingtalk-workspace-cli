@@ -25,7 +25,7 @@
 日程实例（event instance）：日程的具体时间实例，可以通过event list指令查询时间段内的所有实例。1个普通日程和对应1个Instance，而1个重复性日程(SeriesMaster)对应N个Instance（同属一个日程序列）。
   - 同一个日程序列具有相同的iCalUid，并且重复性日程，其eventId和iCalUid的值相同。因此可以通过重复性日程实例的iCalUid得到重复性日程(SeriesMaster)的eventId
 重复规则（recurrence rule）：定义重复性日程的重复规则。
-参会人（attendee）：日程的参与者。常用通讯录工具查询userId，dws contact user search --query "姓名"。
+参会人（attendee）：日程的参与者。按姓名统一使用 `dws aisearch person --keyword "姓名" --dimension name --format json` 查询 userId。
 响应状态（response）：参会人对日程的回应，包括：未响应、接受、待定、拒绝。
 忙闲时间（busy）：查询用户在指定时间段的忙闲状态，查询会议室在指定时间段的预定状态，用于会议时间协调。
 会议室（room）：room是 会议室 ，room可视为日程的资源类参会人，需要加入日程完成预订。注意和location区分，location只是地点，和room不同。
@@ -41,6 +41,8 @@
 dws calendar event [create|update|get|delete|respond] [flags]
 # 按时间范围批量查询
 dws calendar event list [flags]
+# 查询循环日程的实例列表（按时间范围展开重复日程）
+dws calendar event instances [flags]
 # 对于非明确时间或一段时间范围的约会场景，可基于所有参会人的忙闲状态，推荐多个可用的时间块方案
 dws calendar event suggest [flags]
 ```
@@ -122,7 +124,6 @@ Flags:
 **权限**：查询共享日历下的日程时，至少要有reader权限。
 **分页**：单次最多返回 `--limit` 指定的条数（默认/最大 100）；当结果超过 limit 时，返回体包含 `nextCursor` 字段。首次查询无需传 `--cursor`，仅在翻页时将上一次返回的 `nextCursor` 作为 `--cursor` 传入。
 
-当前用户的个人日程使用 `dws calendar event list` 查询；参数包含 `--limit` 和 `--cursor` 分页。
 
 ### 获取日程详情
 ```
@@ -135,6 +136,28 @@ Flags:
       --id string            日程 ID (必填)
       --calendar-id string   日历 ID (默认 primary 主日历)
 ```
+
+### 查询循环日程实例
+```
+Usage:
+  dws calendar event instances [flags]
+Example:
+  dws calendar event instances --id <EVENT_ID>
+  dws calendar event instances --id <EVENT_ID> --start "2026-03-10T00:00:00+08:00" --end "2026-03-31T23:59:59+08:00"
+  dws calendar event instances --id <EVENT_ID> --limit 50
+  dws calendar event instances --id <EVENT_ID> --cursor "<nextCursor>"
+Flags:
+      --id string            日程 ID (必填，重复性日程 SeriesMaster 的 eventId)
+      --calendar-id string   日历 ID (默认 primary 主日历，仅在查询其他日历本时填写；通过 `book list` 获取)
+      --start string         开始时间 ISO-8601 (例如 2026-03-10T00:00:00+08:00，不传则默认今天 00:00:00)
+      --end string           结束时间 ISO-8601 (例如 2026-03-31T23:59:59+08:00，不传则默认今天 23:59:59)
+      --limit int            每页返回条数 (默认 100，最大 100)
+      --cursor string        分页游标 (从上一次返回的 nextCursor 获取，首次查询无需传入)
+```
+
+> **说明**：用于按时间范围展开重复日程（SeriesMaster）的每一个实例。**此接口只能查询重复性日程；若传入普通非循环日程，将查不到任何实例信息。**`--id` 必须是重复性日程的 eventId，可通过 `event list` 获取。
+> **默认行为**：不传 `--start` / `--end` 时，默认返回今天的实例（00:00:00 ~ 23:59:59）。
+> **分页**：单次最多返回 `--limit` 指定的条数（默认/最大 100）；当结果超过 limit 时，返回体包含 `nextCursor` 字段。
 
 ### 创建日程
 ```
@@ -560,6 +583,7 @@ Flags:
 - 取消/删除 → `event delete`
 - 推荐时间/什么时候有空/协调时间 → `event suggest`
 - 接受/拒绝/暂定日程 → `event respond`
+- 查询循环日程/重复日程的每次实例/展开循环日程 → `event instances`
 
 用户说"参会人/与会者":
 - 查看 → `attendee list`
@@ -629,11 +653,11 @@ dws calendar event create --title "Q1 复盘会" \
 **方式二：先创建日程，再单独添加参会人 / 会议室**
 
 ```bash
-# Step 1: 创建日程 — 提取 eventId
+# Step 1: 创建日程 — 从 result.id 提取日程 ID
 dws calendar event create --title "Q1 复盘会" \
   --start "2026-03-10T14:00:00+08:00" --end "2026-03-10T15:00:00+08:00" --format json
 
-# Step 2: 添加参会人（必须用 Step 1 返回的 eventId）
+# Step 2: 添加参会人（必须用 Step 1 返回的 result.id）
 dws calendar attendee add --event <EVENT_ID> --attendees userId1,userId2 --format json
 
 # Step 3: 搜索空闲会议室
@@ -661,10 +685,11 @@ dws calendar event list --start "2026-03-10T14:00:00+08:00" --end "2026-03-10T15
 
 | 操作 | 从返回中提取 | 用于 |
 |------|-------------|------|
-| `event create` | `eventId` | attendee/room/attachment 操作的 --event |
-| `event list` | `events[].eventId`, `nextCursor` | event get/update/delete/respond 的 --id；下一页 --cursor |
+| `event create` | `result.id` | attendee/room/attachment 操作的 --event |
+| `event list` | `result.events[].id`, `nextCursor` | event get/update/delete/respond 的 --id；下一页 --cursor |
 | `event suggest` | 推荐的时间段 | event create 的 --start/--end |
 | `event respond` | 响应结果 | — |
+| `event instances` | `result.events[].id`, `nextCursor` | event get/update/delete/respond 的 --id；下一页 --cursor |
 | `room search` | `rooms[].roomId` | room add 的 --rooms 或 event create 的 --rooms |
 | `room list-groups` | `groups[].groupId` | room search 的 --group-id |
 | `book list` | `id`（如 `primary`） | event list/get 的 --calendar-id, book get/update 的 --id |
@@ -690,7 +715,8 @@ dws calendar event list --start "2026-03-10T14:00:00+08:00" --end "2026-03-10T15
 - **自动化校验**：凡涉及 `room add` / `event create --rooms` 的流程，`--rooms` 只能填上游 `room search`（或等价接口）返回 JSON 中的 **`rooms[].roomId`**；不得以会议室展示名、楼层文案或用户口语当作 `roomId`
 - **附件**：`attachment add` 仅负责挂载，**不上传**文件；fileId 必须先通过钉盘流程取得；`--files` 多附件用 `<fileId>:<name>` 元素逗号分隔
 - **日历本**：`book list` 返回的 `id` 才是合法 `calendarId`；如无明确说明，`event list` / `event get` 都不要带 `--calendar-id`，让接口默认走 primary 主日历
-- **分页查询**：`event list` / `list-mine` 支持 `--limit`（控制每页条数，默认/最大 100）和 `--cursor`（翻页游标）；**首次查询无需传 `--cursor`**，仅当返回体中包含 `nextCursor` 时，将其作为 `--cursor` 传入可获取下一页
+- **分页查询**：`event list` / `event instances` 均支持 `--limit`（控制每页条数，默认/最大 100）和 `--cursor`（翻页游标）；**首次查询无需传 `--cursor`**，仅当返回体中包含 `nextCursor` 时，将其作为 `--cursor` 传入可获取下一页
+- **循环日程实例**：`event instances` 用于按时间范围展开重复日程（SeriesMaster）的每一个实例；**普通非循环日程调用该命令将查不到任何实例信息**
 - **日程提醒**：`event create` 支持 `--remind-minutes` 设置开始前提醒，逗号分隔多个分钟数（如 `--remind-minutes 5,10,15`），不传则默认15分钟提醒
 - **会议室分页**：`room search` 支持 `--limit`（每页条数，默认100，最大100）和 `--page`（分页起始位置，默认0），与 `room list-groups` 分页风格一致
 

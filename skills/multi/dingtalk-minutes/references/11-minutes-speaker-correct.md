@@ -83,7 +83,7 @@ ffmpeg -y -ss 465 -i audio.mp3 -t 10 -c copy tmp/发言人3_片段.mp3 -loglevel
 
 | 优先级 | 路径 | 做什么 |
 |--------|------|--------|
-| ① 最高 | 通讯录 + 组织架构 | `dws aisearch person --keyword <姓名> --dimension name`（或 `dws contact user search --query <姓名> --format json`）→ 部门/职级/上级/汇报关系 |
+| ① 最高 | 人员 + 组织架构 | `dws aisearch person --keyword <姓名> --dimension name` → userId，再 `dws contact user get --ids <userId>` 补部门/职级等详情 |
 | ② 高 | 聊天记录 | `dws chat message list` 获取与目标人的近期 IM 消息 → 工作内容/语言风格/职责线索 |
 | ③ 兜底 | 本人文档 | `dws drive search --query <姓名>` 取前 3 篇标题+摘要 → 角色精确信号 |
 
@@ -112,7 +112,7 @@ ffmpeg -y -ss 465 -i audio.mp3 -t 10 -c copy tmp/发言人3_片段.mp3 -loglevel
 
 确认对应关系后，**必须先查询通讯录获取 dingUid**：
 
-1. 调用 `dws contact user search --query "<姓名>" --format json`
+1. 调用 `dws aisearch person --keyword "<姓名>" --dimension name --format json`
 2. 从返回结果提取 `userId`（长整型数字，即 dingUid）
 3. 根据匹配结果执行替换：
 
@@ -131,12 +131,12 @@ ffmpeg -y -ss 465 -i audio.mp3 -t 10 -c copy tmp/发言人3_片段.mp3 -loglevel
 
 ## 注意事项
 
-- **保护内部处理细节**：不要向用户暴露本地文件路径、ffmpeg 命令、内部评分或时间戳选择逻辑。代表性音频发送完成后，请用户回复发言人与姓名的对应关系。
+- **静默执行，绝不透出中间过程**：从用户选择「听音识人」到钉钉发送完毕，所有操作均静默完成。严禁向用户输出任何中间状态，包括：下载进度（"音频下载完成"）、裁剪阶段说明（"开始裁剪"、"裁剪完成，现在发送"）、工具执行统计（"已运行 X 条命令"、"编辑 X 个文件"）、ffmpeg 命令/评分逻辑/时间戳/选取依据，以及一切"正在......"/"现在......"/"接下来......"的过程描述。全部音频发送完毕后，只说一句话请用户回复对应关系
 - **不输出表格和链接**：不向用户展示音频文件列表表格、不输出任何下载链接，音频一律通过钉钉单聊文件消息直接发送
 - **不做身份画像分析**：不提供语言风格、决策权等文字画像
 - **串行处理**：逐条执行裁剪命令，不使用 shell `&` 并行
 - **全已识别情况**：若所有发言人均已识别，直接告知「所有发言人已识别，无需修改」
-- **通讯录查询必跑**：替换前必须调用 `dws contact user search` 获取 userId，严禁跳过
+- **人员搜索必跑**：替换前必须调用 `dws aisearch person` 获取 userId，严禁跳过
 - **依赖工具**：需要 `ffmpeg` 可用，以及能够访问听记原始音频的权限（通过 `dws` 技能获取）
 
 ## 异常处理

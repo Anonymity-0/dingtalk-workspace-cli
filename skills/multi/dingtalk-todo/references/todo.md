@@ -49,6 +49,7 @@ Flags:
       --role-types string               角色类型: creator/executor/participant，可同时传入多个值用逗号分隔（如 creator,executor），默认 executor
       --size string                     每页数量 (默认 20)
       --status string                   true=已完成, false=未完成
+      --query-all                       true=查询全部待办,false=查询当前组织待办
 ```
 
 参数说明：
@@ -296,6 +297,58 @@ JSON 数组，每个元素为一条提醒规则，支持两种 `baseTime` 模式
 ```
 以上表示两条提醒规则：第一条在截止时间前 30 分钟提醒，第二条在指定时间（ISO-8601）提醒。
 
+### 给待办打标签
+```
+Usage:
+  dws todo tag add [flags]
+Example:
+  dws todo tag add --task-id <taskId> --tag-codes code1,code2
+Flags:
+      --tag-codes string   标签编码列表,最多支持2个，逗号分隔 (必填)
+      --task-id string     待办任务 ID (必填)
+```
+
+### 删除待办标签
+```
+Usage:
+  dws todo tag delete [flags]
+Example:
+  dws todo tag delete --tag-codes code1,code2
+  dws todo tag delete --tag-codes code1,code2 --yes
+Flags:
+      --tag-codes string   要删除的标签编码列表,逗号分隔 (必填)
+      --yes                跳过交互确认，直接执行删除
+注意: ⚠️ 不可逆操作，执行前需用户确认；传 --yes 可跳过交互提示
+```
+
+### 更新待办标签
+```
+Usage:
+  dws todo tag update [flags]
+Example:
+  dws todo tag update --user-tags '[{"code":"code1","name":"新名称"}]'
+Flags:
+      --user-tags string   标签列表 JSON 数组 (必填)
+```
+
+### 查询待办标签列表
+```
+Usage:
+  dws todo tag list
+Example:
+  dws todo tag list
+```
+
+### 创建待办标签
+```
+Usage:
+  dws todo tag create [flags]
+Example:
+  dws todo tag create --name "标签名"
+Flags:
+      --name string 标签名称 (必填)
+```
+
 ## 意图判断
 
 用户说"加个待办/记一下/TODO" → `task create`
@@ -319,6 +372,12 @@ JSON 数组，每个元素为一条提醒规则，支持两种 `baseTime` 模式
 用户说"给待办加个附件/上传附件" → `task add-attachment`
 用户说"查看待办附件/附件列表" → `task list-attachment`
 用户说"删除附件/移除附件" → `task remove-attachment`
+用户说"给待办打标签/加个标签" → `tag add`
+用户说"删除待办标签/移除标签" → `tag delete`
+用户说"修改标签/更新标签信息" → `tag update`
+用户说"看看标签/查看标签列表" → `tag list`
+用户说"创建标签/新建标签" → `tag create`
+
 
 关键区分: todo(个人待办)
 
@@ -388,6 +447,17 @@ dws todo task add-attachment --task-id <taskId> --file-path /path/to/file.pdf --
 dws todo task list-attachment --task-id <taskId> --format json
 # 21. 删除待办附件
 dws todo task remove-attachment --task-id <taskId> --attachment-id <attachmentId> --yes --format json
+
+# 22. 查询待办标签列表
+dws todo tag list --format json
+# 23. 创建待办标签
+dws todo tag create --name "标签名" --format json
+# 24. 给待办打标签
+dws todo tag add --task-id <taskId> --tag-codes code1,code2 --format json
+# 25. 更新待办标签
+dws todo tag update --user-tags '[{"tagCode":"code1","name":"新名称"}]' --format json
+# 26. 删除待办标签
+dws todo tag delete --tag-codes code1,code2 --yes --format json
 ```
 
 ## 上下文传递表
@@ -427,6 +497,12 @@ dws todo task remove-attachment --task-id <taskId> --attachment-id <attachmentId
 - `task add-attachment` 用于上传本地文件作为待办附件，`--file-path` 为本地文件绝对路径；该操作不可逆，调用前必须确认待办存在
 - `task list-attachment` 用于查询指定待办的附件列表
 - `task remove-attachment` 用于删除待办附件，为不可逆操作，执行前需用户确认；`--attachment-id` 可通过 `task list-attachment` 获取
+- `tag list` 用于查询当前用户已有的标签列表，返回的 `tagCode` 可用于 `tag add` / `tag update` / `tag delete`
+- `tag add` 用于给指定待办打标签，`--task-id` 可通过 `task list` 或 `task create` 获取；`--tag-codes` 可通过 `tag list` 获取
+- `tag create` 用于创建新标签，`--name` 为标签名称 (必填)
+- `tag update` 用于更新已有标签信息，`--user-tags` 格式同 `tag create`
+- `tag delete` 用于删除标签定义，为不可逆操作，执行前需用户确认；传 `--yes` 可跳过交互提示，建议加 `--yes` 并与用户确认
+- `tag add`（给待办打标签）与 `tag delete`（删除标签定义）作用不同：前者是关联关系，后者是删除标签本身
 
 
 ## 自动化脚本

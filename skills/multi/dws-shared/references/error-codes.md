@@ -30,12 +30,12 @@
 - 参数缺失 / 无效请求 — 还在用旧参数 `dentryUuid` / `--doc` / `--sheet` → 改用 `--base-id` / `--table-id` / `--field-id` / `--record-ids`
 - 参数传了但服务端没收到 — flag 用了 camelCase（如 `--baseId`）→ flag 用 kebab-case: `--base-id <ID>`
 - `record query --filters` 无结果 — 单选/多选过滤用了 option name 而非 id → 先 `field get` 读取 options，用 option id 过滤
-- record create/update 失败 — `cells` key 用了字段名（应为 fieldId）；特殊字段格式错误 → 先 `table get` 拿字段目录；url 传 `{"text":"..","link":".."}`
+- record create/update 失败 — `cells` key 用了字段名（应为 fieldId）；特殊字段格式错误 → 先 `field get` 拿字段目录；url 传 `{"text":"..","link":".."}`
 - 更新选项后历史数据异常 — 更新 options 没传完整列表 / 没保留原 id → 先 `field get` 取完整配置，保留已有 option 的 id
 - `cannot delete the last table` — 该表是 Base 最后一张表 → 先新建表再删旧表，或用 `base delete`
 - `formula` 类型 `not supported yet` — 部分字段类型暂不支持 API 创建 → 复杂字段拆开单独创建，先建基础结构
 
-**排查链路**: `base list` → `base get`(→tableId) → `table get`(→fieldId) → `record query`(→recordId)。别跳步，别猜 ID。
+**排查链路**: `base list` → `base get`(→tableId) → `field get`(→fieldId) → `record query`(→recordId)。别跳步，别猜 ID。
 
 **批量上限**: record 100 条 / field 15 个 / table·field 详情 10 个。
 
@@ -43,7 +43,7 @@
 
 ## doc 高频错误
 
-- 文档不存在 / nodeId 无效 — nodeId 或 URL 不正确、文档已删除 → `doc search` 或 `doc list` 重新获取正确 nodeId
+- 文档不存在 / nodeId 无效 — nodeId 或 URL 不正确、文档已删除 → `drive search` / `wiki node search` 或 `wiki node list` 重新获取正确 nodeId
 - 无下载权限 — 文档分享设置不允许 → 报告用户，建议联系文档所有者
 - `update --mode overwrite` 意外清空 — overwrite 会清空原内容后重写 → 默认用 `--mode append`，overwrite 前必须跟用户确认
 - 块编辑 blockId 无效 — blockId 过期或文档结构已变 → 先 `block list` 刷新获取最新 blockId
@@ -53,7 +53,7 @@
 
 ## calendar 高频错误
 
-- **误用顶层 `dws calendar` / 臆造 `calendar list`** — 只输入 `dws calendar` 或尝试不存在的 `calendar list` 会打印大段 Usage，易导致上下文暴涨与响应变慢 → **改用** `dws calendar event list --start "<ISO>" --end "<ISO>" --format json`，或 `python scripts/calendar_today_agenda.py ...`；详见 [calendar.md](../../dingtalk-calendar/references/calendar.md)「CLI 命令树与黄金路径」「反模式（禁止）」
+- **误用顶层 `dws calendar` / 臆造 `calendar list`** — 只输入 `dws calendar` 或尝试不存在的 `calendar list` 会打印大段 Usage，易导致上下文暴涨与响应变慢 → **改用** `dws calendar event list --start "<ISO>" --end "<ISO>" --format json`，或加载 `dingtalk-calendar` 后按其日程查询 recipe 执行；详见 `dingtalk-calendar`「CLI 命令树与黄金路径」「反模式（禁止）」
 - 时间格式错误 — 未使用 ISO-8601 格式 → 标准格式: `2026-03-10T14:00:00+08:00`
 - 会议室搜索报错 / 返空 — 企业会议室超 100 条未分组查询 → 先 `room list-groups` → 按 `--group-id` 逐组搜索
 - 参与者 / 会议室添加失败 — eventId 不正确 → 先 `event list` 或 `event create` 获取正确 eventId

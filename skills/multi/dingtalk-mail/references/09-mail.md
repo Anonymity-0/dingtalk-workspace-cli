@@ -1,13 +1,13 @@
 # 邮件
 
-> 4 条 **lite**（`mail-list-mailbox`、`mail-search`、`mail-send`、`mail-reply-forward`）见 [lite-recipes.md](./lite-recipes.md)。下列 recipe、专用规则与消歧请在超出 lite 场景时阅读本文。
-> 产品命令见 [mail.md](./mail-command-index.md)。通用批量/并行见 [_common/conventions.md](_common/conventions.md)。
+> 邮件的 4 条 **lite** recipe：`mail-list-mailbox`、`mail-search`、`mail-send`、`mail-reply-forward`，见 [lite-recipes.md](./lite-recipes.md)。下列专用规则与消歧请在命中邮件场景且**超出**上述 lite 时阅读本文。
+> 产品命令见 [mail.md](./mail.md)。通用批量/并行见 [_common/conventions.md](_common/conventions.md)。
 
 ## 专用规则（#9 非 lite 步骤必守）
 
-- **KQL 语法强制**：邮件搜索的查询条件**只能**通过 `--query` 参数以 KQL 语法传入（如 `subject:周报`），**禁止臆造** `--subject`、`--sender`、`--from-address` 等不存在的 flag。详见 [mail-message-commands.md](./mail-message-commands.md) 中 KQL 查询字段说明。
+- **KQL 语法强制**：邮件搜索的查询条件**只能**通过 `--query` 参数以 KQL 语法传入（如 `subject:周报`），**禁止臆造** `--subject`、`--sender`、`--from-address` 等不存在的 flag。详见 [mail.md](./mail.md) 中 KQL 查询字段说明。
 - **邮箱地址前置**：大部分邮件命令需要 `--email` 或 `--from` 参数，执行前**必须**先通过 `mail mailbox list` 获取当前用户邮箱，禁止猜测邮箱地址。
-- **查找他人邮箱**：需要获取某人邮箱地址时，**不要用 `mailbox list`**（只返回自己的），必须走三路并发查询流程（见 [mail-message-commands.md](./mail-message-commands.md) 中「查找他人邮箱地址」章节）。
+- **查找他人邮箱**：需要获取某人邮箱地址时，**不要用 `mailbox list`**（只返回自己的），必须走三路并发查询流程（见 [mail.md](./mail.md) 中「查找他人邮箱地址」章节）。
 - **附件下载三步走**：先 `message search` 搜索邮件获取 messageId，再 `attachment list` 获取附件 ID 和文件名，最后逐个 `attachment download` 下载。**不存在 `download_batch` / `download_all` 等批量下载命令，禁止编造**。
 - **危险操作确认**：`batch-delete` 执行前必须向用户确认，同意后加 `--yes`。
 
@@ -42,4 +42,4 @@
 | search-and-download-attachment | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 20` → 取 `messageId` 列表<br>3. 对每封邮件执行 `mail attachment list --email <邮箱> --id <messageId>` → 列出附件取 `id` 和 `name`<br>4. 对每个附件逐个执行 `mail attachment download --email <邮箱> --message-id <messageId> --attachment-id <attachmentId> --name <文件名>`（**仅支持逐个下载，不存在批量下载命令**） |
 | search-reply-forward | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 10` → 取 `messageId`<br>3. 展示搜索结果供用户选择<br>4. 按用户指示执行 reply / reply-all / forward（参见 lite `mail-reply-forward`） |
 | batch-mail-cleanup | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 100` → 取多个 `messageId`<br>3. 展示列表供用户确认<br>4. `mail message batch-move --email <邮箱> --ids <id1,id2,...> --folder 6 ` 移到已删除；或 `batch-delete` 永久删除 |
-| send-to-person-by-name | 1. `mail mailbox list` → 取发件邮箱<br>2. 走「查找他人邮箱地址」三路并发查询获取收件人邮箱（见 [mail-message-commands.md](./mail-message-commands.md)）<br>3. `mail message send --from <发件邮箱> --to <收件邮箱> --subject "<标题>" --content "<内容>"` |
+| send-to-person-by-name | 1. `mail mailbox list` → 取发件邮箱<br>2. 走「查找他人邮箱地址」三路并发查询获取收件人邮箱（见 [mail.md](./mail.md)）<br>3. `mail message send --from <发件邮箱> --to <收件邮箱> --subject "<标题>" --content "<内容>"` |

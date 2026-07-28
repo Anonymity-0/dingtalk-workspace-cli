@@ -1,13 +1,18 @@
 # doc create（创建文档）
 
-> **按需参考**：长内容、目标文件夹或回读验收见 [创建工作流](./style/doc-create-workflow.md) 与 [内容写入管道](./doc-update.md)；用户要求正式排版时读取 [样式规范](./style/doc-style-guideline.md)；仅在使用 `--content-format jsonml` 时读取 [JSONML 范例](./format/doc-jsonml-cookbook.md)。
+> **前置条件（MUST READ）：** 执行本命令前，必须先用 Read 工具读取以下文件：
+> 1. [`../doc.md`](../doc.md) — 命令路由 + 场景索引 + 意图判断 + 工作流
+> 2. [`./style/doc-create-workflow.md`](./style/doc-create-workflow.md) — 创建工作流（标题、位置、骨架、回读校验）
+> 3. [`./style/doc-style-guideline.md`](./style/doc-style-guideline.md) — 排版规范（草稿元素清单、骨架样板）
+> 4. [`./doc-update.md` §内容写入管道](./doc-update.md) — 长内容自动分片、`--content-file` vs `--content` 选择
+> 5. [`./format/doc-jsonml-cookbook.md`](./format/doc-jsonml-cookbook.md) — 仅当使用 `--content-format jsonml` 时必读
 
 ## 创建路由前置判断（必看）
 
 > `dws doc create` 只能创建在线文字文档（adoc），**不要**用它承接所有「新建 xxx」请求。收到「创建/新建」类需求时，必须先按文件类型分流：
 >
-> - 用户说「创建表格 / 新建表格 / 建个电子表格 / 在线表格 / 销售数据表」等 → 走 [`dws sheet create`](../../../dingtalk-sheet/references/sheet.md#创建钉钉表格文档)（钉钉在线电子表格 `axls`），**不要**走 `doc create`
-> - 用户说「创建多维表格 / 新建 AI 表格 / 建个 base / 数据库表」等 → 走 [`dws aitable base create`](../../../dingtalk-aitable/references/aitable.md#创建-ai-表格)（多维表格 `able`），**不要**走 `doc create`
+> - 用户说「创建表格 / 新建表格 / 建个电子表格 / 在线表格 / 销售数据表」等 → 走 [`dws sheet create`](../../../dingtalk-misc/references/sheet/sheet-workbook.md#创建钉钉表格文档)（钉钉在线电子表格 `axls`），**不要**走 `doc create`
+> - 用户说「创建多维表格 / 新建 AI 表格 / 建个 base / 数据库表」等 → 走 [`dws aitable base create`](../../../dingtalk-aitable/references/aitable.md#base-base-管理)（多维表格 `able`），**不要**走 `doc create`
 > - 用户说「创建文档 / 新建文档 / 写篇文档 / 会议纪要 / 周报 / 方案」等文字型内容 → 才走 `dws doc create`
 >
 > 一句话口诀：表格 → sheet/aitable；文档 → doc。
@@ -84,6 +89,7 @@ dws doc create --name "<文档名>" --content-file /tmp/<name>.json --content-fo
 
 ## 参考
 
+- [`../doc.md` §意图判断](../doc.md#意图判断)（如何路由到本命令）
 - [`./doc-update.md`](./doc-update.md)（写入管道、长 markdown、追加段落、回读补救）
 - [`./style/doc-create-workflow.md`](./style/doc-create-workflow.md)（创建流程 + 回读验收）
 - [`./style/doc-style-guideline.md`](./style/doc-style-guideline.md)（草稿排版规范）

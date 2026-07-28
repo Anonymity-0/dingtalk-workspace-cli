@@ -15,9 +15,18 @@
 
 import sys
 import json
+import datetime
 import subprocess
 import argparse
 from typing import List, Any, Optional
+
+
+def timestamp_to_datetime(ts_ms: int) -> str:
+    """将毫秒时间戳转换为 yyyy-MM-dd HH:mm:ss 格式"""
+    dt = datetime.datetime.fromtimestamp(
+        ts_ms / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))
+    )
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def run_dws(
@@ -122,7 +131,7 @@ def main():
             '--format', 'json',
         ]
         if args.no_forward:
-            cmd_args.extend(['--direction', 'older'])
+            cmd_args.extend(['--forward', 'false'])
         page_limit = min(int(remaining), 200) if args.limit > 0 else 0
         if page_limit > 0:
             cmd_args.extend(['--limit', str(page_limit)])
@@ -142,20 +151,25 @@ def main():
         if isinstance(data, list):
             page_msgs = data
             has_more = False
+            next_cursor = None
         elif isinstance(data, dict):
             inner = data.get('result', data)
             if isinstance(inner, dict):
                 page_msgs = inner.get('messages', [])
                 has_more = inner.get('hasMore', False)
+                next_cursor = inner.get('nextCursor')
             elif isinstance(inner, list):
                 page_msgs = inner
                 has_more = False
+                next_cursor = None
             else:
                 page_msgs = []
                 has_more = False
+                next_cursor = None
         else:
             page_msgs = []
             has_more = False
+            next_cursor = None
 
         if not page_msgs:
             break
@@ -167,16 +181,19 @@ def main():
         if not has_more:
             break
 
-        # message list 没有 cursor flag；按 CLI 契约用边界 createTime 翻页。
-        last_msg = page_msgs[-1]
-        boundary_time = (
-            last_msg.get('createTime')
-            or last_msg.get('createAt')
-            or last_msg.get('time', '')
-        )
-        if not boundary_time or boundary_time == current_time:
-            break
-        current_time = boundary_time
+        # 翻页：优先用 nextCursor（毫秒精度，转为时间字符串），降级用最后消息的 createTime
+        if next_cursor:
+            current_time = timestamp_to_datetime(next_cursor)
+        else:
+            last_msg = page_msgs[-1]
+            boundary_time = (
+                last_msg.get('createTime')
+                or last_msg.get('createAt')
+                or last_msg.get('time', '')
+            )
+            if not boundary_time or boundary_time == current_time:
+                break
+            current_time = boundary_time
         print(f"  翻页 {page}: 已累计 {len(all_messages)} 条, 继续...")
 
     if not all_messages:
@@ -190,8 +207,9 @@ def main():
         print(f"  ✓ 已导出 {len(all_messages)} 条消息到 {args.output}")
     else:
         for m in all_messages:
-            sender = (m.get('sender') or m.get('senderNick')
-                      or m.get('senderOpenDingTalkId') or '未知')
+            sender = (
+                m.get('sender') or m.get('senderNick') or '未知'
+            )
             text = m.get('content') or m.get('text', '')
             time_str = (
                 m.get('createTime') or m.get('createAt')

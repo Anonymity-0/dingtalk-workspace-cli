@@ -36,17 +36,20 @@
 | "置顶会话/取消置顶" | 设置/取消会话置顶 | `chat set-top` | `chat list-top-conversations` | set-top 设置或取消置顶；list-top-conversations 查看置顶列表 |
 | "全员禁言/群禁言" | 全员禁言或解除 | `chat group-mute` | `chat group-mute-member` | group-mute 全员禁言或解除；group-mute-member 指定成员禁言 |
 | "禁言某人/指定成员禁言" | 指定成员禁言 | `chat group-mute-member` | `chat group-mute` | group-mute-member 指定成员禁言/解禁；group-mute 全员禁言 |
+| "查看群禁言配置/群里谁被禁言/禁言名单" | 查询群用户禁言配置 | `chat group get-mute-config` | `chat group-mute-member` | get-mute-config 是只读查询，返回黑白名单及时间配置；group-mute-member 会修改禁言状态 |
 | "设管理员/取消管理员" | 设置群管理员 | `chat group set-admin` | `chat group invite` | set-admin 设置或取消管理员角色；invite 是邀请入群 |
 | "退群/退出群聊/离开群" | 退出群聊 | `chat group quit` | `chat group members remove` | quit 是当前用户自己退群；members remove 是管理员踢别人 |
 | "改群头像/更新群头像" | 更新群头像 | `chat group update-icon` | `chat group rename` | update-icon 改群头像；rename 改群名称 |
-| "改群设置/群设置开关/群权限/入群许可/禁止私聊" | 更新群设置 | `chat group update-settings` | `chat group set-admin` | update-settings 改群功能开关；set-admin 是管理员角色操作 |
+| "改群设置/群设置开关/群权限/入群许可/禁止私聊" | 更新管理员级别群功能开关 | `chat group update-settings` | `chat group set-admin` | update-settings 改管理员级别的群功能开关；set-admin 是管理员角色操作 |
 | "改群昵称/设置群昵称/我在群里的名字" | 设置个人群昵称 | `chat group update-nick` | `chat group rename` | update-nick 改自己的群昵称；rename 改群名称 |
 | "群备注/给群加备注/修改群备注" | 设置群备注 | `chat group update-alias` | `chat group rename` | update-alias 设置仅自己可见的备注；rename 改群名称全员可见 |
+| "我的群置顶/取消我的群置顶/置顶这个群" | 设置当前用户群会话置顶 | `chat group user-settings set` | `chat group update-settings` | user-settings set 是个人会话置顶；update-settings 是管理员级别的群功能开关 |
+| "我的群免打扰/关闭我的群免打扰/这个群别提醒我" | 设置当前用户群免打扰 | `chat group user-settings set` | `chat group update-settings` | user-settings set 是个人通知偏好；update-settings 是管理员级别的群功能开关 |
 | "隐藏会话/隐藏群聊/隐藏对话" | 隐藏会话 | `chat hide` | `chat mute` | hide 隐藏会话不显示；mute 是免打扰但仍显示 |
 | "关闭@所有人通知/屏蔽@all/不接收@所有人" | 关闭 @所有人提醒 | `chat mute-at-all` | `chat mute` | mute-at-all 仅屏蔽 @所有人；mute 是整个会话免打扰 |
 | "关闭红包通知/屏蔽红包/不接收红包提醒" | 关闭红包提醒 | `chat mute-red-envelope` | `chat mute` | mute-red-envelope 仅屏蔽红包；mute 是整个会话免打扰 |
 | "解散群/解散群聊" | 解散群聊 | `chat group dismiss` | `chat group quit` | dismiss 是群主解散整个群（不可逆）；quit 是当前用户自己退群 |
-| "新成员看历史/历史消息可见范围" | 设置新成员可见历史消息 | `chat group set-history` | `chat group update-settings` | set-history 控制新成员入群后可见历史消息范围；update-settings 是其他群功能开关 |
+| "新成员看历史/历史消息可见范围" | 设置新成员可见历史消息 | `chat group set-history` | `chat group update-settings` | set-history 控制新成员入群后可见历史消息范围；update-settings 是管理员级别的其他群功能开关 |
 | "群里有哪些机器人/查看群机器人/列出群机器人" | 查看群内机器人列表 | `chat group bots` | `chat group members` | bots 只列机器人；members 列普通群成员 |
 | "从群里移除机器人/踢机器人" | 移除群内机器人 | `chat group members remove-bot` | `chat group members add-bot` | remove-bot 通过 openBotId 移除；add-bot 通过 robotCode 添加 |
 | "批量查群成员详情/按ID查群成员/查看指定成员信息" | 批量查询群成员详情 | `chat group members list-by-ids` | `chat group members` | list-by-ids 根据 openDingTalkId 列表查询指定成员详情；members 分页查询全部成员列表 |

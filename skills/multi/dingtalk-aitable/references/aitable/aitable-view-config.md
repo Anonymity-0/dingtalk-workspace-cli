@@ -16,7 +16,34 @@
 
 > card 在 Kanban 走 `kanbanCard`，在 Gallery 走 `galleryCard`，CLI 自动按 viewType dispatch（preflight 1 次 `get_views`）。timebar 仅 Gantt 支持；Calendar 服务端未暴露任何 timebar 配置。
 
-> **Gantt 视图必须两步创建**：`view create --view-type Gantt` 只创建空壳（`ganttTimebar: {}`），**必须**紧跟 `view update timebar --start-field <日期字段ID>` 绑定时间轴字段，否则视图打开是空白。`create_view` 的 `--config` 中传入 `ganttTimebar` 会被服务端忽略。
+> **Gantt 视图必须两步创建**：`view create --view-type Gantt` 只创建空壳（`ganttTimebar: {}`），**必须**紧跟 `view update timebar --start-field <日期字段ID>` 绑定时间轴字段，否则视图打开是空白。`view create --config` 不接受 `ganttTimebar`，请在创建后使用专属子命令。
+
+## 创建：view create
+
+`--view-type` 支持 `Grid`、`Kanban`、`Gantt`、`Calendar`、`Gallery`、`FormDesigner`。创建时有两种方式设置可见字段：
+
+```bash
+# 推荐：CSV typed flag；主字段必须排第一
+dws aitable view create --base-id BASE_ID --table-id TABLE_ID \
+  --view-type Grid --name "任务视图" \
+  --visible-field-ids fldPrimary,fldStatus,fldOwner
+
+# JSON 方式：可同时配置可见字段、筛选、排序和分组
+dws aitable view create --base-id BASE_ID --table-id TABLE_ID \
+  --view-type Grid --name "任务视图" \
+  --config '{"visibleFieldIds":["fldPrimary","fldStatus","fldOwner"],"sort":[{"fieldId":"fldStatus","direction":"asc"}]}'
+```
+
+创建阶段的 `--config` 是 JSON 对象，并且只接受以下 4 个 key：
+
+| key | 类型 | 说明 |
+|---|---|---|
+| `visibleFieldIds` | `string[]` | fieldId 数组，不接受字段名；至少一个，主字段必须排第一 |
+| `filter` | `object[]` | 筛选规则数组；兼容单个 object，CLI 会自动包装为数组 |
+| `sort` | `object[]` | 排序规则数组；兼容单个 object，CLI 会自动包装为数组 |
+| `group` | `object[]` | 分组规则数组；兼容单个 object，CLI 会自动包装为数组 |
+
+`--visible-field-ids` 与 `config.visibleFieldIds` 互斥。描述使用独立的 `--desc '{"content":[]}'`；`description`、`fieldWidths`、`aggregate`、`kanbanCard`、`ganttTimebar`、`galleryCard` 等其他 key 会在调用服务端前被拒绝，并提示对应的 `view update` 子命令。
 
 ## 读取：view get <attr>
 

@@ -1,10 +1,9 @@
 ---
 name: dingtalk-doc
-description: 钉钉文档内容操作（内容层）。Use when 用户说 写文档/读文档/创建文档内容/编辑文档内容/文档块/分块编辑/Markdown 写入/评论/媒体附件/导出文档/导出 PDF/导出 Markdown/版本历史/保存版本/回滚版本。搜文件/列文件/上传下载/复制移动/重命名/权限管理走 dingtalk-drive；知识库/空间/节点创建列表搜索走 dingtalk-wiki；文档里嵌入的电子表格/多维表格先用本 skill 提取 token 再切到 dingtalk-sheet/dingtalk-aitable。命令前缀：dws doc。
-cli_version: ">=0.2.14"
+description: 钉钉文档（adoc）：创建、读取、编辑、块、评论、附件、导出、版本及Markdown/JSONML写入。原生 .md→dingtalk-misc；文件→dingtalk-drive；知识库→dingtalk-wiki；axls→dingtalk-misc，able→dingtalk-aitable。
 metadata:
+  cli_version: ">=0.2.14"
   category: product
-  stability: experimental
   requires:
     bins:
       - dws
@@ -12,16 +11,11 @@ metadata:
 
 # 钉钉文档 Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准。全部 dingtalk-* skill 已通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整；生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。问题请提 issue 反馈。
-
 ## 前置条件 — 执行操作前必读
 
-> **`use_skill(dws-shared)`** — 认证、全局参数（`--format json` / `--yes`）、错误码、URL 模板、跨产品消歧、安全规则与 capability 边界。**执行任何 `dws` 命令前先读；** 单产品的清晰命令可直接用本 skill。
-
-<!-- SAFETY_PREAMBLE_INJECT -->
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
 > 命令参考：[doc.md](references/doc.md)；剧本：[04-document.md](references/04-document.md)。
-> 高频模块：[阅读/元信息](references/doc/doc-info-index.md) · [创建/写入/块编辑](references/doc/doc-write-index.md) · [媒体/评论/导出](references/doc/doc-media-index.md) · [导入/版本/模板](references/doc/doc-extra-index.md) · [JSONML](references/format/doc-jsonml-index.md)。
 
 ## 参数硬约束
 
@@ -35,7 +29,7 @@ metadata:
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 来自独立于 Runtime Schema 的公开 catalog。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 `dws shortcut list --service doc --format json` 读取参数、约束、风险和示例，并以 `dws doc <shortcut> --help` 核对当前 Cobra flags；不要对 `+` 路径调用 `dws schema`。
+以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service doc --format json` 读取完整契约，再用 `dws doc <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -64,44 +58,48 @@ metadata:
 |--------|------|
 | "创建文档（短内容）" | `dws doc create --name "<标题>" --content "<内容>"` |
 | "创建+写入（长内容自动分块）" | `python scripts/doc_create_and_write.py --name "<标题>" --content "<内容>" [--mode append\|overwrite]` |
-| "搜文档 / 找文档" | `dws drive search --query "<关键词>"` → 取 `nodeId` 后 `dws doc read --node <nodeId>` |
-| "读文档内容" | `dws doc read --node <nodeId>` |
+| "搜在线文字文档 / 找在线文字文档" | `dws drive search --query "<关键词>" --format json` → `dws drive info --node <nodeId> --format json` → 仅 `extension=adoc` 使用 `dws doc read --node <nodeId> --format json` |
+| "读在线文字文档（adoc）内容" | `dws doc read --node <nodeId> --format json` |
 | "更新文档内容 / 分块追加" | `dws doc update --node <nodeId> --content "<分块>" --mode append` |
 | "删除块" | `dws doc block delete`（需用户确认） |
-| "更新文档评论" | `dws doc comment update --node <nodeId> --comment-key <key> --content "<内容>"` |
-| "删除文档评论" | `dws doc comment delete --node <nodeId> --comment-key <key> --yes`（需用户确认） |
 | "导出 docx / markdown / pdf" | `dws doc export --node <nodeId> --export-format <docx|markdown|pdf> --output <path>` |
 | "导入本地文件为在线文档" | `dws doc import --file <path> --folder <FOLDER_NODE_ID> --name "<标题>" --format json`（详见 `references/doc/doc-import.md`） |
-| "查模板 / 套用模板创建文档" | `dws doc template list|search|apply`（详见 `references/doc/doc-template.md`） |
-| "保存版本 / 查看版本历史 / 回滚版本" | `dws doc version save/list/revert` |
+| "查模板 / 套用模板创建文档" | `dws doc template list|search|apply`（详见 `references/doc.md` 模板管理） |
+| "保存 / 查看 / 回滚在线文字文档（adoc）版本" | `dws doc version save/list/revert` |
 
 ## 标准 SOP（必遵流程）
 
-> 命中以下意图**必须**按对应 SOP 顺序执行；**禁止**跳步、替换命令、编造 nodeId/blockId。每条命令必须带 `--format json`，执行后必须按"验证"步回读真实字段。文件类操作（上传/下载/复制/移动）切 `dingtalk-drive`；知识库节点管理切 `dingtalk-wiki`。
+> 命中以下意图**必须**按对应 SOP 顺序执行；**禁止**跳步、替换命令、编造 nodeId/blockId。结构化命令必须带 `--format json`，执行后必须按"验证"步回读真实字段。文件类操作（上传/下载/复制/移动）切 `dingtalk-drive`；知识库节点管理切 `dingtalk-wiki`。
 
 ### SOP-1 查找并读取文档（query-doc）
 
 **触发**：查文档/读文档/某文档在哪/搜文档内容。
 
-1. **定位（必须）**：`dws drive search --query "<关键词>" --format json` → 取 `nodeId`（拿不准是文档还是文件时，先 `dws doc info --node <nodeId> --format json` 判类型）。
-2. **读取（必须）**：`dws doc read --node <nodeId> --format json`；大文档**必须**只抽取用户需要的章节，**禁止**无差别全文展开。
+1. **定位（必须）**：用户已提供 URL / `nodeId` 时直接使用原值；未提供目标时才执行 `dws drive search --query "<关键词>" --format json`，再取候选结果的真实 `nodeId`。
+2. **探测（必须）**：对选中的候选执行 `dws drive info --node <nodeId> --format json`，从真实返回读取 `extension`；不得因为搜索结果标题像“文档”就跳过探测。
+3. **按类型读取（必须）**：
+   - `extension=adoc`：`dws doc read --node <nodeId> --format json`；大文档只抽取用户需要的章节。
+   - `extension=md`：按普通文件处理，切到 `dingtalk-drive` 用 `dws drive download --node <nodeId> --output <path> --format json` 下载后本地读取。
+   - `extension=axls`：切到 `dingtalk-misc`，读取 `references/sheet.md` 后按电子表格意图执行。
+   - `extension=able`：切到 `dingtalk-aitable`。
+   - `extension=xlsx` / `xls` / `xlsm` / `csv` 或其他普通文件：切到 `dingtalk-drive`；不得执行 `dws doc read`。
 
-**禁止**：跳过 `drive search` 直接猜 nodeId、把整篇文档原样贴给用户。
+**禁止**：用户未提供目标时跳过搜索并猜 nodeId、未探测类型就执行 `doc read`、把整篇文档原样贴给用户。
 
 ### SOP-2 创建文档并写入（create-doc）
 
 **触发**：新建文档/写一篇/建文字文档。
 
-1. **执行（必须）**：`dws doc create --name "<标题>" --folder <FOLDER_NODE_ID> --content-file <tmp.md> --format json`（长/多行内容用 `--content-file`，不要用 `--content` 拼长串）。
-2. **验证（必须）**：从返回取 `nodeId`，立即 `dws doc read --node <nodeId> --format json` 回读正文；仅需确认类型、名称或补取链接时再用 `doc info`。
+1. **执行（必须）**：`dws doc create --name "<标题>" --content-file <tmp.md> [--folder <FOLDER_NODE_ID> | --workspace <WORKSPACE_ID>] --format json`（长/多行内容用 `--content-file`，不要用 `--content` 拼长串；用户未指定位置时省略两个位置参数，创建到“我的文档”根目录）。
+2. **验证（必须）**：从返回取 `nodeId`，立即 `dws doc info --node <nodeId> --format json` 回读确认。
 
-**完成条件**：创建结果返回真实 `nodeId`，且正文回读成功；`--folder` 只能使用文档文件夹 nodeId，不能传空间 ID。
+**禁止**：创建后不回读就答复"已创建"、把 `--folder` 当成空间 ID 传入。
 
 ### SOP-3 覆盖/追加内容（write-content）
 
 **触发**：覆盖写/追加内容/改文档正文。
 
-1. **执行（必须）**：覆盖 `dws doc update --node <nodeId> --mode overwrite --content-file <tmp.md> --yes --format json`；追加 `--mode append`。破坏性覆盖**必须**带 `--yes`，且建议先 `--dry-run` 预览。
+1. **执行（必须）**：覆盖先执行 `dws doc update --node <nodeId> --mode overwrite --content-file <tmp.md> --dry-run --format json` 预览，用户确认后改用 `--yes` 实际覆盖；追加执行 `dws doc update --node <nodeId> --mode append --content-file <tmp.md> --format json`。
 2. **验证（必须）**：写后 `dws doc read --node <nodeId> --format json` 抽取受影响段落核对。
 
 **禁止**：不加 `--yes` 反复重试覆盖、跳过 `--dry-run` 直接覆盖未确认的长文档。
@@ -110,19 +108,23 @@ metadata:
 
 **触发**：导出文档/下载文档/转 PDF·Markdown。
 
-1. **判类型（必须）**：先 `dws doc info --node <nodeId> --format json`；在线文档 → `dws doc export --node <nodeId> --export-format <docx|markdown|pdf> --output <path> --format json`；普通文件 → 切 `dingtalk-drive` 用 `dws drive download --node <nodeId> --output <path> --format json`。
+1. **判类型（必须）**：先 `dws drive info --node <nodeId> --format json`；`extension=adoc` → `dws doc export --node <nodeId> --export-format <pdf|markdown|docx> --output <path> --format json`；普通文件 → 切 `dingtalk-drive` 用 `dws drive download --node <nodeId> --output <path> --format json`。
 
-**禁止**：不分类型一律走 `doc export`（普通文件会失败）、跳过 `doc info` 判断。
+**禁止**：不分类型一律走 `doc export`（普通文件会失败）、跳过 `drive info` 判断。
 
 ### SOP-5 块级编辑（block-edit）
 
 **触发**：插引用块/代码块/表格/分栏/图片/附件，或删除某块。
 
-1. **固定顺序（必须）**：`dws doc block list --node <nodeId> --format json` → 选真实 `blockId` → `dws doc block insert|update|delete --node <nodeId> --block-id <blockId> ...` → 再次 `doc block list` 验证。
-2. **删除（必须）**：删除块**必须**已有用户明确删除意图或二次确认。
-3. **复杂块（必须）**：插入引用/代码/表格/分栏/附件/图片前，先按 [写入索引](references/doc/doc-write-index.md) 与 [JSONML 索引](references/format/doc-jsonml-index.md) 确认对应命令和元素结构；写后按第 1 步回读验证。
+1. **先列块（必须）**：`dws doc block list --node <nodeId> --format json`，当前响应的可操作块 ID 位于 `blocks[].element.id`（部分版本可能回显为 `blockId`）；必须从目标内容对应项读取，不得编造。空文档的占位空段落可能不能作为 `--ref-block`。
+2. **按动作执行（必须）**：
+   - 插入：默认追加用 `dws doc block insert --node <nodeId> --text "<内容>" --format json`；只有明确要求相对位置时才加 `--ref-block <非空参照块ID> --where before|after`，容器内插入使用 `--parent-block <父块ID> --index <位置>`。插入命令**不接受** `--block-id`。
+   - 更新：`dws doc block update --node <nodeId> --block-id <目标blockId> --text "<新内容>" --format json`。
+   - 删除：用户确认后执行 `dws doc block delete --node <nodeId> --block-id <目标blockId> --yes --format json`。
+3. **验证（必须）**：再次执行 `dws doc block list --node <nodeId> --format json` 核对插入、更新或删除结果。
+4. **复杂块（必须）**：插入引用/代码/表格/分栏/附件/图片前，**必须**先读 [doc.md](references/doc.md) 对应小节，**禁止**只停在"准备查看 help"——说"我将插入..."后必须立即执行命令。
 
-**禁止**：编造 blockId、未确认就删除。命令帮助只用于确认参数，操作结果必须来自实际命令与回读。
+**禁止**：编造 blockId、未确认就删除、把完整 `--help` 输出当成最终结果答复用户。
 ### SOP-6 导入本地文件为在线文档（import-file）
 
 **触发**：导入 Word / Excel / Markdown / 本地文件为在线文档。
@@ -133,26 +135,28 @@ metadata:
 
 **禁止**：把上传文件到钉盘误当成 doc import；不知道目标文件夹 nodeId 时先切 `dingtalk-drive`/`dingtalk-wiki` 查询。
 
-
 ## 多步文档短路径
 
 - 在目标文件夹创建文字文档：`dws doc create --name "<标题>" --folder <FOLDER_NODE_ID> --content-file <tmp.md> --format json`。拿到 `nodeId` 后立即回读。
-- 块级编辑固定顺序：`doc block list --node <nodeId>` → 选 `blockId` → `doc block insert/update/delete` → `doc block list` 验证。删除块必须已有用户明确删除意图或二次确认。
-- 插入引用块、代码块、表格、分栏、附件、图片时，按 [写入索引](references/doc/doc-write-index.md) 选择命令与结构，并在写后回读。
-- 多个子文档、附件或块操作按依赖顺序执行；每一步复用上一条命令返回的真实 ID，最后统一回读受影响内容。
-- 用户说"读取并下载/导出"时，先 `doc info --node ... --format json` 判断类型：在线文档用 `doc export`，普通文件切到 `dingtalk-drive` 用 `drive download`。
-- 所有 dws 命令带 `--format json`；仅参数不确定时查 `--help`，并以实际命令结果完成验证。
+- 块级编辑固定顺序：`doc block list --node <nodeId>` → 插入用 `--ref-block`/`--parent-block`，更新或删除用 `--block-id` → `doc block list` 验证。删除块必须已有用户明确删除意图或二次确认。
+- 插入引用块、代码块、表格、分栏、附件、图片时，优先读 [doc.md](references/doc.md) 对应小节，不要只停在"准备查看 help"。说出"我将插入..."后必须立即执行对应 terminal 调用。
+- 用户要求多个子文档/附件/块操作时，按 checklist 串行完成；最后一条 assistant 消息不能停在"接下来我要..."，必须有实际工具调用或明确失败原因。
+- 用户说“读取并下载/导出”时，先 `drive info --node ... --format json` 按
+  `extension` 判断类型：`adoc` 用 `doc export`，普通文件切到
+  `dingtalk-drive` 用 `drive download`。
+- 所有结构化 dws 命令带 `--format json`。仅参数不确定时查 `--help`，不要把完整 help 当成最终结果。
 
 ## 危险操作
 
-`block delete` 和 `comment delete` 不可逆，必须确认再加 `--yes`。
+`block delete` 不可逆，必须确认再加 `--yes`。
 
 ## 跨产品协作
 
 - 文件存储 / 上传下载 → 切到 `dingtalk-drive`
 - 知识库空间管理 → 切到 `dingtalk-wiki`
 - 数据表 → 切到 `dingtalk-aitable`
+- 原生 `.md` 文件按普通文件处理 → 切到 `dingtalk-drive` 用 `drive download` / `drive upload`
 - 长篇报告生成（多源采集 + 写文档）→ 此 skill 提供 `doc_create_and_write.py` 脚本
-## 局部意图与 Recipe
+## 局部意图与短流程
 
-- [局部意图消歧](references/intent-guide.md)；[Lite Recipe](references/lite-recipes.md)。
+- [局部意图消歧](references/intent-guide.md)；[短流程](references/lite-recipes.md)。

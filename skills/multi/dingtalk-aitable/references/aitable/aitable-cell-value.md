@@ -7,7 +7,7 @@
 ## 顶层规则
 
 - cells 的 key **必须是 fieldId**（如 `fldXXX`），不是字段名称
-- fieldId 必须从 `table get` 返回中获取
+- fieldId 必须从 `field get` 返回中获取
 - 不同字段类型的 value 格式不同，混用会报错
 - 系统只读字段（creator/lastModifier/createdTime/lastModifiedTime/formula）不可写入
 

@@ -1,10 +1,9 @@
 ---
 name: dingtalk-minutes
-description: 钉钉 AI 听记查看、摘要、转写、待办提取与分享。Use when 用户说听记/会议录音/会议纪要/AI摘要/转写/关键字/听记标题/会后待办提取/分享听记。本地音视频转纪要/逐字稿也优先用本 skill，不要用 ffmpeg/whisper 本地转写。不做听记生成报告文档（走配方 minutes-report-to-doc）、听记补充到已有文档（走配方 minutes-to-doc）、日程（走 dingtalk-calendar）。命令前缀：dws minutes。
-cli_version: ">=0.2.14"
+description: 钉钉 AI 听记。Use when 查询听记摘要、转写、关键词、待办或分享。写文档走 dingtalk-doc；日程走 dingtalk-calendar。
 metadata:
+  cli_version: ">=0.2.14"
   category: product
-  stability: experimental
   requires:
     bins:
       - dws
@@ -12,22 +11,16 @@ metadata:
 
 # 钉钉 AI 听记 Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准。全部 dingtalk-* skill 已通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整；生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。问题请提 issue 反馈。
-
 ## 前置条件 — 执行操作前必读
 
-> **`use_skill(dws-shared)`** — 认证、全局参数（`--format json` / `--yes`）、错误码、URL 模板、跨产品消歧、安全规则与 capability 边界。**执行任何 `dws` 命令前先读；** 单产品的清晰命令可直接用本 skill。
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
-<!-- SAFETY_PREAMBLE_INJECT -->
-
-> 渐进式参考：[minutes-index.md](references/minutes-index.md)；剧本：[07-minutes.md](references/07-minutes.md)。先按索引选择专题，不要一次性加载全部听记参考。
-
-> 旧路径兼容入口：[minutes.md](references/minutes.md)。
+> 命令参考：[minutes.md](references/minutes.md)；剧本：[07-minutes.md](references/07-minutes.md)。
 
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 来自独立于 Runtime Schema 的公开 catalog。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 `dws shortcut list --service minutes --format json` 读取参数、约束、风险和示例，并以 `dws minutes <shortcut> --help` 核对当前 Cobra flags；不要对 `+` 路径调用 `dws schema`。
+以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service minutes --format json` 读取完整契约，再用 `dws minutes <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -61,7 +54,7 @@ metadata:
 **触发**：查听记/会议记录/某会议的纪要/按关键词或时间找听记。
 
 1. **选 scope（必须·铁律）**：`mine`=我创建/发起的；`shared`=他人共享给我的；`all`=我可访问的全部（含 mine+shared）。用户说"我能访问/可见/所有/我的听记"等覆盖语义**一律 `all`**；只有明确"我创建的/我发起的/我录的"才用 `mine`。
-2. **执行（必须）**：`dws minutes list all|mine|shared --format json`；按关键词加 `--query "<关键词>"`，按时间加 `--start "<ISO>" --end "<ISO>"`，限制条数用 canonical 参数 `--limit <n>`，翻页用 `--cursor <token>`。
+2. **执行（必须）**：`dws minutes list all|mine|shared --format json`；按关键词加 `--query "<关键词>"`，按时间加 `--start "<ISO>" --end "<ISO>"`，限制条数 `--limit <n>`（`--max` 兼容别名），翻页用 `--cursor <token>`（`--next-token` 兼容别名）。
 3. **解析（必须）**：从 `itemList[]` 取真实 `taskUuid` + `title` + 时间；多候选必须让用户确认，**禁止**默认取第一条。
 
 **禁止**：把 `mine` 当全量、凭标题相似度锁定、跳过 `--format json`。
@@ -80,7 +73,7 @@ metadata:
 
 **触发**：把会议纪要转成文档/把听记待办建到待办系统。
 
-1. **转文档（必须）**：取 `minutes get summary`/`transcription` 内容 → 切 `dingtalk-doc` 用 `dws doc create --content-file <tmp.md>` 落盘（或用 `dingtalk-products-skills/minutes-to-doc` recipe skill）。
+1. **转文档（必须）**：取 `minutes get summary`/`transcription` 内容 → 切 `dingtalk-doc` 用 `dws doc create --content-file <tmp.md>` 落盘。
 2. **待办回写（必须）**：取 `minutes get todos` 的待办项 → 切 `dingtalk-todo` 按 SOP-1 解析执行者 userId 后 `todo task create`。
 
 **禁止**：在 minutes 内直接写文档/建待办（应切对应 skill）。
@@ -98,9 +91,9 @@ metadata:
 
 ## 跨产品协作
 
-- 提取的待办批量建任务 → 切到 `dingtalk-todo` 的 batch-create-todo recipe；批量脚本仅在 `dingtalk-todo` sub-skill 内可用，未切换前不要在当前 skill 运行。
+- 提取的待办批量建任务 → 切到 `dingtalk-todo`，按其批量创建 SOP 执行；批量脚本仅在 `dingtalk-todo` sub-skill 内可用，未切换前不要在当前 skill 运行。
 - 摘要发给同事 → 切到 `dingtalk-chat`
 - 日程 / 会议室 → 切到 `dingtalk-calendar`
-## 局部意图与 Recipe
+## 局部意图与短流程
 
-- [局部意图消歧](references/intent-guide.md)；[Lite Recipe](references/lite-recipes.md)。
+- [局部意图消歧](references/intent-guide.md)；[短流程](references/lite-recipes.md)。

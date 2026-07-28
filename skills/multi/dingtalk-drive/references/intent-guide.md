@@ -4,7 +4,7 @@
 
 | 用户说... | 真实意图 | 应该用 | 不要用 | 理由 |
 |---|---|---|---|---|
-| "参照这个生成同样的 / 按模板生成 / 复刻 X / 同样的模板 X 月份的" + 已有 alidocs URL | 模板保形生成同形态变体 | `drive copy + drive rename + doc block update` → 见 [模板保形生成](../../dingtalk-doc/references/04-document.md#模板保形生成) | `doc read + doc create`（重写链） | adoc → markdown 是有损投影，read+create 会丢行高/单元格背景色/字号；copy 在 adoc 层保形复制后只在副本上局部修改 |
+| "参照这个生成同样的 / 按模板生成 / 复刻 X / 同样的模板 X 月份的" + 已有 alidocs URL | 模板保形生成同形态变体 | `drive copy + drive rename + doc block update` → 见 [best_practices/04-document.md `template-based-generation`](../../dingtalk-doc/references/04-document.md#template-based-generation) | `doc read + doc create`（重写链） | adoc → markdown 是有损投影，read+create 会丢行高/单元格背景色/字号；copy 在 adoc 层保形复制后只在副本上局部修改 |
 | "读一下这个 xlsx 的数据" / xlsx 节点链接 | 下载本地表格文件 | `dws drive download --node` | `sheet range read` | xlsx / xls / xlsm / csv 是上传的本地文件（`contentType=DOCUMENT`），sheet 命令只支持在线表格，必须下载后本地解析 |
 | "把这个在线表格导出为 xlsx 文件" | 在线表格格式转换 | `dws sheet export` | `dws drive download` | `export` 是 axls → xlsx 的导出转换；`download` 只能下载已有的 xlsx 节点 |
 | "帮我把这个文件传到网盘" | 钉盘上传 | `drive upload` | — | 文件上传是存储层操作，归 drive |

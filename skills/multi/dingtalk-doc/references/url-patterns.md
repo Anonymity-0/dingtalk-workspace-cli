@@ -1,8 +1,21 @@
 # URL 格式与处理规范
 
-## alidocs URL 分流决策（必须首先执行）
+## 路由第 0 步：意图直达（优先级高于 URL 探测）
 
-收到 `alidocs.dingtalk.com` URL 时，**必须按以下顺序判断，禁止跳过**：
+用户已经明确表达某产品的内容意图时，直接进入对应产品场域，不要先做 URL 类型
+探测。尤其：
+
+- 明确提到 Markdown / `.md` 文件的读取或修改，按普通文件走 `drive` 场域：
+  先 `dws drive download` 下载到本地处理，再用 `dws drive upload` 回传。
+- 明确“读这篇文档 / 编辑文档正文”进入 `doc`；明确“看这个在线表格数据”进入
+  `sheet`。
+
+仅当用户只粘贴 URL、没有明确产品意图，或意图与链接类型可能冲突时，才执行下方
+类型探测。
+
+## alidocs URL 分流决策（意图不明确时执行）
+
+收到 `alidocs.dingtalk.com` URL 且无法从指令判断产品时，必须按以下顺序判断：
 
 1. URL 路径含 `/i/p/` → **分享短链**，禁止调用 `dws doc` 任何子命令 → 按下方 [分享短链处理](#分享短链处理) 执行
 2. URL 路径含 `/i/nodes/` → **节点链接**，需探测类型 → 按下方 [alidocs URL 类型探测流程](#alidocs-url-类型探测流程) 执行
@@ -80,20 +93,23 @@ dws doc read --node "https://alidocs.dingtalk.com/i/p/Y7kmbokZp3pgGLq2/docs/AY39
 ### 探测步骤
 
 ```
-Step 1 → dws doc info --node "<URL>" --format json
-Step 2 → 从返回中提取 contentType、extension、nodeType 字段
+Step 1 → dws drive info --node "<URL>" --format json
+Step 2 → 从返回中提取 extension、nodeType 字段
 Step 3 → 按下方路由规则映射到对应产品
 ```
+
+> 路由依据是 `extension`，不是 `contentType`。`drive info` 检测到
+> `adoc` / `axls` / `able` 时会自动补充在线文档信息。
 
 ### 路由映射表
 
 | 条件 | 路由到产品 | 后续操作 |
 |------|-----------|---------|
-| `contentType=ALIDOC`, `extension=adoc` | `doc` | 加载 `dingtalk-doc` 操作内容 |
-| `contentType=ALIDOC`, `extension=axls` | `sheet` | 加载 `dingtalk-sheet` 操作（仅 `axls` 在线电子表格） |
-| `contentType=ALIDOC`, `extension=able` | `aitable` | 将 nodeId 作为 baseId，加载 `dingtalk-aitable` 操作 |
-| `contentType=DOCUMENT`, `extension=xlsx` / `xls` / `xlsm` / `csv` | `drive` | 必须用 `dws drive download` 下载到本地处理，禁止走 `sheet`（非在线表格，sheet 命令无法操作） |
-| `contentType≠ALIDOC`, `nodeType=file` | `drive` | 调用 `dws drive download` 下载，返回文件下载链接 |
+| `extension=adoc` | `doc` | 加载 `dingtalk-doc` 操作内容 |
+| `extension=axls` | `sheet` | 加载 `dingtalk-misc` 的 `references/sheet.md` 操作（仅 `axls` 在线电子表格） |
+| `extension=able` | `aitable` | 将 nodeId 作为 baseId，加载 `dingtalk-aitable` 操作 |
+| `extension=xlsx` / `xls` / `xlsm` / `csv` | `drive` | 必须用 `dws drive download` 下载到本地处理，禁止走 `sheet` |
+| `nodeType=file`（非在线文档扩展名，含 `md`） | `drive` | 下载用 `dws drive download --node <ID> --output <PATH> --format json`；上传/覆盖用 `dws drive upload` |
 | `nodeType=folder` | `drive` / `wiki` | 调用 `dws drive list --workspace <WS_ID>` 或 `dws wiki node list` 列出子节点 |
 | 以上均不匹配 | — | 告知用户当前暂不支持该类型 |
 
@@ -106,16 +122,16 @@ Step 3 → 按下方路由规则映射到对应产品
 
 ```bash
 # 用户传入: https://alidocs.dingtalk.com/i/nodes/abc123
-dws doc info --node "https://alidocs.dingtalk.com/i/nodes/abc123" --format json
+dws drive info --node "https://alidocs.dingtalk.com/i/nodes/abc123" --format json
 
-# 返回 contentType=ALIDOC, extension=axls → 在线电子表格，路由到 sheet
+# 返回 extension=axls → 在线电子表格，路由到 sheet
 dws sheet list --node "https://alidocs.dingtalk.com/i/nodes/abc123" --format json
 
-# 返回 contentType≠ALIDOC, extension=xlsx/xls/csv → 本地表格文件，必须下载处理（禁止走 sheet）
-dws drive download --node "https://alidocs.dingtalk.com/i/nodes/xlsx456"
+# 返回 extension=xlsx/xls/csv → 本地表格文件，必须下载处理（禁止走 sheet）
+dws drive download --node "https://alidocs.dingtalk.com/i/nodes/xlsx456" --output <PATH> --format json
 
-# 返回 contentType≠ALIDOC, nodeType=file → 普通文件，下载
-dws drive download --node "https://alidocs.dingtalk.com/i/nodes/def456"
+# 返回 nodeType=file → 普通文件，下载
+dws drive download --node "https://alidocs.dingtalk.com/i/nodes/def456" --output <PATH> --format json
 
 # 返回 nodeType=folder → 文件夹，列出子节点
 dws drive list --workspace <WS_ID> --format json
@@ -126,40 +142,3 @@ dws drive list --workspace <WS_ID> --format json
 当用户指令中已明确指定产品（如"帮我读这个文档"、"看下这个表格的数据"），可结合用户意图**跳过探测**直接路由。仅在以下情况**必须执行探测**：
 - 用户只粘贴 URL，无其他上下文
 - 用户指令与 URL 实际类型可能不一致（如说"文档"但实际是表格）
-- 用户直接粘贴的是原始 `alidocs` URL，且没有上游命令返回来确认类型
-
----
-
-## alidocs URL probe 后能力矩阵
-
-> 给 Agent 在用户问"那能不能 XXX"时使用——一眼看出该节点类型支持哪些操作。
-> 标 ⚠️ 的项是当前 dws-opensource 用 transitional helper 实现（feat/align-yuyuan 分支），mse 端 toolOverride 落地后转为动态生成。
-
-| extension / contentType | 读取 | 写入 | 删除 | 导出 | 权限 | 媒体 |
-|-------------------------|------|------|------|------|------|------|
-| **adoc**（在线文档） | `doc read` | `doc update` / `doc block update` | ⚠️ `doc delete` | ⚠️ `doc export` (→ docx) | ⚠️ `doc permission *` | ⚠️ `doc media download/insert` |
-| **axls**（在线电子表格） | `sheet range read` / `sheet list` | `sheet range update` / `sheet append` | ⚠️ `doc delete`（节点删除） | `sheet export`（单命令一站式：提交→轮询→下载，可选 `--output` 落盘） | ⚠️ `doc permission *`（节点级，跨产品） | 不适用 |
-| **able**（在线多维表） | `aitable base get` / `aitable record query` | `aitable record create/update` | ⚠️ `doc delete`（节点删除）或 `aitable base delete --yes` | `aitable export data --scope all --export-format excel --format json`（取 downloadUrl，`--output` 不落盘） | ⚠️ `doc permission *`（节点级） | `aitable attachment upload` |
-| **xlsx / xls / xlsm / csv**（本地表格文件） | `drive download` → 本地用 xlsx skill 解析 | 不支持服务端写（先下载改本地再上传） | ⚠️ `doc delete`（节点删除） | 不需要（本身就是 xlsx） | ⚠️ `doc permission *` | 不适用 |
-| **普通文件** (nodeType=file) | `drive download` | 不支持服务端写 | ⚠️ `doc delete` | 不需要 | ⚠️ `doc permission *` | 不适用 |
-| **文件夹** (nodeType=folder) | `doc list --folder <URL>` | `doc create --folder <URL> ...` | ⚠️ `doc delete` | 不适用 | ⚠️ `doc permission *` | 不适用 |
-| **分享短链** `/i/p/<short>` | `read_url` 兜底（外部工具） | 不适用 | 不适用 | 不适用 | 不适用 | 不适用 |
-
-### 使用方式
-
-```
-Agent 流程：
-  1. 用户给 URL  →  dws doc info --node <URL>           （路由起点）
-  2. 拿到 extension / contentType / nodeType
-  3. 在本矩阵查"能做什么 / 不能做什么"
-  4. 不能做的直接告知用户（参考 capability-limits.md），不要重试
-```
-
-### 跨产品授权的关键判断
-
-| 用户说 | 路由 | 不要混淆 |
-|--------|------|---------|
-| "把这个文档/表格/多维表分享给张三" | **节点级**：`doc permission add --node <URL> --users <UID> --role EDITOR` | 不是 `wiki member add` |
-| "把张三加到这个知识库" | **容器级**：`wiki member add --workspace <WS> --user <UID> --role <ROLE>` | 不是 `doc permission add` |
-
-> 区分依据：**doc permission 作用于单个 node（document / file / folder）；wiki member 作用于整个 workspace 容器**。同一用户在 workspace 是 EDITOR、在某个 node 上仍可被单独提升为 MANAGER（节点级覆盖容器级）。

@@ -51,48 +51,30 @@ def fmt_iso(dt: datetime) -> str:
     return dt.strftime('%Y-%m-%dT%H:%M:%S+08:00')
 
 
-def _extract_time_str(value: Any) -> str:
-    """时间字段兼容字符串与 {dateTime, date} 对象两种形态。"""
-    if isinstance(value, dict):
-        return value.get('dateTime') or value.get('date') or ''
-    return value or ''
-
-
 def parse_busy_intervals(
     data: Any,
 ) -> List[Tuple[datetime, datetime]]:
     intervals = []
     if not data:
         return intervals
-    if isinstance(data, dict) and 'result' in data:
-        data = data['result']
-    rows = []
-    if isinstance(data, list):
-        rows = data
-    elif isinstance(data, dict):
-        rows = list(data.values())
     items = []
-    for row in rows:
-        if isinstance(row, list):
-            items.extend(row)
-        elif isinstance(row, dict):
-            if isinstance(row.get('scheduleItems'), list):
-                items.extend(row['scheduleItems'])
-            elif isinstance(row.get('busyTimes'), list):
-                items.extend(row['busyTimes'])
-            elif row.get('startTime') or row.get('start'):
-                items.append(row)
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict):
+        inner = data.get('result', data)
+        if isinstance(inner, list):
+            items = inner
+        elif isinstance(inner, dict):
+            for user_data in inner.values():
+                if isinstance(user_data, list):
+                    items.extend(user_data)
+                elif isinstance(user_data, dict):
+                    items.extend(
+                        user_data.get('busyTimes', [])
+                    )
     for item in items:
-        if not isinstance(item, dict):
-            continue
-        if str(item.get('status') or '').upper() == 'FREE':
-            continue
-        start_str = _extract_time_str(
-            item.get('startTime') or item.get('start')
-        )
-        end_str = _extract_time_str(
-            item.get('endTime') or item.get('end')
-        )
+        start_str = item.get('startTime') or item.get('start', '')
+        end_str = item.get('endTime') or item.get('end', '')
         if not start_str or not end_str:
             continue
         for fmt in (
@@ -190,15 +172,6 @@ def main():
     if args.dry_run:
         return
 
-    # 查询失败必须中止，否则会把“查不到”误判为“全天空闲”。
-    if data is None:
-        print('错误：忙闲查询失败，无法给出空闲时段结论', file=sys.stderr)
-        sys.exit(2)
-    if isinstance(data, dict) and data.get('success') is False:
-        error = data.get('errorMsg') or data.get('errorCode') or data
-        print(f"错误：忙闲查询失败: {error}", file=sys.stderr)
-        sys.exit(2)
-
     busy = parse_busy_intervals(data)
     free = find_free_slots(day_start, day_end, busy, args.duration)
 
@@ -208,7 +181,6 @@ def main():
     print(f"   会议时长: {args.duration} 分钟")
     print(f"   工作时间: {args.start_hour}:00 ~ "
           f"{args.end_hour}:00")
-    print(f"   已识别忙时段: {len(busy)} 个")
     print('=' * 50)
 
     if not free:

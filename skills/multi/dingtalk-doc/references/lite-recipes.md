@@ -6,9 +6,9 @@
 
 ### query-doc
 
-1. 全局搜索：`drive search --query "<关键词>"` → `nodeId`（聚合钉盘+文档空间）
-2. 空间内搜索：`wiki node search --workspace <WS_ID> --query "<关键词>"` → `nodeId`
-3. `doc read --node <nodeId>`（按需；大文档只抽章节）
+1. 用户已提供 URL / `nodeId` 时直接使用原值；否则全局搜索 `dws drive search --query "<关键词>" --format json` → `nodeId`（聚合钉盘+文档空间），或在指定空间执行 `dws wiki node search --workspace <WS_ID> --query "<关键词>" --format json` → `nodeId`。
+2. 对选中的候选执行 `dws drive info --node <nodeId> --format json`，读取真实 `extension`。
+3. 按类型分流：`adoc` → `dws doc read --node <nodeId> --format json`（大文档只抽章节）；`md` → 按普通文件切 `dingtalk-drive` 用 `dws drive download` 下载后本地读取；`axls` → 切 `dingtalk-misc` 的 `references/sheet.md`；`able` → 切 `dingtalk-aitable`；xlsx/xls/xlsm/csv 和其他普通文件 → 切 `dingtalk-drive`。非 `adoc` 禁止执行 `doc read`。
 
 ### list-folder-docs
 
@@ -28,11 +28,11 @@ dws doc import --file ./report.docx --format json
 4. 超时或中断时 CLI 返回 `taskId`，用 `dws doc import get --task-id <taskId> --format json` 手动查询
 
 **`--folder` 参数传值规则**：
-- 首选路径：用户提供 alidocs URL 时，直接将完整 URL 传入 `--folder`，无需先调 `doc info`
-- 预检路径：若需确认 URL 指向的是文件夹，可先调 `dws doc info --node <URL>`：
+- 首选路径：用户提供 alidocs URL 时，直接将完整 URL 传入 `--folder`，无需先调 `drive info`
+- 预检路径：若需确认 URL 指向的是文件夹，可先调 `dws drive info --node <URL>`：
   - `nodeType == "folder"` → 使用 `nodeId` 或原始 URL 作为 `--folder` 值
   - `nodeType` 不是 folder → 提示用户：该链接指向的不是文件夹
-- 禁止：不得使用 `doc info` 返回的 `folderId` 字段作为 `--folder` 的值（`folderId` 是父文件夹 ID，非当前节点 ID）
+- 禁止：不得使用 `drive info` 返回的 `folderId` 字段作为 `--folder` 的值（`folderId` 是父文件夹 ID，非当前节点 ID）
 
 格式与文档类型映射：
 - `.docx` / `.doc` → 文字文档（DOC）
@@ -42,3 +42,4 @@ dws doc import --file ./report.docx --format json
 
 > **禁止先 Read 文件再 `doc create` + `doc update`**。`doc import` 是服务端格式转换，客户端无需解析文件内容。
 > 详见 [./doc/doc-import.md](./doc/doc-import.md)。
+

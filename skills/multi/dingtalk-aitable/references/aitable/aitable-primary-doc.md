@@ -28,7 +28,7 @@ dws aitable record primary-doc-create --base-id BASE_ID --table-id TABLE_ID --fi
 **参数：**
 - `--base-id`（必填）：Base ID
 - `--table-id`（必填）：Table ID
-- `--field-id`（必填）：主键字段 ID，必须是 primaryDoc 类型（通过 `dws aitable table get` 查看字段类型）
+- `--field-id`（必填）：主键字段 ID，必须是 primaryDoc 类型（通过 `dws aitable field get` 查看字段类型）
 - `--record-id`（必填）：Record ID
 
 **返回：** `data.nodeId` — 创建或已存在的主键文档 nodeId。
@@ -44,8 +44,8 @@ dws aitable record primary-doc-create --base-id BASE_ID --table-id TABLE_ID --fi
 ## 典型工作流
 
 ```bash
-# 1. 查询表结构，拿到 primaryDoc 字段的 fieldId
-dws aitable table get --base-id BASE_ID --table-ids TABLE_ID
+# 1. 查询字段目录，拿到 primaryDoc 字段的 fieldId
+dws aitable field get --base-id BASE_ID --table-id TABLE_ID
 
 # 2. 为某条记录创建主键文档
 dws aitable record primary-doc-create --base-id BASE_ID --table-id TABLE_ID --field-id FIELD_ID --record-id RECORD_ID

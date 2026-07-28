@@ -226,7 +226,7 @@ callout 可通过 `"showstk": true, "sticker": "图标名"` 配置顶部贴纸�
 
 > **脚手架策略警示**：Markdown 无法表达分栏/callout/色彩表头，拉回的 JSONML 只有纯文本骨架。精修阶段不是“在现有结构上加色”，而是“参照 RFC/Spec 重组结构”。
 
-> 使用 JSONML 创建复杂结构前，按需读取 [doc-jsonml-cookbook.md](../format/doc-jsonml-cookbook.md)；其中 §决策型文档骨架范例 有可复用模板。
+> **MUST READ**：动手写 JSONML 前，必须先用 Read 工具读取 [doc-jsonml-cookbook.md](../format/doc-jsonml-cookbook.md) — 其中 §决策型文档骨架范例 有可直接复制修改的完整模板。
 > 节点类型和属性的权威定义见 [doc-jsonml-schema.md](../format/doc-jsonml-schema.md)。
 
 ### ⚠️ JSONML 降级约束

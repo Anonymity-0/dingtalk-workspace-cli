@@ -1,10 +1,9 @@
 ---
 name: dingtalk-mail
-description: 钉钉邮箱读写、搜索、回复与转发。Use when 用户说发邮件/查邮件/回邮件/转发邮件/未读邮件/邮件搜索/邮箱附件。一句话解析联系人并确认发送邮件走配方 dingtalk-one-click-email；不做钉钉消息（走 dingtalk-chat）、紧急通知（走 dingtalk-ding）。命令前缀：dws mail。
-cli_version: ">=0.2.14"
+description: 钉钉邮箱读写、搜索、回复与转发。Use when 用户说发邮件/查邮件/回邮件/转发邮件/未读邮件/邮件搜索/邮箱附件。一句话发邮件时先用 dingtalk-contact 解析并确认收件人，再由本 skill 发送；不做钉钉消息（走 dingtalk-chat）、紧急通知（走 dingtalk-misc）。命令前缀：dws mail。
 metadata:
+  cli_version: ">=0.2.14"
   category: product
-  stability: experimental
   requires:
     bins:
       - dws
@@ -12,22 +11,16 @@ metadata:
 
 # 钉钉邮箱 Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准。全部 dingtalk-* skill 已通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整；生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。问题请提 issue 反馈。
-
 ## 前置条件 — 执行操作前必读
 
-> **`use_skill(dws-shared)`** — 认证、全局参数（`--format json` / `--yes`）、错误码、URL 模板、跨产品消歧、安全规则与 capability 边界。**执行任何 `dws` 命令前先读；** 单产品的清晰命令可直接用本 skill。
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
-<!-- SAFETY_PREAMBLE_INJECT -->
-
-> 渐进式参考：[mail-index.md](references/mail-index.md)。复杂搜索、附件、批量处理、草稿等多步邮件场景参考：[09-mail.md](references/09-mail.md)。先按索引选择专题。
-
-> 旧路径兼容入口：[mail.md](references/mail.md)。
+> 命令参考：[mail.md](references/mail.md)。复杂搜索、附件、批量处理、草稿等多步邮件场景参考：[09-mail.md](references/09-mail.md)。
 
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 来自独立于 Runtime Schema 的公开 catalog。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 `dws shortcut list --service mail --format json` 读取参数、约束、风险和示例，并以 `dws mail <shortcut> --help` 核对当前 Cobra flags；不要对 `+` 路径调用 `dws schema`。
+以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service mail --format json` 读取完整契约，再用 `dws mail <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -79,11 +72,11 @@ metadata:
 **触发**：发邮件/写邮件/群发。
 
 1. **发件邮箱（必须）**：`dws mail mailbox list` 取自己邮箱。
-2. **收件邮箱（必须）**：地址直接用；姓名按 [mail-message-commands.md](references/mail-message-commands.md) “查找他人邮箱地址”流程（`mail user search` 等）获取，**禁止**猜测。
+2. **收件邮箱（必须）**：地址直接用；姓名按 [mail.md](references/mail.md) "查找他人邮箱地址"流程（`mail user search` 等）获取，**禁止**猜测。
 3. **执行（必须）**：`dws mail message send --from <发件邮箱> --to <收件邮箱> --subject "<主题>" --content "<正文>" --format json`；按需 `--cc`/`--attachment`/`--inline-attachment`。
-4. **验证（必须）**：从返回取 `internetMessageId`，可 `dws mail message verify --email <发件邮箱> --internet-message-id <internetMessageId> --format json` 查发送状态。
+4. **验证（必须）**：从发送返回取真实 `internetMessageId`，执行 `dws mail message verify --email <发件邮箱> --internet-message-id <internetMessageId> --format json` 查发送状态；不要把普通 `messageId` 传给 verify。
 
-**完成条件**：收件邮箱来自真实解析结果，且发送返回或 `message verify` 显示成功。
+**禁止**：猜测收件邮箱、发送后不确认状态就答复"已发送"。
 
 ### SOP-4 回复 / 转发（reply-forward）
 
@@ -96,7 +89,7 @@ metadata:
 
 ## 高频硬约束
 
-- 用户要“完整内容 / 看看这封邮件 / 正文”时，`message search` 只负责定位 messageId，随后用 `dws mail message get --email <邮箱> --id <messageId> --format json` 获取正文。
+- 用户要"完整内容/看看这封邮件/正文"时，`message search` 命中后必须继续调用 `dws mail message get --email <邮箱> --id <messageId> --format json`；不要只列候选后停下。
 - 搜到多封邮件时，若用户给了明确主题、附件名、发件人或时间线索，先选最匹配的一封执行 `message get`；只有同等候选无法判断时才询问用户。
 - 附件链路固定三步：`message search` → `attachment list --email <邮箱> --id <messageId>` → `attachment download --email <邮箱> --message-id <messageId> --attachment-id <attachmentId> --name <文件名>`；不存在批量下载命令。
 - 写入类操作（发送、回复、转发、删除、批量移动）按安全策略确认；只读查看、搜索、附件列表、下载不需要确认。
@@ -106,6 +99,6 @@ metadata:
 
 - 收件人是人名 → 先用 `dingtalk-contact` 取 `orgAuthEmail`
 - 钉钉内消息 → 切到 `dingtalk-chat`
-## 局部意图与 Recipe
+## 局部意图与短流程
 
-- [局部意图消歧](references/intent-guide.md)；[Lite Recipe](references/lite-recipes.md)。
+- [局部意图消歧](references/intent-guide.md)；[短流程](references/lite-recipes.md)。

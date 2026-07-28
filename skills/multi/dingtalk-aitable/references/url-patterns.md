@@ -1,8 +1,21 @@
 # URL 格式与处理规范
 
-## alidocs URL 分流决策（必须首先执行）
+## 路由第 0 步：意图直达（优先级高于 URL 探测）
 
-收到 `alidocs.dingtalk.com` URL 时，**必须按以下顺序判断，禁止跳过**：
+用户已经明确表达某产品的内容意图时，直接进入对应产品场域，不要先做 URL 类型
+探测。尤其：
+
+- 明确提到 Markdown / `.md` 文件的读取或修改，按普通文件走 `drive` 场域：
+  先 `dws drive download` 下载到本地处理，再用 `dws drive upload` 回传。
+- 明确“读这篇文档 / 编辑文档正文”进入 `doc`；明确“看这个在线表格数据”进入
+  `sheet`。
+
+仅当用户只粘贴 URL、没有明确产品意图，或意图与链接类型可能冲突时，才执行下方
+类型探测。
+
+## alidocs URL 分流决策（意图不明确时执行）
+
+收到 `alidocs.dingtalk.com` URL 且无法从指令判断产品时，必须按以下顺序判断：
 
 1. URL 路径含 `/i/p/` → **分享短链**，禁止调用 `dws doc` 任何子命令 → 按下方 [分享短链处理](#分享短链处理) 执行
 2. URL 路径含 `/i/nodes/` → **节点链接**，需探测类型 → 按下方 [alidocs URL 类型探测流程](#alidocs-url-类型探测流程) 执行
@@ -80,20 +93,23 @@ dws doc read --node "https://alidocs.dingtalk.com/i/p/Y7kmbokZp3pgGLq2/docs/AY39
 ### 探测步骤
 
 ```
-Step 1 → dws doc info --node "<URL>" --format json
-Step 2 → 从返回中提取 contentType、extension、nodeType 字段
+Step 1 → dws drive info --node "<URL>" --format json
+Step 2 → 从返回中提取 extension、nodeType 字段
 Step 3 → 按下方路由规则映射到对应产品
 ```
+
+> 路由依据是 `extension`，不是 `contentType`。`drive info` 检测到
+> `adoc` / `axls` / `able` 时会自动补充在线文档信息。
 
 ### 路由映射表
 
 | 条件 | 路由到产品 | 后续操作 |
 |------|-----------|---------|
-| `contentType=ALIDOC`, `extension=adoc` | `doc` | 加载 `dingtalk-doc` 操作内容 |
-| `contentType=ALIDOC`, `extension=axls` | `sheet` | 加载 `dingtalk-sheet` 操作（仅 `axls` 在线电子表格） |
-| `contentType=ALIDOC`, `extension=able` | `aitable` | 将 nodeId 作为 baseId，加载 `dingtalk-aitable` 操作 |
-| `contentType=DOCUMENT`, `extension=xlsx` / `xls` / `xlsm` / `csv` | `drive` | 必须用 `dws drive download` 下载到本地处理，禁止走 `sheet`（非在线表格，sheet 命令无法操作） |
-| `contentType≠ALIDOC`, `nodeType=file` | `drive` | 调用 `dws drive download` 下载，返回文件下载链接 |
+| `extension=adoc` | `doc` | 加载 `dingtalk-doc` 操作内容 |
+| `extension=axls` | `sheet` | 加载 `dingtalk-misc` 的 `references/sheet.md` 操作（仅 `axls` 在线电子表格） |
+| `extension=able` | `aitable` | 将 nodeId 作为 baseId，加载 `dingtalk-aitable` 操作 |
+| `extension=xlsx` / `xls` / `xlsm` / `csv` | `drive` | 必须用 `dws drive download` 下载到本地处理，禁止走 `sheet` |
+| `nodeType=file`（非在线文档扩展名，含 `md`） | `drive` | 下载用 `dws drive download --node <ID> --output <PATH> --format json`；上传/覆盖用 `dws drive upload` |
 | `nodeType=folder` | `drive` / `wiki` | 调用 `dws drive list --workspace <WS_ID>` 或 `dws wiki node list` 列出子节点 |
 | 以上均不匹配 | — | 告知用户当前暂不支持该类型 |
 
@@ -106,16 +122,16 @@ Step 3 → 按下方路由规则映射到对应产品
 
 ```bash
 # 用户传入: https://alidocs.dingtalk.com/i/nodes/abc123
-dws doc info --node "https://alidocs.dingtalk.com/i/nodes/abc123" --format json
+dws drive info --node "https://alidocs.dingtalk.com/i/nodes/abc123" --format json
 
-# 返回 contentType=ALIDOC, extension=axls → 在线电子表格，路由到 sheet
+# 返回 extension=axls → 在线电子表格，路由到 sheet
 dws sheet list --node "https://alidocs.dingtalk.com/i/nodes/abc123" --format json
 
-# 返回 contentType≠ALIDOC, extension=xlsx/xls/csv → 本地表格文件，必须下载处理（禁止走 sheet）
-dws drive download --node "https://alidocs.dingtalk.com/i/nodes/xlsx456"
+# 返回 extension=xlsx/xls/csv → 本地表格文件，必须下载处理（禁止走 sheet）
+dws drive download --node "https://alidocs.dingtalk.com/i/nodes/xlsx456" --output <PATH> --format json
 
-# 返回 contentType≠ALIDOC, nodeType=file → 普通文件，下载
-dws drive download --node "https://alidocs.dingtalk.com/i/nodes/def456"
+# 返回 nodeType=file → 普通文件，下载
+dws drive download --node "https://alidocs.dingtalk.com/i/nodes/def456" --output <PATH> --format json
 
 # 返回 nodeType=folder → 文件夹，列出子节点
 dws drive list --workspace <WS_ID> --format json
@@ -126,4 +142,3 @@ dws drive list --workspace <WS_ID> --format json
 当用户指令中已明确指定产品（如"帮我读这个文档"、"看下这个表格的数据"），可结合用户意图**跳过探测**直接路由。仅在以下情况**必须执行探测**：
 - 用户只粘贴 URL，无其他上下文
 - 用户指令与 URL 实际类型可能不一致（如说"文档"但实际是表格）
-- 用户直接粘贴的是原始 `alidocs` URL，且没有上游命令返回来确认类型

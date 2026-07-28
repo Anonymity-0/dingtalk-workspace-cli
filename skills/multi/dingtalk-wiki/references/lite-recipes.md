@@ -28,11 +28,11 @@ dws doc import --file ./report.docx --format json
 4. 超时或中断时 CLI 返回 `taskId`，用 `dws doc import get --task-id <taskId> --format json` 手动查询
 
 **`--folder` 参数传值规则**：
-- 首选路径：用户提供 alidocs URL 时，直接将完整 URL 传入 `--folder`，无需先调 `doc info`
-- 预检路径：若需确认 URL 指向的是文件夹，可先调 `dws doc info --node <URL>`：
+- 首选路径：用户提供 alidocs URL 时，直接将完整 URL 传入 `--folder`，无需先调 `drive info`
+- 预检路径：若需确认 URL 指向的是文件夹，可先调 `dws drive info --node <URL>`：
   - `nodeType == "folder"` → 使用 `nodeId` 或原始 URL 作为 `--folder` 值
   - `nodeType` 不是 folder → 提示用户：该链接指向的不是文件夹
-- 禁止：不得使用 `doc info` 返回的 `folderId` 字段作为 `--folder` 的值（`folderId` 是父文件夹 ID，非当前节点 ID）
+- 禁止：不得使用 `drive info` 返回的 `folderId` 字段作为 `--folder` 的值（`folderId` 是父文件夹 ID，非当前节点 ID）
 
 格式与文档类型映射：
 - `.docx` / `.doc` → 文字文档（DOC）

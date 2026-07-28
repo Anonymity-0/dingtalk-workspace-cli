@@ -1,8 +1,11 @@
 # doc export（在线文档导出为 docx/markdown/pdf）
 
-> **路由前置判断**：用户说「下载/导出」时**必须**先用 [`./doc-info.md`](./doc-info.md) `info --node <ID> --format json` 查 `contentType`：
-> - `contentType` 为 `ALIDOC`（在线文档）→ **必须用 `export`**，禁止用 `download`
-> - `contentType` 为 `DOCUMENT`/`IMAGE`/`VIDEO` 等（已有文件）→ 用 `dws drive download`（详见 [`../drive.md`](../../../dingtalk-drive/references/drive.md)）
+> **前置条件（MUST READ）：** 执行本命令前，必须先用 Read 工具读取以下文件：
+> 1. [`../doc.md`](../doc.md) — 命令路由 + 场景索引 + 意图判断 + 工作流
+
+> **路由前置判断**：用户说「下载/导出」时**必须**先用 `dws drive info --node <ID> --format json` 查 `extension`：
+> - `extension` 为 `adoc`（在线文档）→ **必须用 `export`**，禁止用 `download`
+> - `extension` 为其他（txt/pdf/docx/md/xlsx 等）→ 用 `dws drive download`（详见 [`../drive.md`](../../../dingtalk-drive/references/drive.md)）
 >
 > `drive download` 只能下载**已有文件**（原样下载），`export` 是将**在线文档格式转换**后导出为 docx、markdown 或 pdf，两者完全不同。
 
@@ -17,6 +20,7 @@ Example:
   dws doc export --node "https://alidocs.dingtalk.com/i/nodes/xxx" --output ./exported.docx
   dws doc export --node <DOC_ID> --output ~/downloads/
   dws doc export --node <DOC_ID> --export-format markdown --output ./exported.md
+  # 异步模式：只提交不等待，立即返回 jobId
 Flags:
       --node string     要导出的文档标识，支持文档 URL 或 dentryUuid (必填)
       --output string   本地保存路径，文件路径或目录 (必填)
@@ -26,9 +30,13 @@ Flags:
 CLI 内部自动完成：提交导出任务 → 渐进式退避轮询（最多约 5 分钟）→ 成功后自动下载文件。
 **只需一条命令，无需手动轮询。**
 
+**任务查询**：`doc export` 内部自动轮询直到完成，通常不需要手动查询；仅在超时或中断后用 `dws doc export get --job-id <jobId>` 兜底查询。
+
 ---
 
 ## doc export get（手动兜底查询任务）
+
+> 任务状态：PROCESSING（处理中）/ SUCCESS（导出成功，返回 downloadUrl）/ FAILED（导出失败）。
 
 ```
 Usage:
@@ -48,13 +56,14 @@ Flags:
 - `export` 支持钉钉在线文档（alidocs，`contentType=ALIDOC`）导出为 `docx`、`markdown` 或 `pdf`，**在线表格导出请使用其他命令**。
 - `--export-format` 支持 `docx`（默认）、`markdown`（或 `md`）和 `pdf` 三种格式。
 - `--output` 既可以是文件完整路径，也可以是目录（CLI 自动按文档名生成 `.docx`、`.md` 或 `.pdf`）。
+- `doc export get` 主参数为 `--job-id`。
 
 ## 上下文传递
 
 | 从返回中提取 | 用于 |
 |-------------|------|
-| `localPath` | 用户可访问的本地文件路径 |
-| 中断时返回的 `jobId` | `export get` 的 `--job-id` |
+| `localPath` | 用户可访问的本地文件路径（同步模式） |
+| 超时/中断时返回的 `jobId` | `export get` 的 `--job-id`（查询后取 downloadUrl 获取下载地址） |
 
 ## 常用模板
 
@@ -81,7 +90,7 @@ dws doc export --node <DOC_ID> --export-format markdown --output ~/downloads/
 dws doc export --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --output ./exported.docx
 
 # 兜底：超时或中断后手动查任务
-dws doc export get --job-id <JOB_ID> --format json
+dws doc export get --task-id <TASK_ID> --format json
 ```
 
 ## 输出规范
@@ -89,12 +98,13 @@ dws doc export get --job-id <JOB_ID> --format json
 导出完成后的输出必须遵循以下规则：
 
 - **仅返回本地文件路径**：导出成功后，直接告知用户文件已保存到本地的具体路径
-- **禁止上传 CDN**：不要在导出完成后调用已下线的 `chat file upload` 或其他上传命令将文件上传到钉钉 CDN
+- **禁止上传 CDN**：导出完成后不要调用任何上传命令将文件上传到钉钉 CDN
 - **禁止输出下载链接**：不得生成或展示 `down.dingtalk.com` 等 CDN 下载链接
 - 正确示例：`文档已导出到: ./文档名.docx`
 - 错误示例：上传文件并展示 CDN 下载链接
 
 ## 参考
 
+- [`../doc.md` §意图判断](../doc.md#意图判断)（如何路由到本命令）
 - [`./doc-info.md`](./doc-info.md)（前置：判断 contentType=ALIDOC 才走 export）
 - [`../drive.md`](../../../dingtalk-drive/references/drive.md)（非 ALIDOC 文件用 `dws drive download`）

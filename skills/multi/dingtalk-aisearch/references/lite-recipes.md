@@ -24,7 +24,8 @@
 
 - 需要获取 userId 给其他产品使用（发消息/建待办/约日程）
 - 已有 userId 需查完整详情（`contact user get --ids`）
+- 完整手机号精确反查（`contact user search-mobile --mobile`）
 
-1. `aisearch person --keyword "<姓名>" --dimension name` → `userId`；**多命中须列出候选请用户确认**。
+1. 完整手机号精确反查：`contact user search-mobile --mobile "<手机号>"`；其他搜人：`aisearch person --keyword "<关键词>" --dimension <维度>`。
 2. **重名消歧**：多人同名时禁止默认选第一个，须追加 `contact user get --ids` 获取部门/职位后请用户确认，详见 [08-directory.md](../../dingtalk-contact/references/08-directory.md)「多命中」。
-3. 需详情时：`contact user get --ids <userId>`（多人可 `--ids id1,id2,...`）
+3. 需详情时：`contact user get --ids <userId>`（多人可 `--ids id1,id2,...`）。

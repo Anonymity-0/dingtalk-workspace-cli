@@ -1,10 +1,9 @@
 ---
 name: dingtalk-calendar
-description: 钉钉日历与会议室。Use when 用户说 约会议/查日程/订会议室/查闲忙/加参会人/改期/取消会议/今天的日程/本周日程/共同空闲。视频会议发起/邀请入会/会中控制当前 CLI 不支持，应提示在钉钉客户端操作；AI 听记走 dingtalk-minutes，待办任务走 dingtalk-todo。命令前缀：dws calendar。
-cli_version: ">=0.2.14"
+description: 钉钉日历与会议室。Use when 用户说 约会议/查日程/订会议室/查闲忙/加参会人/改期/取消会议/今天的日程/本周日程/共同空闲。不做视频会议发起/邀请入会/会中控制（走 dingtalk-misc）、AI 听记（走 dingtalk-minutes）、待办任务（走 dingtalk-todo）。命令前缀：dws calendar。
 metadata:
+  cli_version: ">=0.2.14"
   category: product
-  stability: experimental
   requires:
     bins:
       - dws
@@ -12,20 +11,16 @@ metadata:
 
 # 钉钉日历 Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准。全部 dingtalk-* skill 已通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整；生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。问题请提 issue 反馈。
-
 ## 前置条件 — 执行操作前必读
 
-> **`use_skill(dws-shared)`** — 认证、全局参数（`--format json` / `--yes`）、错误码、URL 模板、跨产品消歧、安全规则与 capability 边界。**执行任何 `dws` 命令前先读；** 单产品的清晰命令可直接用本 skill。
-
-<!-- SAFETY_PREAMBLE_INJECT -->
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
 > 命令参考：[calendar.md](references/calendar.md)；剧本：[03-meeting.md](references/03-meeting.md)。
 
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 来自独立于 Runtime Schema 的公开 catalog。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 `dws shortcut list --service calendar --format json` 读取参数、约束、风险和示例，并以 `dws calendar <shortcut> --help` 核对当前 Cobra flags；不要对 `+` 路径调用 `dws schema`。
+以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service calendar --format json` 读取完整契约，再用 `dws calendar <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -58,7 +53,7 @@ metadata:
 | "今天 / 明天 / 本周日程" | `python scripts/calendar_today_agenda.py [today\|tomorrow\|week]` |
 | "约会议（含参会人 + 会议室）" | `python scripts/calendar_schedule_meeting.py --title "<主题>" --start "<起>" --end "<止>" [--users <ids>] [--book-room]` |
 | "多人共同空闲" | `python scripts/calendar_free_slot_finder.py --users <ids> --date <yyyy-MM-dd>` |
-| "查闲忙" | `dws calendar event list --start "<ISO>" --end "<ISO>"` |
+| "查闲忙" | `dws calendar busy search --users <userIds> --start "<ISO>" --end "<ISO>"` |
 | "加参会人" / "订房" / "取消" | `dws calendar attendee add` / `room add` / `event delete` |
 
 ## 标准 SOP（必遵流程）
@@ -81,7 +76,7 @@ metadata:
 
 1. **解析与会人（必须）**：对每个姓名 `dws aisearch person --keyword "<姓名>" --dimension name --format json` 取 `userId`，多人逗号拼接。
 2. **执行（必须）**：`dws calendar event create --title "<主题>" --start "<ISO>" --end "<ISO>" --attendees <userId1,userId2> --format json`（按需加 `--location`/`--desc`/`--rooms`）。
-3. **验证（必须）**：从返回取 `eventId`，可 `dws calendar event list --start "<ISO>" --end "<ISO>" --format json` 复核。
+3. **验证（必须）**：从返回 `result.id` 取日程 ID（下游参数语义称 `eventId`），再执行 `dws calendar event list --start "<ISO>" --end "<ISO>" --format json` 复核标题、描述和时段。
 
 **禁止**：跳过与会人 userId 解析直接传姓名、编造会议室 roomId。
 
@@ -99,22 +94,22 @@ metadata:
 ## 执行硬约束
 
 - 多轮日程任务必须保留 `eventId`，后续加人、移人、订房、换房、改描述、删除都基于同一个 `eventId` 执行；不要重新创建重复日程。
-- 用户明确授权“任意空闲会议室”时，`room search` 返回候选后选择第一个可预订且不需要自定义审批的 `roomId` 执行 `room add`；用户给了地点、容量或设备条件时按条件过滤。
+- 用户明确说"帮我订一个空闲会议室"时，`room search` 返回可用会议室后直接选择第一个可预订且不需要自定义审批的 `roomId` 执行 `room add`；不要把选择权抛回用户导致任务停住。
 - 已有日程订房：`dws calendar room search --start ... --end ... --format json` → `dws calendar room add --event <EVENT_ID> --rooms <ROOM_ID> --format json` → `event get` 或 `room/busy` 验证。
 - 换会议室：先 `room delete --event <EVENT_ID> --rooms <OLD_ROOM_ID>`，再 `room add --event <EVENT_ID> --rooms <NEW_ROOM_ID>`，最后回查；不要只更新 `--location`。
 - 参会人变化用 `attendee add/delete`，日程描述变化用 `event update --desc`，删除日程用 `event delete --id`。用户当前消息已明确要求删除/取消时可直接执行；否则先确认。
-- 脚本失败或参数不完整时，查明缺失参数后改用明确的 `dws calendar event/attendee/room` 命令完成同一流程。
+- 脚本失败或参数不完整时，立即降级到明确的 `dws calendar event/attendee/room` 命令，不要停在"我要查看用法"。
 - 所有 dws 命令带 `--format json`；查询时间必须显式 `--start` / `--end`。
 
 ## 跨产品协作
 
-- 视频会议发起 / 入会链接 / 邀请入会 / 会中控制 → 当前 CLI 不支持，请在钉钉客户端操作；预约日程仍走 `calendar`
+- 视频会议发起 / 入会链接 / 邀请入会 / 会中控制 → 切到 `dingtalk-misc`（`references/conference.md`）
 - 会后摘要 / 待办 → 切到 `dingtalk-minutes`
 - 参会人按人名 → 先用 `dingtalk-aisearch` 解析
 
 ## 注意
 
 `schedule-meeting` 必须读 [03-meeting.md](references/03-meeting.md) 中的「两准则」「搜房失败硬门禁」，禁止假设 `roomId`。
-## 局部意图与 Recipe
+## 局部意图与短流程
 
-- [局部意图消歧](references/intent-guide.md)；[Lite Recipe](references/lite-recipes.md)。
+- [局部意图消歧](references/intent-guide.md)；[短流程](references/lite-recipes.md)。

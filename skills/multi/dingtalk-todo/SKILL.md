@@ -1,10 +1,9 @@
 ---
 name: dingtalk-todo
-description: 钉钉待办 / TODO。Use when 用户说 创建待办/TODO/任务提醒/指派任务/标记完成/查待办/紧急待办/循环待办/批量建待办/逾期待办。不做日报周报（走 dingtalk-report）、审批（走 dingtalk-oa）、日程（走 dingtalk-calendar）。命令前缀：dws todo。
-cli_version: ">=0.2.14"
+description: 钉钉待办 / TODO。Use when 用户说 创建待办/TODO/任务提醒/指派任务/标记完成/查待办/紧急待办/循环待办/批量建待办/逾期待办。不做日报周报（走 dingtalk-misc）、审批（走 dingtalk-misc）、日程（走 dingtalk-calendar）。命令前缀：dws todo。
 metadata:
+  cli_version: ">=0.2.14"
   category: product
-  stability: experimental
   requires:
     bins:
       - dws
@@ -12,20 +11,16 @@ metadata:
 
 # 钉钉待办 Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准。全部 dingtalk-* skill 已通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整；生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。问题请提 issue 反馈。
-
 ## 前置条件 — 执行操作前必读
 
-> **`use_skill(dws-shared)`** — 认证、全局参数（`--format json` / `--yes`）、错误码、URL 模板、跨产品消歧、安全规则与 capability 边界。**执行任何 `dws` 命令前先读；** 单产品的清晰命令可直接用本 skill。
-
-<!-- SAFETY_PREAMBLE_INJECT -->
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
 > 命令参考：[todo.md](references/todo.md)；剧本：[02-task.md](references/02-task.md)。
 
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 来自独立于 Runtime Schema 的公开 catalog。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 `dws shortcut list --service todo --format json` 读取参数、约束、风险和示例，并以 `dws todo <shortcut> --help` 核对当前 Cobra flags；不要对 `+` 路径调用 `dws schema`。
+以下命令来自独立于 Runtime Schema 的公开 catalog。先运行 `dws shortcut list --service todo --format json` 读取完整契约，再用 `dws todo <shortcut> --help` 核对 flags；不要对 `+` 路径调用 `dws schema`。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -50,7 +45,7 @@ metadata:
 | "较高 / 高优先级待办" | `dws todo task create ... --priority 30`（10低/20普通/30较高/40紧急） |
 | "紧急 / 最高优先级 / 立即处理" | `dws todo task create ... --priority 40` |
 | "循环待办（每天）" | `dws todo task create ... --due "<首次截止ISO>" --recurrence "DTSTART:<UTC>\nRRULE:FREQ=DAILY;INTERVAL=1"` |
-| "批量建待办（JSON 文件）" | `python scripts/todo_batch_create.py todos.json` |
+| "批量建待办" | 按 SOP-4 逐条创建、收集 `taskId` 并批量回读 |
 | "今天 / 本周未完成待办" | `python scripts/todo_daily_summary.py [today\|tomorrow\|week]` |
 | "逾期待办" | `python scripts/todo_overdue_check.py` |
 | "标记完成 / 重开" | `dws todo task done --task-id <taskId> --status true\|false` |
@@ -59,7 +54,7 @@ metadata:
 
 ## 标准 SOP（必遵流程）
 
-> 命中以下意图**必须**按对应 SOP 顺序执行；**禁止**跳步、替换命令、编造 taskId。每条命令必须带 `--format json`。创建、完成或删除后按对应 SOP 回读验证。
+> 命中以下意图**必须**按对应 SOP 顺序执行；**禁止**跳步、替换命令、编造 taskId。每条命令必须带 `--format json`。创建/完成/删除后**必须**回读验证，不要凭创建返回或口头计划就结束。
 
 ### SOP-1 建待办（create-todo）
 
@@ -94,9 +89,11 @@ metadata:
 
 **触发**：批量建待办/一次建多条。
 
-1. **执行（必须）**：`python scripts/todo_batch_create.py todos.json`（JSON 文件，每条含 title/executors/priority/due）；执行者姓名需先批量解析成 userId 再写入 JSON。
+1. **解析（必须）**：执行者姓名先批量解析成真实 `userId`；单批最多 30 条。
+2. **执行（必须）**：对每条待办执行 `dws todo task create --title "<标题>" --executors <userId> --priority <10/20/30/40> [--due "<ISO>"] --format json`，逐条收集返回的 `taskId`/`todoTaskId`。可并行执行，但不得丢失“输入条目 → taskId”对应关系。
+3. **验证（必须）**：对全部新建 `taskId` 执行 `dws todo task get --task-id <taskId> --format json` 回读；多 ID 按共享并行规则处理，全部成功后才能报告批量创建完成。
 
-**禁止**：在 JSON 里写姓名不写 userId、跳过脚本逐条手敲。
+**禁止**：只统计创建命令退出码、不保留 taskId、创建后不回读、在执行者位置传姓名。
 
 ## 参数硬约束
 
@@ -106,7 +103,7 @@ metadata:
 - `--id` / `--ids` 是隐藏兼容别名，文档和生成命令统一写 `--task-id`，减少模型漂移。
 - 优先级映射：低=10，普通=20，较高/高/重要=30，紧急/最高/P0/马上处理=40；不要把"较高"写成 40。
 - 截止时间必须是 ISO-8601。相对日期按当前日期计算；例如周五说"下周二"就是紧接下一个自然周的周二，不要再加一周。
-- 创建、标记完成、重开或删除后，使用 `task get` 或对应 `task list --status ...` 验证最终状态。
+- 创建、标记完成、重开、删除后必须 `task get` 或对应 `task list --status ...` 验证，不要只凭创建返回或口头计划结束。
 - 所有 dws 命令带 `--format json`。
 
 ## 跨产品协作
@@ -114,6 +111,6 @@ metadata:
 - 执行人是人名 → 先用 `dingtalk-aisearch` 拿 `userId`
 - 会后从听记自动建待办 → 切到 `dingtalk-minutes`
 - 项目进度汇总写文档 → 切到 `dingtalk-doc`
-## 局部意图与 Recipe
+## 局部意图与短流程
 
-- [局部意图消歧](references/intent-guide.md)；[Lite Recipe](references/lite-recipes.md)。
+- [局部意图消歧](references/intent-guide.md)；[短流程](references/lite-recipes.md)。

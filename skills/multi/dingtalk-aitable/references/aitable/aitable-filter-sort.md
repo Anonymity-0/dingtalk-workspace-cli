@@ -9,7 +9,7 @@
 1. **根节点必须是逻辑操作符**：`"operator"` 必须是 `"and"` 或 `"or"`，不能是 `"eq"` 等比较操作符
 2. 比较操作必须放在根节点的 `"operands"` 数组内的对象中
 3. `singleSelect` 和 `multipleSelect` 字段，推荐使用 **选项的 exact String 名称 (name)** 作为比较值
-4. fieldId 必须通过 `table get` 或 `field get` 获取，不能直接用字段名称
+4. fieldId 必须通过 `field get` 获取，不能直接用字段名称
 
 ### 精简防呆模板
 
