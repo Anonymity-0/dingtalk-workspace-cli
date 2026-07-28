@@ -1692,18 +1692,19 @@
       ]
     },
     "chat.shortcut_conversation_list_top": {
-      "agent_summary": "拉取置顶会话列表",
+      "agent_summary": "拉取置顶会话列表，可只看群聊或单聊",
       "use_when": [
-        "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+        "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
       ],
       "examples": [
-        "dws chat +conversation-list-top --limit 1000"
+        "dws chat +conversation-list-top --type group --limit 1000",
+        "dws chat +conversation-list-top --type direct --limit 1000"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
       "source_refs": [
         "internal/cli/schema_command_registry.json#chat.shortcut_conversation_list_top",
         "cobra-help:dws chat +conversation-list-top",
@@ -1732,7 +1733,7 @@
     "chat.shortcut_category_create": {
       "agent_summary": "创建用户自定义会话分组",
       "use_when": [
-        "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+        "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
       ],
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -1770,7 +1771,7 @@
     "chat.shortcut_category_rename": {
       "agent_summary": "更新用户自定义会话分组的名称",
       "use_when": [
-        "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+        "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
       ],
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"

@@ -1259,7 +1259,7 @@
         },
         "use_when": {
           "value": [
-            "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+            "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -1268,7 +1268,7 @@
           "candidates": [
             {
               "value": [
-                "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+                "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -1291,7 +1291,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+        "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
       ]
     },
     "chat +category-delete": {
@@ -2033,7 +2033,7 @@
         },
         "use_when": {
           "value": [
-            "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+            "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -2042,7 +2042,7 @@
           "candidates": [
             {
               "value": [
-                "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+                "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -2065,7 +2065,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+        "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
       ]
     },
     "chat +chat-bots": {
@@ -7229,32 +7229,33 @@
       ]
     },
     "chat +conversation-list-top": {
-      "agent_summary": "拉取置顶会话列表",
+      "agent_summary": "拉取置顶会话列表，可只看群聊或单聊",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
       ],
       "confirmation": "not_required",
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
-        "dws chat +conversation-list-top --limit 1000"
+        "dws chat +conversation-list-top --type group --limit 1000",
+        "dws chat +conversation-list-top --type direct --limit 1000"
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "拉取置顶会话列表",
+          "value": "拉取置顶会话列表，可只看群聊或单聊",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "candidates": [
             {
-              "value": "拉取置顶会话列表",
+              "value": "拉取置顶会话列表，可只看群聊或单聊",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter."
             }
           ]
         },
@@ -7263,34 +7264,34 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
         "avoid_when": {
           "value": [
-            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+            "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "candidates": [
             {
               "value": [
-                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+                "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter."
             }
           ]
         },
@@ -7299,14 +7300,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
@@ -7315,34 +7316,36 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
         "examples": {
           "value": [
-            "dws chat +conversation-list-top --limit 1000"
+            "dws chat +conversation-list-top --type group --limit 1000",
+            "dws chat +conversation-list-top --type direct --limit 1000"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "candidates": [
             {
               "value": [
-                "dws chat +conversation-list-top --limit 1000"
+                "dws chat +conversation-list-top --type group --limit 1000",
+                "dws chat +conversation-list-top --type direct --limit 1000"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter."
             }
           ]
         },
@@ -7351,14 +7354,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
@@ -7367,14 +7370,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
@@ -7383,14 +7386,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
@@ -7415,21 +7418,21 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             },
             {
               "value": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter."
             }
           ]
         },
@@ -7438,34 +7441,34 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "candidates": [
             {
               "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+            "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "candidates": [
             {
               "value": [
-                "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+                "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter."
             }
           ]
         }
@@ -7483,7 +7486,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+        "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
       ]
     },
     "chat +dm": {

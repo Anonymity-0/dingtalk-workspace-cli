@@ -1,7 +1,7 @@
 # DWS IM Shortcut 与 lark-cli 差异报告
 
 > 日期：2026-07-28
-> DWS 基线：分支 `codex/im-shortcut-optimization`，91 个 Chat Shortcut，91 个全部公开并保留四类语义处置
+> DWS 基线：分支 `codex/im-shortcut-optimization`，91 个已审阅 Chat Shortcut，其中 88 个公开、3 个确认下层失败后标记 `unavailable` 并隐藏
 > Lark 基线：lark-cli 1.0.78，`lark-im` Skill 当前推荐 21 个 IM Shortcut
 > 比较对象：用户意图、身份与权限边界、输入参数、结果形状、分页/富化、安全和错误恢复；不以命令名称相似作为等价依据。
 
@@ -9,21 +9,23 @@
 
 | 指标 | 结果 | 解释 |
 |---|---:|---|
-| DWS 当前公开 Chat Shortcut | 91 | 91 个 reviewed + available 入口全部公开；disposition 继续标识 Smart、Adapter、Schema 投影和兼容别名 |
-| DWS 源码 Shortcut 语义 | 91 / 91 | 全部公开、全部映射到 Query，真实执行状态独立于可见性 |
+| DWS 当前公开 Chat Shortcut | 88 | 88 个 reviewed + available 入口公开；disposition 继续标识 Smart、Adapter、Schema 投影和兼容别名 |
+| DWS Runtime Schema Shortcut 投影 | 42 / 88 | 其余 46 项通过 Shortcut Catalog 公开执行，并以精确 reviewed exclusion 等待逐项 Schema curation |
+| DWS 源码 Shortcut 语义 | 91 / 91 | 88 个公开、3 个隐藏；全部映射到 Query 并保留显式 availability |
 | Lark 推荐 IM Shortcut | 21 | 当前 `lark-im` Skill 与 `lark-cli im --help` 一致 |
 | Lark Shortcut 可路由到 DWS 公开 Shortcut | 14 / 21 | 包含 Smart/Adapter 和已公开的稳定 leaf 投影 |
 | Lark Shortcut 仍需路由到 DWS 原子 leaf | 5 / 21 | 建群、回复和三类收藏操作在 DWS 没有同构 Shortcut 名称 |
 | 部分等价、需 recipe 或能力降级 | 2 / 21 | `+chat-update`、`+feed-group-query-item` |
-| GSB 契约覆盖 | DWS 200/200；Lark 55/55 | 无 missing/stale expectation；不代表两边都完成真实业务执行 |
+| GSB 契约覆盖 | DWS 197/197；Lark 55/55 | 无 missing/stale expectation；不代表两边都完成真实业务执行 |
 
 核心判断：
 
 1. 两边在群列表、成员、消息历史、搜索、资源下载和 thread 读取上高度类似，但分页、身份、资源类型和富化深度不同。
-2. DWS 现在完整公开 91 个兼容入口，并用 disposition 区分默认 Smart 路由与 1:1 Schema 投影；lark-cli 的推荐 Shortcut 更接近“稳定 API recipe + 统一身份/分页/富化”。
-3. 原先隐藏的 79 个 Shortcut 已全部打开；其中 74 个是 Schema leaf 投影、5 个是兼容别名，公开不代表 Agent 应把它们与 Smart 入口等权排序。
-4. Pin、Top、Flag、Feed Shortcut、Mute、Moderation 等名称相近但对象不同，是 Agent 最容易误选的区域。
-5. 本报告的 DWS 侧包含真实执行证据；Lark 侧本轮只做实时 Help/Schema/Skill 契约复核，没有执行 Lark 业务写操作。
+2. DWS 现在公开 88 个可用入口，并用 disposition 区分默认 Smart 路由与 1:1 Schema 投影；lark-cli 的推荐 Shortcut 更接近“稳定 API recipe + 统一身份/分页/富化”。
+3. 原先隐藏的 79 个 Shortcut 中，76 个已打开；3 个已用原生命令复现下层失败，保留实现但标记 `unavailable`，不暴露给用户或 Agent。
+4. Runtime Schema 已投影其中 42 个公开入口；其余 46 个并未隐藏，只是等待逐项 selection/metadata curation。GSB 对两套目录中的同一可执行入口去重。
+5. Pin、Top、Flag、Feed Shortcut、Mute、Moderation 等名称相近但对象不同，是 Agent 最容易误选的区域。
+6. 本报告的 DWS 侧包含真实执行证据；Lark 侧本轮只做实时 Help/Schema/Skill 契约复核，没有执行 Lark 业务写操作。
 
 ## 2. 等价关系定义
 
@@ -50,7 +52,7 @@
 | `+my-groups` | `+chat-list` | 同意图、边界不同 | 列出当前身份加入的群并分页 | DWS 提供本地群类型过滤和稳定 DingTalk 字段；Lark 支持 user/bot、group/p2p、排序、`--exclude-muted`、`--page-all` |
 | `+search-msg` | `+messages-search` | 直接近等价 | 关键词、时间范围、消息身份和分页 | DWS 自动构造最近 N 天窗口并保留引用/reaction；Lark 支持 sender/chat/attachment 等更多过滤和 mget/chat 富化 |
 | `+send-to-group` | `+chat-search` → `+messages-send --chat-id` | DWS Smart / Lark Recipe | 按可读群名找到群后发消息 | DWS 内置唯一匹配、歧义拒绝和 dry-run；Lark 需要显式两步，但发送格式和 user/bot 身份更丰富 |
-| `+thread-replies` | `+threads-messages-list` | 直接近等价 | 按 thread 读取回复、分页和消息正文 | DWS 接受 threadId 并兼容 topicId；Lark 可从 om_/omt_ 自动解析 thread、支持 user/bot；DWS 当前缺回复写 Fixture |
+| `+thread-replies` | `+threads-messages-list` | 直接近等价 | 按 thread 读取回复、分页和消息正文 | DWS 接受 threadId 并兼容 topicId，已用真实第二成员回复验证非空投影；Lark 可从 om_/omt_ 自动解析 thread、支持 user/bot |
 | `+unread-chats` | 无直接等价 | DWS 单侧能力 | — | Lark `+chat-list` 没有同构“仅未读会话”筛选 |
 
 ### 3.1 相似度最高的六组
@@ -85,7 +87,7 @@
 | `+flag-list` | `dws chat message list-favorites` | Lark Shortcut / DWS Leaf | Lark 还处理 feed-layer thread flag |
 | `+feed-shortcut-create` | `dws chat +conversation-set-top` | 公开 leaf 投影 | 都影响用户侧边栏；不是消息 Pin |
 | `+feed-shortcut-remove` | `dws chat +conversation-set-top --off` | 公开 leaf 投影 | Lark 有逐项失败 ledger；DWS 为单会话开关 |
-| `+feed-shortcut-list` | `dws chat +conversation-list-top` | 公开 leaf 投影 | 两边都是用户个人会话置顶视图 |
+| `+feed-shortcut-list` | `dws chat +conversation-list-top` | 公开语义适配 | 两边都是用户个人会话置顶视图；DWS 额外把 `singleChat` 规范化为 `group/direct`，支持按会话类型过滤 |
 | `+feed-group-list` | `dws chat +category-list` | 公开 leaf 投影 | 都是用户会话分组/标签 |
 | `+feed-group-list-item` | `dws chat +category-list-conversations` | 公开 leaf 投影 | Lark 会富化 chat_name；DWS 返回 DingTalk 会话投影 |
 | `+feed-group-query-item` | 分组列表后按会话 ID 本地过滤 | 部分等价 | DWS 当前没有同构的“按多个 feed ID 精确查项”语义入口 |
@@ -117,7 +119,7 @@
 - 专项 `+at-me`、`+unread-chats`，减少模型自己拼时间窗或本地筛选。
 - DingTalk 自定义群角色、入群审批记录、新成员历史可见范围、数字群号、红包提醒开关。
 - 自定义文字表情、全量/单会话红点、隐藏会话、标记未读等 DingTalk 状态语义。
-- 91 个 Shortcut 全部公开，同时保留 `disposition` 和 `semantic_delta`，让 Agent 能识别 Smart 主入口、Schema 投影与兼容别名，而不是仅凭名称猜测。
+- 88 个可用 Shortcut 公开，同时保留 `disposition` 和 `semantic_delta`；3 个当前不可执行的入口明确隐藏，避免 Agent 路由到已知失败能力。
 
 ### 6.2 lark-cli 更强或更成熟的语义
 
@@ -131,7 +133,7 @@
 
 | 缺口 | 当前证据 | 建议 |
 |---|---|---|
-| Thread 非空读取 | 读取路径 0/0，MCP 无回复写接口 | 补一个真实人工回复 Fixture；上游有 writer 后再自动造数 |
+| Thread 自动造数 | 已用真实第二成员回复完成 1/1 非空验证；当前 MCP 仍无回复写接口 | 保留人工 Fixture，待上游有 writer 后纳入全自动回归 |
 | 消息资源类型 | 仅 mediaId | 支持 fileId/文件消息、分片下载和 Content-Type 扩展名 |
 | 列消息自动下载资源 | 当前需单独调用资源 Shortcut | 参考 Lark 增加默认关闭的 `--download-resources`，单资源失败隔离 |
 | 搜索过滤深度 | 关键词/时间窗为主 | 增加 sender/chat/attachment 过滤、page-all 和富化失败 ledger |
@@ -142,7 +144,7 @@
 
 ### P0：保持当前方向
 
-1. 保持 91 个 Shortcut 全量公开，并让 Agent 优先选择 `primary_smart` / `semantic_adapter`；`schema_leaf` / `alias_internal` 用于精确或兼容路由，不与 Smart 入口等权竞争。
+1. 保持 88 个可用 Shortcut 公开，并让 Agent 优先选择 `primary_smart` / `semantic_adapter`；3 个已知下层失败入口在修复和复测前保持 `unavailable`。`schema_leaf` / `alias_internal` 用于精确或兼容路由，不与 Smart 入口等权竞争。
 2. 继续使用统一 Message/Page 投影，保证 sender、quote、reaction、updateTime、threadId 和分页完整性。
 3. 对所有名字相似的状态能力，在 Hint/Skill 中明确对象层：message、conversation、feed、group moderation、personal preference。
 
@@ -159,17 +161,17 @@
 - 不把 `receive_id_type` 机械暴露给所有 DWS Shortcut；它是接口 binding 事实。
 - 不把 current user、app bot、Webhook 合成一个模糊身份而丢失权限和回执语义。
 - 不把 Pin、Top、Flag、Feed Shortcut 合并成一个“置顶/收藏”万能 Shortcut。
-- 不再为了追平 lark-cli 名称新增重复包装；现有 91 个公开入口通过 disposition 管理选择优先级。
+- 不再为了追平 lark-cli 名称新增重复包装；现有 91 个已审阅语义通过 availability 与 disposition 分别管理可用性和选择优先级。
 
 ## 8. 验证证据
 
 - [DWS IM Shortcut 分层测试报告](im-shortcut-test-report.md)
 - [DWS IM GSB Query 集](dws-im-gsb-core-query-set.md)
-- [本轮 GSB 200/200 与 lark-cli 55/55 契约复核结论](dws-im-gsb-core-query-set.md#101-2026-07-28-契约复核结果)
+- [本轮 GSB 197/197 与 lark-cli 55/55 契约复核结论](dws-im-gsb-core-query-set.md#101-2026-07-28-契约复核结果)
 - [IM 优化设计](im-optimization-design.md)
 - 本机实时命令：`lark-cli --version`、`lark-cli im --help`、逐路径 `lark-cli schema/--help`
 - 本机 Lark Skill：`$HOME/.agents/skills/lark-im/SKILL.md`
 
 ## 9. 使用边界
 
-契约对齐只证明命令存在、Help/Schema 可解析和 Query 映射完整。DWS 的 76 项真实成功、1 项空结果、11 项 Fixture 阻塞和 3 项下层错误应以测试报告为准；本轮没有对 Lark 业务账号执行对应的 21 项 live 写入，因此不能把 Lark 55/55 契约覆盖解释为真实调用成功率。
+契约对齐只证明命令存在、Help/Schema 可解析和 Query 映射完整。DWS 的 79 项真实成功、0 项待证空结果、9 项 Fixture 阻塞和 3 项下层错误应以测试报告为准；本轮没有对 Lark 业务账号执行对应的 21 项 live 写入，因此不能把 Lark 55/55 契约覆盖解释为真实调用成功率。

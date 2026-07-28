@@ -11,18 +11,20 @@
 |---|---:|---:|---|
 | DWS Agent-visible Chat Schema | 78 | 78 / 78 | 65 个 MCP 接口、13 个 composite；含 32 read、44 write、2 destructive |
 | DWS 额外公开可运行 Chat 路径 | 31 | 31 / 31 | 30 个精确兼容/辅助叶子，加上可直接列成员的 runnable parent `chat group members` |
-| DWS 当前公开 Chat Shortcut | 91 | 91 / 91 | 91 个经过逐项审阅且当前 available 的入口全部公开；真实执行状态单独记录 |
-| DWS 源码注册 Chat Shortcut 语义 | 91 | 91 / 91 | 全部 91 个入口已发布，并保留 smart/adapter/schema_leaf/alias 处置元数据 |
+| DWS 当前公开 Chat Shortcut | 88 | 88 / 88 | 88 个经过逐项审阅且当前 available 的入口公开；真实执行状态单独记录 |
+| DWS 源码注册 Chat Shortcut 语义 | 91 | 91 / 91 | 88 个公开、3 个 unavailable 隐藏；全部保留 smart/adapter/schema_leaf/alias 处置元数据 |
 | Lark IM Skill Shortcut | 21 | 21 / 21 | 作为跨平台预期路由 |
 | Lark IM Skill 原生 API 语义 | 34 | 34 / 34 | 原生 API 调用前必须先执行对应 `lark-cli schema` |
 | 本机 lark-cli 1.0.78 可执行路径 | 55 | 55 / 55 | 当前 Query 中引用的 Shortcut 与原生路径均可解析 |
+
+Runtime Schema 当前还投影了其中 42 个 built-in Chat Shortcut；它们与公开 Shortcut Catalog 指向同一批可执行入口，因此 GSB 在 `S:` 原子 Schema 和 `P:` Shortcut 两个分母间去重，不把同一个命令重复计入 DWS 当前交付面。其余 46 个公开 Shortcut 使用精确 reviewed exclusion 等待逐项 Schema selection/metadata curation，不影响 `shortcut list`、Help 或执行可见性。
 
 覆盖标签约定：
 
 - `S:`：DWS 稳定 Schema canonical。
 - `C:`：DWS 兼容/辅助命令；`R:`：可运行 parent。
 - `P:`：当前 `dws shortcut list --service chat` 可见的公开 shortcut。
-- 本版没有 `H:` 标签：91 个源码 Shortcut 均以 `P:` 进入公开目录；`disposition` 仍用于区分 smart、adapter、schema leaf 投影和兼容别名。
+- `H:`：经过审阅但因当前真实不可执行而标记 `unavailable` 的隐藏 shortcut；不计入当前交付面，但计入源码语义覆盖。
 - `L:`：Lark IM skill 中的 shortcut 或原生 API。
 
 ## 2. 使用规则
@@ -45,7 +47,7 @@
 | DWS-S004 | 把这条架构结论收藏起来，我下周复盘时还要找它。 | 收藏一条已知消息 | `dws chat message add-favorite --open-message-id <openMessageId> --open-conversation-id <openConversationId>` | `lark-cli im +flag-create --as user --message-id <om_xxx>` | `S:chat.add_message_favorite` `L:im +flag-create` |
 | DWS-S005 | 把“日报助手”机器人拉进这个项目群，后续每天自动发进展。 | 向群中添加企业机器人 | `dws chat group members add-bot --robot-code <robotCode> --id <openConversationId>` | `lark-cli schema im.chat.members.create` → 以 `member_id_type=app_id` 调用 `lark-cli im chat.members create` | `S:chat.add_robot_to_group` `P:chat +chat-add-bot` |
 | DWS-S006 | 给刚才那条庆祝上线的消息加上团队自定义的“稳了”文字表情。 | 添加已定义的文字表情 | `dws chat message add-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name "稳了" --text "nice" --background-id <backgroundId>` | — Lark 只有固定 reaction，无文字表情定义 | `S:chat.add_text_emotion` `P:chat +messages-add-text-emotion` |
-| DWS-S007 | 把群里连续三条上线说明合并成一个消息合集，转发到“管理层同步群”。 | 合并转发多条消息 | `dws chat message combine-forward --src-conversation-id <srcConversationId> --msg-ids <id1>,<id2>,<id3> --dest-conversation-id <destConversationId>` | `lark-cli schema im.messages.merge_forward` → `lark-cli im messages merge_forward --receive-id-type chat_id --data '{"message_id_list":["<om_1>","<om_2>","<om_3>"],"receive_id":"<oc_target>"}'` | `S:chat.combine_forward_messages` `P:chat +messages-combine-forward` `L:im.messages.merge_forward` |
+| DWS-S007 | 把群里连续三条上线说明合并成一个消息合集，转发到“管理层同步群”。 | 合并转发多条消息 | `dws chat message combine-forward --src-conversation-id <srcConversationId> --msg-ids <id1>,<id2>,<id3> --dest-conversation-id <destConversationId>` | `lark-cli schema im.messages.merge_forward` → `lark-cli im messages merge_forward --receive-id-type chat_id --data '{"message_id_list":["<om_1>","<om_2>","<om_3>"],"receive_id":"<oc_target>"}'` | `S:chat.combine_forward_messages` `H:chat +messages-combine-forward` `L:im.messages.merge_forward` |
 | DWS-S008 | 给“客户问题跟进群”发一张可交互的处理进度卡片，方便大家持续查看状态。 | 创建并发送互动卡片 | `dws chat message send-card --group <openConversationId>` | `lark-cli im +messages-send --chat-id <oc_xxx> --msg-type interactive --content '<card-json>'` | `S:chat.create_and_send_card` `P:chat +messages-send-card` |
 | DWS-S009 | 建一个叫“Q3 项目冲刺群”的内部群，把张三、李四和王五一起拉进来。 | 创建带初始成员的群聊 | `dws chat group create --name "Q3 项目冲刺群" --users <userId1>,<userId2>,<userId3>` | `lark-cli im +chat-create --name "Q3 项目冲刺群" --users "<ou_1>,<ou_2>,<ou_3>" --as user` | `S:chat.create_group_conversation` `L:im +chat-create` `L:im.chats.create` |
 | DWS-S010 | 帮我建一个“交付项目”智能会话分组，以“项目、交付、上线”为关键词自动归集相关会话。 | 创建规则驱动的智能分类 | `dws chat category create-smart --name "交付项目" --keywords "项目,交付,上线"` | Lark 无智能规则；可本地筛选后用 `feed.groups create` 与 `batch_add_item` 维护静态标签 | `S:chat.create_smart_conv_category` |
@@ -75,7 +77,7 @@
 | DWS-S029 | 列出我作为群主创建的群，最多返回 100 个，我要盘点长期无人维护的群。 | 盘点本人管理的群 | `dws chat group list-my-groups --role OWNER --limit 100` | `lark-cli im +chat-search --is-manager --page-size 100` | `S:chat.list_owned_or_admin_groups` `P:chat +chat-list-mine` |
 | DWS-S030 | 看一下“重大故障群”现在置顶了哪些消息，返回最近 50 条。 | 查看群内 pin 消息 | `dws chat message list-pin-msg --open-conversation-id <openConversationId> --size 50` | `lark-cli schema im.pins.list` → `lark-cli im pins list --chat-id <oc_xxx>` | `S:chat.list_pin_messages` `P:chat +messages-list-pin` `L:im.pins.list` |
 | DWS-S031 | 把我当前特别关注的消息列出来，优先看最近 50 条。 | 查看特别关注消息 | `dws chat message list-focused --limit 50` | — Lark 无“特别关注消息”直接等价 | `S:chat.list_special_focus_messages` |
-| DWS-S032 | 列出我目前置顶的所有会话，方便整理侧边栏。 | 查看置顶会话 | `dws chat list-top-conversations --limit 100` | `lark-cli im +feed-shortcut-list --as user` | `S:chat.list_top_conversations` `P:chat +conversation-list-top` `L:im +feed-shortcut-list` |
+| DWS-S032 | 只列出我目前置顶的群聊，不要混入单聊，方便整理侧边栏。 | 按类型查看置顶会话 | `dws chat +conversation-list-top --type group --limit 100` | `lark-cli im +feed-shortcut-list --as user` 后按 `detail.chat_mode` 本地过滤 | `S:chat.list_top_conversations` `P:chat +conversation-list-top` `L:im +feed-shortcut-list` |
 | DWS-S033 | 展开这条话题的回复串，按时间读取最近 50 条回复。 | 读取 thread 回复 | `dws chat +thread-replies --group <openConversationId> --thread-id <threadId> --limit 50` | `lark-cli im +threads-messages-list --thread <omt_xxx> --page-size 50` | `S:chat.list_topic_replies` `P:chat +thread-replies` `L:im +threads-messages-list` |
 | DWS-S034 | 列出我自己创建的会话分组及其 ID，我准备重新整理分类。 | 浏览个人分类 | `dws chat category list` | `lark-cli im +feed-group-list --as user --page-all` | `S:chat.list_user_define_conv_categories` `P:chat +category-list` `L:im +feed-group-list` |
 | DWS-S035 | 核对一下张三在“应急响应群”里被分配了哪些自定义角色。 | 查询成员业务角色 | `dws chat group-role query-user --group <openConversationId> --user <userId>` | — 无直接等价 | `S:chat.query_custom_user_roles` `P:chat +chat-role-query-user` |
@@ -161,8 +163,8 @@
 | DWS-C025 | 批量查看这三条消息收到的所有 emoji 和文字回应，方便统计反馈。 | 批量读取消息 reaction | `dws chat message list-emotion-replies --msg-ids <msgId1>,<msgId2>,<msgId3>` | 批量：`lark-cli schema im.reactions.batch_query`；单条明细：`lark-cli schema im.reactions.list` | `C:chat message list-emotion-replies` `L:im.reactions.batch_query` `L:im.reactions.list` |
 | DWS-C026 | 把这条阶段结论设为消息“置顶状态”，这里要用 top，不是 pin 列表。 | DWS 消息 top 语义 | `dws chat message set-top-msg --open-conversation-id <openConversationId> --msg-id <openMessageId>` | Lark 没有独立 top；最接近的是 `im.pins.create` | `C:chat message set-top-msg` `P:chat +messages-set-top` |
 | DWS-C027 | 取消这条消息的 top 状态，但保留消息和其他 pin。 | 取消 DWS 消息 top | `dws chat message unset-top-msg --open-conversation-id <openConversationId> --msg-id <openMessageId>` | Lark 最接近的是 `im.pins.delete` | `C:chat message unset-top-msg` `P:chat +messages-unset-top` |
-| DWS-C028 | 我不想再收到这个会话的 @所有人通知，但普通消息通知继续保留。 | 只关闭 @all 通知 | `dws chat mute-at-all --conversation-id <openConversationId>` | `lark-cli schema im.chat.user_setting.batch_update` → 设置 `is_mute_at_all=true` | `C:chat mute-at-all` `P:chat +conversation-mute-at-all` |
-| DWS-C029 | 关闭这个会话的红包消息通知，其他消息仍按原设置提醒。 | 只关闭红包通知 | `dws chat mute-red-envelope --conversation-id <openConversationId>` | — Lark 无红包通知同构设置 | `C:chat mute-red-envelope` `P:chat +conversation-mute-red-envelope` |
+| DWS-C028 | 我不想再收到这个会话的 @所有人通知，但普通消息通知继续保留。 | 只关闭 @all 通知 | `dws chat mute-at-all --conversation-id <openConversationId>` | `lark-cli schema im.chat.user_setting.batch_update` → 设置 `is_mute_at_all=true` | `C:chat mute-at-all` `H:chat +conversation-mute-at-all` |
+| DWS-C029 | 关闭这个会话的红包消息通知，其他消息仍按原设置提醒。 | 只关闭红包通知 | `dws chat mute-red-envelope --conversation-id <openConversationId>` | — Lark 无红包通知同构设置 | `C:chat mute-red-envelope` `H:chat +conversation-mute-red-envelope` |
 | DWS-C030 | 把“你好世界”翻译成英文，保留普通文本输出即可。 | IM 辅助文本翻译 | `dws chat text translate --query "你好世界" --to en_US` | — Lark IM skill 无文本翻译 API | `C:chat text translate` |
 | DWS-C031 | 列出“Q3 交付群”的成员和机器人，并分别返回可用于后续操作的成员 ID。 | 语义化列出成员与机器人 | `dws chat +chat-members-list --conversation-id <openConversationId> --member-types user,bot` | `lark-cli im +chat-members-list --chat-id <oc_xxx> --member-types user,bot --page-all` | `R:chat group members` `P:chat +group-members` `P:chat +chat-members-list` `L:im +chat-members-list` |
 
@@ -178,7 +180,7 @@
 | DWS-P004 | 在“项目冲刺”群里发“今天 18:00 前完成风险更新”，我只知道群名。 | 按群名解析并发送 | `dws chat +send-to-group --group "项目冲刺" --text "今天 18:00 前完成风险更新"` | 先 `+chat-search --query "项目冲刺"`，确认唯一群后 `+messages-send --chat-id` | `P:chat +send-to-group` |
 | DWS-P005 | 把“低频通知群”从我的置顶会话中移除，群和消息都保留。 | 取消个人会话置顶 | `dws chat set-top --conversation-id <openConversationId> --off` | `lark-cli im +feed-shortcut-remove --as user --chat-id <oc_xxx>` | `L:im +feed-shortcut-remove` |
 
-### 5.1 当前 91 个公开 Shortcut 的执行路由
+### 5.1 当前 88 个公开 Shortcut 的执行路由
 
 主 Query 表同时给出了稳定/兼容原子入口；当以下 shortcut 能直接表达语义时，应优先使用本表命令。例子来自当前 Shortcut Catalog，并继续受对应 Query 的场景和安全规则约束。
 
@@ -211,11 +213,11 @@
 | LARK-X006 | 把本地的架构图上传成可用于飞书消息的图片资源，先只返回 image_key。 | Lark 消息图片上传 | DWS Chat 只有使用已有 mediaId/下载资源的能力，没有同构上传入口 | `lark-cli schema im.images.create` → `lark-cli im images create --data '{"image_type":"message"}' --file ./architecture.png` | `L:im.images.create` |
 | LARK-X007 | 在“重点客户”标签里精确查询客户 A 和客户 B 两张会话卡片，并补全可读群名。 | 按 ID 查询 Lark feed group 项 | DWS 可用 `category list-conversations` 后本地按会话 ID 过滤 | `lark-cli im +feed-group-query-item --as user --feed-group-id <ofg_xxx> --feed-id <oc_a>,<oc_b>` | `L:im +feed-group-query-item` |
 
-## 7. 本次由隐藏转为公开的 DWS Shortcut 索引
+## 7. 原 79 个隐藏 DWS Shortcut 的最终处置索引
 
-原先有 79 个 Shortcut 因旧发布策略未出现在 `dws shortcut list --service chat`。本次已逐项保留语义处置和测试证据并全部转为公开，主 Query 表相应使用 `P:` 标签；下表保留这 79 个新增公开入口的快速索引。
+原先有 79 个 Shortcut 因旧发布策略未出现在 `dws shortcut list --service chat`。本次逐项保留语义处置和测试证据，其中 76 个转为公开，3 个因原生命令同样复现下层失败而标记 `unavailable` 并继续隐藏；下表保留全部 79 项的快速索引。
 
-| 本次新增公开 Shortcut | 覆盖 Query | 本次新增公开 Shortcut | 覆盖 Query |
+| 审阅后 Shortcut | 覆盖 Query | 审阅后 Shortcut | 覆盖 Query |
 |---|---|---|---|
 | `P:chat +bot-find` | DWS-S050 | `P:chat +bot-search` | DWS-S057 |
 | `P:chat +category-add-conversation` | DWS-C001 | `P:chat +category-create` | DWS-C002 |
@@ -240,11 +242,11 @@
 | `P:chat +conversation-clear-red-point` | DWS-C009 | `P:chat +conversation-hide` | DWS-C021 |
 | `P:chat +conversation-list` | DWS-C022 | `P:chat +conversation-list-top` | DWS-S032 |
 | `P:chat +conversation-mark-read` | DWS-C023 | `P:chat +conversation-mark-unread` | DWS-C024 |
-| `P:chat +conversation-mute` | DWS-S075 | `P:chat +conversation-mute-at-all` | DWS-C028 |
-| `P:chat +conversation-mute-red-envelope` | DWS-C029 | `P:chat +conversation-set-top` | DWS-S065 |
+| `P:chat +conversation-mute` | DWS-S075 | `H:chat +conversation-mute-at-all` | DWS-C028 |
+| `H:chat +conversation-mute-red-envelope` | DWS-C029 | `P:chat +conversation-set-top` | DWS-S065 |
 | `P:chat +group-members` | DWS-C031 | `P:chat +messages-add-emoji` | DWS-S002 |
 | `P:chat +messages-add-text-emotion` | DWS-S006 | `P:chat +messages-batch-recall-by-bot` | DWS-S040 |
-| `P:chat +messages-batch-send-by-bot` | DWS-S060 | `P:chat +messages-combine-forward` | DWS-S007 |
+| `P:chat +messages-batch-send-by-bot` | DWS-S060 | `H:chat +messages-combine-forward` | DWS-S007 |
 | `P:chat +messages-create-text-emotion` | DWS-S011 | `P:chat +messages-forward` | DWS-S015 |
 | `P:chat +messages-forward-topic` | DWS-S016 | `P:chat +messages-list` | DWS-S022 |
 | `P:chat +messages-list-direct` | DWS-S026 | `P:chat +messages-list-pin` | DWS-S030 |
@@ -288,7 +290,7 @@
 ## 9. 已知边界与契约漂移
 
 - 当前 DWS 稳定 Schema 已支持 `chat message recall`，应以当前二进制 Schema/Help 为准。旧 `skills/mono/references/capability-limits.md` 仍写着“个人消息撤回未接入”，属于过期证据，不应覆盖 Runtime/Cobra 真值。
-- 原 79 个未发布 Shortcut 已全部转为公开；Fixture 阻塞和下层错误继续独立标注，不再影响目录可见性。
+- 原 79 个未发布 Shortcut 中 76 个已转为公开；Fixture 阻塞不影响目录可见性，3 个已确认下层失败的入口则保持 `unavailable` 和隐藏。
 - `chat group members` 同时是可运行命令和子命令父节点，目前未进入稳定 Schema，也未出现在精确 exclusion 清单中；本集合把它作为额外 runnable surface 单独计数。
 - DWS 的消息 `pin` 与兼容命令中的消息 `top` 不是同一概念；Lark 只有此集合中列出的 pins 能力，不能无条件声称完全等价。
 - 本机 lark-cli 1.0.78 已能解析当前 Query 引用的 55 个 IM Shortcut/原生路径；其中成员与机器人统一优先走 `+chat-members-list`，并以实时 `schema`/逐路径 Help 为准，不能把根 Help 的退出码误判为叶子存在。
@@ -327,14 +329,14 @@ lark-cli im <shortcut或resource> --help
 | DWS 稳定 Schema 标签 | 78 / 78 | 100% |
 | DWS 兼容叶子标签 | 30 / 30 | 100% |
 | DWS runnable parent 标签 | 1 / 1 | 100% |
-| DWS 公开 shortcut 标签 | 91 / 91 | 100%；91 个 reviewed + available 入口均已发布 |
-| DWS 本次由隐藏转公开 shortcut | 79 / 79 | 100% |
-| DWS 源码注册 shortcut 总语义 | 91 / 91 | 100% |
-| DWS 当前交付面 | 200 / 200 | 100%，未发现新增/消失/陈旧期待 |
+| DWS 公开 shortcut 标签 | 88 / 88 | 100%；88 个 reviewed + available 入口均已发布 |
+| DWS 原隐藏 shortcut 审阅结果 | 79 / 79 | 76 个转公开，3 个 unavailable 隐藏 |
+| DWS 源码注册 shortcut 总语义 | 91 / 91 | 88 个 `P:` + 3 个 `H:` |
+| DWS 当前交付面 | 197 / 197 | 100%，未发现新增/消失/陈旧期待 |
 | Lark IM skill 语义标签 | 55 / 55 | 21 shortcut + 34 原生 API |
 | 本机 lark-cli 1.0.78 可执行路径 | 55 / 55 | 100%，无 missing/stale expectation |
 
-因此，本集合的 **DWS 当前交付面覆盖率为 200 / 200 = 100%**，DWS 源码 Shortcut 语义覆盖率为 **91 / 91 = 100%**。Lark Skill 与本机 lark-cli 1.0.78 的当前可执行覆盖率均为 **55 / 55 = 100%**。这些都是契约覆盖，不能替代真实业务执行成功率。
+因此，本集合的 **DWS 当前交付面覆盖率为 197 / 197 = 100%**，DWS 源码 Shortcut 语义覆盖率为 **91 / 91 = 100%（88 公开 + 3 隐藏）**。Lark Skill 与本机 lark-cli 1.0.78 的当前可执行覆盖率均为 **55 / 55 = 100%**。这些都是契约覆盖，不能替代真实业务执行成功率。
 
 ## 11. 快速 Eval Skill
 

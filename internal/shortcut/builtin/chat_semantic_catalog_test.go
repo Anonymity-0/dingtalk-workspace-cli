@@ -14,8 +14,9 @@ import (
 )
 
 type chatSemanticCatalogFixture struct {
-	Service   string `json:"service"`
-	Shortcuts map[string]struct {
+	Service      string                `json:"service"`
+	Availability shortcut.Availability `json:"default_availability"`
+	Shortcuts    map[string]struct {
 		Disposition   shortcut.SemanticDisposition `json:"disposition"`
 		SemanticDelta string                       `json:"semantic_delta"`
 		Risk          shortcut.Risk                `json:"risk"`
@@ -92,8 +93,12 @@ func TestChatSemanticCatalogExactlyCoversRegisteredShortcuts(t *testing.T) {
 		if deliveredRisk != record.Risk {
 			t.Errorf("%s: runtime risk = %q, reviewed risk = %q", command, deliveredRisk, record.Risk)
 		}
-		if item.Availability != shortcut.AvailabilityAvailable {
-			t.Errorf("%s: availability = %q, want available", command, item.Availability)
+		reviewedAvailability := record.Availability
+		if reviewedAvailability == "" {
+			reviewedAvailability = source.Availability
+		}
+		if item.Availability != reviewedAvailability {
+			t.Errorf("%s: availability = %q, want %q", command, item.Availability, reviewedAvailability)
 		}
 		if got := shortcut.InPublicCatalog("chat", command); got != record.Public {
 			t.Errorf("%s: InPublicCatalog = %v, want %v", command, got, record.Public)
@@ -101,8 +106,11 @@ func TestChatSemanticCatalogExactlyCoversRegisteredShortcuts(t *testing.T) {
 		if record.Public != !item.Hidden {
 			t.Errorf("%s: delivered public = %v, catalog public = %v", command, !item.Hidden, record.Public)
 		}
-		if !record.Public || item.Hidden {
-			t.Errorf("%s: all reviewed Chat Shortcuts must be public", command)
+		if reviewedAvailability == shortcut.AvailabilityAvailable && (!record.Public || item.Hidden) {
+			t.Errorf("%s: available reviewed Chat Shortcut must be public", command)
+		}
+		if reviewedAvailability != shortcut.AvailabilityAvailable && (record.Public || !item.Hidden) {
+			t.Errorf("%s: %s reviewed Chat Shortcut must be hidden", command, reviewedAvailability)
 		}
 		if record.Disposition == shortcut.DispositionAliasInternal {
 			primary, ok := registered[record.Primary]

@@ -6,16 +6,18 @@
 >
 > 适用范围：`dws chat`、Chat Semantic Shortcut、Chat Schema/Hints/Skills、个人 IM 事件消费，以及必要的上游 MCP 契约协同
 >
-> 当前 DWS 基线：`main@2dfc39f0`
+> 当前 DWS 基线：`origin/main@5783c4e8`
 >
-> lark-cli 对比基线：`main@56c9a2a`、稳定版 `v1.0.77`
+> lark-cli 设计对比基线：`main@56c9a2a`、稳定版 `v1.0.77`；Shortcut diff
+> 已在 2026-07-28 使用本机 `v1.0.78` 复核
 
 ## 1. 摘要
 
 一句话目标：
 
-> **保留 Runtime Schema 作为完整原子能力面，同时公开全部 91 个已审阅、
-> 当前可用的 Chat Shortcut；用 disposition 明确区分 Smart 主入口、
+> **保留 Runtime Schema 作为完整原子能力面，同时公开 88 个已审阅、
+> 当前可用的 Chat Shortcut，并把 3 个已确认当前不可执行的入口标记为
+> unavailable 后隐藏；用 disposition 明确区分 Smart 主入口、
 > Semantic Adapter、Schema leaf 投影和兼容别名，并继续重点优化“读消息、
 > 搜消息、资源下载、按人名发送、真实送达、监听后回复”的实际效果。**
 
@@ -35,7 +37,7 @@
 | 层 | 本轮职责 | 不负责 |
 |---|---|---|
 | Raw CLI + Runtime Schema | 完整发布 78 个原子 IM 工具；保证 path、flag、binding、约束和 safety 正确 | 不为每个原子工具再复制一个 Shortcut |
-| Semantic Shortcut | 公开全部 reviewed + available 入口；用 disposition 表达 Smart、Adapter、Schema 投影和兼容关系，并让 Smart 入口获得默认路由优先级 | 不把公开等同于等权候选，不掩盖原子 binding、权限、Fixture 或下层错误 |
+| Semantic Shortcut | 公开全部 reviewed + available 入口；隐藏 confirmed unavailable 入口；用 disposition 表达 Smart、Adapter、Schema 投影和兼容关系，并让 Smart 入口获得默认路由优先级 | 不把公开等同于等权候选，不掩盖原子 binding、权限、Fixture 或下层错误 |
 | Hint | 让 Agent 在原子命令和语义入口之间选对；参数和安全事实与 runtime 一致 | 不发明命令、flag 或后端能力 |
 | Skill / Recipe | 把自然语言意图路由到 Golden Path；处理跨 Chat/Event/Contact/Drive/DING 场景 | 不复制完整命令表和易漂移执行事实 |
 | Typed IM Adapter | 吸收 MCP/OpenAPI 字段差异，输出统一 Message/Page/Resource/Delivery/Error | 不改变上游原生 ID，不掩盖 shape drift |
@@ -55,7 +57,8 @@
 ### 1.4 Shortcut 的明确决策
 
 本轮最终实现决策是：对原有 89 个及新增 2 个 Chat Shortcut 完成逐项
-语义审计后，将 91 个 `reviewed + available` 入口全部公开。
+语义审计后，公开 88 个 `reviewed + available` 入口；3 个已通过原生
+命令复现实锤下层失败的入口标记 `unavailable` 并隐藏。
 
 - `primary_smart`：有目标解析、分页、资源处理或跨命令编排价值，作为
   Agent 默认优先候选；
@@ -63,8 +66,9 @@
 - `schema_leaf`：公开的稳定原子能力投影，适合精确意图，不与 Smart
   入口等权竞争；
 - `alias_internal`：为已有调用方保留的公开兼容别名，明确指向 primary；
-- 真机 evidence 与 visibility 正交：Fixture 缺失和下层服务错误继续在
-  测试报告中暴露，但不再机械隐藏 reviewed + available 命令；
+- 真机 evidence 与 visibility 原则上正交：Fixture 缺失不机械隐藏
+  reviewed + available 命令；当原生路径也复现并确认当前真实不可执行时，
+  availability 必须改为 `unavailable`，从公开目录隐藏；
 - Runtime Schema/CLI 仍是完整原子能力事实源，Shortcut 公开不改变
   binding、权限或安全语义。
 
@@ -83,7 +87,7 @@
 
 | 变更 | 做什么 | 主要位置 | 验收 |
 |---|---|---|---|
-| Change 1：Shortcut 语义价值审计与全量公开 | 给 91 项补 `semantic_delta` 与 smart/adapter/leaf/alias 结论；改 Catalog 生成规则，分离 visibility、availability、evidence | `internal/shortcut/`、`scripts/gen_shortcut_public_catalog.py` | 91/91 reviewed + available 项公开；每项有明确处置；`live_blocked` 不再等于不可用 |
+| Change 1：Shortcut 语义价值审计与可用项公开 | 给 91 项补 `semantic_delta` 与 smart/adapter/leaf/alias 结论；改 Catalog 生成规则，分离 visibility、availability、evidence | `internal/shortcut/`、`scripts/gen_shortcut_public_catalog.py` | 91/91 完成 reviewed 处置；88 个 available 项公开，3 个 confirmed unavailable 项隐藏；`live_blocked` 不再等于不可用 |
 | Change 2：统一读取内核 | 抽取 list/search/mget/thread 共用 adapter、Message/Page、默认时间窗、分页和 `projection_shape_drift` | `internal/helpers/chat*.go`、`internal/shortcut/chatmsg/` 或新 typed IM package | raw 非空不得 normalized 为空；截断必提示；富化失败保留主消息 |
 | Change 3：两个读取语义入口 | 把重复候选收敛为 history 和 search 两个 primary，接入统一读取内核；同步 Hint 和 Skill | `internal/shortcut/chat/`、`schema_hints/selection/chat.json`、Chat Skill | 自然语言“查记录/搜消息”Top-1 选对；一次调用返回可用结果；旧同义入口转 alias/internal |
 
@@ -112,11 +116,11 @@ Chat Shortcut 当前状态：
 | 维度 | 当前数量 |
 |---|---:|
 | 已注册 Chat Shortcut | 91 |
-| 公开 Shortcut | 91 |
-| 隐藏 Shortcut | 0 |
-| 已完成真实只读执行 | 33 个非空/有效结果 + 1 个合法空结果 |
-| 已完成真实写入执行 | 43 个通过并回滚 |
-| 其余真实执行状态 | 11 个外部 Fixture、3 个下层服务错误 |
+| 公开 Shortcut | 88 |
+| 隐藏 Shortcut | 3 |
+| 已完成真实只读执行 | 34 个非空/有效结果 |
+| 已完成真实写入执行 | 45 个通过并回滚 |
+| 其余真实执行状态 | 9 个外部 Fixture、3 个下层服务错误 |
 
 以下 47 项是设计基线时期的旧隐藏真机结果分类，现不再决定可见性：
 
@@ -158,8 +162,9 @@ Semantic Shortcut；其余由 Skill 直接路由到原子 leaf。
 - Skill 由公开 Catalog 生成后同步失去这些能力。
 
 当前实现已经解除 evidence/availability 对 visibility 的机械耦合，并在
-91 项逐项 reviewed 后全部公开。Agent 选择质量由 disposition、selection
-语义和测试证据控制，而不是再次把 leaf 投影隐藏。
+91 项逐项 reviewed 后公开 88 个可用入口。Agent 选择质量由 disposition、
+selection 语义和测试证据控制；3 个原生路径也确认失败的入口按真实
+availability 隐藏，而不是继续暴露一个已知不可执行的能力。
 
 #### 2.3.2 投影可能静默丢失数据
 
@@ -251,8 +256,9 @@ Semantic Shortcut；其余由 Skill 直接路由到原子 leaf。
 ### 3.1 目标
 
 1. 建立 API、CLI、Semantic Shortcut、Hint、Skill 和 Event 之间清晰、单向、可验证的契约。
-2. Runtime Schema 保证原子 IM 能力完整；91 个已审阅 Shortcut 全部公开，
-   并用 disposition 让高价值语义入口获得明确的选择优先级。
+2. Runtime Schema 保证原子 IM 能力完整；91 个 Shortcut 全部完成审阅，
+   公开其中 88 个可用入口，并用 disposition 让高价值语义入口获得明确的
+   选择优先级；3 个 confirmed unavailable 入口保持隐藏。
 3. 分离 visibility、availability 和 evidence；Fixture 或下层错误必须可见，
    但不机械改写 reviewed + available Shortcut 的公开状态。
 4. 建立统一的 Message、Conversation、Target、Identity、Resource、Pagination、DeliveryStatus 和 PartialError typed model。
@@ -263,7 +269,7 @@ Semantic Shortcut；其余由 Skill 直接路由到原子 leaf。
 
 ### 3.2 非目标
 
-1. 不以命令数量代替效果指标；91 项全量公开后仍以可执行率、选择正确率、
+1. 不以命令数量代替效果指标；91 项完成审阅后仍以可执行率、选择正确率、
    投影保真和真实结果为准。
 2. 不再机械生成新的 1:1 包装来追平 lark-cli 名称；已有 Schema leaf
    投影保留公开，并通过 disposition 与 Smart 主入口区分。
@@ -316,8 +322,8 @@ Shortcut 至少包含两个正交维度：
 
 Availability 回答“运行时是否支持”，Visibility 则是经过审阅的显式产品
 决策。当前 Chat 策略为：`reviewed=true` 且 `availability=available` 的
-91 项全部公开；semantic relation 通过 disposition 表达并参与 Agent
-路由优先级，不再作为隐藏 leaf/alias 的开关。
+88 项全部公开；3 项 confirmed unavailable 隐藏。semantic relation 通过
+disposition 表达并参与 Agent 路由优先级，不再作为隐藏 leaf/alias 的开关。
 
 #### Availability
 
@@ -898,10 +904,11 @@ live result
 
 公开 Catalog 应展示或输出 evidence，而不是使用 evidence 删除能力。
 
-### 9.5 原 47 个隐藏 Shortcut 的最终处置
+### 9.5 原 79 个隐藏 Shortcut 的最终处置
 
-这些入口已经完成逐项审阅并全部公开。四类处置继续作为 Agent 路由和
-兼容关系，而不再作为 visibility 开关：
+这些入口已经完成逐项审阅：76 个确认可用或仅缺 Fixture 的入口公开，
+3 个经原生路径复现、确认当前不可执行的入口标记 `unavailable` 并隐藏。
+四类处置继续作为 Agent 路由和兼容关系，而不单独作为 visibility 开关：
 
 | 处置 | 判定 | 示例方向 | 发布动作 |
 |---|---|---|---|
@@ -921,8 +928,9 @@ live result
    semantic delta；没有则直接由 Schema/Skill 承担；
 4. destructive/high-risk 候选只有在确实需要语义编排时才做 Shortcut，
    且必须具备 runtime gate、目标摘要、dry-run 和恢复说明；
-5. 真机缺 fixture 标记为 `live_blocked`，下层错误标记为 `live_failed`；
-   二者都不会让 reviewed + available 命令再次隐藏。
+5. 真机缺 fixture 标记为 `live_blocked`，不改变 available 命令可见性；
+   下层错误在原生路径复现后标记 `live_failed` + `unavailable`，修复和
+   复测前不进入公开目录。
 
 ### 9.6 Smart Shortcut
 
@@ -1177,10 +1185,10 @@ Schema 被合入只关闭 Schema 自身的身份、参数、选择和发布契�
 | ID | 任务 | 状态 | 关闭证据 |
 |---|---|---|---|
 | SCH-01 | Reviewed CommandRegistry 与 Cobra 精确绑定 | `CLOSED` | canonical/primary/alias/navigation 单一评审源；不存在、不可运行和冲突路径 fail closed |
-| SCH-02 | Schema 双向完整性与精确 exclusion | `CLOSED` | 603 个 registry command 与 603 个最终 ToolSpec 完整交付；公开 Cobra leaf 必须进入 Schema 或 exact exclusion |
+| SCH-02 | Schema 双向完整性与精确 exclusion | `CLOSED` | 813 个 registry command 与 813 个最终 ToolSpec 完整交付；公开 Cobra leaf 必须进入 Schema 或 exact exclusion |
 | SCH-03 | Typed ToolSpec、SchemaRegistry 与单向发布 | `CLOSED` | leaf、summary、`schema --all` 和 Catalog 共用同一 resolved typed registry |
 | SCH-04 | Metadata/Selection 分治与参数投影 | `CLOSED` | reviewed selection、metadata、parameter binding 按确定优先级解析并携带 provenance |
-| SCH-05 | 生成漂移、Help 参数与安全事实门禁 | `CLOSED` | 2026-07-28 在 `main@2dfc39f0` 通过 generated drift、Schema Catalog、Help exact-set 和 runtime confirmation truth |
+| SCH-05 | 生成漂移、Help 参数与安全事实门禁 | `CLOSED` | 2026-07-28 在 `origin/main@5783c4e8` 叠加当前分支后通过 generated drift、Schema Catalog、Help exact-set 和 runtime confirmation truth |
 
 ### 14.2 基础契约
 
@@ -1189,7 +1197,7 @@ Schema 被合入只关闭 Schema 自身的身份、参数、选择和发布契�
 | BASE-01 | IM Golden Scenarios | 无 | `OPEN` | 固定七类核心场景与 fixtures |
 | BASE-02 | 参数 ADR | 无 | `OPEN` | canonical/alias/binding 规则通过评审 |
 | BASE-03 | Message/Resource/Page/Delivery model | BASE-02 | `OPEN` | typed model 与兼容 serializer |
-| BASE-04 | Shortcut publication policy | 无 | `CLOSED` | reviewed visibility + availability 决定发布；91/91 Chat Shortcut 公开，evidence 独立展示 |
+| BASE-04 | Shortcut publication policy | 无 | `CLOSED` | reviewed visibility + availability 决定发布；91/91 完成审阅，88 个 available 公开、3 个 unavailable 隐藏，evidence 独立展示 |
 | BASE-05 | 效果指标基线 | BASE-01 | `OPEN` | TSR 子指标可重复计算 |
 | BASE-06 | TargetRef/IdentityRef | BASE-02 | `OPEN` | 原生 ID 不改写，目标和执行身份 typed、自描述 |
 
@@ -1248,11 +1256,11 @@ Schema 被合入只关闭 Schema 自身的身份、参数、选择和发布契�
 
 ### 14.7 2026-07-28 关闭审计
 
-本轮基于 `main@2dfc39f0` 关闭：
+本轮在 `origin/main@5783c4e8` 上复核关闭：
 
 - `SCH-01`～`SCH-05`：Runtime Schema 平台基线；
 - `HINT-03`：当前 Chat 参数 overlay 与真实 CLI flag 的绑定完整性。
-- `BASE-04`、`SC-01`、`SC-06`、`SC-08`：91 个 Chat Shortcut 的公开策略、
+- `BASE-04`、`SC-01`、`SC-06`、`SC-08`：91 个 Chat Shortcut 的可见性策略、
   语义矩阵、非空 semantic_delta 与 relation 审计。
 
 以下项目不得因 Schema 合入而关闭：
@@ -1260,7 +1268,7 @@ Schema 被合入只关闭 Schema 自身的身份、参数、选择和发布契�
 - `BASE-02/03/06` 与 `CLI-02`～`CLI-10`：Schema 能描述参数，但没有建立
   IM 的 TargetRef、统一 adapter、Normalized Output、媒体与送达运行时；
 - `SC-02`～`SC-05`、`SC-07`：typed spec 全链同源、读取/发送黄金链路、
-  高风险语义体验和效果优化仍需继续；公开完成不等于这些效果项已关闭；
+  高风险语义体验和效果优化仍需继续；可见性审阅完成不等于这些效果项已关闭；
 - `HINT-01/02`：Schema 侧已完成的选择覆盖和安全事实，不等于 Smart
   Shortcut 默认路由或 Shortcut/原子路径安全一致；
 - `SKILL-01`～`SKILL-04`：Skill 尚未改造成由 Runtime Schema +
@@ -1272,8 +1280,8 @@ Schema 被合入只关闭 Schema 自身的身份、参数、选择和发布契�
 
 ```text
 generated drift check: ok
-schema catalog check: ok (25 products, 603 tools)
-runtime confirmation truth ok (80 gated)
+schema catalog check: ok (26 products, 813 tools)
+runtime confirmation truth ok (86 gated)
 Chat selection: 78/78 reviewed，且每项至少一个 use_when/avoid_when/example
 Chat parameter overlay: 17 个 owning block，全部通过 runnable leaf/flag 门禁
 ```
@@ -1364,7 +1372,7 @@ TargetRef、投影保真和媒体 E2E 的收益评分。
 
 | 优先级 | 纵向工作包 | ROI | 主要任务 | 关键出口 |
 |---|---|---:|---|---|
-| P0 | 薄契约、TargetRef 与公开机制 | 78 | BASE-01/02/04/05/06、CLI-09、SC-01/02/06/08、Message/Page 最小模型 | typed target/identity；91 个 Shortcut 完成 smart/adapter/leaf/alias 处置并公开；TSR 基线可重复 |
+| P0 | 薄契约、TargetRef 与公开机制 | 78 | BASE-01/02/04/05/06、CLI-09、SC-01/02/06/08、Message/Page 最小模型 | typed target/identity；91 个 Shortcut 完成 smart/adapter/leaf/alias 与 availability 处置，88 个可用项公开；TSR 基线可重复 |
 | P1 | 读取 / 搜索黄金链路 | 59 | BASE-03、CLI-02/03/04/05、SC-03/07、HINT-01、SKILL-01 读取路由；HINT-03 仅做变更回归 | history/search 两个 primary；默认时间窗、分页、富化、partial failure 和投影保真完整 |
 | P2 | 资源与媒体 E2E | 56 | Resource model、CLI-06/07、SC-04 media slice、SC-07 resource、相关 Hint/Skill | local/URL/key、内联图片、结构化回执、安全下载和 md5 往返 |
 | P4 | 个人事件监听 → 安全回复 | 47 | EVT-01/02/05/06/07、SKILL-03 | 16 类事件收敛到共享 payload；资源闭环；防循环、有界消费和可观测清理 |
@@ -1404,8 +1412,8 @@ resource 和 fixture，listen-and-reply 尾项仍复用 P3 的发送安全能力
    Skill、测试和 evidence；只有存在 semantic delta 时才增加 Shortcut。
 3. **禁止机械 1:1 Shortcut。** 原子覆盖由 Schema 负责；Shortcut 必须
    提交 semantic_delta。没有增益的现有项改为 leaf/alias/internal。
-4. **全量公开、分级路由。** 91 个 reviewed + available Shortcut 全部
-   公开；history、search、resource download、name-aware send 和
+4. **可用项公开、分级路由。** 88 个 reviewed + available Shortcut 全部
+   公开，3 个 confirmed unavailable 入口隐藏；history、search、resource download、name-aware send 和
    listen-and-reply 继续作为效果优化与默认选择的优先纵向切片。
 5. **Hint 和 Skill 不作为最终扫尾。** 每个 P1～P7 工作包都必须带上
    对应选择、参数、安全和路由变更；P6 只清理全局一致性和遗留差异，
@@ -1530,7 +1538,7 @@ resource 和 fixture，listen-and-reply 尾项仍复用 P3 的发送安全能力
 
 ### 15.10 P5：钉钉原生治理语义化
 
-91 个 Shortcut 已全量公开；后续仍按以下能力族推进效果、选择和安全审计：
+91 个 Shortcut 已全部审阅，88 个可用项公开；后续仍按以下能力族推进效果、选择和安全审计：
 
 1. reaction、文字表情、pin、top；
 2. 会话已读、未读、隐藏、免打扰和分类；
@@ -1697,8 +1705,10 @@ leaf 级覆盖率；关注高价值意图覆盖和 semantic delta 质量。
 5. 普通 write Shortcut 的确认策略切换是否需要一个兼容开关或直接统一到最终 metadata。
 6. 自动资源下载的默认目录、单文件大小、总大小和并发上限。
 7. bot/app IM 事件是否由 `dws event` 同一顶层命令承载，还是单独身份子树。
-8. 已决议：原有 89 个及本轮新增 2 个 Shortcut 全部公开，并分别标注为
-   Smart、Adapter、Schema leaf 投影或兼容 alias；该 relation 影响路由优先级。
+8. 已决议：原有 89 个及本轮新增 2 个 Shortcut 全部完成审阅，88 个
+   available 入口公开，3 个 confirmed unavailable 入口隐藏；各入口分别
+   标注为 Smart、Adapter、Schema leaf 投影或兼容 alias，该 relation 影响
+   路由优先级。
 9. 高频 Smart Shortcut 使用 `--target/--target-type`，还是只发布分类型
    `--user-id/--open-dingtalk-id/--conversation-id`。
 10. 内联图片上传由现有 MCP 新能力、OpenAPI 本地 adapter，还是新的统一

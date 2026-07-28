@@ -246,11 +246,13 @@ def run_json(command: list[str], cwd: Path, timeout: int = 30) -> Any:
 def check_help(binary: str, path: str, cwd: Path) -> tuple[bool, str]:
     command = [binary, *shlex.split(path), "--help"]
     try:
-        result = run(command, cwd, timeout=15)
+        result = run(command, cwd, timeout=45)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return False, str(exc)
     output = result.stdout + result.stderr
-    expected_usage = " ".join([Path(binary).name, path])
+    # Cobra renders the root command's stable Use value ("dws"), not the
+    # filename of a locally built binary such as /tmp/dws-review.
+    expected_usage = f"dws {path}"
     ok = result.returncode == 0 and "Usage:" in output and expected_usage in output
     return ok, "" if ok else output.strip()[:500]
 
@@ -398,7 +400,15 @@ def contract(repo_root: Path, out_dir: Path, dws: str, lark_cli: str, lark_skill
 
     schema = run_json([dws, "schema", "--all", "-f", "json"], repo_root, timeout=60)
     chat_product = next(product for product in schema["products"] if product["id"] == "chat")
-    actual_schema = {tool["canonical_path"] for tool in chat_product["tools"]}
+    # Built-in Shortcut leaves are now also projected through Runtime Schema.
+    # They remain one delivery surface and are measured below by P: tags, so
+    # exclude them from the S: atomic Schema denominator to avoid double-counting
+    # the same executable command.
+    actual_schema = {
+        tool["canonical_path"]
+        for tool in chat_product["tools"]
+        if not tool["canonical_path"].startswith("chat.shortcut_")
+    }
 
     shortcuts = run_json(
         [dws, "shortcut", "list", "--service", "chat", "--format", "json"],

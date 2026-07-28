@@ -42,6 +42,31 @@ func (f *platformCoverageCaller) DryRun() bool   { return false }
 func (f *platformCoverageCaller) Fields() string { return "" }
 func (f *platformCoverageCaller) JQ() string     { return "" }
 
+type muteMemberResolutionCaller struct {
+	calls []platformCoverageCaller
+}
+
+func (f *muteMemberResolutionCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
+	f.calls = append(f.calls, platformCoverageCaller{product: product, tool: tool, args: args})
+	var text string
+	switch product + "/" + tool {
+	case "contact/get_user_info_by_user_ids":
+		text = `{"result":[{"orgEmployeeModel":{"orgUserId":"user-2","orgUserName":"测试成员"}}]}`
+	case "chat/get_group_members":
+		text = `{"result":{"hasMore":false,"list":[{"memberEmpName":"测试成员","openDingtalkId":"D-open-2"}]}}`
+	case "im/set_group_member_mute_list":
+		text = `{"success":true}`
+	default:
+		text = `{"result":[]}`
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
+}
+
+func (f *muteMemberResolutionCaller) Format() string { return "json" }
+func (f *muteMemberResolutionCaller) DryRun() bool   { return false }
+func (f *muteMemberResolutionCaller) Fields() string { return "" }
+func (f *muteMemberResolutionCaller) JQ() string     { return "" }
+
 func newPlatformCoverageRoot() *cobra.Command {
 	root := &cobra.Command{Use: "dws", SilenceUsage: true, SilenceErrors: true}
 	root.SetOut(io.Discard)
@@ -191,6 +216,35 @@ func TestCrossPlatformCoverageChatIDHelpers(t *testing.T) {
 			t.Fatal("empty integer list unexpectedly succeeded")
 		}
 	})
+}
+
+func TestChatMuteMemberResolvesUserIDToOpenDingTalkID(t *testing.T) {
+	fake := &muteMemberResolutionCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+chat-mute-member",
+		"--group", "cid-1",
+		"--users", "user-2,D-open-2",
+		"--mute-time", "300000",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 3 {
+		t.Fatalf("calls = %d, want 3: %#v", len(fake.calls), fake.calls)
+	}
+	final := fake.calls[2]
+	if final.product != "im" || final.tool != "set_group_member_mute_list" {
+		t.Fatalf("final call = %s/%s, want im/set_group_member_mute_list", final.product, final.tool)
+	}
+	if _, ok := final.args["uids"]; ok {
+		t.Fatalf("known-broken uids argument leaked into final call: %#v", final.args)
+	}
+	if got, want := final.args["openDingTalkIds"], []string{"D-open-2"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("openDingTalkIds = %#v, want %#v", got, want)
+	}
 }
 
 func TestConversationCategoryTitleValidation(t *testing.T) {

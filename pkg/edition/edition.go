@@ -64,7 +64,8 @@ type ToolCaller interface {
 // dry-run plan. Implementations must fail closed unless they can bypass the
 // global write barrier without weakening it for ordinary CallTool calls.
 //
-// The Shortcut runtime uses this only after rejecting write-like tool names.
+// The Shortcut runtime uses this only after accepting a narrow read-only tool
+// name classification.
 // Keeping it separate from ToolCaller means existing callers remain protected
 // by the default "dry-run executes nothing" contract.
 type ReadToolCaller interface {

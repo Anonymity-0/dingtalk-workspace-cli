@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-28T18:37:58.093888",
-  "count": 259,
+  "generated_at": "2026-07-28T19:49:09.901212",
+  "count": 256,
   "results": [
     {
       "suite": "read",
@@ -964,8 +964,8 @@
       "command": "+conversation-list-top",
       "risk": "read",
       "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "置顶会话列表只做字段投影；无额外组合价值。",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "将下层 singleChat 规范化为 Agent 友好的 group/direct 类型，并支持 --type all|group|direct 本地过滤。",
       "availability": "available"
     },
     {
@@ -996,26 +996,6 @@
       "status": "reviewed_available",
       "disposition": "schema_leaf",
       "semantic_delta": "会话免打扰是一对一状态写入；无名称解析、编排或恢复增益。",
-      "availability": "available"
-    },
-    {
-      "suite": "semantic",
-      "service": "chat",
-      "command": "+conversation-mute-at-all",
-      "risk": "write",
-      "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "@所有人提醒开关是一对一精确设置，默认由 Runtime Schema leaf 承担。",
-      "availability": "available"
-    },
-    {
-      "suite": "semantic",
-      "service": "chat",
-      "command": "+conversation-mute-red-envelope",
-      "risk": "write",
-      "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "红包提醒开关是一对一精确设置，默认由 Runtime Schema leaf 承担。",
       "availability": "available"
     },
     {
@@ -1086,16 +1066,6 @@
       "status": "reviewed_available",
       "disposition": "schema_leaf",
       "semantic_delta": "机器人批量单聊是一对一批量发送；默认由 bot leaf 承担。",
-      "availability": "available"
-    },
-    {
-      "suite": "semantic",
-      "service": "chat",
-      "command": "+messages-combine-forward",
-      "risk": "write",
-      "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "合并转发是一对一批量消息操作；默认由 leaf 承担。",
       "availability": "available"
     },
     {

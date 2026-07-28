@@ -42,14 +42,16 @@
       "disposition": "schema_leaf",
       "semantic_delta": "@所有人提醒开关是一对一精确设置，默认由 Runtime Schema leaf 承担。",
       "risk": "write",
-      "public": true,
+      "availability": "unavailable",
+      "public": false,
       "reviewed": true
     },
     "+conversation-mute-red-envelope": {
       "disposition": "schema_leaf",
       "semantic_delta": "红包提醒开关是一对一精确设置，默认由 Runtime Schema leaf 承担。",
       "risk": "write",
-      "public": true,
+      "availability": "unavailable",
+      "public": false,
       "reviewed": true
     },
     "+conversation-mark-unread": {
@@ -81,8 +83,8 @@
       "reviewed": true
     },
     "+conversation-list-top": {
-      "disposition": "schema_leaf",
-      "semantic_delta": "置顶会话列表只做字段投影；无额外组合价值。",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "将下层 singleChat 规范化为 Agent 友好的 group/direct 类型，并支持 --type all|group|direct 本地过滤。",
       "risk": "read",
       "public": true,
       "reviewed": true
@@ -522,7 +524,8 @@
       "disposition": "schema_leaf",
       "semantic_delta": "合并转发是一对一批量消息操作；默认由 leaf 承担。",
       "risk": "write",
-      "public": true,
+      "availability": "unavailable",
+      "public": false,
       "reviewed": true
     },
     "+messages-forward-topic": {

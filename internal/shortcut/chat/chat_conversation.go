@@ -293,15 +293,19 @@ func conversationListFirst(m map[string]any, keys ...string) (any, bool) {
 var ConversationListTop = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+conversation-list-top",
-	Description: "拉取置顶会话列表",
-	Intent:      "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。",
+	Description: "拉取置顶会话列表，可只看群聊或单聊",
+	Intent:      "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。",
 	Risk:        shortcut.RiskRead,
 	Flags: []shortcut.Flag{
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页数量"},
 		{Name: "cursor", Type: shortcut.FlagInt, Desc: "分页游标（首次不传或 0）"},
 		{Name: "exclude-muted", Type: shortcut.FlagBool, Desc: "排除已免打扰会话"},
+		{Name: "type", Type: shortcut.FlagString, Default: "all", Desc: "会话类型：all 全部 / group 群聊 / direct 单聊（当前页本地过滤）", Enum: []string{"all", "group", "direct"}},
 	},
-	Tips: []string{`dws chat +conversation-list-top --limit 1000`},
+	Tips: []string{
+		`dws chat +conversation-list-top --limit 1000`,
+		`dws chat +conversation-list-top --type group --limit 1000`,
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{}
 		if rt.Int("limit") > 0 {
@@ -318,7 +322,13 @@ var ConversationListTop = shortcut.Shortcut{
 			return err
 		}
 		convs := conversationListTopProject(data)
-		payload := map[string]any{"count": len(convs), "conversations": convs}
+		typeFilter := rt.Str("type")
+		convs = conversationListTopFilter(convs, typeFilter)
+		payload := map[string]any{
+			"count":         len(convs),
+			"requestedType": typeFilter,
+			"conversations": convs,
+		}
 		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
@@ -344,14 +354,75 @@ func conversationListTopProject(data map[string]any) []map[string]any {
 		if v, ok := conversationListTopFirst(m, "conversationName", "name", "title"); ok {
 			row["conversationName"] = v
 		}
-		if v, ok := conversationListTopFirst(m, "conversationType", "type"); ok {
-			row["conversationType"] = v
+		if conversationType, ok := conversationListTopType(m); ok {
+			row["conversationType"] = conversationType
 		}
 		if len(row) > 0 {
 			out = append(out, row)
 		}
 	}
 	return out
+}
+
+// conversationListTopType converts the lower service's singleChat flag into a
+// stable, Agent-facing type. The fallback accepts known type spellings for
+// compatibility with older/newer response projections.
+func conversationListTopType(m map[string]any) (string, bool) {
+	if value, ok := conversationListTopFirst(m, "singleChat", "single_chat", "isSingleChat"); ok {
+		switch typed := value.(type) {
+		case bool:
+			if typed {
+				return "direct", true
+			}
+			return "group", true
+		case string:
+			switch strings.ToLower(strings.TrimSpace(typed)) {
+			case "true", "1":
+				return "direct", true
+			case "false", "0":
+				return "group", true
+			}
+		case float64:
+			if typed == 1 {
+				return "direct", true
+			}
+			if typed == 0 {
+				return "group", true
+			}
+		case int:
+			if typed == 1 {
+				return "direct", true
+			}
+			if typed == 0 {
+				return "group", true
+			}
+		}
+	}
+
+	if value, ok := conversationListTopFirst(m, "conversationType", "type"); ok {
+		if text, ok := value.(string); ok {
+			switch strings.ToLower(strings.TrimSpace(text)) {
+			case "group", "groupchat", "group_chat":
+				return "group", true
+			case "direct", "single", "singlechat", "single_chat", "p2p":
+				return "direct", true
+			}
+		}
+	}
+	return "", false
+}
+
+func conversationListTopFilter(conversations []map[string]any, typeFilter string) []map[string]any {
+	if typeFilter == "" || typeFilter == "all" {
+		return conversations
+	}
+	filtered := make([]map[string]any, 0, len(conversations))
+	for _, conversation := range conversations {
+		if conversation["conversationType"] == typeFilter {
+			filtered = append(filtered, conversation)
+		}
+	}
+	return filtered
 }
 
 // conversationListTopResolveList locates the conversation array inside the
@@ -643,7 +714,7 @@ var CategoryCreate = shortcut.Shortcut{
 	Intent:      "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "title", Type: shortcut.FlagString, Desc: "分组名称（最多 15 个字符）", Required: true},
+		{Name: "title", Type: shortcut.FlagString, Desc: "分组名称；去除首尾空白后必须非空，且最多 15 个字符", Required: true},
 	},
 	Constraints: []shortcut.Constraint{
 		{
@@ -688,7 +759,7 @@ var CategoryRename = shortcut.Shortcut{
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "category-id", Type: shortcut.FlagInt, Desc: "会话分组 ID", Required: true},
-		{Name: "title", Type: shortcut.FlagString, Desc: "新的分组名称（最多 15 个字符）", Required: true},
+		{Name: "title", Type: shortcut.FlagString, Desc: "新的分组名称；去除首尾空白后必须非空，且最多 15 个字符", Required: true},
 	},
 	Constraints: []shortcut.Constraint{
 		{
