@@ -14,8 +14,6 @@
 package handlers
 
 import (
-	"strings"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 )
@@ -67,36 +65,7 @@ func (AliasHandler) Handle(ctx *pipeline.Context) error {
 // normalised to a known flag name. It handles both bare flags and
 // "--flag=value" syntax.
 func tryNormaliseFlag(arg string, known map[string]bool) (string, bool) {
-	if !strings.HasPrefix(arg, "--") {
-		return "", false
-	}
-
-	bare := arg[2:]
-	if bare == "" {
-		return "", false
-	}
-
-	// Handle --flag=value syntax: split, normalise the key, reassemble.
-	var suffix string
-	if idx := strings.IndexByte(bare, '='); idx >= 0 {
-		suffix = bare[idx:] // includes "="
-		bare = bare[:idx]
-	}
-
-	// Already a known flag in its current form — no change needed.
-	if known[bare] {
-		return "", false
-	}
-
-	normalised := toKebabCase(bare)
-	if normalised == bare {
-		return "", false
-	}
-	if !known[normalised] {
-		return "", false
-	}
-
-	return "--" + normalised + suffix, true
+	return pipeline.NormalizeFlagToken(arg, known)
 }
 
 // toKebabCase converts a string from camelCase, PascalCase, or snake_case to

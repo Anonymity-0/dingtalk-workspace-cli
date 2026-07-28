@@ -117,14 +117,19 @@ func TestCrossPlatformCoverageRunPreParseAppliesCorrectionsOnlyOnSuccess(t *test
 
 func TestRunPreParseResolvesCommandPastLeadingPersistentFlags(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name       string
+		args       []string
+		executable bool
 	}{
-		{name: "boolean long flag", args: []string{"--dry-run", "calendar", "event", "list", "--date", "2026-03-10"}},
-		{name: "valued long flag", args: []string{"--profile", "corp:user", "calendar", "event", "list", "--date", "2026-03-10"}},
-		{name: "valued shorthand", args: []string{"-f", "json", "calendar", "event", "list", "--date", "2026-03-10"}},
-		{name: "attached shorthand", args: []string{"-fjson", "calendar", "event", "list", "--date", "2026-03-10"}},
-		{name: "clustered attached shorthand", args: []string{"-vfjson", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "boolean long flag", args: []string{"--dry-run", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
+		{name: "camel-case boolean long flag", args: []string{"--dryRun", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "fuzzy boolean long flag", args: []string{"--dry-rnu", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "valued long flag", args: []string{"--profile", "corp:user", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
+		{name: "fuzzy valued long flag", args: []string{"--profle", "corp:user", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "sticky valued long flag", args: []string{"--timeout30", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "valued shorthand", args: []string{"-f", "json", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
+		{name: "attached shorthand", args: []string{"-fjson", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
+		{name: "clustered attached shorthand", args: []string{"-vfjson", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
 	}
 
 	for _, test := range tests {
@@ -132,6 +137,7 @@ func TestRunPreParseResolvesCommandPastLeadingPersistentFlags(t *testing.T) {
 			root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 			root.PersistentFlags().Bool("dry-run", false, "")
 			root.PersistentFlags().String("profile", "", "")
+			root.PersistentFlags().Int("timeout", 0, "")
 			root.PersistentFlags().StringP("format", "f", "json", "")
 			root.PersistentFlags().BoolP("verbose", "v", false, "")
 
@@ -173,11 +179,68 @@ func TestRunPreParseResolvesCommandPastLeadingPersistentFlags(t *testing.T) {
 			if ctx == nil || len(ctx.Corrections) != 1 {
 				t.Fatalf("RunPreParseArgs() context = %#v", ctx)
 			}
-			if err := root.Execute(); err != nil {
-				t.Fatalf("corrected command failed: %v", err)
+			if test.executable {
+				if err := root.Execute(); err != nil {
+					t.Fatalf("corrected command failed: %v", err)
+				}
+				if value != "2026-03-10" {
+					t.Fatalf("canonical --start value = %q", value)
+				}
 			}
-			if value != "2026-03-10" {
-				t.Fatalf("canonical --start value = %q", value)
+		})
+	}
+}
+
+func TestRunPreParsePrimesPresentationFlagsForEarlyErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		wantFormat  string
+		wantDebug   bool
+		wantVerbose bool
+	}{
+		{
+			name:       "canonical flags after command",
+			args:       []string{"child", "--name", "demo", "--format", "table", "--debug"},
+			wantFormat: "table",
+			wantDebug:  true,
+		},
+		{
+			name:        "corrected leading flags",
+			args:        []string{"--dryRun", "--formt=pretty", "--verbos", "child", "--name", "demo"},
+			wantFormat:  "pretty",
+			wantVerbose: true,
+		},
+		{
+			name:        "clustered shorthands",
+			args:        []string{"-vfraw", "child", "--name", "demo"},
+			wantFormat:  "raw",
+			wantVerbose: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+			root.PersistentFlags().Bool("dry-run", false, "")
+			root.PersistentFlags().StringP("format", "f", "json", "")
+			root.PersistentFlags().Bool("debug", false, "")
+			root.PersistentFlags().BoolP("verbose", "v", false, "")
+			child := &cobra.Command{Use: "child"}
+			child.Flags().String("name", "", "")
+			root.AddCommand(child)
+
+			engine := NewEngine()
+			engine.Register(newStub("fail", PreParse, func(*Context) error { return errors.New("early") }))
+			ctx, err := RunPreParseArgs(root, engine, test.args)
+			if err == nil || ctx == nil {
+				t.Fatalf("RunPreParseArgs() = %#v, %v; want early error with context", ctx, err)
+			}
+			format, _ := root.PersistentFlags().GetString("format")
+			debug, _ := root.PersistentFlags().GetBool("debug")
+			verbose, _ := root.PersistentFlags().GetBool("verbose")
+			if format != test.wantFormat || debug != test.wantDebug || verbose != test.wantVerbose {
+				t.Fatalf("presentation flags = format:%q debug:%v verbose:%v; want %q/%v/%v", format, debug, verbose, test.wantFormat, test.wantDebug, test.wantVerbose)
 			}
 		})
 	}
@@ -201,11 +264,38 @@ func TestCommandTraversalFlagTokenEdges(t *testing.T) {
 	if flag, inline, matched := persistentFlagToken(nil, "--verbose"); flag != nil || inline || matched {
 		t.Fatalf("nil flag set matched: %#v, %v, %v", flag, inline, matched)
 	}
+	if flag, inline, matched := (*flagTokenMatcher)(nil).matchTraversalToken(""); flag != nil || inline || matched {
+		t.Fatalf("nil matcher matched: %#v, %v, %v", flag, inline, matched)
+	}
+	if match := (*flagTokenMatcher)(nil).matchLongToken("--verbose"); match.recognized {
+		t.Fatalf("nil long matcher matched: %#v", match)
+	}
 	if flag, inline, matched := persistentFlagToken(root.PersistentFlags(), "-x"); flag != nil || inline || matched {
 		t.Fatalf("unknown shorthand matched: %#v, %v, %v", flag, inline, matched)
 	}
 	flag, inline, matched := persistentFlagToken(root.PersistentFlags(), "-vv")
 	if !matched || !inline || flag == nil || flag.Name != "verbose" {
 		t.Fatalf("boolean shorthand cluster = %#v, %v, %v", flag, inline, matched)
+	}
+}
+
+func TestPrimeEarlyErrorPresentationEdges(t *testing.T) {
+	primeEarlyErrorPresentation(nil, nil, nil)
+
+	root := &cobra.Command{Use: "root"}
+	root.PersistentFlags().StringP("format", "f", "json", "")
+	root.PersistentFlags().Bool("debug", false, "")
+	child := &cobra.Command{Use: "child"}
+	child.Flags().String("name", "", "")
+	root.AddCommand(child)
+
+	primeEarlyErrorPresentation(root, child, []string{
+		"child", "--unknown", "value", "-x", "--name", "demo",
+		"-f", "table", "--", "--debug",
+	})
+	format, _ := root.PersistentFlags().GetString("format")
+	debug, _ := root.PersistentFlags().GetBool("debug")
+	if format != "table" || debug {
+		t.Fatalf("presentation after edge argv = format:%q debug:%v", format, debug)
 	}
 }

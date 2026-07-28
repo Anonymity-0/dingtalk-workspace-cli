@@ -14,9 +14,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
 )
+
+func TestParamAliasGeneratorUsesDistributionOwnedCommandTree(t *testing.T) {
+	got := reflect.ValueOf(newParamAliasRoot).Pointer()
+	want := reflect.ValueOf(app.NewSchemaSourceRootCommand).Pointer()
+	if got != want {
+		t.Fatal("parameter alias generator must use the distribution-owned Schema source command tree")
+	}
+}
 
 func preserveParamAliasGeneratorGlobals(t *testing.T) {
 	t.Helper()

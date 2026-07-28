@@ -14,8 +14,6 @@
 package handlers
 
 import (
-	"strings"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 )
@@ -34,8 +32,6 @@ import (
 // so that obvious normalisation (camelCase → kebab-case) is already
 // done and fuzzy matching only handles genuine near-misses.
 type ParamNameHandler struct{}
-
-const maxEditDistance = 2
 
 func (ParamNameHandler) Name() string          { return "paramname" }
 func (ParamNameHandler) Phase() pipeline.Phase { return pipeline.PreParse }
@@ -79,50 +75,5 @@ func (ParamNameHandler) Handle(ctx *pipeline.Context) error {
 // tryFuzzyMatch attempts to correct an unrecognised "--flag" token by
 // finding the closest known flag name within the edit distance threshold.
 func tryFuzzyMatch(arg string, known map[string]bool, candidates []string) (string, bool) {
-	if !strings.HasPrefix(arg, "--") {
-		return "", false
-	}
-
-	bare := arg[2:]
-	if bare == "" {
-		return "", false
-	}
-
-	// Handle --flag=value syntax.
-	var suffix string
-	if idx := strings.IndexByte(bare, '='); idx >= 0 {
-		suffix = bare[idx:]
-		bare = bare[:idx]
-	}
-
-	// Already known — nothing to fix.
-	if known[bare] {
-		return "", false
-	}
-
-	threshold := maxEditDistance
-	if len(bare) <= 3 {
-		threshold = 1
-	}
-
-	bestDist := threshold + 1
-	bestMatch := ""
-	ambiguous := false
-
-	for _, candidate := range candidates {
-		dist := cmdutil.LevenshteinDist(bare, candidate)
-		if dist < bestDist {
-			bestDist = dist
-			bestMatch = candidate
-			ambiguous = false
-		} else if dist == bestDist && candidate != bestMatch {
-			ambiguous = true
-		}
-	}
-
-	if bestDist > threshold || ambiguous || bestMatch == "" {
-		return "", false
-	}
-
-	return "--" + bestMatch + suffix, true
+	return pipeline.FuzzyMatchFlag(arg, known, candidates)
 }

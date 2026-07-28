@@ -76,6 +76,12 @@ func RunPreParseArgs(root *cobra.Command, engine *Engine, rawArgs []string) (*Co
 	}
 
 	if err := engine.RunPhase(PreParse, ctx); err != nil {
+		// Cobra has not parsed persistent flags yet, but this error is rendered
+		// immediately by app.Execute. Prime only the presentation controls so
+		// --format/--debug/--verbose affect this early error exactly as they do
+		// errors returned after Cobra parsing. No credentials, profiles, output
+		// paths, or execution controls are applied here.
+		primeEarlyErrorPresentation(root, target, ctx.Args)
 		slog.Debug("pipeline pre-parse", "error", err)
 		return ctx, err
 	}
@@ -105,6 +111,7 @@ func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
 		return rawArgs
 	}
 
+	matcher := newFlagTokenMatcher(flags)
 	out := make([]string, 0, len(rawArgs))
 	for index := 0; index < len(rawArgs); index++ {
 		argument := rawArgs[index]
@@ -112,7 +119,7 @@ func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
 			out = append(out, rawArgs[index:]...)
 			break
 		}
-		flag, inlineValue, matched := persistentFlagToken(flags, argument)
+		flag, inlineValue, matched := matcher.matchTraversalToken(argument)
 		if !matched {
 			out = append(out, argument)
 			continue
@@ -125,14 +132,87 @@ func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
 }
 
 func persistentFlagToken(flags *pflag.FlagSet, argument string) (*pflag.Flag, bool, bool) {
-	if flags == nil || argument == "" || argument == "-" || argument == "--" {
+	return newFlagTokenMatcher(flags).matchTraversalToken(argument)
+}
+
+type longFlagMatch struct {
+	flag       *pflag.Flag
+	value      string
+	hasValue   bool
+	recognized bool
+}
+
+type flagTokenMatcher struct {
+	byName      map[string]*pflag.Flag
+	byShorthand map[string]*pflag.Flag
+	known       map[string]bool
+	candidates  []string
+	specByName  map[string]FlagInfo
+}
+
+func newFlagTokenMatcher(flagSets ...*pflag.FlagSet) *flagTokenMatcher {
+	matcher := &flagTokenMatcher{
+		byName:      make(map[string]*pflag.Flag),
+		byShorthand: make(map[string]*pflag.Flag),
+		known:       make(map[string]bool),
+		specByName:  make(map[string]FlagInfo),
+	}
+	for _, flags := range flagSets {
+		if flags == nil {
+			continue
+		}
+		flags.VisitAll(func(flag *pflag.Flag) {
+			if _, exists := matcher.byName[flag.Name]; exists {
+				return
+			}
+			matcher.byName[flag.Name] = flag
+			matcher.known[flag.Name] = true
+			matcher.candidates = append(matcher.candidates, flag.Name)
+			matcher.specByName[flag.Name] = flagInfoFromPflag(flag)
+			if flag.Shorthand != "" {
+				matcher.byShorthand[flag.Shorthand] = flag
+			}
+		})
+	}
+	return matcher
+}
+
+func (m *flagTokenMatcher) matchLongToken(argument string) longFlagMatch {
+	if m == nil || !strings.HasPrefix(argument, "--") || argument == "--" {
+		return longFlagMatch{}
+	}
+
+	canonical := argument
+	body := strings.TrimPrefix(canonical, "--")
+	name, value, hasValue := strings.Cut(body, "=")
+	if flag := m.byName[name]; flag != nil {
+		return longFlagMatch{flag: flag, value: value, hasValue: hasValue, recognized: true}
+	}
+
+	if normalized, ok := NormalizeFlagToken(argument, m.known); ok {
+		canonical = normalized
+	} else if split, ok := SplitStickyFlag(argument, m.specByName); ok {
+		name = strings.TrimPrefix(split.Flag, "--")
+		return longFlagMatch{flag: m.byName[name], value: split.Value, hasValue: true, recognized: true}
+	} else if fuzzy, ok := FuzzyMatchFlag(argument, m.known, m.candidates); ok {
+		canonical = fuzzy
+	} else {
+		return longFlagMatch{}
+	}
+
+	body = strings.TrimPrefix(canonical, "--")
+	name, value, hasValue = strings.Cut(body, "=")
+	flag := m.byName[name]
+	return longFlagMatch{flag: flag, value: value, hasValue: hasValue, recognized: flag != nil}
+}
+
+func (m *flagTokenMatcher) matchTraversalToken(argument string) (*pflag.Flag, bool, bool) {
+	if m == nil || argument == "" || argument == "-" || argument == "--" {
 		return nil, false, false
 	}
 	if strings.HasPrefix(argument, "--") {
-		body := strings.TrimPrefix(argument, "--")
-		name, _, inlineValue := strings.Cut(body, "=")
-		flag := flags.Lookup(name)
-		return flag, inlineValue, flag != nil
+		match := m.matchLongToken(argument)
+		return match.flag, match.hasValue, match.recognized
 	}
 	if !strings.HasPrefix(argument, "-") {
 		return nil, false, false
@@ -141,7 +221,7 @@ func persistentFlagToken(flags *pflag.FlagSet, argument string) (*pflag.Flag, bo
 	body := strings.TrimPrefix(argument, "-")
 	shorthands := []rune(body)
 	for index, shorthand := range shorthands {
-		flag := flags.ShorthandLookup(string(shorthand))
+		flag := m.byShorthand[string(shorthand)]
 		if flag == nil {
 			return nil, false, false
 		}
@@ -151,7 +231,68 @@ func persistentFlagToken(flags *pflag.FlagSet, argument string) (*pflag.Flag, bo
 			return flag, index < len(shorthands)-1, true
 		}
 	}
-	return flags.ShorthandLookup(string(shorthands[0])), true, true
+	return m.byShorthand[string(shorthands[0])], true, true
+}
+
+func primeEarlyErrorPresentation(root, target *cobra.Command, rawArgs []string) {
+	if root == nil || target == nil || len(rawArgs) == 0 {
+		return
+	}
+	rootFlags := root.PersistentFlags()
+	presentation := map[string]bool{"format": true, "debug": true, "verbose": true}
+	matcher := newFlagTokenMatcher(target.Flags(), target.InheritedFlags())
+	for index := 0; index < len(rawArgs); index++ {
+		argument := rawArgs[index]
+		if argument == "--" {
+			break
+		}
+
+		if strings.HasPrefix(argument, "--") {
+			match := matcher.matchLongToken(argument)
+			if !match.recognized || match.flag == nil {
+				continue
+			}
+			value, hasValue := match.value, match.hasValue
+			if !hasValue && match.flag.NoOptDefVal != "" {
+				value, hasValue = match.flag.NoOptDefVal, true
+			} else if !hasValue && index+1 < len(rawArgs) {
+				index++
+				value, hasValue = rawArgs[index], true
+			}
+			if presentation[match.flag.Name] && hasValue {
+				_ = rootFlags.Set(match.flag.Name, value)
+			}
+			continue
+		}
+
+		if !strings.HasPrefix(argument, "-") || argument == "-" {
+			continue
+		}
+		shorthands := []rune(strings.TrimPrefix(argument, "-"))
+		for shorthandIndex, shorthand := range shorthands {
+			flag := matcher.byShorthand[string(shorthand)]
+			if flag == nil {
+				break
+			}
+			value, hasValue := "", false
+			if flag.NoOptDefVal != "" {
+				value, hasValue = flag.NoOptDefVal, true
+			} else if shorthandIndex+1 < len(shorthands) {
+				value = string(shorthands[shorthandIndex+1:])
+				value = strings.TrimPrefix(value, "=")
+				hasValue = true
+			} else if index+1 < len(rawArgs) {
+				index++
+				value, hasValue = rawArgs[index], true
+			}
+			if presentation[flag.Name] && hasValue {
+				_ = rootFlags.Set(flag.Name, value)
+			}
+			if flag.NoOptDefVal == "" {
+				break
+			}
+		}
+	}
 }
 
 // FlagInfoFromCommand extracts FlagInfo entries from a Cobra

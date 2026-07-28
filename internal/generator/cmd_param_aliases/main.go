@@ -40,7 +40,7 @@ import (
 const defaultOutput = "internal/cli/param_aliases_generated.go"
 
 var (
-	newParamAliasRoot       = app.NewRootCommand
+	newParamAliasRoot       = app.NewSchemaSourceRootCommand
 	reduceParamAliasEntries = cli.ReduceParamAliases
 	formatParamAliasSource  = format.Source
 	writeParamAliasFile     = os.WriteFile
