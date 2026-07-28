@@ -269,6 +269,21 @@ func TestLeafIntRequiredExplicitZeroReportsMissing(t *testing.T) {
 	if err := leafValidateRequired(cmd64, spec64); err == nil || !strings.Contains(err.Error(), "missing required flag(s): --cursor") {
 		t.Fatalf("leafValidateRequired() = %v, want missing --cursor for explicit 0", err)
 	}
+
+	// 整型解析失败视为「已提供」：Required 校验放行，让 leafArgs 报出更
+	// 精确的 invalid integer 错误。
+	specEnv := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "n", Usage: "数量", Kind: LeafInt, Required: true, EnvVar: "DWS_LEAF_TEST_REQ_GARBAGE"}},
+	}
+	t.Setenv("DWS_LEAF_TEST_REQ_GARBAGE", "not-a-number")
+	cmdEnv := NewLeafCommand(specEnv)
+	if err := leafValidateRequired(cmdEnv, specEnv); err != nil {
+		t.Fatalf("leafValidateRequired() = %v, want nil for unparsable env (leafArgs reports it)", err)
+	}
+	if _, err := leafArgs(cmdEnv, specEnv); err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+		t.Fatalf("leafArgs() = %v, want invalid integer error", err)
+	}
 }
 
 // TestLeafTrimWhitespaceFallsThroughChain：Trim 开启时纯空白候选值与空串
