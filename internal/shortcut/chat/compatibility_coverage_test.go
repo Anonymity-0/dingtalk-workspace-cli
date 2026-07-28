@@ -103,6 +103,36 @@ func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 			wantTool:    "query_msg_read_status",
 			wantArgs:    map[string]any{"openConversationId": "cid-1"},
 		},
+		{
+			name: "message resource url msg id alias",
+			argv: []string{
+				"chat", "+messages-resource-url", "--resource-id", "resource-1",
+				"--msg-id", "msg-1", "--open-conversation-id", "cid-1",
+			},
+			wantProduct: "im",
+			wantTool:    "get_resource_download_url",
+			wantArgs: map[string]any{
+				"resourceType":       "mediaId",
+				"resourceId":         "resource-1",
+				"openMessageId":      "msg-1",
+				"openConversationId": "cid-1",
+			},
+		},
+		{
+			name: "message resource url open message id alias",
+			argv: []string{
+				"chat", "+messages-resource-url", "--resource-id", "resource-1",
+				"--open-message-id", "msg-1", "--open-conversation-id", "cid-1",
+			},
+			wantProduct: "im",
+			wantTool:    "get_resource_download_url",
+			wantArgs: map[string]any{
+				"resourceType":       "mediaId",
+				"resourceId":         "resource-1",
+				"openMessageId":      "msg-1",
+				"openConversationId": "cid-1",
+			},
+		},
 	}
 
 	for _, tc := range tests {
