@@ -106,6 +106,15 @@ func run(args []string, stderr io.Writer) int {
 	if len(crossRefs) > 0 {
 		fmt.Fprintf(stderr, "fetch_mcp_metadata: cross-server ref index: %d live keys\n", len(crossRefs))
 	}
+	// Canonicals with a reviewed cross-server identity must only be fed by
+	// that identity; a same-named tool on another server is a coincidence,
+	// not a data source.
+	crossOwned := map[string]bool{}
+	for _, canonicals := range crossRefs {
+		for _, canonical := range canonicals {
+			crossOwned[canonical] = true
+		}
+	}
 	totalRaw := 0
 	failedServices := []string{}
 
@@ -130,9 +139,10 @@ func run(args []string, stderr io.Writer) int {
 				continue
 			}
 			// Direct match: CLI canonical equals server-prefixed tool name
-			// (e.g., "doc.copy_document").
+			// (e.g., "doc.copy_document"). Cross-owned canonicals are skipped
+			// here — their reviewed identity feeds them below.
 			canonicalKey := srv.ID + "." + name
-			if ref, hasRef := registryMap[canonicalKey]; hasRef {
+			if ref, hasRef := registryMap[canonicalKey]; hasRef && !crossOwned[canonicalKey] {
 				mergeLiveMCPTool(allTools, canonicalKey, tool, ref)
 			}
 			// Cross-server match: registry canonicals whose reviewed

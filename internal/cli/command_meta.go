@@ -73,29 +73,29 @@ func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
 	}
 	metas := make([]CommandMeta, 0, len(loaded.Snapshot.Tools))
 	for _, tool := range loaded.Snapshot.Tools {
-		cliPath := catalogStringVal(tool, "cli_path")
+		cliPath := schemaString(tool["cli_path"])
 		if cliPath == "" {
 			continue
 		}
 		meta := CommandMeta{
 			Identity: CommandIdentity{
 				CLIPath:   cliPath,
-				Canonical: catalogStringVal(tool, "canonical_path"),
-				Aliases:   catalogStringSliceVal(tool, "aliases"),
-				ProductID: catalogStringVal(tool, "product_id"),
-				Title:     catalogStringVal(tool, "title"),
+				Canonical: schemaString(tool["canonical_path"]),
+				Aliases:   schemaStringSlice(tool["aliases"]),
+				ProductID: schemaString(tool["product_id"]),
+				Title:     schemaString(tool["title"]),
 			},
 			Safety: CommandSafety{
-				Effect:       catalogStringVal(tool, "effect"),
-				Risk:         catalogStringVal(tool, "risk"),
-				Confirmation: catalogStringVal(tool, "confirmation"),
-				Idempotency:  catalogStringVal(tool, "idempotency"),
+				Effect:       schemaString(tool["effect"]),
+				Risk:         schemaString(tool["risk"]),
+				Confirmation: schemaString(tool["confirmation"]),
+				Idempotency:  schemaString(tool["idempotency"]),
 			},
 			Selection: CommandSelection{
-				AgentSummary: catalogStringVal(tool, "agent_summary"),
-				UseWhen:      catalogStringSliceVal(tool, "use_when"),
-				AvoidWhen:    catalogStringSliceVal(tool, "avoid_when"),
-				Examples:     catalogStringSliceVal(tool, "examples"),
+				AgentSummary: schemaString(tool["agent_summary"]),
+				UseWhen:      schemaStringSlice(tool["use_when"]),
+				AvoidWhen:    schemaStringSlice(tool["avoid_when"]),
+				Examples:     schemaStringSlice(tool["examples"]),
 			},
 		}
 		lookup[cliPath] = meta
@@ -122,29 +122,6 @@ func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
 		}
 	}
 	return lookup
-}
-
-// catalogStringVal reads a string field from a catalog tool map[string]any.
-func catalogStringVal(tool map[string]any, key string) string {
-	if v, ok := tool[key].(string); ok {
-		return v
-	}
-	return ""
-}
-
-// catalogStringSliceVal reads a []string field from a catalog tool map.
-func catalogStringSliceVal(tool map[string]any, key string) []string {
-	raw, ok := tool[key].([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(raw))
-	for _, v := range raw {
-		if s, ok := v.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 // ResolveMeta returns the complete metadata for a command identified by its CLI

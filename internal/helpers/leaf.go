@@ -54,7 +54,7 @@ type LeafFlag struct {
 	Name    string       // flag 名（kebab-case）
 	Usage   string       // 注册 usage 文案
 	Kind    LeafFlagKind // 值类型，默认 LeafString
-	Default string       // 注册默认值（仅 LeafString 有效）；回退链链尾兜底，不遮蔽别名/env
+	Default string       // 注册默认值（cobra 注册仅 LeafString 使用；回退链链尾对所有 Kind 生效，不遮蔽别名/env）
 
 	// Required 为 true 时在 RunE 期校验有效值非空。普通 Required 汇聚为
 	// cmdutil.ValidateRequiredFlags 兼容的统一报错；配置 EnvVar 时回退读
@@ -189,7 +189,7 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 func leafValidateRequired(cmd *cobra.Command, spec LeafSpec) error {
 	var plain []string
 	for _, flag := range spec.Flags {
-		if flag.Required && flag.EnvVar == "" && flag.RequiredHint == "" && leafEffectiveValue(cmd, flag) == "" {
+		if flag.Required && flag.EnvVar == "" && flag.RequiredHint == "" && !leafHasEffectiveValue(cmd, flag) {
 			plain = append(plain, flag.Name)
 		}
 	}
@@ -200,7 +200,7 @@ func leafValidateRequired(cmd *cobra.Command, spec LeafSpec) error {
 		if !flag.Required || (flag.EnvVar == "" && flag.RequiredHint == "") {
 			continue
 		}
-		if leafEffectiveValue(cmd, flag) == "" {
+		if !leafHasEffectiveValue(cmd, flag) {
 			hint := flag.RequiredHint
 			if hint == "" {
 				hint = fmt.Sprintf("flag --%s is required", flag.Name)
@@ -209,6 +209,24 @@ func leafValidateRequired(cmd *cobra.Command, spec LeafSpec) error {
 		}
 	}
 	return nil
+}
+
+// leafHasEffectiveValue 判定 Required 是否满足，标准与 leafArgs 的入参判定
+// 一致（LeafInt64 需 > 0、LeafInt 需非零、字符串需非空）：否则会出现校验
+// 声称有效、toolArgs 却缺参的分裂。整型解析失败视为已提供，让 leafArgs
+// 报出更精确的 invalid integer 错误。
+func leafHasEffectiveValue(cmd *cobra.Command, flag LeafFlag) bool {
+	if flag.Kind == LeafInt64 || flag.Kind == LeafInt {
+		v, err := leafIntegerValue(cmd, flag)
+		if err != nil {
+			return true
+		}
+		if flag.Kind == LeafInt64 {
+			return v > 0
+		}
+		return v != 0
+	}
+	return leafEffectiveValue(cmd, flag) != ""
 }
 
 // leafArgs 按绑定关系装配 toolArgs。
@@ -268,10 +286,17 @@ func leafEffectiveValue(cmd *cobra.Command, flag LeafFlag) string {
 }
 
 // leafRawValue 取未 trim 的原始有效值。主 flag 仅在用户显式提供（Changed）
-// 且非空时命中；注册默认值降级为链尾兜底，不再遮蔽别名与环境变量。
+// 且非空时命中；注册默认值降级为链尾兜底，不再遮蔽别名与环境变量。Trim 为
+// true 时候选值按 trim 后判空，纯空白与空串同样落入下一级回退。
 func leafRawValue(cmd *cobra.Command, flag LeafFlag) string {
+	usable := func(v string) bool {
+		if flag.Trim {
+			v = strings.TrimSpace(v)
+		}
+		return v != ""
+	}
 	if cmd.Flags().Changed(flag.Name) {
-		if v := leafFlagString(cmd, flag.Kind, flag.Name); v != "" {
+		if v := leafFlagString(cmd, flag.Kind, flag.Name); usable(v) {
 			return v
 		}
 	}
@@ -279,12 +304,12 @@ func leafRawValue(cmd *cobra.Command, flag LeafFlag) string {
 		if !cmd.Flags().Changed(alias) {
 			continue
 		}
-		if v := leafFlagString(cmd, flag.Kind, alias); v != "" {
+		if v := leafFlagString(cmd, flag.Kind, alias); usable(v) {
 			return v
 		}
 	}
 	if flag.EnvVar != "" {
-		if v := os.Getenv(flag.EnvVar); v != "" {
+		if v := os.Getenv(flag.EnvVar); usable(v) {
 			return v
 		}
 	}

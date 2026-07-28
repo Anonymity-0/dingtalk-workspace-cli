@@ -240,3 +240,59 @@ func TestLeafDefaultDoesNotShadowFallback(t *testing.T) {
 		t.Fatalf("effective = %q, want registered default as tail fallback", got)
 	}
 }
+
+// TestLeafIntRequiredExplicitZeroReportsMissing：Required 判定与 leafArgs 入参
+// 判定必须一致——LeafInt 显式 0 不会入参，因此 Required 校验也须报缺失，
+// 不允许「校验通过但入参缺席」的裂缝。
+func TestLeafIntRequiredExplicitZeroReportsMissing(t *testing.T) {
+	spec := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "n", Usage: "数量", Kind: LeafInt, Required: true, Bind: "count"}},
+	}
+	cmd := NewLeafCommand(spec)
+	if err := cmd.Flags().Set("n", "0"); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafValidateRequired(cmd, spec); err == nil || !strings.Contains(err.Error(), "missing required flag(s): --n") {
+		t.Fatalf("leafValidateRequired() = %v, want missing --n for explicit 0", err)
+	}
+
+	// LeafInt64 同理：0 不入参（> 0 语义），Required 视为缺失。
+	spec64 := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "cursor", Usage: "游标", Kind: LeafInt64, Required: true}},
+	}
+	cmd64 := NewLeafCommand(spec64)
+	if err := cmd64.Flags().Set("cursor", "0"); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafValidateRequired(cmd64, spec64); err == nil || !strings.Contains(err.Error(), "missing required flag(s): --cursor") {
+		t.Fatalf("leafValidateRequired() = %v, want missing --cursor for explicit 0", err)
+	}
+}
+
+// TestLeafTrimWhitespaceFallsThroughChain：Trim 开启时纯空白候选值与空串
+// 同样落入下一级回退，不得在链中「命中后被 trim 成空」。
+func TestLeafTrimWhitespaceFallsThroughChain(t *testing.T) {
+	spec := LeafSpec{
+		Use: "list", Tool: "list_thing",
+		Flags: []LeafFlag{{Name: "type", Usage: "类型", Trim: true, Default: "ALL", Aliases: []string{"kind"}, EnvVar: "DWS_LEAF_TEST_TRIM_TYPE"}},
+	}
+	// 主 flag 纯空白 → 回退 env。
+	t.Setenv("DWS_LEAF_TEST_TRIM_TYPE", "from-env")
+	cmd := NewLeafCommand(spec)
+	if err := cmd.Flags().Set("type", "   "); err != nil {
+		t.Fatal(err)
+	}
+	if got := leafEffectiveValue(cmd, spec.Flags[0]); got != "from-env" {
+		t.Fatalf("effective = %q, want whitespace primary to fall through to env", got)
+	}
+	// 别名纯空白也回退；env 纯空白最终落到注册默认值。
+	t.Setenv("DWS_LEAF_TEST_TRIM_TYPE", "  ")
+	if err := cmd.Flags().Set("kind", "\t"); err != nil {
+		t.Fatal(err)
+	}
+	if got := leafEffectiveValue(cmd, spec.Flags[0]); got != "ALL" {
+		t.Fatalf("effective = %q, want whitespace chain to land on default", got)
+	}
+}

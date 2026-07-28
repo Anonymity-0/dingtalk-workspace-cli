@@ -184,9 +184,9 @@ func TestBuildMetaByCLIPathGuards(t *testing.T) {
 	}
 }
 
-func TestCatalogStringSliceValNonSlice(t *testing.T) {
-	if got := catalogStringSliceVal(map[string]any{"aliases": "not-a-slice"}, "aliases"); got != nil {
-		t.Fatalf("catalogStringSliceVal() = %v, want nil", got)
+func TestSchemaStringSliceNonSlice(t *testing.T) {
+	if got := schemaStringSlice("not-a-slice"); got != nil {
+		t.Fatalf("schemaStringSlice() = %v, want nil", got)
 	}
 }
 

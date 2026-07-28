@@ -143,6 +143,57 @@ func TestRunRefreshesCrossServerTools(t *testing.T) {
 	}
 }
 
+// TestRunCrossOwnedCanonicalIgnoresNameCoincidence：canonical 拥有评审过的
+// 跨 server 身份时，另一 server 上恰好同名的工具不得直连覆盖其元数据——
+// 数据源只能是评审身份指向的 live 工具。
+func TestRunCrossOwnedCanonicalIgnoresNameCoincidence(t *testing.T) {
+	registry := func() ([]byte, error) {
+		return []byte(`{"version":1,"products":[{"id":"aitable","tools":[{"canonical_path":"aitable.advperm_enable"}]}]}`), nil
+	}
+	servers := []syncdata.ServerInfo{
+		{ID: "aitable", Endpoint: "https://aitable.example"},
+		{ID: "aitable-helper", Endpoint: "https://helper.example"},
+	}
+	lister := &fakeLister{
+		results: map[string]transport.ToolsListResult{
+			// 同名巧合：aitable server 上恰好也有 advperm_enable。
+			"https://aitable.example": {Tools: []transport.ToolDescriptor{
+				{Name: "advperm_enable", Title: "coincidence title", Description: "coincidence desc"},
+			}},
+			"https://helper.example": {Tools: []transport.ToolDescriptor{
+				{Name: "set_advanced_permission", Title: "owner title", Description: "owner desc"},
+			}},
+		},
+	}
+	stubDeps(t, "env-token", nil, servers, lister, registry)
+
+	output := filepath.Join(t.TempDir(), "snapshot.json")
+	prev := `{"tools":{"aitable.advperm_enable":{"title":"stale","interface_ref":{"product_id":"aitable-helper","rpc_name":"set_advanced_permission"}}}}`
+	if err := os.WriteFile(output, []byte(prev), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stderr bytes.Buffer
+	if code := run([]string{"--output", output}, &stderr); code != 0 {
+		t.Fatalf("run() = %d, stderr=%s", code, stderr.String())
+	}
+
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot struct {
+		Tools map[string]map[string]any `json:"tools"`
+	}
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	entry := snapshot.Tools["aitable.advperm_enable"]
+	if entry["title"] != "owner title" || entry["description"] != "owner desc" {
+		t.Fatalf("entry = %#v, want reviewed-identity source to win over name coincidence", entry)
+	}
+}
+
 func TestMergeLiveMCPToolRefreshesExistingMetadata(t *testing.T) {
 	const canonical = "calendar.list_calendars"
 	reviewedRef := map[string]any{
