@@ -38,10 +38,11 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/personal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/source"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
+
+const defaultPersonalEventMCPBaseURL = "https://pre-mcp.dingtalk.com"
 
 type commonConsumeOptions struct {
 	EventTypes []string
@@ -228,6 +229,9 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 	ctx := c.Context()
 	if err := ensurePublicPersonalEvent(opts.EventKey); err != nil {
 		return err
+	}
+	if err := validatePersonalOAOptions(opts.EventKey, opts); err != nil {
+		return fmt.Errorf("event consume --as user: %w", err)
 	}
 	rawFormat := ""
 	if f := c.Flags().Lookup("format"); f != nil && f.Changed {
@@ -567,6 +571,9 @@ func preparePersonalMultiOptions(opts personalConsumeOptions) ([]personalConsume
 		if !def.Public {
 			return nil, personal.PublicAvailabilityError(eventKey)
 		}
+		if err := validatePersonalOAOptions(eventKey, opts); err != nil {
+			return nil, err
+		}
 		switch def.RuleType {
 		case "singleChat", "sender":
 			hasUserScope = true
@@ -693,6 +700,9 @@ func applyPersonalConsumeFilters(cfg *consume.Config, opts personalConsumeOption
 }
 
 func validatePersonalSubscriptionOptions(opts personalConsumeOptions) error {
+	if err := validatePersonalOAOptions(opts.EventKey, opts); err != nil {
+		return err
+	}
 	if _, _, err := personal.BuildRuleParam(opts.EventKey, personal.RuleOptions{
 		RuleType:       opts.Rule,
 		UserID:         opts.UserID,
@@ -705,17 +715,57 @@ func validatePersonalSubscriptionOptions(opts personalConsumeOptions) error {
 	return err
 }
 
+func validatePersonalOAOptions(eventKey string, opts personalConsumeOptions) error {
+	changed := personalOAOptionNames(opts)
+	if len(changed) == 0 {
+		return nil
+	}
+	def, ok := personalLookupDefinition(strings.TrimSpace(eventKey))
+	if !ok || def.Category != "oa" {
+		return nil
+	}
+	return fmt.Errorf("%s not supported for OA event %s", strings.Join(changed, ", "), eventKey)
+}
+
+func personalOAOptionNames(opts personalConsumeOptions) []string {
+	var changed []string
+	for _, item := range []struct {
+		name  string
+		value string
+	}{
+		{name: "--user", value: opts.UserID},
+		{name: "--open-dingtalk-id", value: opts.OpenDingTalkID},
+		{name: "--group", value: opts.GroupID},
+		{name: "--query", value: opts.QueryCSV},
+		{name: "--filter-json", value: opts.FilterJSON},
+	} {
+		if strings.TrimSpace(item.value) != "" {
+			changed = append(changed, item.name)
+		}
+	}
+	return changed
+}
+
 func ensurePersonalSubscription(ctx context.Context, client *personal.Client, identity personal.Identity, opts personalConsumeOptions) (*personal.Subscription, string, string, error) {
 	if strings.TrimSpace(opts.SubscribeID) != "" {
 		sub, err := personalGetSubscription(client, ctx, opts.SubscribeID)
 		if err != nil {
 			return nil, "", "", err
 		}
+		lookupEventKey := strings.TrimSpace(sub.EventKey)
+		if lookupEventKey != "" {
+			if err := validatePersonalOAOptions(lookupEventKey, opts); err != nil {
+				return nil, "", "", err
+			}
+		}
 		eventKey := firstNonEmptyPersonalString(opts.EventKey, sub.EventKey)
 		if eventKey == "" {
 			return nil, "", "", fmt.Errorf("event_key is required when --subscribe-id lookup returns no event_key")
 		}
 		if err := ensurePublicPersonalEvent(eventKey); err != nil {
+			return nil, "", "", err
+		}
+		if err := validatePersonalOAOptions(eventKey, opts); err != nil {
 			return nil, "", "", err
 		}
 		ruleType := firstNonEmptyPersonalString(sub.RuleType, opts.Rule)
@@ -731,6 +781,9 @@ func ensurePersonalSubscription(ctx context.Context, client *personal.Client, id
 		return nil, "", "", fmt.Errorf("event_key is required unless --subscribe-id is provided")
 	}
 	if err := ensurePublicPersonalEvent(opts.EventKey); err != nil {
+		return nil, "", "", err
+	}
+	if err := validatePersonalOAOptions(opts.EventKey, opts); err != nil {
 		return nil, "", "", err
 	}
 	ruleType, ruleParam, err := personal.BuildRuleParam(opts.EventKey, personal.RuleOptions{
@@ -1300,7 +1353,7 @@ func personalEventMCPBaseURL(configDir string) string {
 	if v := configuredMCPBaseURL(configDir); v != "" {
 		return strings.TrimRight(v, "/")
 	}
-	return strings.TrimRight(config.DefaultMCPBaseURL, "/")
+	return defaultPersonalEventMCPBaseURL
 }
 
 func configuredMCPBaseURL(configDir string) string {

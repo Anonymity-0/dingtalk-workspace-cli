@@ -121,6 +121,17 @@ type GroupLifecycleEventOutput struct {
 	Payload     map[string]any `json:"payload" description:"群生命周期事件业务数据，字段以服务端实际推送为准" additional_properties:"true"`
 }
 
+// OAEventOutput intentionally keeps the OA payload open until stable approval
+// samples and status enums are available. Only top-level transport routing
+// metadata is removed; all unknown business fields are preserved.
+type OAEventOutput struct {
+	Type        string         `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID     string         `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp   int64          `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID string         `json:"subscribe_id" description:"订阅 ID"`
+	Payload     map[string]any `json:"payload" description:"OA 审批事件业务数据，字段以服务端实际推送为准" additional_properties:"true"`
+}
+
 type GroupMemberEventOutput struct {
 	Type                   string                   `json:"type" description:"事件类型，固定为当前 event_key"`
 	EventID                string                   `json:"event_id" description:"事件 ID，可用于去重"`
@@ -343,11 +354,23 @@ func ProjectOutput(ev transport.Event) (any, error) {
 	case isGroupMemberEvent(eventType):
 		return projectGroupMemberEvent(ev, base, data.Payload)
 	case isGroupLifecycleEvent(eventType):
-		payload, err := decodeGroupLifecyclePayload(data.Payload)
+		payload, err := decodeConservativePayload(data.Payload)
 		if err != nil {
 			return ev, fmt.Errorf("decode personal group lifecycle payload: %w", err)
 		}
 		return GroupLifecycleEventOutput{
+			Type:        base.Type,
+			EventID:     base.EventID,
+			Timestamp:   base.Timestamp,
+			SubscribeID: base.SubscribeID,
+			Payload:     payload,
+		}, nil
+	case isOAEvent(eventType):
+		payload, err := decodeConservativePayload(data.Payload)
+		if err != nil {
+			return ev, fmt.Errorf("decode personal OA payload: %w", err)
+		}
+		return OAEventOutput{
 			Type:        base.Type,
 			EventID:     base.EventID,
 			Timestamp:   base.Timestamp,
@@ -370,7 +393,7 @@ func projectMessageEventContext(message personalMessageContext) MessageEventCont
 	}
 }
 
-func decodeGroupLifecyclePayload(raw json.RawMessage) (map[string]any, error) {
+func decodeConservativePayload(raw json.RawMessage) (map[string]any, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
 		return nil, fmt.Errorf("payload is missing")
@@ -651,6 +674,8 @@ func outputTypeForEvent(eventKey string) reflect.Type {
 		return reflect.TypeOf(GroupMemberEventOutput{})
 	case isGroupLifecycleEvent(eventKey):
 		return reflect.TypeOf(GroupLifecycleEventOutput{})
+	case isOAEvent(eventKey):
+		return reflect.TypeOf(OAEventOutput{})
 	default:
 		return reflect.TypeOf(baseEventOutput{})
 	}
@@ -675,6 +700,11 @@ func isGroupMemberEvent(eventKey string) bool {
 func isGroupLifecycleEvent(eventKey string) bool {
 	return eventKey == EventGroupUpdated ||
 		eventKey == EventGroupDisbanded
+}
+
+func isOAEvent(eventKey string) bool {
+	return eventKey == EventOAApprovalTaskCreated ||
+		eventKey == EventOAApprovalInstanceFinished
 }
 
 func schemaType(t reflect.Type) string {

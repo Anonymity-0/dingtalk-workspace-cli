@@ -23,22 +23,24 @@ import (
 )
 
 const (
-	EventMention           = "user_im_message_receive_at"
-	EventSingleChat        = "user_im_message_receive_o2o"
-	EventInChat            = "user_im_message_receive_group"
-	EventFromUser          = "user_im_message_receive_user"
-	EventAllSingleChat     = "user_im_message_receive_o2o_all"
-	EventAllGroupChat      = "user_im_message_receive_group_all"
-	EventReadO2O           = "user_im_message_read_o2o"
-	EventReadGroup         = "user_im_message_read_group"
-	EventRecallO2O         = "user_im_message_recall_o2o"
-	EventRecallGroup       = "user_im_message_recall_group"
-	EventReactionO2O       = "user_im_message_reaction_o2o"
-	EventReactionGroup     = "user_im_message_reaction_group"
-	EventGroupUpdated      = "user_im_group_updated"
-	EventGroupMemberAdded  = "user_im_group_member_added"
-	EventGroupMemberExited = "user_im_group_member_exited"
-	EventGroupDisbanded    = "user_im_group_disbanded"
+	EventMention                    = "user_im_message_receive_at"
+	EventSingleChat                 = "user_im_message_receive_o2o"
+	EventInChat                     = "user_im_message_receive_group"
+	EventFromUser                   = "user_im_message_receive_user"
+	EventAllSingleChat              = "user_im_message_receive_o2o_all"
+	EventAllGroupChat               = "user_im_message_receive_group_all"
+	EventReadO2O                    = "user_im_message_read_o2o"
+	EventReadGroup                  = "user_im_message_read_group"
+	EventRecallO2O                  = "user_im_message_recall_o2o"
+	EventRecallGroup                = "user_im_message_recall_group"
+	EventReactionO2O                = "user_im_message_reaction_o2o"
+	EventReactionGroup              = "user_im_message_reaction_group"
+	EventGroupUpdated               = "user_im_group_updated"
+	EventGroupMemberAdded           = "user_im_group_member_added"
+	EventGroupMemberExited          = "user_im_group_member_exited"
+	EventGroupDisbanded             = "user_im_group_disbanded"
+	EventOAApprovalTaskCreated      = "user_oa_approval_task_created"
+	EventOAApprovalInstanceFinished = "user_oa_approval_instance_finished"
 )
 
 const (
@@ -270,6 +272,28 @@ var definitions = []Definition{
 		RuleType:       "group",
 		Status:         StatusEnabled,
 		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalTaskCreated,
+		DisplayName:    "审批任务创建",
+		Description:    "审批任务创建，发送给审批人",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalInstanceFinished,
+		DisplayName:    "审批实例完成",
+		Description:    "审批实例完成，发送给审批单发起人",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
 		Auth:           map[string]any{"identity": "user"},
 		Public:         true,
 	},

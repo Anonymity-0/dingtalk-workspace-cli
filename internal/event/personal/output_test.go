@@ -150,6 +150,28 @@ func personalGroupMemberData(eventKey string) string {
 	}`, eventKey)
 }
 
+func personalOAData(eventKey string) string {
+	return fmt.Sprintf(`{
+		"eventId":"oa-event",
+		"eventKey":%q,
+		"occurredAtMs":1785229200123,
+		"subId":"oa-data-sub",
+		"payload":{
+			"uid":100001,
+			"CORPID":"internal-corp",
+			"clientId":"internal-client",
+			"filterSubId":"internal-filter",
+			"bizid":"internal-biz",
+			"orgId":100002,
+			"sourceId":"open",
+			"processInstanceId":"process-instance-1",
+			"taskId":"approval-task-1",
+			"futureField":{"nested":true,"uid":"business-user-1"},
+			"steps":[{"name":"审批","result":"agree"}]
+		}
+	}`, eventKey)
+}
+
 func TestCrossPlatformCoverageProjectOutputMessageEvents(t *testing.T) {
 	for _, eventKey := range []string{EventMention, EventSingleChat, EventInChat, EventFromUser, EventAllSingleChat, EventAllGroupChat} {
 		t.Run(eventKey, func(t *testing.T) {
@@ -396,6 +418,69 @@ func TestCrossPlatformCoverageProjectOutputGroupLifecycleEvents(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageProjectOutputOAEvents(t *testing.T) {
+	for _, eventKey := range []string{EventOAApprovalTaskCreated, EventOAApprovalInstanceFinished} {
+		t.Run(eventKey, func(t *testing.T) {
+			projected, err := ProjectOutput(transport.Event{
+				EventID:       "outer-event",
+				EventBornTime: 11,
+				EventType:     eventKey,
+				SubscribeID:   "outer-sub",
+				Data:          personalOAData(eventKey),
+			})
+			if err != nil {
+				t.Fatalf("ProjectOutput() error = %v", err)
+			}
+			got, ok := projected.(OAEventOutput)
+			if !ok {
+				t.Fatalf("ProjectOutput() type = %T, want OAEventOutput", projected)
+			}
+			if got.Type != eventKey || got.EventID != "oa-event" || got.Timestamp != 1785229200123 || got.SubscribeID != "outer-sub" {
+				t.Fatalf("common fields = %#v", got)
+			}
+			for _, internal := range []string{"uid", "CORPID", "clientId", "filterSubId", "bizid", "orgId", "sourceId"} {
+				if _, ok := got.Payload[internal]; ok {
+					t.Fatalf("payload retained internal field %q: %#v", internal, got.Payload)
+				}
+			}
+			if got.Payload["processInstanceId"] != "process-instance-1" || got.Payload["taskId"] != "approval-task-1" {
+				t.Fatalf("payload lost known business fields: %#v", got.Payload)
+			}
+			future, ok := got.Payload["futureField"].(map[string]any)
+			if !ok || future["nested"] != true || future["uid"] != "business-user-1" {
+				t.Fatalf("payload lost unknown or nested business fields: %#v", got.Payload["futureField"])
+			}
+			steps, ok := got.Payload["steps"].([]any)
+			if !ok || len(steps) != 1 {
+				t.Fatalf("payload lost unknown array field: %#v", got.Payload["steps"])
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageProjectOutputOADecodesDoublyWrappedJSONString(t *testing.T) {
+	once, err := json.Marshal(personalOAData(EventOAApprovalTaskCreated))
+	if err != nil {
+		t.Fatal(err)
+	}
+	twice, err := json.Marshal(string(once))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projected, err := ProjectOutput(transport.Event{Data: string(twice)})
+	if err != nil {
+		t.Fatalf("ProjectOutput() error = %v", err)
+	}
+	got, ok := projected.(OAEventOutput)
+	if !ok {
+		t.Fatalf("ProjectOutput() type = %T, want OAEventOutput", projected)
+	}
+	if got.Type != EventOAApprovalTaskCreated || got.EventID != "oa-event" || got.SubscribeID != "oa-data-sub" {
+		t.Fatalf("ProjectOutput() = %#v", got)
+	}
+}
+
 func TestCrossPlatformCoverageProjectOutputGroupMemberEvents(t *testing.T) {
 	for _, eventKey := range []string{EventGroupMemberAdded, EventGroupMemberExited} {
 		t.Run(eventKey, func(t *testing.T) {
@@ -546,6 +631,41 @@ func TestCrossPlatformCoverageProjectOutputRejectsInvalidGroupLifecyclePayloads(
 				t.Fatalf("ProjectOutput() fallback = %#v, want %#v", projected, ev)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageProjectOutputRejectsInvalidOAPayloads(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+	}{
+		{name: "missing"},
+		{name: "null", payload: `,"payload":null`},
+		{name: "empty object", payload: `,"payload":{}`},
+		{name: "array", payload: `,"payload":[]`},
+		{name: "string", payload: `,"payload":"invalid"`},
+	}
+	for _, eventKey := range []string{EventOAApprovalTaskCreated, EventOAApprovalInstanceFinished} {
+		for _, tt := range tests {
+			t.Run(eventKey+"/"+tt.name, func(t *testing.T) {
+				ev := transport.Event{
+					EventID:   "outer-event",
+					EventType: eventKey,
+					Data:      fmt.Sprintf(`{"eventKey":%q%s}`, eventKey, tt.payload),
+				}
+				projected, err := ProjectOutput(ev)
+				if err == nil {
+					t.Fatal("ProjectOutput() error = nil, want OA payload validation error")
+				}
+				if !strings.Contains(err.Error(), "decode personal OA payload") {
+					t.Fatalf("ProjectOutput() error = %v, want OA payload context", err)
+				}
+				got, ok := projected.(transport.Event)
+				if !ok || !reflect.DeepEqual(got, ev) {
+					t.Fatalf("ProjectOutput() fallback = %#v, want %#v", projected, ev)
+				}
+			})
+		}
 	}
 }
 

@@ -1,11 +1,11 @@
 ---
 name: dingtalk-event
-description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖消息接收、全部单聊/群消息、指定发送人、已读、撤回、表情回应和群生命周期，输出 NDJSON 到 stdout。Use when 用户提到 监听个人消息事件、监听所有单聊或群消息、被@消息、监听单聊或群消息、监听某人发送的消息、监听消息已读、监听消息撤回、监听消息贴表情或表情回应、监听群成员加入、监听群成员退出、监听群改名或群解散、实时接收钉钉事件、用事件驱动 Agent。命令前缀：dws event。
+description: 钉钉个人 IM 事件与 OA 审批事件长连接监听、订阅与消费，覆盖消息接收、全部单聊/群消息、指定发送人、已读、撤回、表情回应、群生命周期、审批任务创建和审批实例完成，输出 NDJSON 到 stdout。Use when 用户提到 监听个人消息事件、监听所有单聊或群消息、被@消息、监听单聊或群消息、监听某人发送的消息、监听消息已读、监听消息撤回、监听消息贴表情或表情回应、监听群成员加入、监听群成员退出、监听群改名或群解散、监听待我审批的任务、监听我发起的审批完成、实时接收钉钉事件、用事件驱动 Agent。命令前缀：dws event。
 ---
 
-# 钉钉个人 IM 事件
+# 钉钉个人事件
 
-只使用 `dws event consume` 建立个人消息事件长连接。用户要求实时监听、订阅、自动回复或驱动 Agent 时，不要写轮询脚本，不要用消息历史查询模拟事件。
+只使用 `dws event consume` 建立个人事件长连接。用户要求实时监听、订阅、自动回复或驱动 Agent 时，不要写轮询脚本，不要用消息历史或审批列表查询模拟事件。
 
 ## 运行方式
 
@@ -47,8 +47,10 @@ description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖消
 | `user_im_group_member_added` | 指定群聊有成员加入 | `--group` |
 | `user_im_group_member_exited` | 指定群聊有成员退出 | `--group` |
 | `user_im_group_disbanded` | 指定群聊被解散 | `--group` |
+| `user_oa_approval_task_created` | 审批任务创建，发送给审批人 | 无 |
+| `user_oa_approval_instance_finished` | 审批实例完成，发送给审批单发起人 | 无 |
 
-只承认上表 16 个事件码。其它身份模式、应用凭证模式、非个人 IM 事件不在本 skill 范围内。
+只承认上表 18 个事件码。其它身份模式、应用凭证模式和未列出的个人事件不在本 skill 范围内。
 
 ## Command rules
 
@@ -65,10 +67,12 @@ description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖消
 - “监听群改名/群标题变更”使用 `user_im_group_updated`；“监听有人进群”使用 `user_im_group_member_added`；“监听有人退群”使用 `user_im_group_member_exited`；“监听群解散”使用 `user_im_group_disbanded`。群解散自测只能使用明确的测试群，并在执行解散操作前再次提示其不可逆影响。
 - 用户要求执行“撤回消息”时使用 `dws chat`；只有“监听/订阅消息撤回”才使用 `dws event consume user_im_message_recall_*`。
 - 用户说“贴标签”且语义是给消息贴表情时，按消息表情回应事件处理，event key 使用 `reaction`。
+- “有新的待我审批任务/审批任务创建”使用 `user_oa_approval_task_created`；“我发起的审批完成/审批实例完成”使用 `user_oa_approval_instance_finished`。两者都是当前用户相关的全部 OA 事件，不加 `--user`、`--open-dingtalk-id` 或 `--group`。
 - 正常 Agent 消费统一显式使用 `--flatten -f ndjson`。抓一条样本可用 `--flatten --max-events 1 -f json`。`--format` 只控制 JSON 序列化，`--flatten` 才控制数据结构。
-- 同一目标、同一过滤条件的兼容事件优先放在一个 `consume` 命令中：用户类事件共享一个 `--user` 或 `--open-dingtalk-id`，群类事件共享一个 `--group`，无目标事件可加入任一类组合。
+- 同一目标、同一过滤条件的兼容事件优先放在一个 `consume` 命令中：用户类事件共享一个 `--user` 或 `--open-dingtalk-id`，群类事件共享一个 `--group`，无目标 IM 事件可加入任一类组合。
 - 用户类与群类事件不能放进同一命令；不同用户、不同群或不同过滤条件必须启动多个 consume 进程。多事件命令不使用 `--subscribe-id`、`--rule`、`--event-types`、`--filter`、`--foreground`、`--force` 或 `--debug-raw-events`。
-- 多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是消息接收事件；已读、撤回、表情回应或群生命周期事件混入后不能使用消息过滤参数。
+- 两个 OA 事件可放进同一 `consume`；每个事件建立独立订阅并共享 personal bus。OA 事件不支持 `--query` 或 `--filter-json`，包含 OA 事件的多事件命令也不能使用这两个消息过滤参数。
+- 多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；已读、撤回、表情回应、群生命周期或 OA 事件混入后不能使用消息过滤参数。
 - 监听非默认组织时带 `--profile <corpId 或 profile 名>`；漏传会退回默认 profile 而失败。
 - 自己发的消息不作为事件回来（`isSelfLoop` 过滤）：边监听边 `dws chat message send` 回复不成环；测试投递用别人 / 机器人发（自发会看到 0 事件）。
 - `--debug-raw-events` 只用于联调确认服务端推送是否到达本地连接；正常任务不要使用。它和 `--flatten` 互斥，`-f raw` 也不能与 `--flatten` 同时使用。
@@ -79,7 +83,7 @@ description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖消
 1. 从用户意图选择事件码；人名或群名先解析成必填 ID。
 2. 需要了解字段时运行 `dws event schema <event_key> --flatten`，读取 `schema.properties`；此模式的 `jq_root_path` 为 `.`。
 3. 启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。单事件等待 `[event] ready event_key=<key> bus_pid=<pid> subscribe_id=<id>`；多事件先记录每条 `[event] subscription event_key=<key> subscribe_id=<id>`，再等待 `[event] ready event_count=<n> bus_pid=<pid>`。不要用 `sleep` 猜测。
-4. stdout 每行是一个扁平事件 JSON；消息、动作及群成员加入/退出事件直接读取顶层业务字段。群标题变更和群解散只读取公共字段与 `payload` 中实际存在的字段。
+4. stdout 每行是一个扁平事件 JSON；消息、动作及群成员加入/退出事件直接读取顶层业务字段。群标题变更、群解散和 OA 事件只读取公共字段与 `payload` 中实际存在的字段。
 5. 需要确认监听状态时运行 `dws event status --event <event_key>`，查看 `Subscriptions` 和 `Consumers`。
 6. 任务完成后优雅结束 consume；本次新建的订阅会自动取消。复用已有订阅或需要从外部主动取消时，先用 `dws event stop <subscribe_id> --dry-run` 预览，向用户确认后再加 `--yes`；临时测试可用 `--max-events` 或 `--duration` 自动退出。
 
@@ -197,6 +201,13 @@ dws event consume \
   --flatten \
   -f ndjson
 
+# 当前用户相关的审批任务创建和审批实例完成（一个进程）
+dws event consume \
+  user_oa_approval_task_created \
+  user_oa_approval_instance_finished \
+  --flatten \
+  -f ndjson
+
 # 有界自测
 dws event consume user_im_message_receive_at \
   --duration 10m \
@@ -222,6 +233,7 @@ dws event consume user_im_message_receive_o2o \
 - 引用回复读取可选的 `quoted_message`；合并转发读取可选的 `forward_messages` 数组。两者保留内部消息的 `message_id/conversation_id/sender/sender_open_dingtalk_id/content/create_time`；不要通过“聊天记录”等本地化外层文案识别或拆分合并转发。
 - 群成员加入/退出事件读取顶层 `conversation_id`、`operator`、`operator_open_dingtalk_id`、`members`、`event_time`。`operator` 是执行操作的人，`members` 是本次加入或退出的成员数组；成员项读取 `nick` 和 `open_dingtalk_id`。系统操作或成员自行退出时，操作人字段可能为空。
 - 群标题变更和群解散当前只承诺顶层 `type/event_id/timestamp/subscribe_id/payload`。读取 `payload` 时以实际键为准，不猜测群标题、操作者等尚未确认的字段；完整原始协议用 `-f raw` 或 `--debug-raw-events` 排查。
+- OA 事件当前同样只承诺顶层 `type/event_id/timestamp/subscribe_id/payload`；`payload` 保留服务端实际业务字段并移除内部路由字段。不要猜测 `taskId`、`processInstanceId` 或完成状态枚举；payload 缺失或非法时会告警并回退输出原始 transport envelope。
 - 群自动回复使用事件顶层 `conversation_id`；单聊自动回复使用顶层 `sender_open_dingtalk_id`。
 - 已读事件读取顶层 `reader`、`reader_open_dingtalk_id`、`read_time`；撤回事件读取 `recaller`、`recaller_open_dingtalk_id`、`recall_time`。
 - 表情回应事件读取顶层 `operator`、`operator_open_dingtalk_id`、`reaction_name`、`reaction_text`、`operation_type`、`operation_time`。
@@ -232,3 +244,4 @@ dws event consume user_im_message_receive_o2o \
 | Topic | Reference | Coverage |
 |---|---|---|
 | IM | [references/event-im.md](references/event-im.md) | 十六类个人 IM 事件命令、参数、生命周期、输出解析、自测和排障 |
+| OA | [references/event-oa.md](references/event-oa.md) | 两类个人 OA 审批事件、无参数订阅、双事件消费和保守 payload 契约 |

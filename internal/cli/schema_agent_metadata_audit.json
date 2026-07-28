@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source_hash": "sha256:557f4019cc83df15cbfe6d1611774331b0bdde87c0b5748c4d37d778b35abade",
+  "source_hash": "sha256:8fcdd1f039a25ff4b9f868fe1955d1bad87d3177400b11384da6b314151cef29",
   "surface_hash": "sha256:4cf8460240b19f896c3a330c69982cbb5f57aa8576cdf30373172082eea893ed",
   "source_files": 160,
   "hint_files": 54,
@@ -164,7 +164,7 @@
     {
       "tool_path": "calendar participant delete",
       "source": "skills/mono/SKILL.md",
-      "line": 150,
+      "line": 151,
       "candidates": [
         "calendar attendee delete",
         "calendar event delete",
@@ -2800,7 +2800,7 @@
     {
       "tool_path": "event consume user_im_message_receive_o2o_all",
       "source": "skills/mono/references/products/event.md",
-      "line": 117,
+      "line": 125,
       "candidates": [
         "event consume",
         "event list",
@@ -2810,7 +2810,7 @@
     {
       "tool_path": "event consume user_im_message_receive_group_all",
       "source": "skills/mono/references/products/event.md",
-      "line": 118,
+      "line": 126,
       "candidates": [
         "event consume",
         "event list",
@@ -2820,7 +2820,7 @@
     {
       "tool_path": "event consume user_im_message_receive_o2o user_im_message_read_o2o user_im_message_recall_o2o",
       "source": "skills/mono/references/products/event.md",
-      "line": 134,
+      "line": 144,
       "candidates": [
         "event consume",
         "event list",
@@ -2830,7 +2830,7 @@
     {
       "tool_path": "event consume user_im_message_receive_group user_im_group_updated user_im_group_disbanded",
       "source": "skills/mono/references/products/event.md",
-      "line": 142,
+      "line": 152,
       "candidates": [
         "event consume",
         "event list",
