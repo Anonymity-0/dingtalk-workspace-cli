@@ -60,6 +60,10 @@
     {
       "canonical_path": "wiki.search_wikiSpaces",
       "cli_path": "wiki space search"
+    },
+    {
+      "canonical_path": "wiki.shortcut_space_search",
+      "cli_path": "wiki +space-search"
     }
   ]
 }

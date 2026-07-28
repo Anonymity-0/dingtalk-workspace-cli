@@ -47,6 +47,14 @@
     {
       "canonical_path": "report.get_available_report_templates",
       "cli_path": "report template list"
+    },
+    {
+      "canonical_path": "report.shortcut_inbox_list",
+      "cli_path": "report +inbox-list"
+    },
+    {
+      "canonical_path": "report.shortcut_outbox_list",
+      "cli_path": "report +outbox-list"
     }
   ]
 }

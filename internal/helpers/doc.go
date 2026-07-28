@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -924,9 +925,7 @@ func newDocCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return callMCPTool("get_document_info", map[string]any{
-				"nodeId": nodeID,
-			})
+			return callMCPTool("get_document_info", map[string]any{"nodeId": nodeID})
 		},
 	}
 
@@ -946,6 +945,47 @@ func newDocCommand() *cobra.Command {
 				return err
 			}
 			format, _ := cmd.Flags().GetString("content-format")
+			scope, _ := cmd.Flags().GetString("scope")
+			tags, _ := cmd.Flags().GetString("tags")
+			startBlockID, _ := cmd.Flags().GetString("start-block-id")
+			endBlockID, _ := cmd.Flags().GetString("end-block-id")
+			if scope != "" || tags != "" {
+				if format != "jsonml" {
+					return fmt.Errorf("--scope/--tags requires --content-format jsonml")
+				}
+				if scope == "" {
+					return fmt.Errorf("--tags requires --scope tags")
+				}
+				switch scope {
+				case "outline", "range", "section", "tags":
+				default:
+					return fmt.Errorf("invalid --scope %q: must be one of outline|range|section|tags", scope)
+				}
+				if tags != "" && scope != "tags" {
+					return fmt.Errorf("--tags only works with --scope tags")
+				}
+				if scope == "tags" && tags == "" {
+					return fmt.Errorf("--tags is required when --scope=tags")
+				}
+				if (scope == "range" || scope == "section") && startBlockID == "" {
+					return fmt.Errorf("--start-block-id is required when --scope=%s", scope)
+				}
+				if endBlockID != "" && scope != "range" {
+					return fmt.Errorf("--end-block-id only works with --scope=range")
+				}
+				maxDepth, _ := cmd.Flags().GetInt("max-depth")
+				outputPath, _ := cmd.Flags().GetString("output")
+				return runDocReadScope(
+					nodeID,
+					scope,
+					tags,
+					maxDepth,
+					cmd.Flags().Changed("max-depth"),
+					startBlockID,
+					endBlockID,
+					outputPath,
+				)
+			}
 			if format == "jsonml" {
 				outputPath, _ := cmd.Flags().GetString("output")
 				return runDocReadJsonML(cmd, nodeID, outputPath)
@@ -1585,6 +1625,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 	readCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	readCmd.Flags().String("content-format", "", "输出格式: 默认为 markdown，可选 jsonml")
 	readCmd.Flags().String("output", "", "输出到本地文件路径（仅 --content-format jsonml 时生效）")
+	readCmd.Flags().String("scope", "", "按 scope 筛选节点(需 --content-format jsonml): outline(全部 h1-h6 标题)/range(区间)/section(单块)/tags(配合 --tags 自定义 tag)")
+	readCmd.Flags().String("tags", "", "自定义 JSONML tag 列表(逗号分隔, 如 h1,h2,table); 仅在 --scope tags 时使用且必填")
+	readCmd.Flags().Int("max-depth", 0, "筛选遍历最大深度, 0 表示不限(仅 --scope 时生效)")
+	readCmd.Flags().String("start-block-id", "", "range/section 起始块 ID(节点 uuid); scope=range/section 时必填")
+	readCmd.Flags().String("end-block-id", "", "range 结束块 ID(节点 uuid); \"-1\"或空=到文档末尾(仅 scope=range 生效)")
+	cli.AnnotateRuntimeFlagEnum(readCmd, "scope", "outline", "range", "section", "tags")
+	cli.AnnotateRuntimeFlagRequiredWhen(readCmd, "tags", "--scope=tags")
+	cli.AnnotateRuntimeFlagRequiredWhen(readCmd, "start-block-id", "--scope=range or --scope=section")
 
 	// create
 	createCmd.Flags().String("name", "", "文档名称 (必填)")
@@ -1690,7 +1738,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 
 	// rename
 	renameCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
-	renameCmd.Flags().String("name", "", "新名称 (必填)")
+	renameCmd.Flags().String("name", "", "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)")
 
 	// delete
 	deleteCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
@@ -1874,12 +1922,14 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		Short: "创建文档评论",
 		Long: `在指定文档上创建一条评论。
 
-可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），
+可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），通过
+--mentioned-open-conversation-id 指定被 @ 的群 openConversationId（可重复或逗号分隔）。
 评论内容中会插入 @mention 节点并发送通知。
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"`,
 		Example: `  dws doc comment create --node DOC_ID --content "这里需要修改"
-  dws doc comment create --node DOC_ID --content "请review" --mention uid1,uid2`,
+  dws doc comment create --node DOC_ID --content "请review" --mention uid1,uid2
+  dws doc comment create --node DOC_ID --content "请群内同学关注" --mentioned-open-conversation-id openCid1 --mentioned-open-conversation-id openCid2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1895,6 +1945,9 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			if v, _ := cmd.Flags().GetString("mention"); v != "" {
 				toolArgs["mentionedUserIds"] = parseCommentMentionIds(v)
 			}
+			if err := appendCommentGroupMentions(cmd, toolArgs); err != nil {
+				return err
+			}
 			return callMCPToolOnServer("doc-comment", "create_comment", toolArgs)
 		},
 	}
@@ -1902,6 +1955,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 	commentCreateCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentCreateCmd.Flags().String("content", "", "评论的文字内容，纯文本 (必填)")
 	commentCreateCmd.Flags().String("mention", "", "被 @ 的用户 uid 列表，逗号分隔")
+	addCommentGroupMentionFlag(commentCreateCmd)
 
 	commentReplyCmd := &cobra.Command{
 		Use:   "reply",
@@ -1911,7 +1965,8 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 --comment-key 为被回复评论的唯一标识（即 list 返回的 commentKey），格式：{13位毫秒时间戳}{32位UUID}，共45位。
 commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中获取。
 
-可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），
+可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），通过
+--mentioned-open-conversation-id 指定被 @ 的群 openConversationId（可重复或逗号分隔）。
 评论内容中会插入 @mention 节点并发送通知。
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"
@@ -1919,7 +1974,8 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 设置 --emoji 时，本次回复将作为表情贴图回复，--content 填写表情名称。`,
 		Example: `  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "同意"
   dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "比心" --emoji
-  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2`,
+  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2
+  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "请群内确认" --mentioned-open-conversation-id openCid1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1934,10 +1990,20 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				"replyCommentKey": mustGetFlag(cmd, "comment-key"),
 			}
 			if v, _ := cmd.Flags().GetBool("emoji"); v {
+				groupMentions, err := commentGroupMentionIDs(cmd)
+				if err != nil {
+					return err
+				}
+				if len(groupMentions) > 0 {
+					return fmt.Errorf("--emoji cannot be used with --mentioned-open-conversation-id: emoji replies do not support group mentions")
+				}
 				toolArgs["emoji"] = true
 			}
 			if v, _ := cmd.Flags().GetString("mention"); v != "" {
 				toolArgs["mentionedUserIds"] = parseCommentMentionIds(v)
+			}
+			if err := appendCommentGroupMentions(cmd, toolArgs); err != nil {
+				return err
 			}
 			return callMCPToolOnServer("doc-comment", "reply_comment", toolArgs)
 		},
@@ -1948,6 +2014,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	commentReplyCmd.Flags().String("comment-key", "", "被回复评论的 commentKey，格式: {13位毫秒时间戳}{32位UUID}，可从 list/create 结果获取 (必填)")
 	commentReplyCmd.Flags().Bool("emoji", false, "设为 true 时作为表情贴图回复 (默认 false)")
 	commentReplyCmd.Flags().String("mention", "", "被 @ 的用户 uid 列表，逗号分隔")
+	addCommentGroupMentionFlag(commentReplyCmd)
 
 	commentUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1955,9 +2022,11 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		Long: `更新指定文档中的一条评论。
 
 --comment-key 为待更新评论的唯一标识，可从 comment list、create 或 create-inline 的返回结果中获取。
-可通过 --mention 指定更新后评论中被 @ 的用户 uid 列表。`,
+可通过 --mention 指定更新后评论中被 @ 的用户 uid 列表，通过
+--mentioned-open-conversation-id 指定被 @ 的群 openConversationId（可重复或逗号分隔）。`,
 		Example: `  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "已按最新数据修正"
-  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2`,
+  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2
+  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "请群内同学关注" --mentioned-open-conversation-id openCid1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1974,6 +2043,9 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			if v, _ := cmd.Flags().GetString("mention"); v != "" {
 				toolArgs["mentionedUserIds"] = parseCommentMentionIds(v)
 			}
+			if err := appendCommentGroupMentions(cmd, toolArgs); err != nil {
+				return err
+			}
 			return callMCPToolOnServer("doc-comment", "update_comment", toolArgs)
 		},
 	}
@@ -1981,6 +2053,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	commentUpdateCmd.Flags().String("comment-key", "", "待更新评论的 commentKey，可从 list/create/create-inline 结果获取 (必填)")
 	commentUpdateCmd.Flags().String("content", "", "更新后的评论文字内容，纯文本 (必填)")
 	commentUpdateCmd.Flags().String("mention", "", "被 @ 的用户 uid 列表，逗号分隔")
+	addCommentGroupMentionFlag(commentUpdateCmd)
 
 	commentDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -2634,15 +2707,17 @@ CLI 内部自动完成全部流程:
 				return fmt.Errorf("flag --version is required")
 			}
 			version, _ := cmd.Flags().GetInt("version")
-			exists, err := docVersionExists(cmd.Context(), nodeID, version)
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return fmt.Errorf("文档版本 %d 不存在，已停止回滚；请先执行 dws doc version list --node %s --format json 获取可回滚版本", version, nodeID)
-			}
-			if !confirmDangerousAction(cmd, fmt.Sprintf("revert document to version %d", version), nodeID) {
-				return nil
+			if !commandDryRun(cmd) {
+				exists, err := docVersionExists(cmd.Context(), nodeID, version)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					return fmt.Errorf("文档版本 %d 不存在，已停止回滚；请先执行 dws doc version list --node %s --format json 获取可回滚版本", version, nodeID)
+				}
+				if !confirmDangerousAction(cmd, fmt.Sprintf("revert document to version %d", version), nodeID) {
+					return nil
+				}
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,
@@ -2939,6 +3014,76 @@ func runDocReadJsonML(_ *cobra.Command, nodeID string, outputPath string) error 
 	return nil
 }
 
+// runDocReadScope calls get_document_content with JSONML filtering parameters
+// and preserves the returned read-only fragment container.
+func runDocReadScope(nodeID, scope, tags string, maxDepth int, maxDepthSet bool, startBlockID, endBlockID, outputPath string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	args := map[string]any{"nodeId": nodeID, "format": "jsonml"}
+	if scope != "" {
+		args["scope"] = scope
+	}
+	if tags != "" {
+		args["tags"] = tags
+	}
+	if maxDepthSet {
+		args["maxDepth"] = maxDepth
+	}
+	if startBlockID != "" {
+		args["startBlockId"] = startBlockID
+	}
+	if endBlockID != "" && scope == "range" {
+		args["endBlockId"] = endBlockID
+	}
+
+	resultText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_document_content", args)
+	if err != nil {
+		return err
+	}
+
+	var mcpResp map[string]any
+	if err := json.Unmarshal([]byte(resultText), &mcpResp); err != nil {
+		return fmt.Errorf("failed to parse MCP response: %w", err)
+	}
+	fragmentJSON, _ := mcpResp["jsonml"].(string)
+	if fragmentJSON == "" {
+		if deps.Caller.Format() == "json" {
+			return deps.Out.PrintJSON(map[string]any{
+				"matched": false,
+				"jsonml":  nil,
+			})
+		}
+		deps.Out.PrintInfo("[INFO] 未匹配到节点")
+		return nil
+	}
+	if !json.Valid([]byte(fragmentJSON)) {
+		return fmt.Errorf("MCP response contained invalid JSONML fragment")
+	}
+
+	output := fragmentJSON
+	if pretty, prettyErr := json.MarshalIndent(json.RawMessage(fragmentJSON), "", "  "); prettyErr == nil {
+		output = string(pretty)
+	}
+
+	if outputPath != "" {
+		if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
+			return fmt.Errorf("failed to write output file %s: %w", outputPath, err)
+		}
+		if deps.Caller.Format() == "json" {
+			return deps.Out.PrintJSON(map[string]any{
+				"success": true,
+				"output":  outputPath,
+			})
+		}
+		deps.Out.PrintInfo(fmt.Sprintf("[INFO] JSONML fragment 已写入 %s", outputPath))
+		return nil
+	}
+
+	deps.Out.PrintRaw(output)
+	return nil
+}
+
 // resolveContentFromFlags 从 --content-file / --content / --markdown 获取文档内容。
 // 优先级：--content-file > --content > --markdown（已弃用别名，向后兼容）。
 //
@@ -3131,6 +3276,56 @@ func parseCommentMentionIds(raw string) []string {
 		}
 	}
 	return userIds
+}
+
+func addCommentGroupMentionFlag(cmd *cobra.Command) {
+	cmd.Flags().StringSlice(
+		"mentioned-open-conversation-id",
+		nil,
+		"被 @ 的群 openConversationId，可重复指定或逗号分隔",
+	)
+}
+
+// commentGroupMentionIDs validates, trims and stably de-duplicates group IDs.
+// An explicitly supplied blank value is rejected so a requested mention is
+// never silently downgraded to plain comment text.
+func commentGroupMentionIDs(cmd *cobra.Command) ([]string, error) {
+	raw, err := cmd.Flags().GetStringSlice("mentioned-open-conversation-id")
+	if err != nil {
+		return nil, err
+	}
+	if !cmd.Flags().Changed("mentioned-open-conversation-id") {
+		return nil, nil
+	}
+
+	seen := make(map[string]struct{}, len(raw))
+	ids := make([]string, 0, len(raw))
+	for _, value := range raw {
+		id := strings.TrimSpace(value)
+		if id == "" {
+			return nil, fmt.Errorf("--mentioned-open-conversation-id must not be empty or whitespace")
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("--mentioned-open-conversation-id must include at least one non-empty openConversationId")
+	}
+	return ids, nil
+}
+
+func appendCommentGroupMentions(cmd *cobra.Command, args map[string]any) error {
+	ids, err := commentGroupMentionIDs(cmd)
+	if err != nil {
+		return err
+	}
+	if len(ids) > 0 {
+		args["mentionedOpenConversationIds"] = ids
+	}
+	return nil
 }
 
 // normalizePermissionRole canonicalises the --role flag to UPPERCASE so users

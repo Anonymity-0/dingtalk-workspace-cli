@@ -5136,6 +5136,1819 @@
       "use_when": [
         "已知模版名称，提交前需要读取字段名称、类型与排序时"
       ]
+    },
+    "report.shortcut_inbox_list": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "ShortcutRegistry:report +inbox-list",
+        "cobra-help:dws report +inbox-list",
+        "internal/cli/schema_command_registry.json#report.shortcut_inbox_list",
+        "internal/cli/schema_hints/metadata/report.json",
+        "internal/cli/schema_hints/selection/report.json"
+      ],
+      "agent_summary": "列出我收到的日报（按时间范围分页）",
+      "agent_summary_source": "dws-agent-selection/report",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "canonical_path": "report.shortcut_inbox_list",
+      "cli_name": "+inbox-list",
+      "cli_path": "report +inbox-list",
+      "confirmation": "not_required",
+      "description": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。",
+      "display": "钉钉日志（OA 周报应用 / 日志模版填报）",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": "列出我收到的日报（按时间范围分页）"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": "列出我收到的日报（按时间范围分页）"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "report +inbox-list",
+              "value": "report.shortcut_inbox_list"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "report +inbox-list",
+          "value": "report.shortcut_inbox_list"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": [
+                "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": [
+            "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "列出我收到的日报（按时间范围分页）"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "列出我收到的日报（按时间范围分页）"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": [
+                "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": [
+            "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "is_alias": false,
+      "name": "shortcut_inbox_list",
+      "parameter_count": 5,
+      "parameters": {
+        "cursor": {
+          "description": "分页游标，首次传 0",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "分页游标，首次传 0"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "分页游标，首次传 0"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "cursor"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "cursor"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "cursor",
+          "required": false,
+          "type": "integer"
+        },
+        "end": {
+          "description": "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00)（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00)（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00)（必填）"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "date-time"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "date-time"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "end"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "end"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "date-time",
+          "property": "end",
+          "required": true,
+          "type": "string"
+        },
+        "sender-user-ids": {
+          "description": "发送人 staffId 列表，逗号分隔，过滤指定发送人",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "发送人 staffId 列表，逗号分隔，过滤指定发送人"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "发送人 staffId 列表，逗号分隔，过滤指定发送人"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "senderUserIds"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "senderUserIds"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "array"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "array"
+            }
+          },
+          "property": "senderUserIds",
+          "required": false,
+          "type": "array"
+        },
+        "size": {
+          "default": "20",
+          "description": "每页条数，最大 20",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "每页条数，最大 20"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "每页条数，最大 20"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "size"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "size"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "size",
+          "required": false,
+          "type": "integer"
+        },
+        "start": {
+          "description": "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00)（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00)（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00)（必填）"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "date-time"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "date-time"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "start"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "start"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "date-time",
+          "property": "start",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "report.shortcut_inbox_list",
+      "primary_cli_path": "report +inbox-list",
+      "product_id": "report",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "列出我收到的日报（按时间范围分页）",
+      "use_when": [
+        "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
+      ]
+    },
+    "report.shortcut_outbox_list": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "ShortcutRegistry:report +outbox-list",
+        "cobra-help:dws report +outbox-list",
+        "internal/cli/schema_command_registry.json#report.shortcut_outbox_list",
+        "internal/cli/schema_hints/metadata/report.json",
+        "internal/cli/schema_hints/selection/report.json"
+      ],
+      "agent_summary": "列出我发出的日报（可选时间/模版名过滤）",
+      "agent_summary_source": "dws-agent-selection/report",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "canonical_path": "report.shortcut_outbox_list",
+      "cli_name": "+outbox-list",
+      "cli_path": "report +outbox-list",
+      "confirmation": "not_required",
+      "description": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。",
+      "display": "钉钉日志（OA 周报应用 / 日志模版填报）",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws report +outbox-list --cursor 0 --size 20",
+        "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": "列出我发出的日报（可选时间/模版名过滤）"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": "列出我发出的日报（可选时间/模版名过滤）"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "report +outbox-list",
+              "value": "report.shortcut_outbox_list"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "report +outbox-list",
+          "value": "report.shortcut_outbox_list"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": [
+                "dws report +outbox-list --cursor 0 --size 20",
+                "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": [
+            "dws report +outbox-list --cursor 0 --size 20",
+            "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/report.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/report.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "列出我发出的日报（可选时间/模版名过滤）"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "列出我发出的日报（可选时间/模版名过滤）"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/report.json",
+              "value": [
+                "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/report.json",
+          "value": [
+            "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "is_alias": false,
+      "name": "shortcut_outbox_list",
+      "parameter_count": 7,
+      "parameters": {
+        "cursor": {
+          "description": "分页游标，首次传 0",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "分页游标，首次传 0"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "分页游标，首次传 0"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "cursor"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "cursor"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "cursor",
+          "required": false,
+          "type": "integer"
+        },
+        "end": {
+          "description": "创建结束时间 ISO-8601 (可选)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "创建结束时间 ISO-8601 (可选)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "创建结束时间 ISO-8601 (可选)"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "date-time"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "date-time"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "end"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "end"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "date-time",
+          "property": "end",
+          "required": false,
+          "type": "string"
+        },
+        "modified-end": {
+          "description": "修改结束时间 ISO-8601 (可选)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "修改结束时间 ISO-8601 (可选)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "修改结束时间 ISO-8601 (可选)"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "date-time"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "date-time"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "modifiedEnd"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "modifiedEnd"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "date-time",
+          "property": "modifiedEnd",
+          "required": false,
+          "type": "string"
+        },
+        "modified-start": {
+          "description": "修改开始时间 ISO-8601 (可选)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "修改开始时间 ISO-8601 (可选)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "修改开始时间 ISO-8601 (可选)"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "date-time"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "date-time"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "modifiedStart"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "modifiedStart"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "date-time",
+          "property": "modifiedStart",
+          "required": false,
+          "type": "string"
+        },
+        "size": {
+          "default": "20",
+          "description": "每页条数，最大 20",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "每页条数，最大 20"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "每页条数，最大 20"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "size"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "size"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "size",
+          "required": false,
+          "type": "integer"
+        },
+        "start": {
+          "description": "创建开始时间 ISO-8601 (可选，服务端单次跨度上限 20 天)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "创建开始时间 ISO-8601 (可选，服务端单次跨度上限 20 天)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "创建开始时间 ISO-8601 (可选，服务端单次跨度上限 20 天)"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "date-time"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "date-time"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "start"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "start"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "date-time",
+          "property": "start",
+          "required": false,
+          "type": "string"
+        },
+        "template-name": {
+          "description": "日志模板名称 (可选，不传查全部)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "日志模板名称 (可选，不传查全部)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "日志模板名称 (可选，不传查全部)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "templateName"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "templateName"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "templateName",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "report.shortcut_outbox_list",
+      "primary_cli_path": "report +outbox-list",
+      "product_id": "report",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "列出我发出的日报（可选时间/模版名过滤）",
+      "use_when": [
+        "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
+      ]
     }
   }
 }

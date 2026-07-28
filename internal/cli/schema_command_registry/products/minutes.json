@@ -124,6 +124,30 @@
     {
       "canonical_path": "minutes.create_upload_session",
       "cli_path": "minutes upload create"
+    },
+    {
+      "canonical_path": "minutes.shortcut_list_mine",
+      "cli_path": "minutes +list-mine"
+    },
+    {
+      "canonical_path": "minutes.shortcut_list_shared",
+      "cli_path": "minutes +list-shared"
+    },
+    {
+      "canonical_path": "minutes.shortcut_list_all",
+      "cli_path": "minutes +list-all"
+    },
+    {
+      "canonical_path": "minutes.shortcut_record_start",
+      "cli_path": "minutes +record-start"
+    },
+    {
+      "canonical_path": "minutes.shortcut_detail",
+      "cli_path": "minutes +detail"
+    },
+    {
+      "canonical_path": "minutes.shortcut_replace_batch",
+      "cli_path": "minutes +replace-batch"
     }
   ]
 }

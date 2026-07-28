@@ -152,6 +152,82 @@
     {
       "canonical_path": "attendance.vacation_update_type",
       "cli_path": "attendance vacation update-type"
+    },
+    {
+      "canonical_path": "attendance.shortcut_check_result",
+      "cli_path": "attendance +check-result"
+    },
+    {
+      "canonical_path": "attendance.shortcut_check_record",
+      "cli_path": "attendance +check-record"
+    },
+    {
+      "canonical_path": "attendance.shortcut_list_approve",
+      "cli_path": "attendance +list-approve"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_approve_template",
+      "cli_path": "attendance +get-approve-template"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_schedule",
+      "cli_path": "attendance +get-schedule"
+    },
+    {
+      "canonical_path": "attendance.shortcut_search_class",
+      "cli_path": "attendance +search-class"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_adjustment_rule",
+      "cli_path": "attendance +get-adjustment-rule"
+    },
+    {
+      "canonical_path": "attendance.shortcut_search_adjustment_rule",
+      "cli_path": "attendance +search-adjustment-rule"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_overtime_rule",
+      "cli_path": "attendance +get-overtime-rule"
+    },
+    {
+      "canonical_path": "attendance.shortcut_search_overtime_rule",
+      "cli_path": "attendance +search-overtime-rule"
+    },
+    {
+      "canonical_path": "attendance.shortcut_search_group",
+      "cli_path": "attendance +search-group"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_summary",
+      "cli_path": "attendance +get-summary"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_self_setting",
+      "cli_path": "attendance +get-self-setting"
+    },
+    {
+      "canonical_path": "attendance.shortcut_query_report_data",
+      "cli_path": "attendance +query-report-data"
+    },
+    {
+      "canonical_path": "attendance.shortcut_list_leave_types",
+      "cli_path": "attendance +list-leave-types"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_leave_records",
+      "cli_path": "attendance +get-leave-records"
+    },
+    {
+      "canonical_path": "attendance.shortcut_get_checkin_record",
+      "cli_path": "attendance +get-checkin-record"
+    },
+    {
+      "canonical_path": "attendance.shortcut_my_attendance",
+      "cli_path": "attendance +my-attendance"
+    },
+    {
+      "canonical_path": "attendance.shortcut_this_month",
+      "cli_path": "attendance +this-month"
     }
   ]
 }

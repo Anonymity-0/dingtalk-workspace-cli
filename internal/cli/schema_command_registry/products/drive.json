@@ -100,6 +100,34 @@
     {
       "canonical_path": "drive.get_upload_info",
       "cli_path": "drive upload-info"
+    },
+    {
+      "canonical_path": "drive.shortcut_info",
+      "cli_path": "drive +info"
+    },
+    {
+      "canonical_path": "drive.shortcut_search",
+      "cli_path": "drive +search"
+    },
+    {
+      "canonical_path": "drive.shortcut_search_docs",
+      "cli_path": "drive +search-docs"
+    },
+    {
+      "canonical_path": "drive.shortcut_copy",
+      "cli_path": "drive +copy"
+    },
+    {
+      "canonical_path": "drive.shortcut_move",
+      "cli_path": "drive +move"
+    },
+    {
+      "canonical_path": "drive.shortcut_recent",
+      "cli_path": "drive +recent"
+    },
+    {
+      "canonical_path": "drive.shortcut_find_file",
+      "cli_path": "drive +find-file"
     }
   ]
 }

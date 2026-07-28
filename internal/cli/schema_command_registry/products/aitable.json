@@ -467,6 +467,122 @@
     {
       "canonical_path": "aitable.workflow_update",
       "cli_path": "aitable workflow update"
+    },
+    {
+      "canonical_path": "aitable.shortcut_base_list",
+      "cli_path": "aitable +base-list"
+    },
+    {
+      "canonical_path": "aitable.shortcut_base_search",
+      "cli_path": "aitable +base-search"
+    },
+    {
+      "canonical_path": "aitable.shortcut_base_get",
+      "cli_path": "aitable +base-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_table_get",
+      "cli_path": "aitable +table-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_field_get",
+      "cli_path": "aitable +field-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_record_query",
+      "cli_path": "aitable +record-query"
+    },
+    {
+      "canonical_path": "aitable.shortcut_record_query_empty",
+      "cli_path": "aitable +record-query-empty"
+    },
+    {
+      "canonical_path": "aitable.shortcut_record_history_list",
+      "cli_path": "aitable +record-history-list"
+    },
+    {
+      "canonical_path": "aitable.shortcut_record_share_url",
+      "cli_path": "aitable +record-share-url"
+    },
+    {
+      "canonical_path": "aitable.shortcut_template_search",
+      "cli_path": "aitable +template-search"
+    },
+    {
+      "canonical_path": "aitable.shortcut_view_get",
+      "cli_path": "aitable +view-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_view_get_lock",
+      "cli_path": "aitable +view-get-lock"
+    },
+    {
+      "canonical_path": "aitable.shortcut_view_get_frozen_cols",
+      "cli_path": "aitable +view-get-frozen-cols"
+    },
+    {
+      "canonical_path": "aitable.shortcut_view_get_row_height",
+      "cli_path": "aitable +view-get-row-height"
+    },
+    {
+      "canonical_path": "aitable.shortcut_form_list",
+      "cli_path": "aitable +form-list"
+    },
+    {
+      "canonical_path": "aitable.shortcut_form_field_list",
+      "cli_path": "aitable +form-field-list"
+    },
+    {
+      "canonical_path": "aitable.shortcut_form_share_get",
+      "cli_path": "aitable +form-share-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_dashboard_config_example",
+      "cli_path": "aitable +dashboard-config-example"
+    },
+    {
+      "canonical_path": "aitable.shortcut_dashboard_get",
+      "cli_path": "aitable +dashboard-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_chart_widgets_example",
+      "cli_path": "aitable +chart-widgets-example"
+    },
+    {
+      "canonical_path": "aitable.shortcut_chart_get",
+      "cli_path": "aitable +chart-get"
+    },
+    {
+      "canonical_path": "aitable.shortcut_role_list",
+      "cli_path": "aitable +role-list"
+    },
+    {
+      "canonical_path": "aitable.shortcut_section_list_empty",
+      "cli_path": "aitable +section-list-empty"
+    },
+    {
+      "canonical_path": "aitable.shortcut_section_list_nodes",
+      "cli_path": "aitable +section-list-nodes"
+    },
+    {
+      "canonical_path": "aitable.shortcut_find_record",
+      "cli_path": "aitable +find-record"
+    },
+    {
+      "canonical_path": "aitable.shortcut_list_tables",
+      "cli_path": "aitable +list-tables"
+    },
+    {
+      "canonical_path": "aitable.shortcut_record_share_links",
+      "cli_path": "aitable +record-share-links"
+    },
+    {
+      "canonical_path": "aitable.shortcut_resolve_base",
+      "cli_path": "aitable +resolve-base"
+    },
+    {
+      "canonical_path": "aitable.shortcut_resolve_table",
+      "cli_path": "aitable +resolve-table"
     }
   ]
 }

@@ -124,6 +124,46 @@
     {
       "canonical_path": "mail.search_mail_users",
       "cli_path": "mail user search"
+    },
+    {
+      "canonical_path": "mail.shortcut_thread_list",
+      "cli_path": "mail +thread-list"
+    },
+    {
+      "canonical_path": "mail.shortcut_folder_list",
+      "cli_path": "mail +folder-list"
+    },
+    {
+      "canonical_path": "mail.shortcut_tag_list",
+      "cli_path": "mail +tag-list"
+    },
+    {
+      "canonical_path": "mail.shortcut_user_search",
+      "cli_path": "mail +user-search"
+    },
+    {
+      "canonical_path": "mail.shortcut_template_list",
+      "cli_path": "mail +template-list"
+    },
+    {
+      "canonical_path": "mail.shortcut_contact_list",
+      "cli_path": "mail +contact-list"
+    },
+    {
+      "canonical_path": "mail.shortcut_find_mail_user",
+      "cli_path": "mail +find-mail-user"
+    },
+    {
+      "canonical_path": "mail.shortcut_recent_mail",
+      "cli_path": "mail +recent-mail"
+    },
+    {
+      "canonical_path": "mail.shortcut_search_mail",
+      "cli_path": "mail +search-mail"
+    },
+    {
+      "canonical_path": "mail.shortcut_unread_mail",
+      "cli_path": "mail +unread-mail"
     }
   ]
 }

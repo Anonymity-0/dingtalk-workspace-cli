@@ -22,6 +22,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -274,6 +276,28 @@ type daemon struct {
 	idleStop     chan struct{}
 }
 
+// closeOnceConn makes every connection close path idempotent. A live consumer
+// can be closed by its writer, the connection handler, or daemon shutdown.
+type closeOnceConn struct {
+	net.Conn
+	once sync.Once
+	err  error
+}
+
+func (c *closeOnceConn) Close() error {
+	c.once.Do(func() {
+		c.err = c.Conn.Close()
+	})
+	return c.err
+}
+
+func ensureCloseOnce(conn net.Conn) net.Conn {
+	if _, ok := conn.(*closeOnceConn); ok {
+		return conn
+	}
+	return &closeOnceConn{Conn: conn}
+}
+
 // acceptLoop drives the IPC accept goroutine. Each accepted connection is
 // passed to handleConnection in its own goroutine; the accept loop returns
 // when the listener Close()s (typically during shutdown).
@@ -292,6 +316,7 @@ func (d *daemon) acceptLoop(ctx context.Context) {
 			d.log.Warn("bus: accept error", "err", err)
 			continue
 		}
+		conn = ensureCloseOnce(conn)
 		// Track the connection before publishing the handler goroutine. Once
 		// acceptLoop returns, shutdown can therefore close every accepted
 		// connection before waiting for handlers to drain.
@@ -308,9 +333,10 @@ func (d *daemon) acceptLoop(ctx context.Context) {
 // Hello → register with Hub → spawn writer goroutine → read until EOF/Bye.
 // Always Unregisters and Closes on exit (plan invariant #5).
 func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
+	conn = ensureCloseOnce(conn)
 	defer func() {
 		d.conns.Delete(conn)
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	r := transport.NewReader(conn)
@@ -339,6 +365,10 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 		// addition to this RPC for v1).
 		_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: "stop_request"})
 		go d.triggerShutdown("stop_request")
+		return
+	}
+	if hello.Role == transport.HelloRoleConsumerStop {
+		d.handleConsumerStopRPC(w, r)
 		return
 	}
 
@@ -370,10 +400,28 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	writerDone := make(chan struct{})
 	go func() {
 		defer close(writerDone)
-		for frame := range c.SendCh {
-			if err := w.WriteJSON(frame); err != nil {
-				// Wire error: peer dead. Returning here will let the
-				// reader goroutine notice EOF and Unregister.
+		for {
+			// Give an already-queued targeted stop priority over buffered
+			// events. The second select still handles a stop that arrives
+			// between this check and the blocking wait.
+			select {
+			case reason := <-c.StopCh:
+				_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: reason})
+				_ = conn.Close()
+				return
+			default:
+			}
+			select {
+			case frame, ok := <-c.SendCh:
+				if !ok {
+					return
+				}
+				if err := w.WriteJSON(frame); err != nil {
+					return
+				}
+			case reason := <-c.StopCh:
+				_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: reason})
+				_ = conn.Close()
 				return
 			}
 		}
@@ -404,6 +452,50 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	d.hub.Unregister(c.ID)
 	<-writerDone
 	_ = ctx // for future use (writer ctx-cancel propagation)
+}
+
+func (d *daemon) handleConsumerStopRPC(w *transport.Writer, r *transport.Reader) {
+	var req transport.ConsumerStopReq
+	if err := r.ReadJSON(&req); err != nil {
+		d.log.Debug("bus: malformed consumer stop request", "err", err)
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: "malformed consumer stop request",
+		})
+		return
+	}
+	if req.Type != transport.FrameTypeConsumerStopReq {
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: fmt.Sprintf("unexpected consumer stop request type %q", req.Type),
+		})
+		return
+	}
+	stopped := d.hub.StopConsumers(req.SubscribeIDs, transport.ByeReasonSubscriptionStopped)
+	stoppedSet := make(map[string]struct{}, len(stopped))
+	for _, id := range stopped {
+		stoppedSet[id] = struct{}{}
+	}
+	notFoundSet := make(map[string]struct{})
+	for _, id := range req.SubscribeIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := stoppedSet[id]; !ok {
+			notFoundSet[id] = struct{}{}
+		}
+	}
+	notFound := make([]string, 0, len(notFoundSet))
+	for id := range notFoundSet {
+		notFound = append(notFound, id)
+	}
+	sort.Strings(notFound)
+	_ = w.WriteJSON(transport.ConsumerStopResp{
+		Type:     transport.FrameTypeConsumerStopResp,
+		Stopped:  stopped,
+		NotFound: notFound,
+	})
 }
 
 // handleStatusRPC services a single status_req and returns. The connection

@@ -1,6 +1,6 @@
 ---
 name: dingtalk-chat
-description: 钉钉群聊与消息。Use when 用户提到 发消息/单聊/群聊/建群/拉人进群/改群名/搜索群/群成员管理/@消息/收藏消息/撤回消息/机器人群发/Webhook通知/发图片或文件到群。Distinct from dingtalk-ding(紧急DING消息/短信/电话)、dingtalk-mail(邮件)、dingtalk-edu-group(班级群)。命令前缀：dws chat。
+description: 钉钉群聊与消息。Use when 用户提到 发消息/编辑或撤回已发送消息/单聊/群聊/建群/普通群升级外部群/群昵称/会话分组/群成员管理/@消息/收藏消息/机器人群发/Webhook通知/发图片或文件到群。Distinct from dingtalk-ding(紧急DING消息/短信/电话)、dingtalk-mail(邮件)、dingtalk-edu-group(班级群)。命令前缀：dws chat。
 cli_version: ">=0.2.14"
 metadata:
   category: product
@@ -26,7 +26,7 @@ metadata:
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 来自独立于 Runtime Schema 的公开 catalog。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 `dws shortcut list --service chat --format json` 读取参数、约束、风险和示例，并以 `dws chat <shortcut> --help` 核对当前 Cobra flags；不要对 `+` 路径调用 `dws schema`。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。用 leaf Schema（例如 `dws schema --cli-path "chat +<shortcut>" --format json`）读取 Agent 选择、参数、约束、风险和确认语义；用 `dws shortcut list --service chat --format json` 批量发现；最后以 `dws chat <shortcut> --help` 核对当前 Cobra flags。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -88,10 +88,22 @@ metadata:
 | "查看我收藏的消息" | `dws chat message list-favorites`（默认 `--cursor 0 --size 20`）|
 | "用机器人发消息" | `dws chat message send-by-bot --robot-code <code> --group <id> --title "<标题>" --text "<内容>"` |
 | "Webhook 推一条" | `dws chat message send-by-webhook --token <token> --title "<标题>" --text "<内容>"` |
+| "编辑 / 修改已发送消息" | `dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text "<新内容>"` |
 | "撤回我发的消息" | `dws chat message recall`（撤回当前用户发送的消息）|
 | "撤回机器人消息" | `dws chat message recall-by-bot --robot-code <code> --group <openConversationId> --keys <processQueryKey>`（撤回机器人发的）|
+| "把普通群升级为外部群" | `dws chat group upgrade-to-external --group <openConversationId> --dry-run`，确认后加 `--yes` |
+| "清除我的群昵称" | `dws chat group update-nick --group <openConversationId>`（省略 `--nick`） |
+| "这个会话属于哪些分组" | `dws chat category list-by-conv --group <openConversationId>` |
+| "批量查询分组信息" | `dws chat category batch-info --category-ids <id1>,<id2>` |
 
 > **注**：`chat message send` 的 `--title` 可选（不传时用正文首行作标题）；`send-by-bot` / `send-by-webhook` 的 `--title` 必填。
+
+## 评测高频硬约束
+
+- `chat message edit` 必须同时提供会话 ID 与消息 ID；`--text` 和 `--content` 二选一，`--title` 只与 `--text` 搭配。
+- `chat group upgrade-to-external` 只适用于 `NORMAL_GROUP`，不可逆且仅群主可执行。先 `--dry-run`，获得用户明确确认后再加 `--yes`。
+- `chat group update-nick` 不传 `--nick` 表示清除当前用户的群昵称，不是参数缺失。
+- 会话分组 ID 是数值 ID；按会话反查用 `category list-by-conv`，按多个分组 ID 查详情用 `category batch-info`。
 
 ## 跨产品协作
 

@@ -80,6 +80,86 @@
     {
       "canonical_path": "calendar.query_available_meeting_room",
       "cli_path": "calendar room search"
+    },
+    {
+      "canonical_path": "calendar.shortcut_agenda",
+      "cli_path": "calendar +agenda"
+    },
+    {
+      "canonical_path": "calendar.shortcut_attendee_list",
+      "cli_path": "calendar +attendee-list"
+    },
+    {
+      "canonical_path": "calendar.shortcut_room_search",
+      "cli_path": "calendar +room-search"
+    },
+    {
+      "canonical_path": "calendar.shortcut_room_groups",
+      "cli_path": "calendar +room-groups"
+    },
+    {
+      "canonical_path": "calendar.shortcut_freebusy",
+      "cli_path": "calendar +freebusy"
+    },
+    {
+      "canonical_path": "calendar.shortcut_book_list",
+      "cli_path": "calendar +book-list"
+    },
+    {
+      "canonical_path": "calendar.shortcut_book_search",
+      "cli_path": "calendar +book-search"
+    },
+    {
+      "canonical_path": "calendar.shortcut_book",
+      "cli_path": "calendar +book"
+    },
+    {
+      "canonical_path": "calendar.shortcut_cancel_event",
+      "cli_path": "calendar +cancel-event"
+    },
+    {
+      "canonical_path": "calendar.shortcut_conflicts",
+      "cli_path": "calendar +conflicts"
+    },
+    {
+      "canonical_path": "calendar.shortcut_free_slots",
+      "cli_path": "calendar +free-slots"
+    },
+    {
+      "canonical_path": "calendar.shortcut_free",
+      "cli_path": "calendar +free"
+    },
+    {
+      "canonical_path": "calendar.shortcut_invite",
+      "cli_path": "calendar +invite"
+    },
+    {
+      "canonical_path": "calendar.shortcut_my_free",
+      "cli_path": "calendar +my-free"
+    },
+    {
+      "canonical_path": "calendar.shortcut_next_event",
+      "cli_path": "calendar +next-event"
+    },
+    {
+      "canonical_path": "calendar.shortcut_reschedule",
+      "cli_path": "calendar +reschedule"
+    },
+    {
+      "canonical_path": "calendar.shortcut_suggest_time",
+      "cli_path": "calendar +suggest-time"
+    },
+    {
+      "canonical_path": "calendar.shortcut_today",
+      "cli_path": "calendar +today"
+    },
+    {
+      "canonical_path": "calendar.shortcut_tomorrow",
+      "cli_path": "calendar +tomorrow"
+    },
+    {
+      "canonical_path": "calendar.shortcut_week",
+      "cli_path": "calendar +week"
     }
   ]
 }

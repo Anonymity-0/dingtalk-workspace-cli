@@ -60,6 +60,82 @@
     {
       "canonical_path": "contact.search_user_by_mobile",
       "cli_path": "contact user search-mobile"
+    },
+    {
+      "canonical_path": "contact.department_create",
+      "cli_path": "contact dept create"
+    },
+    {
+      "canonical_path": "contact.department_update",
+      "cli_path": "contact dept update"
+    },
+    {
+      "canonical_path": "contact.employee_update",
+      "cli_path": "contact user update"
+    },
+    {
+      "canonical_path": "contact.exclusive_account_user_update",
+      "cli_path": "contact account update"
+    },
+    {
+      "canonical_path": "contact.self_user_profile_update",
+      "cli_path": "contact user update-self"
+    },
+    {
+      "canonical_path": "contact.shortcut_list_followings",
+      "cli_path": "contact +list-followings"
+    },
+    {
+      "canonical_path": "contact.shortcut_search_user",
+      "cli_path": "contact +search-user"
+    },
+    {
+      "canonical_path": "contact.shortcut_search_mobile",
+      "cli_path": "contact +search-mobile"
+    },
+    {
+      "canonical_path": "contact.shortcut_list_roles",
+      "cli_path": "contact +list-roles"
+    },
+    {
+      "canonical_path": "contact.shortcut_list_role_members",
+      "cli_path": "contact +list-role-members"
+    },
+    {
+      "canonical_path": "contact.shortcut_list_sub_depts",
+      "cli_path": "contact +list-sub-depts"
+    },
+    {
+      "canonical_path": "contact.shortcut_list_dept_members",
+      "cli_path": "contact +list-dept-members"
+    },
+    {
+      "canonical_path": "contact.shortcut_by_mobile",
+      "cli_path": "contact +by-mobile"
+    },
+    {
+      "canonical_path": "contact.shortcut_dept_members",
+      "cli_path": "contact +dept-members"
+    },
+    {
+      "canonical_path": "contact.shortcut_lookup",
+      "cli_path": "contact +lookup"
+    },
+    {
+      "canonical_path": "contact.shortcut_org",
+      "cli_path": "contact +org"
+    },
+    {
+      "canonical_path": "contact.shortcut_resolve_dept",
+      "cli_path": "contact +resolve-dept"
+    },
+    {
+      "canonical_path": "contact.shortcut_team",
+      "cli_path": "contact +team"
+    },
+    {
+      "canonical_path": "contact.shortcut_me",
+      "cli_path": "contact +me"
     }
   ]
 }

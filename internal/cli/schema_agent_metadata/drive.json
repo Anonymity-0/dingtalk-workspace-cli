@@ -1,6 +1,1821 @@
 {
   "product_id": "drive",
   "tools": {
+    "drive +copy": {
+      "agent_summary": "复制文件/文档到指定位置",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +copy --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "复制文件/文档到指定位置",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "复制文件/文档到指定位置",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +copy --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +copy --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "unknown",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "unknown",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "ShortcutRegistry:drive +copy",
+        "cobra-help:dws drive +copy",
+        "internal/cli/schema_command_registry.json#drive.shortcut_copy",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。"
+      ]
+    },
+    "drive +find-file": {
+      "agent_summary": "按名称关键词搜索钉盘文件并投影关键字段（只读）",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +find-file --query 季度汇报",
+        "dws drive +find-file --query 合同"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "按名称关键词搜索钉盘文件并投影关键字段（只读）",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "按名称关键词搜索钉盘文件并投影关键字段（只读）",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +find-file --query 季度汇报",
+            "dws drive +find-file --query 合同"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +find-file --query 季度汇报",
+                "dws drive +find-file --query 合同"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "ShortcutRegistry:drive +find-file",
+        "cobra-help:dws drive +find-file",
+        "internal/cli/schema_command_registry.json#drive.shortcut_find_file",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。"
+      ]
+    },
+    "drive +info": {
+      "agent_summary": "获取钉盘文件/文件夹元数据",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +info --node \u003cdentryUuid\u003e"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "获取钉盘文件/文件夹元数据",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "获取钉盘文件/文件夹元数据",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +info --node \u003cdentryUuid\u003e"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +info --node \u003cdentryUuid\u003e"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "ShortcutRegistry:drive +info",
+        "cobra-help:dws drive +info",
+        "internal/cli/schema_command_registry.json#drive.shortcut_info",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。"
+      ]
+    },
+    "drive +move": {
+      "agent_summary": "移动文件/文档到指定位置",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +move --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "移动文件/文档到指定位置",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "移动文件/文档到指定位置",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +move --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +move --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "unknown",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "unknown",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "ShortcutRegistry:drive +move",
+        "cobra-help:dws drive +move",
+        "internal/cli/schema_command_registry.json#drive.shortcut_move",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。"
+      ]
+    },
+    "drive +recent": {
+      "agent_summary": "获取最近访问/编辑的文档列表",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +recent",
+        "dws drive +recent --operate-type 1 --creator-type 1"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "获取最近访问/编辑的文档列表",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "获取最近访问/编辑的文档列表",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +recent",
+            "dws drive +recent --operate-type 1 --creator-type 1"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +recent",
+                "dws drive +recent --operate-type 1 --creator-type 1"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "ShortcutRegistry:drive +recent",
+        "cobra-help:dws drive +recent",
+        "internal/cli/schema_command_registry.json#drive.shortcut_recent",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。"
+      ]
+    },
+    "drive +search": {
+      "agent_summary": "搜索钉盘文件",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +search --query \"季度汇报\"",
+        "dws drive +search --query \"合同\" --target file --extensions pdf,docx"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "搜索钉盘文件",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "搜索钉盘文件",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +search --query \"季度汇报\"",
+            "dws drive +search --query \"合同\" --target file --extensions pdf,docx"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +search --query \"季度汇报\"",
+                "dws drive +search --query \"合同\" --target file --extensions pdf,docx"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "ShortcutRegistry:drive +search",
+        "cobra-help:dws drive +search",
+        "internal/cli/schema_command_registry.json#drive.shortcut_search",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。"
+      ]
+    },
+    "drive +search-docs": {
+      "agent_summary": "搜索文档空间文档",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive +search-docs --query \"季度汇报\""
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "搜索文档空间文档",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": "搜索文档空间文档",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive +search-docs --query \"季度汇报\""
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "dws drive +search-docs --query \"季度汇报\""
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "candidates": [
+            {
+              "value": [
+                "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts."
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "ShortcutRegistry:drive +search-docs",
+        "cobra-help:dws drive +search-docs",
+        "internal/cli/schema_command_registry.json#drive.shortcut_search_docs",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json"
+      ],
+      "use_when": [
+        "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。"
+      ]
+    },
     "drive commit": {
       "agent_summary": "提交文件上传",
       "agent_summary_source": "dws-agent-selection/drive",
@@ -5268,12 +7083,13 @@
       ]
     },
     "drive rename": {
-      "agent_summary": "修改文档空间中文档或文件的名称",
+      "agent_summary": "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
       "agent_summary_source": "dws-agent-selection/drive",
       "availability": "available",
       "avoid_when": [
         "要改正文里的标题/章节 H1 改用 dws doc block update，不要用 rename",
-        "只要复制或移动改用 copy/move"
+        "只要复制或移动改用 copy/move",
+        "dry-run 不读取节点元数据，输出名称尚未做基于当前扩展名的规范化"
       ],
       "confirmation": "not_required",
       "effect": "write",
@@ -5283,14 +7099,14 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "修改文档空间中文档或文件的名称",
+          "value": "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "人工审阅：结合本机 dws schema 实时 MCP description/parameters（经 interface_ref）、产品 Skill、Cobra Long 与 Runtime 确认门禁，按飞书风格重写选型文案；不改变命令身份、参数契约或接口绑定。",
           "candidates": [
             {
-              "value": "修改文档空间中文档或文件的名称",
+              "value": "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -5303,14 +7119,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist."
             },
             {
               "value": "available",
@@ -5323,7 +7139,8 @@
         "avoid_when": {
           "value": [
             "要改正文里的标题/章节 H1 改用 dws doc block update，不要用 rename",
-            "只要复制或移动改用 copy/move"
+            "只要复制或移动改用 copy/move",
+            "dry-run 不读取节点元数据，输出名称尚未做基于当前扩展名的规范化"
           ],
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
@@ -5333,7 +7150,8 @@
             {
               "value": [
                 "要改正文里的标题/章节 H1 改用 dws doc block update，不要用 rename",
-                "只要复制或移动改用 copy/move"
+                "只要复制或移动改用 copy/move",
+                "dry-run 不读取节点元数据，输出名称尚未做基于当前扩展名的规范化"
               ],
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
@@ -5409,14 +7227,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist.",
           "candidates": [
             {
               "value": "mcp",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist."
             },
             {
               "value": "mcp",
@@ -5431,14 +7249,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist.",
           "candidates": [
             {
               "value": "doc.rename_document",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist."
             },
             {
               "value": "doc.rename_document",
@@ -5453,14 +7271,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist."
             },
             {
               "value": true,
@@ -5487,7 +7305,7 @@
         },
         "use_when": {
           "value": [
-            "用户要重命名钉盘/文档空间中的文件或文档显示名称时"
+            "用户要重命名钉盘/文档空间中的文件、文档或文件夹时；实际执行会读取节点类型和当前扩展名，仅去掉完全匹配的一层后缀"
           ],
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
@@ -5496,7 +7314,7 @@
           "candidates": [
             {
               "value": [
-                "用户要重命名钉盘/文档空间中的文件或文档显示名称时"
+                "用户要重命名钉盘/文档空间中的文件、文档或文件夹时；实际执行会读取节点类型和当前扩展名，仅去掉完全匹配的一层后缀"
               ],
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
@@ -5527,7 +7345,7 @@
         "structured-hint:internal/cli/schema_hints/selection-review.json#drive.rename_document"
       ],
       "use_when": [
-        "用户要重命名钉盘/文档空间中的文件或文档显示名称时"
+        "用户要重命名钉盘/文档空间中的文件、文档或文件夹时；实际执行会读取节点类型和当前扩展名，仅去掉完全匹配的一层后缀"
       ]
     },
     "drive search": {
@@ -6322,31 +8140,32 @@
       ]
     },
     "drive upload": {
-      "agent_summary": "上传本地文件到钉盘或文档空间",
+      "agent_summary": "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
       "agent_summary_source": "dws-agent-selection/drive",
       "availability": "available",
       "avoid_when": [
         "常规场景不要拆成 upload-info + 手动 PUT + commit；仅自定义流式上传才用三步",
         "要把文件作为文档正文附件插入改用 dws doc media insert",
-        "用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令"
+        "用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令",
+        "用户没有明确同意替换目标文件时不要使用 --node；新建上传应使用 --folder 或目标根目录"
       ],
       "confirmation": "not_required",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws drive upload --file ./report.pdf --format json",
-        "dws drive upload --file ./slides.pptx --folder \u003cdentryUuid\u003e --format json"
+        "dws drive upload --file ./README.md --node \u003cdentryUuid\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "上传本地文件到钉盘或文档空间",
+          "value": "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "人工审阅：结合本机 dws schema 实时 MCP description/parameters（经 interface_ref）、产品 Skill、Cobra Long 与 Runtime 确认门禁，按飞书风格重写选型文案；不改变命令身份、参数契约或接口绑定。",
           "candidates": [
             {
-              "value": "上传本地文件到钉盘或文档空间",
+              "value": "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -6359,14 +8178,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             }
           ]
         },
@@ -6374,7 +8193,8 @@
           "value": [
             "常规场景不要拆成 upload-info + 手动 PUT + commit；仅自定义流式上传才用三步",
             "要把文件作为文档正文附件插入改用 dws doc media insert",
-            "用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令"
+            "用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令",
+            "用户没有明确同意替换目标文件时不要使用 --node；新建上传应使用 --folder 或目标根目录"
           ],
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
@@ -6385,7 +8205,8 @@
               "value": [
                 "常规场景不要拆成 upload-info + 手动 PUT + commit；仅自定义流式上传才用三步",
                 "要把文件作为文档正文附件插入改用 dws doc media insert",
-                "用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令"
+                "用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令",
+                "用户没有明确同意替换目标文件时不要使用 --node；新建上传应使用 --folder 或目标根目录"
               ],
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
@@ -6396,15 +8217,23 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
+            },
             {
               "value": "not_required",
               "source": "risk-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -6413,14 +8242,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
             {
               "value": "write",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             },
             {
               "value": "write",
@@ -6433,7 +8262,7 @@
         "examples": {
           "value": [
             "dws drive upload --file ./report.pdf --format json",
-            "dws drive upload --file ./slides.pptx --folder \u003cdentryUuid\u003e --format json"
+            "dws drive upload --file ./README.md --node \u003cdentryUuid\u003e --format json"
           ],
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
@@ -6443,7 +8272,7 @@
             {
               "value": [
                 "dws drive upload --file ./report.pdf --format json",
-                "dws drive upload --file ./slides.pptx --folder \u003cdentryUuid\u003e --format json"
+                "dws drive upload --file ./README.md --node \u003cdentryUuid\u003e --format json"
               ],
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
@@ -6454,15 +8283,23 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
+            {
+              "value": "unknown",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
+            },
             {
               "value": "unknown",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -6471,14 +8308,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             }
           ]
         },
@@ -6487,14 +8324,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
             {
               "value": "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             }
           ]
         },
@@ -6519,14 +8356,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             },
             {
               "value": true,
@@ -6542,14 +8379,14 @@
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied.",
           "candidates": [
             {
               "value": "medium",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             },
             {
               "value": "medium",
@@ -6562,7 +8399,8 @@
         "use_when": {
           "value": [
             "用户要把本地文件上传到钉盘/我的文件（首选一条命令自动完成凭证+PUT+提交）时",
-            "上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert"
+            "上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert",
+            "用户明确要求用本地文件替换已有钉盘/文档空间文件时传 --node；该模式会覆盖远端内容并要求确认"
           ],
           "source": "internal/cli/schema_hints/selection/drive.json",
           "precedence": "reviewed_explicit",
@@ -6572,7 +8410,8 @@
             {
               "value": [
                 "用户要把本地文件上传到钉盘/我的文件（首选一条命令自动完成凭证+PUT+提交）时",
-                "上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert"
+                "上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert",
+                "用户明确要求用本地文件替换已有钉盘/文档空间文件时传 --node；该模式会覆盖远端内容并要求确认"
               ],
               "source": "internal/cli/schema_hints/selection/drive.json",
               "precedence": "reviewed_explicit",
@@ -6601,7 +8440,8 @@
       ],
       "use_when": [
         "用户要把本地文件上传到钉盘/我的文件（首选一条命令自动完成凭证+PUT+提交）时",
-        "上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert"
+        "上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert",
+        "用户明确要求用本地文件替换已有钉盘/文档空间文件时传 --node；该模式会覆盖远端内容并要求确认"
       ]
     },
     "drive upload-info": {

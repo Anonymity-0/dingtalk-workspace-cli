@@ -322,6 +322,14 @@
     {
       "canonical_path": "sheet.write_image",
       "cli_path": "sheet write-image"
+    },
+    {
+      "canonical_path": "sheet.shortcut_list_sheets",
+      "cli_path": "sheet +list-sheets"
+    },
+    {
+      "canonical_path": "sheet.shortcut_read",
+      "cli_path": "sheet +read"
     }
   ]
 }

@@ -6,6 +6,66 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.55-beta.5] - 2026-07-28
+
+This beta validates expanded personal event consumption, complete Agent-visible
+Runtime Schema coverage for all 210 built-in shortcuts, Agent host
+observability, and hardened document, Drive, approval, and Todo command
+contracts on top of the `v1.0.55-beta.4` baseline.
+
+### Added
+
+- **Expanded personal event consumption** (#790) — adds eight IM personal event keys, supports subscribing to and consuming multiple event keys in one `dws event consume` invocation, and adds targeted local-consumer shutdown when a subscription is stopped so other consumers can continue on the shared event bus.
+- **Shortcut Runtime Schema delivery** (#802) — publishes all 210 public built-in shortcuts as reviewed Agent-visible leaf tools across 16 product groups, with stable canonical identities, executable `+shortcut` CLI paths, parameter and cross-parameter constraints, selection guidance, interface metadata, and runtime-aligned safety/confirmation semantics. `dws shortcut list` remains the lightweight batch-discovery view, while leaf Schema now carries the complete Agent contract; declared string-slice defaults are also preserved consistently in Cobra and Schema.
+- **Agent host observability** (#804) — accepts an optional, validated `DWS_AGENT_HOST` label and sends it as `x-dws-agent-host` for logs and BI only; invalid values fail before CLI network activity, and the label never participates in authentication or routing.
+
+### Fixed
+
+- **Command contract edge cases** (#803) — approval revocation and document-version rollback now honor `--dry-run` before confirmation or remote preflight; `drive rename` removes only a suffix matching the node's current extension to avoid duplicate extensions while `doc rename` preserves the caller's exact display name; `doc info` keeps its stable MCP contract while `drive info` restores Drive-only metadata such as a non-null `fileSize`; and Todo reminder writes now reject invalid rule JSON while Help, Schema, and Skills distinguish a due time from an independently unreadable reminder rule.
+
+## [1.0.55-beta.4] - 2026-07-27
+
+This beta validates the shortcut projection fixes for group bots, bot search,
+and mail threads, together with hardened release delivery to Gitee and npm on
+top of the `v1.0.55-beta.3` baseline.
+
+### Fixed
+
+- **Shortcut projection fixes** (#795) — `chat +chat-bots` no longer projects a non-empty `list_group_bots` response to an empty list, `+bot-find` recognizes the `search_bots` response shape (`result.bots` entries with `botOpenDingTalkId`), and mail thread listings keep `lastUpdated` when the backend returns `lastModifiedDateTime`.
+
+### Changed
+
+- **Hardened release delivery** — the Gitee mirror workflow can synchronize a specific release's assets on demand, release lookup tolerates Gitee's HTTP 200 null-body response for missing releases, npm dist-tag verification waits through slow registry CDN propagation with incremental backoff, and beta/stable release operations are role-enforced (#791).
+
+## [1.0.55-beta.3] - 2026-07-24
+
+This beta validates the HR Brain command surface, smoother guarded release
+automation, and deterministic Markdown test coverage on top of the
+`v1.0.55-beta.2` baseline.
+
+### Added
+
+- **HR Brain (`dws hrbrain`) command surface** — adds 11 commands across three groups: `talent-pool list/detail/employees` for talent pool browsing, `profile metadata/query/labels/career/performance` for employee profile data, and `search employees/employees-structured/fields` for basic and advanced (rule-based) people search. Ships with bundled mono/multi Skill guidance (`dingtalk-hrbrain`, `cli_version: ">=1.0.54"`); `search employees-structured` validates `--origin-json` as a JSON object and `--fields` as a JSON array before dispatch.
+
+### Changed
+
+- **Smoother guarded releases** — publishes verified stable and beta Homebrew Formula updates directly from the release workflow, retries transient tag-ref visibility failures, lets an exact same-run retry reuse its sealed tag, and allows machine-verified rebuild recovery without a separate approval wait.
+
+### Fixed
+
+- **Deterministic Markdown coverage** — replaces timing-dependent temporary-file deletion tests with synchronized file-stat failures so release admission no longer flakes on scheduler timing.
+
+### Changed
+
+- **Faster guarded releases** — trusts an independently revalidated, exact `CHANGELOG.md`-only successor of an already admitted `main` commit, runs cloud planning alongside governance, and executes sealed-release automation, compatibility, and multi-profile validation in parallel with artifact compilation. Normal cloud publication no longer requires an unshareable local packaging preflight.
+- **Scoped document reads and group mentions** — `doc read --content-format jsonml` can return `outline`, `range`, `section`, or custom-tag fragments with depth and block-boundary controls; document comment create, reply, and update can mention groups through `--mentioned-open-conversation-id`.
+- **Drive overwrite uploads** — `drive upload --node <fileId>` can replace an existing Drive or document-space file, is mutually exclusive with `--folder`, supports dry-run, and requires confirmation before writing.
+- **Chat nickname clearing and cross-organization todos** — omitting `--nick` from `chat group update-nick` now clears the current user's group nickname, while `todo task list --query-all` queries todos across organizations.
+
+### Fixed
+
+- **Legacy authentication compatibility** (#756) — migrates pre-v1.0.53 global and organization-scoped login state into the identity-aware token store, including all legacy organizations, while keeping unresolved accounts isolated from exact `corpId:userId` credentials so external or no-directory identities can complete login without borrowing another user's token.
+
 ## [1.0.55-beta.1] - 2026-07-23
 
 This beta validates MCP Market URL resolution, the supported Wukong local-file
@@ -23,6 +83,7 @@ records, encrypted messages, and media-download ID aliases.
 
 ### Fixed
 
+- **Shortcut projection silent-empty returns** (#783) — a batch of read shortcuts returned an empty list with exit 0 and no error envelope even when the underlying MCP tool returned data, so agents misread "no data". The projection resolvers now probe the real container keys (`processCodeList`, `values`, `wikiSpaces`, `itemList`, `groupList`, `recentItems`, `emailAccounts`, `deptUserList`, `labelUserList`, `roles`, `report_list`, and the grouped `get_org_labels` `labels[]`), unwrap items nested under a VO wrapper (`shiftVO` / `entityVO` / `userInfo`), and `todo +created-todos` uses the shared pager (`pageSize=20`) because the backend silently returns an empty page for `pageSize>20`. Affects contact/oa/wiki/drive/minutes/calendar/attendance/chat/report/smart shortcuts, each with a guard test asserting the real response shape projects non-empty. `scripts/shortcut_real_result.py` also gains an upper-vs-lower layer comparison so an exit-0 empty projection over a non-empty backend is scored as `projection-data-loss` in the real read-audit path rather than `real-ok`.
 - **Message-read shortcut projection** (#706) — the message-list shortcuts (`chat +chat-messages` / `+messages-list` / `+messages-list-direct` / `+at-me` / `+search-msg` / `+thread-replies`) now render card and out-of-office rich-content JSON as readable text (without ever rewriting ordinary text that merely embeds a JSON fragment), expand a forwarded chat record's nested `forwardMessages` instead of collapsing to a "[卡片]" summary, and mark undecryptable encrypted card messages as `[加密消息]`; the speaker is read from the bare `sender` key, nested `{name:…}` sender objects yield their display name, and the literal string `"null"` is treated as absent. Shared projection helpers now live in `internal/shortcut/chatmsg`. `chat message download-media` also gains `--msg-id` / `--open-message-id` aliases for its `--message-id` flag so agents copying the `openMessageId`/`msgId` output field no longer hit "unknown flag".
 
 ## [1.0.54] - 2026-07-21

@@ -48580,6 +48580,1142 @@
         "写入纯值且超过约 5 行/20 格，或数据来自 CSV/表格文本时优先使用"
       ]
     },
+    "sheet.shortcut_list_sheets": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "ShortcutRegistry:sheet +list-sheets",
+        "cobra-help:dws sheet +list-sheets",
+        "internal/cli/schema_command_registry.json#sheet.shortcut_list_sheets",
+        "internal/cli/schema_hints/metadata/sheet.json",
+        "internal/cli/schema_hints/selection/sheet.json"
+      ],
+      "agent_summary": "获取表格文档中全部工作表列表",
+      "agent_summary_source": "dws-agent-selection/sheet",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "canonical_path": "sheet.shortcut_list_sheets",
+      "cli_name": "+list-sheets",
+      "cli_path": "sheet +list-sheets",
+      "confirmation": "not_required",
+      "description": "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。",
+      "display": "钉钉表格管理",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws sheet +list-sheets --node NODE_ID"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": "获取表格文档中全部工作表列表"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": "获取表格文档中全部工作表列表"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "sheet +list-sheets",
+              "value": "sheet.shortcut_list_sheets"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "sheet +list-sheets",
+          "value": "sheet.shortcut_list_sheets"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": [
+                "dws sheet +list-sheets --node NODE_ID"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": [
+            "dws sheet +list-sheets --node NODE_ID"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "获取表格文档中全部工作表列表"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "获取表格文档中全部工作表列表"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": [
+                "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": [
+            "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "is_alias": false,
+      "name": "shortcut_list_sheets",
+      "parameter_count": 1,
+      "parameters": {
+        "node": {
+          "description": "表格文档 ID 或 URL（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "表格文档 ID 或 URL（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "表格文档 ID 或 URL（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "node"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "node",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "sheet.shortcut_list_sheets",
+      "primary_cli_path": "sheet +list-sheets",
+      "product_id": "sheet",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "获取表格文档中全部工作表列表",
+      "use_when": [
+        "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。"
+      ]
+    },
+    "sheet.shortcut_read": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "ShortcutRegistry:sheet +read",
+        "cobra-help:dws sheet +read",
+        "internal/cli/schema_command_registry.json#sheet.shortcut_read",
+        "internal/cli/schema_hints/metadata/sheet.json",
+        "internal/cli/schema_hints/selection/sheet.json"
+      ],
+      "agent_summary": "读取工作表指定范围的结构化单元格数据",
+      "agent_summary_source": "dws-agent-selection/sheet",
+      "availability": "available",
+      "avoid_when": [
+        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+      ],
+      "canonical_path": "sheet.shortcut_read",
+      "cli_name": "+read",
+      "cli_path": "sheet +read",
+      "confirmation": "not_required",
+      "description": "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。",
+      "display": "钉钉表格管理",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws sheet +read --node NODE_ID --sheet-id SHEET_ID --range \"A1:D10\""
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": "读取工作表指定范围的结构化单元格数据"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": "读取工作表指定范围的结构化单元格数据"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": [
+                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": [
+            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "sheet +read",
+              "value": "sheet.shortcut_read"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "sheet +read",
+          "value": "sheet.shortcut_read"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": [
+                "dws sheet +read --node NODE_ID --sheet-id SHEET_ID --range \"A1:D10\""
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": [
+            "dws sheet +read --node NODE_ID --sheet-id SHEET_ID --range \"A1:D10\""
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/sheet.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "source": "internal/cli/schema_hints/metadata/sheet.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "读取工作表指定范围的结构化单元格数据"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "读取工作表指定范围的结构化单元格数据"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/sheet.json",
+              "value": [
+                "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "source": "internal/cli/schema_hints/selection/sheet.json",
+          "value": [
+            "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "is_alias": false,
+      "name": "shortcut_read",
+      "parameter_count": 4,
+      "parameters": {
+        "node": {
+          "description": "表格文档 ID 或 URL（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "表格文档 ID 或 URL（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "表格文档 ID 或 URL（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "node"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "node",
+          "required": true,
+          "type": "string"
+        },
+        "range": {
+          "description": "读取范围，A1 表示法 (不传则全部数据)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "读取范围，A1 表示法 (不传则全部数据)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "读取范围，A1 表示法 (不传则全部数据)"
+            },
+            "format": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_format_inference",
+                  "value": "a1-range"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_format_inference",
+              "value": "a1-range"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "range"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "range"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "format": "a1-range",
+          "property": "range",
+          "required": false,
+          "type": "string"
+        },
+        "sheet-id": {
+          "description": "工作表 ID 或名称 (不传则第一个工作表)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "工作表 ID 或名称 (不传则第一个工作表)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "工作表 ID 或名称 (不传则第一个工作表)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "sheetId"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "sheetId"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "sheetId",
+          "required": false,
+          "type": "string"
+        },
+        "value-render-option": {
+          "description": "取值模式（可选值: formatted_value, raw_value, formula）",
+          "enum": [
+            "formatted_value",
+            "raw_value",
+            "formula"
+          ],
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "取值模式（可选值: formatted_value, raw_value, formula）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "取值模式（可选值: formatted_value, raw_value, formula）"
+            },
+            "enum": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": [
+                    "formatted_value",
+                    "raw_value",
+                    "formula"
+                  ]
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": []
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": [
+                "formatted_value",
+                "raw_value",
+                "formula"
+              ]
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "valueRenderOption"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "valueRenderOption"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "valueRenderOption",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "sheet.shortcut_read",
+      "primary_cli_path": "sheet +read",
+      "product_id": "sheet",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "读取工作表指定范围的结构化单元格数据",
+      "use_when": [
+        "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。"
+      ]
+    },
     "sheet.show_gridline": {
       "agent_metadata_source": "embedded-skill-metadata",
       "agent_source_refs": [

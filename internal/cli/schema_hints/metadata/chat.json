@@ -649,6 +649,703 @@
       "interface_mode": "mcp",
       "availability": "available",
       "reviewed": true
+    },
+    "chat.edit_message": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "not_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI builds or accepts message content and calls im/edit_message, which is absent from the pinned MCP metadata snapshot.",
+      "reviewed": true,
+      "parameters": {
+        "conversation-id": {
+          "property": "openConversationId",
+          "required": true
+        },
+        "group": {
+          "property": "openConversationId",
+          "required": false
+        },
+        "id": {
+          "property": "openConversationId",
+          "required": false
+        },
+        "chat": {
+          "property": "openConversationId",
+          "required": false
+        },
+        "msg-id": {
+          "property": "openMessageId",
+          "required": true
+        },
+        "text": {
+          "property": "text",
+          "required": false
+        },
+        "title": {
+          "property": "title",
+          "required": false
+        },
+        "content": {
+          "property": "content",
+          "required": false
+        },
+        "at-all": {
+          "property": "atAll",
+          "required": false,
+          "interface_type": "boolean"
+        },
+        "at-open-dingtalk-ids": {
+          "property": "atOpenDingTalkIds",
+          "required": false,
+          "interface_type": "array"
+        }
+      },
+      "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+      "cli_path": "chat message edit",
+      "runtime_gate": "none"
+    },
+    "chat.get_conv_categories_info": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI parses category IDs and calls im/get_conv_categories_info, which is absent from the pinned MCP metadata snapshot.",
+      "reviewed": true,
+      "parameters": {
+        "category-ids": {
+          "property": "categoryIds",
+          "required": true,
+          "interface_type": "array"
+        }
+      },
+      "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
+      "cli_path": "chat category batch-info",
+      "runtime_gate": "none"
+    },
+    "chat.list_conv_categories_by_conv": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps a conversation locator to im/list_conv_categories_by_conv, which is absent from the pinned MCP metadata snapshot.",
+      "reviewed": true,
+      "parameters": {
+        "group": {
+          "property": "openConversationId",
+          "required": true
+        },
+        "conversation-id": {
+          "property": "openConversationId",
+          "required": false
+        },
+        "id": {
+          "property": "openConversationId",
+          "required": false
+        }
+      },
+      "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate.",
+      "cli_path": "chat category list-by-conv",
+      "runtime_gate": "none"
+    },
+    "chat.update_group_nick": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps nickname update or clear semantics to im/update_group_nick, which is absent from the pinned MCP metadata snapshot.",
+      "reviewed": true,
+      "parameters": {
+        "group": {
+          "property": "openConversationId",
+          "required": true
+        },
+        "nick": {
+          "property": "nick",
+          "required": false
+        }
+      },
+      "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
+      "cli_path": "chat group update-nick",
+      "runtime_gate": "none"
+    },
+    "chat.upgrade_group_to_external": {
+      "effect": "destructive",
+      "risk": "high",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI validates an optional string map and calls im/upgrade_group_to_external, which is absent from the pinned MCP metadata snapshot.",
+      "reviewed": true,
+      "parameters": {
+        "group": {
+          "property": "openConversationId",
+          "required": true
+        },
+        "extension": {
+          "property": "extension",
+          "required": false,
+          "interface_type": "object"
+        }
+      },
+      "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
+      "cli_path": "chat group upgrade-to-external",
+      "runtime_gate": "confirm_dangerous"
+    },
+    "chat.shortcut_bot_search": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +bot-search",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_bot_find": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +bot-find",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_conversation_info": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +conversation-info",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_conversation_clear_all_red_point": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +conversation-clear-all-red-point",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_conversation_list": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +conversation-list",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_conversation_list_top": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +conversation-list-top",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_category_list": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +category-list",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_category_create": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +category-create",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_category_delete": {
+      "effect": "destructive",
+      "risk": "high",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +category-delete",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_category_rename": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +category-rename",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_search": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-search",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_invite_url": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-invite-url",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_dismiss": {
+      "effect": "destructive",
+      "risk": "high",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-dismiss",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_set_history": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-set-history",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_update_nick": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-update-nick",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_update_alias": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-update-alias",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_list_mine": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-list-mine",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_list_all": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-list-all",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_list_join_requests": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-list-join-requests",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_bots": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-bots",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_set_admin": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-set-admin",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_mute": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-mute",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_role_list": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-role-list",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_chat_role_add": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-role-add",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_role_update": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-role-update",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_role_set_user": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-role-set-user",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_chat_role_query_user": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +chat-role-query-user",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_messages_send_by_webhook": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-send-by-webhook",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_messages_list_direct": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-list-direct",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_messages_list_unread_conversations": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-list-unread-conversations",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_messages_mget": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-mget",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_messages_query_send_status": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-query-send-status",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_messages_read_status": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-read-status",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_messages_update_card": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-update-card",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_messages_list_pin": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +messages-list-pin",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_at_me": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +at-me",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_broadcast": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +broadcast",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_dm": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +dm",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_group_members": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +group-members",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_my_groups": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +my-groups",
+      "runtime_gate": "none"
+    },
+    "chat.shortcut_send_to_group": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +send-to-group",
+      "runtime_gate": "typed_yes"
+    },
+    "chat.shortcut_unread_chats": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "reviewed": true,
+      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+      "cli_path": "chat +unread-chats",
+      "runtime_gate": "none"
     }
   }
 }
