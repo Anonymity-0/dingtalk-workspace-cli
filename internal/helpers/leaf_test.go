@@ -32,7 +32,7 @@ func leafTestSpec() LeafSpec {
 			{Name: "content", Usage: "内容", Required: true},
 			{Name: "type", Usage: "类型", Default: "app", Bind: "remindType"},
 			{Name: "note", Usage: "备注", Aliases: []string{"remark"}, OmitEmpty: true, Bind: "noteText"},
-			{Name: "cursor", Usage: "游标", Kind: LeafInt64, Bind: "cursor"},
+			{Name: "cursor", Usage: "游标", Kind: LeafInt, Bind: "cursor"},
 			{Name: "scope", Usage: "范围", ArgDefault: "ALL", Bind: "scope"},
 		},
 	}
@@ -199,8 +199,8 @@ func TestLeafArgs(t *testing.T) {
 	if args["noteText"] != "via-alias" {
 		t.Fatalf("noteText = %v, want alias fallback", args["noteText"])
 	}
-	if args["cursor"] != int64(10) {
-		t.Fatalf("cursor = %v (%T), want int64(10)", args["cursor"], args["cursor"])
+	if args["cursor"] != 10 {
+		t.Fatalf("cursor = %v (%T), want int(10)", args["cursor"], args["cursor"])
 	}
 	if args["scope"] != "ALL" {
 		t.Fatalf("scope = %v, want ArgDefault ALL", args["scope"])
@@ -217,7 +217,7 @@ func TestLeafArgsOmitsEmptyAndNonPositive(t *testing.T) {
 		t.Fatalf("noteText present = %v, want omitted when empty", args["noteText"])
 	}
 	if _, present := args["cursor"]; present {
-		t.Fatalf("cursor present = %v, want omitted when <= 0", args["cursor"])
+		t.Fatalf("cursor present = %v, want omitted when zero", args["cursor"])
 	}
 	// 未配置 OmitEmpty 的 flag 即使为空也入参（复现手写语义；Required 校验在
 	// leafArgs 之前执行，保证真实路径不会发出空值）。

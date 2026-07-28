@@ -42,8 +42,6 @@ type LeafFlagKind int
 const (
 	// LeafString 字符串 flag（默认）。
 	LeafString LeafFlagKind = iota
-	// LeafInt64 整型 flag；仅在值 > 0 时进入 toolArgs（分页游标语义）。
-	LeafInt64
 	// LeafInt 整型 flag（注册为 cobra Int）；仅在值 != 0 时进入 toolArgs，
 	// 对应手写「putInt 仅在非零才入参」语义（如 devapp app-group-id）。
 	LeafInt
@@ -76,8 +74,8 @@ type LeafFlag struct {
 	// (nil, nil) 表示跳过该键（用于「可空数值：为空或解析失败都不入参」
 	// 的手写语义）。
 	Transform func(raw string) (any, error)
-	// OmitEmpty 为 true 时有效值为空则不进入 toolArgs（LeafInt64 恒为
-	// 「值 > 0 才入参」，忽略此字段）。
+	// OmitEmpty 为 true 时有效值为空则不进入 toolArgs（LeafInt 恒为
+	// 「非零才入参」，忽略此字段）。
 	OmitEmpty bool
 	// Trim 为 true 时对有效值做 strings.TrimSpace（主 flag/别名/env 统一），
 	// 对应手写 devAppStringFlag 恒 trim 的语义；亦使「纯空白」值在 required
@@ -128,8 +126,6 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 	}
 	for _, flag := range spec.Flags {
 		switch flag.Kind {
-		case LeafInt64:
-			cmd.Flags().Int64(flag.Name, 0, flag.Usage)
 		case LeafInt:
 			cmd.Flags().Int(flag.Name, 0, flag.Usage)
 		default:
@@ -138,8 +134,6 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 		// 别名按主 flag 的 Kind 注册，否则整型别名的值永远读不到（静默丢弃）。
 		for _, alias := range flag.Aliases {
 			switch flag.Kind {
-			case LeafInt64:
-				cmd.Flags().Int64(alias, 0, flag.Usage+" (alias)")
 			case LeafInt:
 				cmd.Flags().Int(alias, 0, flag.Usage+" (alias)")
 			default:
@@ -212,17 +206,14 @@ func leafValidateRequired(cmd *cobra.Command, spec LeafSpec) error {
 }
 
 // leafHasEffectiveValue 判定 Required 是否满足，标准与 leafArgs 的入参判定
-// 一致（LeafInt64 需 > 0、LeafInt 需非零、字符串需非空）：否则会出现校验
-// 声称有效、toolArgs 却缺参的分裂。整型解析失败视为已提供，让 leafArgs
-// 报出更精确的 invalid integer 错误。
+// 一致（LeafInt 需非零、字符串需非空）：否则会出现校验声称有效、toolArgs
+// 却缺参的分裂。整型解析失败视为已提供，让 leafArgs 报出更精确的
+// invalid integer 错误。
 func leafHasEffectiveValue(cmd *cobra.Command, flag LeafFlag) bool {
-	if flag.Kind == LeafInt64 || flag.Kind == LeafInt {
+	if flag.Kind == LeafInt {
 		v, err := leafIntegerValue(cmd, flag)
 		if err != nil {
 			return true
-		}
-		if flag.Kind == LeafInt64 {
-			return v > 0
 		}
 		return v != 0
 	}
@@ -237,16 +228,13 @@ func leafArgs(cmd *cobra.Command, spec LeafSpec) (map[string]any, error) {
 		if bind == "" {
 			bind = flag.Name
 		}
-		if flag.Kind == LeafInt64 || flag.Kind == LeafInt {
+		if flag.Kind == LeafInt {
 			v, err := leafIntegerValue(cmd, flag)
 			if err != nil {
 				return nil, err
 			}
-			// LeafInt64 保持「值 > 0 才入参」（分页游标语义）；LeafInt 保持
-			// 「非零才入参」（putInt 语义）。
-			if flag.Kind == LeafInt64 && v > 0 {
-				toolArgs[bind] = v
-			} else if flag.Kind == LeafInt && v != 0 {
+			// 保持「非零才入参」（putInt 语义）。
+			if v != 0 {
 				toolArgs[bind] = int(v)
 			}
 			continue
@@ -320,9 +308,6 @@ func leafRawValue(cmd *cobra.Command, flag LeafFlag) string {
 // 同一条回退链（required 校验、别名、env）。
 func leafFlagString(cmd *cobra.Command, kind LeafFlagKind, name string) string {
 	switch kind {
-	case LeafInt64:
-		v, _ := cmd.Flags().GetInt64(name)
-		return strconv.FormatInt(v, 10)
 	case LeafInt:
 		v, _ := cmd.Flags().GetInt(name)
 		return strconv.Itoa(v)

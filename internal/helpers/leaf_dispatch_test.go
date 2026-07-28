@@ -184,15 +184,15 @@ func TestLeafIntAliasAndEnvFallback(t *testing.T) {
 	}
 }
 
-// TestLeafInt64AliasRegisteredTyped：LeafInt64 别名按 Kind 注册且回退生效。
-func TestLeafInt64AliasRegisteredTyped(t *testing.T) {
+// TestLeafIntAliasRegisteredTyped：整型 flag 的别名按 Kind 注册且回退生效。
+func TestLeafIntAliasRegisteredTyped(t *testing.T) {
 	spec := LeafSpec{
 		Use: "list", Tool: "list_thing",
-		Flags: []LeafFlag{{Name: "cursor", Usage: "游标", Kind: LeafInt64, Aliases: []string{"offset"}, Bind: "cursor"}},
+		Flags: []LeafFlag{{Name: "cursor", Usage: "游标", Kind: LeafInt, Aliases: []string{"offset"}, Bind: "cursor"}},
 	}
 	cmd := NewLeafCommand(spec)
-	if f := cmd.Flags().Lookup("offset"); f == nil || f.Value.Type() != "int64" {
-		t.Fatalf("alias offset = %+v, want registered as int64", f)
+	if f := cmd.Flags().Lookup("offset"); f == nil || f.Value.Type() != "int" {
+		t.Fatalf("alias offset = %+v, want registered as int", f)
 	}
 	if err := cmd.Flags().Set("offset", "11"); err != nil {
 		t.Fatal(err)
@@ -201,8 +201,8 @@ func TestLeafInt64AliasRegisteredTyped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := args["cursor"]; got != int64(11) {
-		t.Fatalf("cursor = %v (%T), want int64 11 from alias", got, got)
+	if got := args["cursor"]; got != 11 {
+		t.Fatalf("cursor = %v (%T), want int 11 from alias", got, got)
 	}
 }
 
@@ -255,19 +255,6 @@ func TestLeafIntRequiredExplicitZeroReportsMissing(t *testing.T) {
 	}
 	if err := leafValidateRequired(cmd, spec); err == nil || !strings.Contains(err.Error(), "missing required flag(s): --n") {
 		t.Fatalf("leafValidateRequired() = %v, want missing --n for explicit 0", err)
-	}
-
-	// LeafInt64 同理：0 不入参（> 0 语义），Required 视为缺失。
-	spec64 := LeafSpec{
-		Use: "list", Tool: "list_thing",
-		Flags: []LeafFlag{{Name: "cursor", Usage: "游标", Kind: LeafInt64, Required: true}},
-	}
-	cmd64 := NewLeafCommand(spec64)
-	if err := cmd64.Flags().Set("cursor", "0"); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafValidateRequired(cmd64, spec64); err == nil || !strings.Contains(err.Error(), "missing required flag(s): --cursor") {
-		t.Fatalf("leafValidateRequired() = %v, want missing --cursor for explicit 0", err)
 	}
 
 	// 整型解析失败视为「已提供」：Required 校验放行，让 leafArgs 报出更
