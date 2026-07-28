@@ -98,8 +98,22 @@ func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T)
 }
 
 func TestDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
+	renameCmd, remaining, err := newDocCommand().Find([]string{"rename"})
+	if err != nil || len(remaining) != 0 {
+		t.Fatalf("find doc rename: command=%v remaining=%v err=%v", renameCmd, remaining, err)
+	}
+	nameFlag := renameCmd.Flags().Lookup("name")
+	if nameFlag == nil {
+		t.Fatal("doc rename --name flag is missing")
+	}
+	if !strings.Contains(nameFlag.Usage, "原样传给服务端") ||
+		!strings.Contains(nameFlag.Usage, "drive rename") ||
+		strings.Contains(nameFlag.Usage, "自动去掉") {
+		t.Fatalf("doc rename --name usage = %q, want verbatim forwarding and drive rename routing", nameFlag.Usage)
+	}
+
 	caller := &contractDefectCaller{}
-	if _, err := executeContractDefectCommand(t, caller, newDocCommand,
+	if _, err = executeContractDefectCommand(t, caller, newDocCommand,
 		"rename", "--node", "node-1", "--name", "release.v2"); err != nil {
 		t.Fatalf("doc rename returned error: %v", err)
 	}

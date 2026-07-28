@@ -1738,7 +1738,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 
 	// rename
 	renameCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
-	renameCmd.Flags().String("name", "", "新名称 (必填；服务端保留原扩展名，传入常见扩展名时 CLI 会自动去掉一层)")
+	renameCmd.Flags().String("name", "", "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)")
 
 	// delete
 	deleteCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
