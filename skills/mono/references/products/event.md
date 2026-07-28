@@ -1,6 +1,6 @@
 # dws event — 个人 IM 与 OA 审批事件
 
-通过个人 Stream 长连接监听当前用户的钉钉消息接收、全量消息、已读、撤回、表情回应、群生命周期、审批任务创建和审批实例完成事件，NDJSON 输出到 stdout，用于驱动事件触发的 Agent。实时监听、自动回复、订阅事件都必须使用 `dws event consume`，不要写脚本轮询消息历史或审批列表。
+通过个人 Stream 长连接监听当前用户的钉钉消息接收、全量消息、已读、撤回、表情回应、群生命周期、审批实例发起/终止/完成，以及审批任务创建/完成/转交事件，NDJSON 输出到 stdout，用于驱动事件触发的 Agent。实时监听、自动回复、订阅事件都必须使用 `dws event consume`，不要写脚本轮询消息历史或审批列表。
 
 ## 运行方式
 
@@ -43,9 +43,13 @@
 | `user_im_group_member_exited` | 指定群聊有成员退出 | `--group` |
 | `user_im_group_disbanded` | 指定群聊被解散 | `--group` |
 | `user_oa_approval_task_created` | 审批任务创建，发送给审批人 | 无 |
+| `user_oa_approval_task_finished` | 审批任务已完成 | 无 |
+| `user_oa_approval_task_redirected` | 审批任务已转交 | 无 |
+| `user_oa_approval_instance_started` | 审批实例已发起 | 无 |
+| `user_oa_approval_instance_terminated` | 审批实例已终止 | 无 |
 | `user_oa_approval_instance_finished` | 审批实例完成，发送给审批单发起人 | 无 |
 
-只承认上表 18 个事件码。默认身份就是当前用户，使用当前用户 OAuth 登录态，不要额外加身份切换 flag。两个 OA 事件订阅当前用户相关的全部审批事件，规则均为 `all`、空 `filterRule`，不需要目标参数。
+只承认上表 22 个事件码。默认身份就是当前用户，使用当前用户 OAuth 登录态，不要额外加身份切换 flag。六个 OA 事件订阅当前用户相关的全部审批事件，规则均为 `all`、空 `filterRule`，不需要目标参数。
 
 ## Intent mapping
 
@@ -73,8 +77,12 @@
 | "同时监听同一人的单聊、已读和撤回" | 一个 consume 放入 3 个 event key，共享同一个 `--user` |
 | "同时监听同一群的消息、改名和解散" | 一个 consume 放入 3 个 event key，共享同一个 `--group` |
 | "监听新的待我审批任务" / "有审批任务创建时通知我" | `event consume`，事件码 `user_oa_approval_task_created`，参数 `--flatten -f ndjson` |
+| "审批任务完成时通知我" | `event consume`，事件码 `user_oa_approval_task_finished`，参数 `--flatten -f ndjson` |
+| "审批任务被转交时通知我" | `event consume`，事件码 `user_oa_approval_task_redirected`，参数 `--flatten -f ndjson` |
+| "有审批单发起时通知我" | `event consume`，事件码 `user_oa_approval_instance_started`，参数 `--flatten -f ndjson` |
+| "有审批单终止时通知我" | `event consume`，事件码 `user_oa_approval_instance_terminated`，参数 `--flatten -f ndjson` |
 | "监听我发起的审批何时完成" / "审批实例完成时通知我" | `event consume`，事件码 `user_oa_approval_instance_finished`，参数 `--flatten -f ndjson` |
-| "同时监听审批任务创建和审批完成" | 一个 consume 放入两个 OA event key，不加目标或消息过滤参数 |
+| "同时监听全部已公开 OA 事件" | 一个 consume 放入六个 OA event key，不加目标或消息过滤参数 |
 | "查看个人事件 schema" | `dws event schema <event_key> --flatten` |
 | "看个人事件订阅状态" | `dws event status --event <event_key>` |
 | "停止这个个人事件订阅" | `dws event stop <subscribe_id> --dry-run`，确认后改用 `--yes` |
@@ -112,6 +120,10 @@ dws event schema user_im_group_member_added --flatten
 dws event schema user_im_group_member_exited --flatten
 dws event schema user_im_group_disbanded --flatten
 dws event schema user_oa_approval_task_created --flatten
+dws event schema user_oa_approval_task_finished --flatten
+dws event schema user_oa_approval_task_redirected --flatten
+dws event schema user_oa_approval_instance_started --flatten
+dws event schema user_oa_approval_instance_terminated --flatten
 dws event schema user_oa_approval_instance_finished --flatten
 ```
 
@@ -135,6 +147,10 @@ dws event consume user_im_group_member_added --group <openConversationId> --flat
 dws event consume user_im_group_member_exited --group <openConversationId> --flatten -f ndjson
 dws event consume user_im_group_disbanded --group <openConversationId> --flatten -f ndjson
 dws event consume user_oa_approval_task_created --flatten -f ndjson
+dws event consume user_oa_approval_task_finished --flatten -f ndjson
+dws event consume user_oa_approval_task_redirected --flatten -f ndjson
+dws event consume user_oa_approval_instance_started --flatten -f ndjson
+dws event consume user_oa_approval_instance_terminated --flatten -f ndjson
 dws event consume user_oa_approval_instance_finished --flatten -f ndjson
 ```
 
@@ -159,12 +175,16 @@ dws event consume \
 
 dws event consume \
   user_oa_approval_task_created \
+  user_oa_approval_task_finished \
+  user_oa_approval_task_redirected \
+  user_oa_approval_instance_started \
+  user_oa_approval_instance_terminated \
   user_oa_approval_instance_finished \
   --flatten \
   -f ndjson
 ```
 
-用户类事件共享 `--user` 或 `--open-dingtalk-id`，群类事件共享 `--group`，无目标 IM 事件可加入任一组合。用户类与群类、不同目标或不同过滤条件要拆成多个进程。两个 OA 事件可以同进程消费并共享 personal bus，但各自建立独立订阅。多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；OA 事件单独或组合消费都禁止使用这两个消息过滤参数。
+用户类事件共享 `--user` 或 `--open-dingtalk-id`，群类事件共享 `--group`，无目标 IM 事件可加入任一组合。用户类与群类、不同目标或不同过滤条件要拆成多个进程。六个 OA 事件可以同进程消费并共享 personal bus，但各自建立独立订阅。多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；OA 事件单独或组合消费都禁止使用这两个消息过滤参数。
 
 上述所有 `*_o2o` 命令和 `user_im_message_receive_user` 都可将 `--user <userId>` 替换为 `--open-dingtalk-id <openDingtalkId>`，但两个参数不能同时使用。
 

@@ -704,6 +704,10 @@ func isGroupLifecycleEvent(eventKey string) bool {
 
 func isOAEvent(eventKey string) bool {
 	return eventKey == EventOAApprovalTaskCreated ||
+		eventKey == EventOAApprovalTaskFinished ||
+		eventKey == EventOAApprovalTaskRedirected ||
+		eventKey == EventOAApprovalInstanceStarted ||
+		eventKey == EventOAApprovalInstanceTerminated ||
 		eventKey == EventOAApprovalInstanceFinished
 }
 

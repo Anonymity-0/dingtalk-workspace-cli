@@ -1,6 +1,6 @@
 ---
 name: dingtalk-event
-description: 钉钉个人 IM 事件与 OA 审批事件长连接监听、订阅与消费，覆盖消息接收、全部单聊/群消息、指定发送人、已读、撤回、表情回应、群生命周期、审批任务创建和审批实例完成，输出 NDJSON 到 stdout。Use when 用户提到 监听个人消息事件、监听所有单聊或群消息、被@消息、监听单聊或群消息、监听某人发送的消息、监听消息已读、监听消息撤回、监听消息贴表情或表情回应、监听群成员加入、监听群成员退出、监听群改名或群解散、监听待我审批的任务、监听我发起的审批完成、实时接收钉钉事件、用事件驱动 Agent。命令前缀：dws event。
+description: 钉钉个人 IM 事件与 OA 审批事件长连接监听、订阅与消费，覆盖消息接收、全部单聊/群消息、指定发送人、已读、撤回、表情回应、群生命周期、审批实例发起/终止/完成，以及审批任务创建/完成/转交，输出 NDJSON 到 stdout。Use when 用户提到 监听个人消息事件、监听所有单聊或群消息、被@消息、监听单聊或群消息、监听某人发送的消息、监听消息已读、监听消息撤回、监听消息贴表情或表情回应、监听群成员加入、监听群成员退出、监听群改名或群解散、监听待我审批的任务、监听审批任务完成或转交、监听审批单发起、监听审批单终止、监听我发起的审批完成、实时接收钉钉事件、用事件驱动 Agent。命令前缀：dws event。
 ---
 
 # 钉钉个人事件
@@ -48,9 +48,13 @@ description: 钉钉个人 IM 事件与 OA 审批事件长连接监听、订阅�
 | `user_im_group_member_exited` | 指定群聊有成员退出 | `--group` |
 | `user_im_group_disbanded` | 指定群聊被解散 | `--group` |
 | `user_oa_approval_task_created` | 审批任务创建，发送给审批人 | 无 |
+| `user_oa_approval_task_finished` | 审批任务已完成 | 无 |
+| `user_oa_approval_task_redirected` | 审批任务已转交 | 无 |
+| `user_oa_approval_instance_started` | 审批实例已发起 | 无 |
+| `user_oa_approval_instance_terminated` | 审批实例已终止 | 无 |
 | `user_oa_approval_instance_finished` | 审批实例完成，发送给审批单发起人 | 无 |
 
-只承认上表 18 个事件码。其它身份模式、应用凭证模式和未列出的个人事件不在本 skill 范围内。
+只承认上表 22 个事件码。其它身份模式、应用凭证模式和未列出的个人事件不在本 skill 范围内。
 
 ## Command rules
 
@@ -67,11 +71,11 @@ description: 钉钉个人 IM 事件与 OA 审批事件长连接监听、订阅�
 - “监听群改名/群标题变更”使用 `user_im_group_updated`；“监听有人进群”使用 `user_im_group_member_added`；“监听有人退群”使用 `user_im_group_member_exited`；“监听群解散”使用 `user_im_group_disbanded`。群解散自测只能使用明确的测试群，并在执行解散操作前再次提示其不可逆影响。
 - 用户要求执行“撤回消息”时使用 `dws chat`；只有“监听/订阅消息撤回”才使用 `dws event consume user_im_message_recall_*`。
 - 用户说“贴标签”且语义是给消息贴表情时，按消息表情回应事件处理，event key 使用 `reaction`。
-- “有新的待我审批任务/审批任务创建”使用 `user_oa_approval_task_created`；“我发起的审批完成/审批实例完成”使用 `user_oa_approval_instance_finished`。两者都是当前用户相关的全部 OA 事件，不加 `--user`、`--open-dingtalk-id` 或 `--group`。
+- “有新的待我审批任务/审批任务创建”使用 `user_oa_approval_task_created`；“审批任务完成”使用 `user_oa_approval_task_finished`；“审批任务转交”使用 `user_oa_approval_task_redirected`；“审批单发起”使用 `user_oa_approval_instance_started`；“审批单终止”使用 `user_oa_approval_instance_terminated`；“我发起的审批完成/审批实例完成”使用 `user_oa_approval_instance_finished`。这些事件都是当前用户相关的全部 OA 事件，不加 `--user`、`--open-dingtalk-id` 或 `--group`。
 - 正常 Agent 消费统一显式使用 `--flatten -f ndjson`。抓一条样本可用 `--flatten --max-events 1 -f json`。`--format` 只控制 JSON 序列化，`--flatten` 才控制数据结构。
 - 同一目标、同一过滤条件的兼容事件优先放在一个 `consume` 命令中：用户类事件共享一个 `--user` 或 `--open-dingtalk-id`，群类事件共享一个 `--group`，无目标 IM 事件可加入任一类组合。
 - 用户类与群类事件不能放进同一命令；不同用户、不同群或不同过滤条件必须启动多个 consume 进程。多事件命令不使用 `--subscribe-id`、`--rule`、`--event-types`、`--filter`、`--foreground`、`--force` 或 `--debug-raw-events`。
-- 两个 OA 事件可放进同一 `consume`；每个事件建立独立订阅并共享 personal bus。OA 事件不支持 `--query` 或 `--filter-json`，包含 OA 事件的多事件命令也不能使用这两个消息过滤参数。
+- 六个 OA 事件可放进同一 `consume`；每个事件建立独立订阅并共享 personal bus。OA 事件不支持 `--query` 或 `--filter-json`，包含 OA 事件的多事件命令也不能使用这两个消息过滤参数。
 - 多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；已读、撤回、表情回应、群生命周期或 OA 事件混入后不能使用消息过滤参数。
 - 监听非默认组织时带 `--profile <corpId 或 profile 名>`；漏传会退回默认 profile 而失败。
 - 自己发的消息不作为事件回来（`isSelfLoop` 过滤）：边监听边 `dws chat message send` 回复不成环；测试投递用别人 / 机器人发（自发会看到 0 事件）。
@@ -201,9 +205,13 @@ dws event consume \
   --flatten \
   -f ndjson
 
-# 当前用户相关的审批任务创建和审批实例完成（一个进程）
+# 当前用户相关的全部 OA 审批事件（一个进程）
 dws event consume \
   user_oa_approval_task_created \
+  user_oa_approval_task_finished \
+  user_oa_approval_task_redirected \
+  user_oa_approval_instance_started \
+  user_oa_approval_instance_terminated \
   user_oa_approval_instance_finished \
   --flatten \
   -f ndjson
@@ -244,4 +252,4 @@ dws event consume user_im_message_receive_o2o \
 | Topic | Reference | Coverage |
 |---|---|---|
 | IM | [references/event-im.md](references/event-im.md) | 十六类个人 IM 事件命令、参数、生命周期、输出解析、自测和排障 |
-| OA | [references/event-oa.md](references/event-oa.md) | 两类个人 OA 审批事件、无参数订阅、双事件消费和保守 payload 契约 |
+| OA | [references/event-oa.md](references/event-oa.md) | 六类个人 OA 审批事件、无参数订阅、多事件消费和保守 payload 契约 |

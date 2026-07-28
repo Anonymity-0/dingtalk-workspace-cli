@@ -1,6 +1,6 @@
 # OA 个人审批事件
 
-先读上层 [SKILL.md](../SKILL.md) 的命令规则、调用流和子进程契约。本参考覆盖当前公开的两个 OA 个人事件：审批任务创建和审批实例完成。
+先读上层 [SKILL.md](../SKILL.md) 的命令规则、调用流和子进程契约。本参考覆盖当前公开的六个 OA 个人事件：审批实例发起、终止和完成，以及审批任务创建、完成和转交。
 
 实时监听审批事件必须使用 `dws event consume` 长连接，不要轮询 OA 待办或审批实例列表来模拟事件。
 
@@ -19,21 +19,29 @@ dws auth login
 | 事件码 | 订阅规则 | 接收语义 | 必填参数 |
 |---|---|---|---|
 | `user_oa_approval_task_created` | `all` | 审批任务创建，发送给审批人 | 无 |
+| `user_oa_approval_task_finished` | `all` | 审批任务已完成 | 无 |
+| `user_oa_approval_task_redirected` | `all` | 审批任务已转交 | 无 |
+| `user_oa_approval_instance_started` | `all` | 审批实例已发起 | 无 |
+| `user_oa_approval_instance_terminated` | `all` | 审批实例已终止 | 无 |
 | `user_oa_approval_instance_finished` | `all` | 审批实例完成，发送给审批单发起人 | 无 |
 
-只承认上表 2 个 OA 事件码。CLI 为每个事件发送 `ruleType=all`、`filterRule={}` 的独立订阅请求；不要添加 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。
+只承认上表 6 个 OA 事件码。CLI 为每个事件发送 `ruleType=all`、`filterRule={}` 的独立订阅请求；不要添加 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。
 
 ## Intent mapping
 
 | 用户说 | 下一步 |
 |---|---|
 | “监听新的待我审批任务” / “有审批任务创建时通知我” | `dws event consume user_oa_approval_task_created --flatten -f ndjson` |
+| “审批任务完成时通知我” | `dws event consume user_oa_approval_task_finished --flatten -f ndjson` |
+| “审批任务被转交时通知我” | `dws event consume user_oa_approval_task_redirected --flatten -f ndjson` |
+| “有审批单发起时通知我” | `dws event consume user_oa_approval_instance_started --flatten -f ndjson` |
+| “有审批单终止时通知我” | `dws event consume user_oa_approval_instance_terminated --flatten -f ndjson` |
 | “监听我发起的审批何时完成” / “审批实例完成时通知我” | `dws event consume user_oa_approval_instance_finished --flatten -f ndjson` |
-| “同时监听审批任务创建和审批完成” | 一个 consume 放入两个 OA event key，不加目标或过滤参数 |
+| “同时监听全部已公开 OA 事件” | 一个 consume 放入六个 OA event key，不加目标或过滤参数 |
 | “查看 OA 事件目录” | `dws event list --category oa` |
 | “查看 OA 事件输出字段” | 对对应事件运行 `dws event schema <event_key> --flatten` |
 
-审批任务创建事件只表达“任务已创建并投递给当前审批人”；审批实例完成事件只表达“当前用户发起的审批已完成”。首版不推断审批结果、任务 ID 或实例 ID 的具体 payload 字段。
+三个审批任务事件分别表达任务已创建、已完成和已转交；三个审批实例事件分别表达实例已发起、已终止和已完成。首版不推断审批结果、任务 ID、实例 ID、转交对象或终止原因的具体 payload 字段。
 
 ## Commands
 
@@ -41,6 +49,10 @@ dws auth login
 
 ```bash
 dws event schema user_oa_approval_task_created --flatten
+dws event schema user_oa_approval_task_finished --flatten
+dws event schema user_oa_approval_task_redirected --flatten
+dws event schema user_oa_approval_instance_started --flatten
+dws event schema user_oa_approval_instance_terminated --flatten
 dws event schema user_oa_approval_instance_finished --flatten
 ```
 
@@ -48,20 +60,28 @@ dws event schema user_oa_approval_instance_finished --flatten
 
 ```bash
 dws event consume user_oa_approval_task_created --flatten -f ndjson
+dws event consume user_oa_approval_task_finished --flatten -f ndjson
+dws event consume user_oa_approval_task_redirected --flatten -f ndjson
+dws event consume user_oa_approval_instance_started --flatten -f ndjson
+dws event consume user_oa_approval_instance_terminated --flatten -f ndjson
 dws event consume user_oa_approval_instance_finished --flatten -f ndjson
 ```
 
-同时监听两种事件：
+同时监听六种事件：
 
 ```bash
 dws event consume \
   user_oa_approval_task_created \
+  user_oa_approval_task_finished \
+  user_oa_approval_task_redirected \
+  user_oa_approval_instance_started \
+  user_oa_approval_instance_terminated \
   user_oa_approval_instance_finished \
   --flatten \
   -f ndjson
 ```
 
-双事件 consume 会为两个 event key 分别创建订阅和逻辑 consumer，并共享当前组织的 personal bus、远程连接、stdout 和生命周期。不要给 OA 命令加 `--query` 或 `--filter-json`；这两个 flag 只用于兼容的 IM 消息接收事件。
+多事件 consume 会为六个 event key 分别创建订阅和逻辑 consumer，并共享当前组织的 personal bus、远程连接、stdout 和生命周期。不要给 OA 命令加 `--query` 或 `--filter-json`；这两个 flag 只用于兼容的 IM 消息接收事件。
 
 ## Output contract
 
@@ -86,6 +106,6 @@ dws event consume \
 ## Lifecycle
 
 - 单事件等待 `[event] ready event_key=<key> bus_pid=<pid> subscribe_id=<id>`。
-- 双事件先保存两条 `[event] subscription event_key=<key> subscribe_id=<id>`，再等待 `[event] ready event_count=2 bus_pid=<pid>`。
+- 六事件先保存六条 `[event] subscription event_key=<key> subscribe_id=<id>`，再等待 `[event] ready event_count=6 bus_pid=<pid>`。
 - 临时验证使用 `--max-events 1` 或 `--duration 10m`；任务完成后优雅结束 consume，本次新建的订阅会自动取消。
 - 外部停止已有订阅时先运行 `dws event stop <subscribe_id> --dry-run`，确认后再加 `--yes`。不要 `kill -9`，否则会跳过自动退订。

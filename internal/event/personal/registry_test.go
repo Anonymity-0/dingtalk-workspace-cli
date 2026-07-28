@@ -47,6 +47,10 @@ func TestCatalogEnabledEvents(t *testing.T) {
 		EventGroupMemberExited,
 		EventGroupDisbanded,
 		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
 	}
 	if !reflect.DeepEqual(keys, want) {
@@ -56,7 +60,14 @@ func TestCatalogEnabledEvents(t *testing.T) {
 
 func TestOAEventCatalogDefinitions(t *testing.T) {
 	items := Catalog("oa", true, false)
-	wantKeys := []string{EventOAApprovalTaskCreated, EventOAApprovalInstanceFinished}
+	wantKeys := []string{
+		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
+		EventOAApprovalInstanceFinished,
+	}
 	if len(items) != len(wantKeys) {
 		t.Fatalf("Catalog(oa) = %#v, want %d events", items, len(wantKeys))
 	}
@@ -144,6 +155,10 @@ func TestSchemaDocumentsDefaultToTransportEnvelope(t *testing.T) {
 		EventGroupMemberExited,
 		EventGroupDisbanded,
 		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
 	} {
 		t.Run(eventKey, func(t *testing.T) {
@@ -461,7 +476,14 @@ func TestGroupLifecycleSchemaDocumentsUseConservativePayload(t *testing.T) {
 
 func TestOAEventSchemaDocumentsUseConservativePayload(t *testing.T) {
 	wantProperties := []string{"type", "event_id", "timestamp", "subscribe_id", "payload"}
-	for _, eventKey := range []string{EventOAApprovalTaskCreated, EventOAApprovalInstanceFinished} {
+	for _, eventKey := range []string{
+		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
+		EventOAApprovalInstanceFinished,
+	} {
 		t.Run(eventKey, func(t *testing.T) {
 			def, ok := Lookup(eventKey)
 			if !ok {
@@ -558,6 +580,10 @@ func TestBuildRuleParamAllEvents(t *testing.T) {
 		EventAllSingleChat,
 		EventAllGroupChat,
 		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
 	} {
 		t.Run(eventKey, func(t *testing.T) {
@@ -766,6 +792,10 @@ func TestSupportsMessageFilter(t *testing.T) {
 		EventReactionGroup,
 		EventGroupUpdated,
 		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
 		"unknown_event",
 	} {

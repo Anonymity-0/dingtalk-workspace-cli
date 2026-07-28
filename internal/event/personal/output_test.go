@@ -419,7 +419,14 @@ func TestCrossPlatformCoverageProjectOutputGroupLifecycleEvents(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageProjectOutputOAEvents(t *testing.T) {
-	for _, eventKey := range []string{EventOAApprovalTaskCreated, EventOAApprovalInstanceFinished} {
+	for _, eventKey := range []string{
+		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
+		EventOAApprovalInstanceFinished,
+	} {
 		t.Run(eventKey, func(t *testing.T) {
 			projected, err := ProjectOutput(transport.Event{
 				EventID:       "outer-event",
@@ -645,7 +652,14 @@ func TestCrossPlatformCoverageProjectOutputRejectsInvalidOAPayloads(t *testing.T
 		{name: "array", payload: `,"payload":[]`},
 		{name: "string", payload: `,"payload":"invalid"`},
 	}
-	for _, eventKey := range []string{EventOAApprovalTaskCreated, EventOAApprovalInstanceFinished} {
+	for _, eventKey := range []string{
+		EventOAApprovalTaskCreated,
+		EventOAApprovalTaskFinished,
+		EventOAApprovalTaskRedirected,
+		EventOAApprovalInstanceStarted,
+		EventOAApprovalInstanceTerminated,
+		EventOAApprovalInstanceFinished,
+	} {
 		for _, tt := range tests {
 			t.Run(eventKey+"/"+tt.name, func(t *testing.T) {
 				ev := transport.Event{

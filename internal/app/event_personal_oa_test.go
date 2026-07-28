@@ -29,6 +29,10 @@ func TestPersonalOAEventListAndSchemaCommands(t *testing.T) {
 	}
 	for _, eventKey := range []string{
 		personal.EventOAApprovalTaskCreated,
+		personal.EventOAApprovalTaskFinished,
+		personal.EventOAApprovalTaskRedirected,
+		personal.EventOAApprovalInstanceStarted,
+		personal.EventOAApprovalInstanceTerminated,
 		personal.EventOAApprovalInstanceFinished,
 	} {
 		if !strings.Contains(listOut.String(), eventKey) {
@@ -83,6 +87,10 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 
 	oaEvents := []string{
 		personal.EventOAApprovalTaskCreated,
+		personal.EventOAApprovalTaskFinished,
+		personal.EventOAApprovalTaskRedirected,
+		personal.EventOAApprovalInstanceStarted,
+		personal.EventOAApprovalInstanceTerminated,
 		personal.EventOAApprovalInstanceFinished,
 	}
 	for _, eventKey := range oaEvents {
@@ -132,7 +140,7 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 		var stderr bytes.Buffer
 		cmd.SetOut(io.Discard)
 		cmd.SetErr(&stderr)
-		cmd.SetArgs([]string{oaEvents[0], oaEvents[1], "--dry-run"})
+		cmd.SetArgs(append(append([]string(nil), oaEvents...), "--dry-run"))
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("multi OA dry-run error = %v", err)
 		}
@@ -192,7 +200,9 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 			cmd.SilenceErrors = true
 			cmd.SetOut(io.Discard)
 			cmd.SetErr(io.Discard)
-			cmd.SetArgs([]string{oaEvents[0], oaEvents[1], flag, value, "--dry-run"})
+			args := append([]string(nil), oaEvents...)
+			args = append(args, flag, value, "--dry-run")
+			cmd.SetArgs(args)
 			err := cmd.Execute()
 			if err == nil || !strings.Contains(err.Error(), "not supported for OA event") {
 				t.Fatalf("multi OA consume %s error = %v", flag, err)
@@ -272,6 +282,10 @@ func TestPersonalOAMultiConsumeCreatesIndependentAllSubscriptionsOnSharedBus(t *
 
 	eventKeys := []string{
 		personal.EventOAApprovalTaskCreated,
+		personal.EventOAApprovalTaskFinished,
+		personal.EventOAApprovalTaskRedirected,
+		personal.EventOAApprovalInstanceStarted,
+		personal.EventOAApprovalInstanceTerminated,
 		personal.EventOAApprovalInstanceFinished,
 	}
 	if err := runPersonalEventConsume(newPersonalCoverageCommand(), personalConsumeOptions{

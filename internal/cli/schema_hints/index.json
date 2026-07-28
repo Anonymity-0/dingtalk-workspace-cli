@@ -723,15 +723,35 @@
       "target": "event consume",
       "reason": "已审查的 OA 审批任务创建事件 Skill 引用，固定映射到当前公开 event consume leaf"
     },
+    "event consume user_oa_approval_task_finished": {
+      "status": "alias",
+      "target": "event consume",
+      "reason": "已审查的 OA 审批任务完成事件 Skill 引用，固定映射到当前公开 event consume leaf"
+    },
+    "event consume user_oa_approval_task_redirected": {
+      "status": "alias",
+      "target": "event consume",
+      "reason": "已审查的 OA 审批任务转交事件 Skill 引用，固定映射到当前公开 event consume leaf"
+    },
+    "event consume user_oa_approval_instance_started": {
+      "status": "alias",
+      "target": "event consume",
+      "reason": "已审查的 OA 审批实例发起事件 Skill 引用，固定映射到当前公开 event consume leaf"
+    },
+    "event consume user_oa_approval_instance_terminated": {
+      "status": "alias",
+      "target": "event consume",
+      "reason": "已审查的 OA 审批实例终止事件 Skill 引用，固定映射到当前公开 event consume leaf"
+    },
     "event consume user_oa_approval_instance_finished": {
       "status": "alias",
       "target": "event consume",
       "reason": "已审查的 OA 审批实例完成事件 Skill 引用，固定映射到当前公开 event consume leaf"
     },
-    "event consume user_oa_approval_task_created user_oa_approval_instance_finished": {
+    "event consume user_oa_approval_task_created user_oa_approval_task_finished user_oa_approval_task_redirected user_oa_approval_instance_started user_oa_approval_instance_terminated user_oa_approval_instance_finished": {
       "status": "alias",
       "target": "event consume",
-      "reason": "已审查的双 OA 事件 Skill 引用，固定映射到当前公开多事件 event consume leaf"
+      "reason": "已审查的六 OA 事件 Skill 引用，固定映射到当前公开多事件 event consume leaf"
     },
     "event schema user_im_message_receive_at": {
       "status": "alias",
@@ -817,6 +837,26 @@
       "status": "alias",
       "target": "event schema",
       "reason": "已审查的 OA 审批任务创建 event_key 引用，固定映射到当前公开 event schema leaf"
+    },
+    "event schema user_oa_approval_task_finished": {
+      "status": "alias",
+      "target": "event schema",
+      "reason": "已审查的 OA 审批任务完成 event_key 引用，固定映射到当前公开 event schema leaf"
+    },
+    "event schema user_oa_approval_task_redirected": {
+      "status": "alias",
+      "target": "event schema",
+      "reason": "已审查的 OA 审批任务转交 event_key 引用，固定映射到当前公开 event schema leaf"
+    },
+    "event schema user_oa_approval_instance_started": {
+      "status": "alias",
+      "target": "event schema",
+      "reason": "已审查的 OA 审批实例发起 event_key 引用，固定映射到当前公开 event schema leaf"
+    },
+    "event schema user_oa_approval_instance_terminated": {
+      "status": "alias",
+      "target": "event schema",
+      "reason": "已审查的 OA 审批实例终止 event_key 引用，固定映射到当前公开 event schema leaf"
     },
     "event schema user_oa_approval_instance_finished": {
       "status": "alias",
