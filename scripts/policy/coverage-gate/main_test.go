@@ -511,3 +511,69 @@ func TestEvaluateOverallTargetCanBeEnabled(t *testing.T) {
 		t.Fatalf("failures = %v, want overall target failure", result.Failures)
 	}
 }
+
+func TestExemptNonExecutableFiles(t *testing.T) {
+	changed := map[string][]lineRange{
+		"internal/cli/gen.go":  {{Start: 1, End: 5}},
+		"internal/cli/code.go": {{Start: 10, End: 12}},
+	}
+	filtered := exemptNonExecutableFiles(changed, func(path string) bool {
+		return path == "internal/cli/code.go"
+	})
+	want := map[string][]lineRange{"internal/cli/code.go": {{Start: 10, End: 12}}}
+	if !reflect.DeepEqual(filtered, want) {
+		t.Fatalf("filtered = %#v, want %#v", filtered, want)
+	}
+}
+
+func TestFileHasExecutableStatements(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, source string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	cases := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{
+			name: "pragma-only file has no executable statements",
+			path: write("gen.go", "// Comment only.\npackage cli\n\n//go:generate echo hi\n"),
+			want: false,
+		},
+		{
+			name: "function body counts as executable",
+			path: write("code.go", "package cli\n\nfunc f() int { return 1 }\n"),
+			want: true,
+		},
+		{
+			name: "empty function body is not executable",
+			path: write("empty.go", "package cli\n\nfunc f() {}\n"),
+			want: false,
+		},
+		{
+			name: "package-level function literal counts as executable",
+			path: write("lit.go", "package cli\n\nvar f = func() int { return 1 }\n"),
+			want: true,
+		},
+		{
+			name: "missing file stays conservative",
+			path: filepath.Join(dir, "nonexistent.go"),
+			want: true,
+		},
+		{
+			name: "unparsable file stays conservative",
+			path: write("broken.go", "package cli\n\nfunc {{{\n"),
+			want: true,
+		},
+	}
+	for _, tc := range cases {
+		if got := fileHasExecutableStatements(tc.path); got != tc.want {
+			t.Errorf("%s: fileHasExecutableStatements() = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
