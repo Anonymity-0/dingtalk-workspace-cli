@@ -175,15 +175,16 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 
 // leafValidateRequired 复现手写命令的 required 语义：普通 Required 统一报
 // 「missing required flag(s)」；带 EnvVar 的 Required 单独报 RequiredHint。
-// 普通组先于环境变量组校验，保持与手写顺序一致。
+// 普通组先于环境变量组校验，保持与手写顺序一致。两组都按声明的
+// 「主 flag → 别名 → env」回退取有效值：只传兼容别名同样视为已提供。
 func leafValidateRequired(cmd *cobra.Command, spec LeafSpec) error {
 	var plain []string
 	for _, flag := range spec.Flags {
-		if flag.Required && flag.EnvVar == "" && flag.RequiredHint == "" {
+		if flag.Required && flag.EnvVar == "" && flag.RequiredHint == "" && leafEffectiveValue(cmd, flag) == "" {
 			plain = append(plain, flag.Name)
 		}
 	}
-	if err := validateRequiredFlags(cmd, plain...); err != nil {
+	if err := missingRequiredFlagsError(cmd, plain...); err != nil {
 		return err
 	}
 	for _, flag := range spec.Flags {

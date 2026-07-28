@@ -92,6 +92,56 @@ func TestLeafValidateRequiredPlainGroup(t *testing.T) {
 	}
 }
 
+func TestLeafValidateRequiredSatisfiedByAlias(t *testing.T) {
+	// 声明的回退语义：只传兼容别名时，普通 Required 也视为已提供。
+	spec := LeafSpec{
+		Use: "send", Tool: "send_thing",
+		Flags: []LeafFlag{
+			{Name: "content", Usage: "内容", Required: true, Aliases: []string{"remark"}},
+		},
+	}
+	cmd := NewLeafCommand(spec)
+	if err := cmd.Flags().Set("remark", "仅别名"); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafValidateRequired(cmd, spec); err != nil {
+		t.Fatalf("leafValidateRequired() = %v, want nil (alias satisfies required)", err)
+	}
+}
+
+func TestLeafValidateRequiredAliasAbsentStillFails(t *testing.T) {
+	// 主 flag 与别名都缺失时，仍按主 flag 名报统一错误。
+	spec := LeafSpec{
+		Use: "send", Tool: "send_thing",
+		Flags: []LeafFlag{
+			{Name: "content", Usage: "内容", Required: true, Aliases: []string{"remark"}},
+		},
+	}
+	cmd := NewLeafCommand(spec)
+	err := leafValidateRequired(cmd, spec)
+	if err == nil || !strings.Contains(err.Error(), "missing required flag(s): --content") {
+		t.Fatalf("leafValidateRequired() = %v, want missing --content", err)
+	}
+}
+
+func TestLeafValidateRequiredTrimWhitespaceOnlyFails(t *testing.T) {
+	// Trim 声明下纯空白值在 required 校验中视为空。
+	spec := LeafSpec{
+		Use: "send", Tool: "send_thing",
+		Flags: []LeafFlag{
+			{Name: "content", Usage: "内容", Required: true, Trim: true},
+		},
+	}
+	cmd := NewLeafCommand(spec)
+	if err := cmd.Flags().Set("content", "   "); err != nil {
+		t.Fatal(err)
+	}
+	err := leafValidateRequired(cmd, spec)
+	if err == nil || !strings.Contains(err.Error(), "missing required flag(s): --content") {
+		t.Fatalf("leafValidateRequired() = %v, want whitespace-only treated as missing", err)
+	}
+}
+
 func TestLeafValidateRequiredEnvFallback(t *testing.T) {
 	cmd := NewLeafCommand(leafTestSpec())
 	err := leafValidateRequired(cmd, leafTestSpec())
