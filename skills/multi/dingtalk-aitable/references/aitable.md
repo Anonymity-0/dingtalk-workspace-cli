@@ -97,7 +97,7 @@ Flags:
 | `view get` | 获取视图配置（不传子命令） | `--base-id` `--table-id` | 不传 `--view-ids` 返回全部视图 |
 | `view get <attr>` | 获取视图某个属性 | `--view-id` | 12 个：card/timebar/aggregate/filter/sort/group/visible-fields/field-widths（详见 [aitable-view-config.md](./aitable/aitable-view-config.md)）+ lock/frozen-cols/row-height/fill-color-rule（详见 [aitable-view-extras.md](./aitable/aitable-view-extras.md)） |
 | `view list` | 列出全部视图（`view get` 的别名） | `--base-id` `--table-id` | 与 `view get` 完全等价 |
-| `view create` | 创建视图 | `--base-id` `--table-id` `--view-type` | 类型: Grid/Kanban/Gantt/Calendar/Gallery/FormDesigner；可用 `--visible-field-ids`，或用 `--config` 传 visibleFieldIds/filter/sort/group；**Gantt 创建后必须 `view update timebar` 绑定日期字段** |
+| `view create` | 创建视图 | `--base-id` `--table-id` `--view-type` | 类型: Grid/Kanban/Gantt/Calendar/Gallery/FormDesigner；用 `--config` 传 visibleFieldIds/filter/sort/group；**Gantt 创建后必须 `view update timebar` 绑定日期字段** |
 | `view update` | 整体更新视图 / 多属性合并更新 | `--base-id` `--table-id` `--view-id` | 可传 `--name --desc --config '{...}'`，**`--config` 路径继续保留** |
 | `view update <attr>` | 按属性局部更新（推荐）| `--view-id` + typed flag / `--json` | 12 个：card/timebar/aggregate/field-widths/visible-fields/filter/sort/group/name + frozen-cols/row-height/fill-color-rule |
 | `view lock [--off]` | 锁定/解锁视图 | `--base-id` `--table-id` `--view-id` | 默认锁定；`--off` 解锁。详见 [aitable-view-extras.md](./aitable/aitable-view-extras.md) |

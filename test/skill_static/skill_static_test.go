@@ -56,6 +56,14 @@ var (
 		"dws skill find":            true, // backward-compat stub
 	}
 
+	// Full command lines intentionally shown as wrong usage inside fenced
+	// 「错误示例」 blocks (kept in docs to steer LLMs away from hallucinated
+	// flags). Matched against the exact extracted command text.
+	antiPatternExactCommands = map[string]bool{
+		"dws report inbox list --start-date 2026-05-04 --end-date 2026-05-11 --format json": true, // report.md: 禁止 --start-date/--end-date
+		"dws report inbox list --date 2026-05-11 --format json":                             true, // report.md: 禁止 --date
+	}
+
 	// Commands in this set are runnable leaves whose following token is a
 	// positional argument rather than another Cobra subcommand.
 	positionalLeafCommands = map[string]bool{
@@ -100,7 +108,11 @@ type cmdRef struct {
 	Cmd  string
 }
 
-// extractCommands scans skills/**/*.md for every backtick `dws ...` command.
+// extractCommands scans skills/**/*.md for every `dws ...` command reference:
+// inline-backtick commands in prose, plus command lines inside fenced ``` code
+// blocks (lines whose trimmed text starts with an optional "$ " prefix
+// followed by "dws "). Backslash-continuation lines inside fenced blocks are
+// joined before parsing so multi-line invocations audit as one command.
 func extractCommands(root string) ([]cmdRef, error) {
 	skillsDir := filepath.Join(root, "skills")
 	var refs []cmdRef
@@ -126,19 +138,58 @@ func extractCommands(root string) ([]cmdRef, error) {
 		if err != nil {
 			return nil, err
 		}
-		lineNo := 0
+		var lines []string
 		scanner := bufio.NewScanner(strings.NewReader(data))
 		scanner.Buffer(make([]byte, 1024*1024), 1024*1024*4)
 		for scanner.Scan() {
-			lineNo++
-			matches := backtickCmd.FindAllStringSubmatch(scanner.Text(), -1)
-			for _, m := range matches {
-				cmd := strings.TrimSpace(m[1])
-				if shouldSkip(cmd) {
-					continue
-				}
-				refs = append(refs, cmdRef{File: f, Line: lineNo, Cmd: cmd})
+			lines = append(lines, scanner.Text())
+		}
+		inFence := false
+		for i := 0; i < len(lines); i++ {
+			lineNo := i + 1
+			trimmed := strings.TrimSpace(lines[i])
+			if strings.HasPrefix(trimmed, "```") {
+				inFence = !inFence
+				continue
 			}
+			if !inFence {
+				matches := backtickCmd.FindAllStringSubmatch(lines[i], -1)
+				for _, m := range matches {
+					cmd := strings.TrimSpace(m[1])
+					if shouldSkip(cmd) {
+						continue
+					}
+					refs = append(refs, cmdRef{File: f, Line: lineNo, Cmd: cmd})
+				}
+				continue
+			}
+			// Inside a fenced block: only lines that *start* with an
+			// (optionally "$ "-prefixed) dws invocation are commands;
+			// everything else is illustrative output.
+			cmdText := strings.TrimPrefix(trimmed, "$ ")
+			if !strings.HasPrefix(cmdText, "dws ") {
+				continue
+			}
+			// Join backslash-continuation lines into one logical command.
+			for strings.HasSuffix(cmdText, "\\") && i+1 < len(lines) {
+				next := strings.TrimSpace(lines[i+1])
+				if strings.HasPrefix(next, "```") {
+					break
+				}
+				cmdText = strings.TrimSuffix(cmdText, "\\")
+				cmdText = strings.TrimSpace(cmdText) + " " + next
+				i++
+			}
+			cmdText = strings.TrimSpace(cmdText)
+			// Strip a trailing inline shell comment ("dws ...  # 说明") so the
+			// annotation text is not parsed as flags or positional arguments.
+			if idx := strings.Index(cmdText, " # "); idx >= 0 {
+				cmdText = strings.TrimSpace(cmdText[:idx])
+			}
+			if shouldSkip(cmdText) {
+				continue
+			}
+			refs = append(refs, cmdRef{File: f, Line: lineNo, Cmd: cmdText})
 		}
 	}
 	return refs, nil
@@ -276,9 +327,15 @@ func exactCommand(root *cobra.Command, sub string) *cobra.Command {
 		}
 		if next == nil {
 			// Once a runnable command is reached, remaining non-flag tokens are
-			// positional arguments rather than descendants. Validate them with
-			// the command's Cobra Args contract when one is present.
+			// positional arguments rather than descendants. A command that has
+			// registered child commands treats an unknown next token as a
+			// misspelled subcommand, not a positional argument. For true
+			// leaves, validate positionals with the command's Cobra Args
+			// contract when one is present.
 			if current.Runnable() {
+				if len(current.Commands()) > 0 {
+					return nil
+				}
 				args := tokens[i:]
 				if current.Args == nil || current.Args(current, args) == nil {
 					return current
@@ -350,6 +407,9 @@ func TestSkillCommandsDispatch(t *testing.T) {
 	seen := map[string]bool{} // dedupe identical sub-path and flag sets
 
 	for _, r := range refs {
+		if antiPatternExactCommands[r.Cmd] {
+			continue
+		}
 		sub, _, flags := parseSubPath(r.Cmd)
 		if sub == "" {
 			continue

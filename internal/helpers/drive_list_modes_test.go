@@ -213,3 +213,15 @@ func TestCrossPlatformCoverageDriveRevertDeclined(t *testing.T) {
 		t.Fatalf("declined revert calls = %#v", caller.calls)
 	}
 }
+
+func TestCrossPlatformCoverageDriveTransferOwnerRejectsBothTargets(t *testing.T) {
+	caller := &guardedMutationCaller{}
+	err := executeGuardedMutationCommand(t, caller, newDriveCommand,
+		"permission", "transfer-owner", "--node", "node-1", "--workspace", "ws-1", "--new-owner", "user-1")
+	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("err = %v, want mutual exclusion", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("calls = %#v, want none", caller.calls)
+	}
+}

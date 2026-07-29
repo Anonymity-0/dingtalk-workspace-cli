@@ -5521,14 +5521,14 @@
               "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
-              "value": "low"
+              "value": "medium"
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
           "source": "internal/cli/schema_hints/metadata/chat.json",
-          "value": "low"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -5676,7 +5676,7 @@
       "primary_cli_path": "chat group user-settings set",
       "product_id": "chat",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "批量更新当前用户的群会话设置",
       "use_when": [
@@ -46156,7 +46156,7 @@
       "is_alias": false,
       "metadata_source": "embedded-mcp-metadata",
       "name": "send_personal_message",
-      "parameter_count": 12,
+      "parameter_count": 17,
       "parameters": {
         "ai-tag": {
           "default": "true",
@@ -46492,6 +46492,97 @@
           "required": false,
           "type": "string"
         },
+        "contact-id": {
+          "description": "联系人名片 openDingTalkId（msgType=profile 时必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "联系人名片 openDingTalkId（msgType=profile 时必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "联系人名片 openDingTalkId（msgType=profile 时必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "serialized into the aggregate content payload",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "contactId"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "serialized into the aggregate content payload",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": false,
+          "type": "string"
+        },
         "file-path": {
           "description": "本地文件路径（msgType=file/audio/video 时直接上传并按 file 消息发送）",
           "field_provenance": {
@@ -46714,6 +46805,370 @@
           "required": false,
           "type": "string"
         },
+        "latitude": {
+          "description": "位置消息纬度（msgType=location 时必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "位置消息纬度（msgType=location 时必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "位置消息纬度（msgType=location 时必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "serialized into the aggregate content payload",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "latitude"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "serialized into the aggregate content payload",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": false,
+          "type": "string"
+        },
+        "location-name": {
+          "description": "位置消息地址名称（msgType=location 时必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "位置消息地址名称（msgType=location 时必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "位置消息地址名称（msgType=location 时必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "serialized into the aggregate content payload",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "locationName"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "serialized into the aggregate content payload",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": false,
+          "type": "string"
+        },
+        "longitude": {
+          "description": "位置消息经度（msgType=location 时必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "位置消息经度（msgType=location 时必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "位置消息经度（msgType=location 时必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "serialized into the aggregate content payload",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "longitude"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "serialized into the aggregate content payload",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": false,
+          "type": "string"
+        },
+        "map-thumbnail-url": {
+          "description": "位置消息地图缩略图 mediaId，形如 @mediaId（msgType=location 时必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "位置消息地图缩略图 mediaId，形如 @mediaId（msgType=location 时必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "位置消息地图缩略图 mediaId，形如 @mediaId（msgType=location 时必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "serialized into the aggregate content payload",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "mapThumbnailUrl"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "serialized into the aggregate content payload",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": false,
+          "type": "string"
+        },
         "media-id": {
           "description": "上游已提供的图片 mediaId（仅旧版 msgType=image；CLI 不提供本地上传到 mediaId）",
           "example": "@lADP_schema_smoke",
@@ -46834,7 +47289,7 @@
           "type": "string"
         },
         "msg-type": {
-          "description": "富媒体消息类型: image/file/audio/video（本地图片/文件推荐 file --file-path；image 仅接受已有 mediaId）",
+          "description": "富媒体消息类型: image/file/audio/video/location/profile（本地图片/文件推荐 file --file-path；image 仅接受已有 mediaId）",
           "enum": [
             "image",
             "file",
@@ -46848,7 +47303,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "富媒体消息类型: image/file/audio/video（本地图片/文件推荐 file --file-path；image 仅接受已有 mediaId）"
+                  "value": "富媒体消息类型: image/file/audio/video/location/profile（本地图片/文件推荐 file --file-path；image 仅接受已有 mediaId）"
                 },
                 {
                   "precedence": "mcp_metadata",
@@ -46866,7 +47321,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "富媒体消息类型: image/file/audio/video（本地图片/文件推荐 file --file-path；image 仅接受已有 mediaId）"
+              "value": "富媒体消息类型: image/file/audio/video/location/profile（本地图片/文件推荐 file --file-path；image 仅接受已有 mediaId）"
             },
             "enum": {
               "candidates": [

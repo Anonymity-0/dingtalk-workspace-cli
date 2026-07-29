@@ -43,6 +43,9 @@ type driveDepthFolder struct {
 	depth   int
 	relPath string
 	retried bool // 已因 rate_limited 重新入队过一次，不二次补偿
+	// 限流重入队时保留失败页游标：已成功页的条目已进 collected，
+	// 从头重扫会产生重复条目并提前耗尽全局 2000 上限。
+	pageToken string
 }
 
 type driveDepthError struct {
@@ -213,7 +216,7 @@ bfs:
 
 		start := time.Now()
 		var folderErr error
-		pageToken := ""
+		pageToken := folder.pageToken
 		pages := 0
 		for {
 			if ctx.Err() != nil {
@@ -294,8 +297,10 @@ bfs:
 				return folderErr
 			}
 			if driveDepthErrorCode(folderErr) == driveDepthRateLimitedCode && !folder.retried {
-				// 限流命中在入口处、业务逻辑未执行，重试零副作用；不加 sleep/退避。
+				// 限流命中在入口处、失败页本身无副作用；但此前成功页已进 collected，
+				// 必须从失败页游标续扫而非整目录重扫。不加 sleep/退避。
 				folder.retried = true
+				folder.pageToken = pageToken
 				queue = append(queue, folder)
 				continue
 			}

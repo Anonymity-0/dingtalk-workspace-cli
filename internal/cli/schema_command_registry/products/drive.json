@@ -50,6 +50,10 @@
       "cli_path": "drive download"
     },
     {
+      "canonical_path": "drive.download_file_version",
+      "cli_path": "drive download-version"
+    },
+    {
       "canonical_path": "drive.get_file_info",
       "cli_path": "drive info"
     },

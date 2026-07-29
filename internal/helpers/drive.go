@@ -305,14 +305,23 @@ func newDriveCommand() *cobra.Command {
 			pattern, _ := cmd.Flags().GetString("pattern")
 
 			depth, _ := cmd.Flags().GetInt("depth")
-			if cmd.Flags().Changed("depth") {
-				if err := validateDriveListDepth(cmd, depth); err != nil {
-					return err
-				}
-			}
 
 			// --versions 模式：列出文件历史版本（仅普通文件）
+			// 先于 --depth 校验执行：versions 模式合法使用 --limit，
+			// 不应被「--limit 与 --depth 不兼容」的误导性报错拦截。
 			if cmd.Flags().Changed("versions") {
+				if cmd.Flags().Changed("depth") && depth > 1 {
+					return &CLIError{
+						Code:    CodeInvalidParam,
+						Message: "--versions 与 --depth 不能同时使用",
+					}
+				}
+				if pattern != "" {
+					return &CLIError{
+						Code:    CodeInvalidParam,
+						Message: "--versions 与 --pattern 不能同时使用",
+					}
+				}
 				nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 				if err != nil {
 					return err
@@ -325,6 +334,12 @@ func newDriveCommand() *cobra.Command {
 					toolArgs["nextCursor"] = v
 				}
 				return callMCPToolOnServer("drive", "list_file_versions", toolArgs)
+			}
+
+			if cmd.Flags().Changed("depth") {
+				if err := validateDriveListDepth(cmd, depth); err != nil {
+					return err
+				}
 			}
 
 			// 如果指定了 --workspace，路由到文档空间（doc MCP server）
@@ -519,6 +534,73 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 
+	driveDownloadVersionCmd := &cobra.Command{
+		Use:   "download-version",
+		Short: "下载文件历史版本到本地",
+		Long: `下载钉盘文件的指定历史版本到本地（两步下载流程）。
+
+仅适用于普通文件（如 pdf、docx、xlsx、png 等）：
+  钉钉在线文档（adoc）请使用 dws doc version 系列命令
+  钉钉在线表格（axls）请使用 dws sheet version 系列命令
+
+流程:
+  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)
+  2. HTTP GET 下载文件二进制内容到本地
+
+版本号从 dws drive list --node <dentryUuid> --versions 获取。`,
+		Example: `  dws drive download-version --node <dentryUuid> --version 3 --output ./report_v3.pdf
+  dws drive download-version --node <dentryUuid> --version 3 --output ~/downloads/`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fileID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			versionNum, _ := cmd.Flags().GetInt("version")
+			if versionNum <= 0 {
+				return fmt.Errorf("--version 必须为正整数，当前值: %d（版本号从 drive list --versions 获取）", versionNum)
+			}
+			outputPath, _ := cmd.Flags().GetString("output")
+			if outputPath == "" {
+				return fmt.Errorf("flag --output is required")
+			}
+
+			if deps.Caller.DryRun() {
+				deps.Out.PrintKeyValue("操作", "下载文件历史版本")
+				deps.Out.PrintKeyValue("节点ID", fileID)
+				deps.Out.PrintKeyValue("版本号", fmt.Sprintf("%d", versionNum))
+				deps.Out.PrintKeyValue("输出", outputPath)
+				return nil
+			}
+
+			ctx := context.Background()
+			deps.Out.PrintInfo("[1/2] 获取历史版本下载链接...")
+			text, err := callMCPToolReturnTextOnServer(ctx, "drive", "download_file_version", map[string]any{
+				"nodeId":  fileID,
+				"version": versionNum,
+			})
+			if err != nil {
+				return err
+			}
+			resourceURL, dlHeaders, err := parseDownloadInfo(text)
+			if err != nil {
+				return err
+			}
+			if fi, statErr := os.Stat(outputPath); statErr == nil && fi.IsDir() {
+				filename := extractFileNameFromResponse(text)
+				if filename == "" {
+					filename = inferFilename(resourceURL)
+				}
+				outputPath = filepath.Join(outputPath, filename)
+			}
+			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
+			if err := httpGetFile(ctx, resourceURL, dlHeaders, outputPath); err != nil {
+				return err
+			}
+			deps.Out.PrintInfo(fmt.Sprintf("下载完成: %s", outputPath))
+			return nil
+		},
+	}
+
 	driveMkdirCmd := &cobra.Command{
 		Use:   "mkdir",
 		Short: "创建文件夹",
@@ -627,6 +709,14 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+
+	driveDownloadVersionCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
+	driveDownloadVersionCmd.Flags().Int("version", 0, "历史版本号 (必填，正整数，从 drive list --versions 获取)")
+	driveDownloadVersionCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	for _, alias := range []string{"url", "id", "node-id", "doc-id", "file-id"} {
+		driveDownloadVersionCmd.Flags().String(alias, "", "")
+		_ = driveDownloadVersionCmd.Flags().MarkHidden(alias)
+	}
 
 	driveMkdirCmd.Flags().String("name", "", "文件夹名称，最长 50 字符 (必填)")
 	driveMkdirCmd.Flags().String("space-id", "", "目标空间 ID，不传则使用「我的文件」 (可选)")
@@ -1211,16 +1301,14 @@ func newDriveCommand() *cobra.Command {
 			if nodeID == "" && workspaceID == "" {
 				return fmt.Errorf("--node or --workspace is required")
 			}
+			// 不可逆高危操作：帮助文档承诺二选一，两者同传直接失败，绝不静默择一。
+			if nodeID != "" && workspaceID != "" {
+				return fmt.Errorf("--node and --workspace are mutually exclusive; specify exactly one")
+			}
 			if err := validateRequiredFlags(cmd, "new-owner"); err != nil {
 				return err
 			}
 			newOwnerID := mustGetFlag(cmd, "new-owner")
-
-			if commandDryRun(cmd) {
-				deps.Out.PrintKeyValue("操作", "转交所有者")
-				deps.Out.PrintKeyValue("新所有者", newOwnerID)
-				return nil
-			}
 
 			yesMode, _ := cmd.Flags().GetBool("yes")
 			if yesMode {
@@ -1230,6 +1318,26 @@ func newDriveCommand() *cobra.Command {
 				if !cmd.Flags().Changed("recursive") {
 					return fmt.Errorf("--recursive is required when using --yes")
 				}
+			}
+
+			if commandDryRun(cmd) {
+				if deps.Caller.Format() == "json" {
+					payload := map[string]any{
+						"dry_run":    true,
+						"executed":   false,
+						"operation":  "转交所有者",
+						"newOwnerId": newOwnerID,
+					}
+					if nodeID != "" {
+						payload["nodeId"] = nodeID
+					} else {
+						payload["workspaceId"] = workspaceID
+					}
+					return deps.Out.PrintJSON(payload)
+				}
+				deps.Out.PrintKeyValue("操作", "转交所有者")
+				deps.Out.PrintKeyValue("新所有者", newOwnerID)
+				return nil
 			}
 
 			reserveRole := mustGetFlag(cmd, "reserve-role")
@@ -1308,6 +1416,9 @@ func newDriveCommand() *cobra.Command {
 			}
 			if v := mustGetFlag(cmd, "reason"); v != "" {
 				toolArgs["reason"] = v
+			}
+			if !commandDryRun(cmd) && !confirmDangerousAction(cmd, "发起权限申请", fmt.Sprintf("节点 %s（将真实通知审批人 %s）", nodeID, strings.Join(userIds, ","))) {
+				return nil
 			}
 			return callMCPToolOnServer("drive", "apply_permission", toolArgs)
 		},
@@ -1710,6 +1821,7 @@ func newDriveCommand() *cobra.Command {
 		driveListSpacesCmd,
 		driveInfoCmd,
 		driveDownloadCmd,
+		driveDownloadVersionCmd,
 		driveMkdirCmd,
 		driveUploadInfoCmd,
 		driveCommitCmd,

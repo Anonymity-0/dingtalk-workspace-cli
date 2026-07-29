@@ -1382,7 +1382,7 @@
     },
     "chat.batch_update_group_chat_settings": {
       "effect": "write",
-      "risk": "low",
+      "risk": "medium",
       "confirmation": "not_required",
       "idempotency": "idempotent",
       "interface_mode": "composite",

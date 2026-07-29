@@ -3187,6 +3187,273 @@
         "已确认 contentType 非 ALIDOC，需要落盘本地查看时"
       ]
     },
+    "drive download-version": {
+      "agent_summary": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "下载最新版本用 drive download",
+        "在线文档（adoc）历史版本用 doc version 系列命令",
+        "在线表格（axls）历史版本用 sheet version 系列命令"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive download-version --node \u003cdentryUuid\u003e --version 3 --output ./report_v3.pdf"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "candidates": [
+            {
+              "value": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "下载最新版本用 drive download",
+            "在线文档（adoc）历史版本用 doc version 系列命令",
+            "在线表格（axls）历史版本用 sheet version 系列命令"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "candidates": [
+            {
+              "value": [
+                "下载最新版本用 drive download",
+                "在线文档（adoc）历史版本用 doc version 系列命令",
+                "在线表格（axls）历史版本用 sheet version 系列命令"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws drive download-version --node \u003cdentryUuid\u003e --version 3 --output ./report_v3.pdf"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "candidates": [
+            {
+              "value": [
+                "dws drive download-version --node \u003cdentryUuid\u003e --version 3 --output ./report_v3.pdf"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed"
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "用户要下载文件的历史版本/旧版本",
+            "版本号已通过 drive list --versions 获取"
+          ],
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "candidates": [
+            {
+              "value": [
+                "用户要下载文件的历史版本/旧版本",
+                "版本号已通过 drive list --versions 获取"
+              ],
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。"
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "CommandRegistry:canonical_path=drive.download_file_version",
+        "cobra-help:dws drive download-version",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json",
+        "wukong-develop:wukong/products/drive.go"
+      ],
+      "use_when": [
+        "用户要下载文件的历史版本/旧版本",
+        "版本号已通过 drive list --versions 获取"
+      ]
+    },
     "drive info": {
       "agent_summary": "获取文件元数据信息",
       "agent_summary_source": "dws-agent-selection/drive",
@@ -4839,7 +5106,7 @@
       "avoid_when": [
         "先用 apply-info 查可申请角色与审批人；未经用户确认不得自行提交"
       ],
-      "confirmation": "not_required",
+      "confirmation": "user_required",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
@@ -4899,14 +5166,14 @@
           ]
         },
         "confirmation": {
-          "value": "not_required",
+          "value": "user_required",
           "source": "internal/cli/schema_hints/metadata/drive.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
           "candidates": [
             {
-              "value": "not_required",
+              "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/drive.json",
               "precedence": "reviewed_explicit",
               "selected": true,

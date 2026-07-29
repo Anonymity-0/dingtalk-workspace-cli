@@ -534,6 +534,35 @@ func TestCrossPlatformCoverageRunDriveListDepthRateLimitRetry(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageRunDriveListDepthRateLimitResumesFromFailedPage(t *testing.T) {
+	useDriveDepthArgs(t)
+	caller := &depthArgsRecordingCaller{steps: []scriptedToolStep{
+		{text: `{"items":[{"fileId":"f1","name":"page1.txt","type":"FILE"}],"nextToken":"p2"}`},
+		{text: `{"errorCode":"invalidRequest.rateLimited","errorMsg":"slow down"}`},
+		{text: `{"items":[{"fileId":"f2","name":"page2.txt","type":"FILE"}]}`},
+	}}
+	previousDeps := deps
+	t.Cleanup(func() { deps = previousDeps })
+	InitDeps(caller)
+	out := &bytes.Buffer{}
+	deps.Out.w = out
+	deps.Out.errW = io.Discard
+	cmd := &cobra.Command{Use: "list"}
+	if err := runDriveListDepth(cmd, newDrivePanDepthRoute(), map[string]any{}, "", 3, "", true); err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.calls) != 3 {
+		t.Fatalf("calls = %d, want 3", len(caller.calls))
+	}
+	if tok, _ := caller.calls[2]["nextToken"].(string); tok != "p2" {
+		t.Fatalf("retry call args = %#v, want resume with nextToken=p2", caller.calls[2])
+	}
+	items := decodeDepthResult(t, out)["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("items = %#v, want 2 without duplicates", items)
+	}
+}
+
 func TestCrossPlatformCoverageRunDriveListDepthRateLimitExhausted(t *testing.T) {
 	useDriveDepthArgs(t)
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{

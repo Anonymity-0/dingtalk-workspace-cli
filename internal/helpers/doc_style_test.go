@@ -135,3 +135,96 @@ func TestCrossPlatformCoverageUploadDocStyleImageFailures(t *testing.T) {
 		t.Fatal("invalid upload info returned nil")
 	}
 }
+
+func TestCrossPlatformCoverageValidateCoverImageFileSizeLimit(t *testing.T) {
+	// 上限以内的正常图片通过校验。
+	path := writeTempImage(t, "cover.png")
+	if _, _, err := validateCoverImageFile(path); err != nil {
+		t.Fatal(err)
+	}
+
+	// os.Truncate 生成超过上限 1 字节的稀疏文件（瞬时创建，不占实际磁盘）。
+	if err := os.Truncate(path, docStyleCoverMaxBytes+1); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err := validateCoverImageFile(path)
+	if err == nil || !strings.Contains(err.Error(), "封面图片文件过大") || !strings.Contains(err.Error(), "20 MiB") {
+		t.Fatalf("err = %v, want size limit error", err)
+	}
+
+	// 恰好等于上限时仍应通过。
+	if err := os.Truncate(path, docStyleCoverMaxBytes); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := validateCoverImageFile(path); err != nil {
+		t.Fatalf("size == limit should pass, got %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDocStyleCoverSetSizeLimitViaCommand(t *testing.T) {
+	path := writeTempImage(t, "cover.png")
+	if err := os.Truncate(path, docStyleCoverMaxBytes+1); err != nil {
+		t.Fatal(err)
+	}
+	caller := &scriptedToolCaller{}
+	err := executeDocStyleCommand(t, caller, "cover", "set", "--node", "n1", "--file", path)
+	if err == nil || !strings.Contains(err.Error(), "封面图片文件过大") {
+		t.Fatalf("err = %v, want size limit error", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("calls = %d, want 0 (fail before any network request)", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageDocStyleCoverSetNilContextFallback(t *testing.T) {
+	// 直接调用 RunE（不经 Execute），cmd.Context() 为 nil，覆盖 context.Background() 兜底分支。
+	path := writeTempImage(t, "cover.png")
+	stubHTTPPutFile(t, nil)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"uploadUrl":"https://oss.test/put","resourceId":"res-1"}`},
+		{text: `{}`},
+	}}
+	installScriptedCaller(t, caller)
+	root := newDocStyleCommand()
+	coverSet, _, err := root.Find([]string{"cover", "set"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if coverSet.Context() != nil {
+		t.Fatal("expected nil context on unexecuted command")
+	}
+	if err := coverSet.Flags().Set("node", "n1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := coverSet.Flags().Set("file", path); err != nil {
+		t.Fatal(err)
+	}
+	if err := runDocStyleCoverSet(coverSet, nil); err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 2 {
+		t.Fatalf("calls = %d, want 2 (upload info + style set)", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageDocStyleCoverSetUsesCommandContext(t *testing.T) {
+	// 经 ExecuteContext 执行时，上传流程应使用命令上下文；scriptedToolCaller 忽略 ctx，
+	// 故此处做行为性断言：正常上下文下上传路径成功走通（覆盖 ctx := cmd.Context() 分支）。
+	path := writeTempImage(t, "cover.png")
+	stubHTTPPutFile(t, nil)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"uploadUrl":"https://oss.test/put","resourceId":"res-1"}`},
+		{text: `{}`},
+	}}
+	installScriptedCaller(t, caller)
+	root := newDocStyleCommand()
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetArgs([]string{"cover", "set", "--node", "n1", "--file", path})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 2 {
+		t.Fatalf("calls = %d, want 2 (upload info + style set)", caller.calls)
+	}
+}

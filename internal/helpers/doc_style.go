@@ -177,7 +177,12 @@ func runDocStyleCoverSet(cmd *cobra.Command, _ []string) error {
 		if deps.Caller.DryRun() {
 			cover["resourceId"] = fmt.Sprintf("(pending upload from --file %s)", filePath)
 		} else {
-			resourceID, err := uploadDocStyleImage(context.Background(), nodeID, filePath, filepath.Base(filePath), mimeType, fileSize)
+			// 使用命令上下文，让 Ctrl-C 能够取消上传凭证获取与 OSS 上传两次网络请求。
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			resourceID, err := uploadDocStyleImage(ctx, nodeID, filePath, filepath.Base(filePath), mimeType, fileSize)
 			if err != nil {
 				return err
 			}
@@ -247,9 +252,13 @@ func runDocStyleGet(cmd *cobra.Command, _ []string) error {
 	})
 }
 
+// docStyleCoverMaxBytes 是 cover set --file 本地图片的大小上限（20 MiB）。
+// 悟空参考实现未设上限，此处补充客户端 fail-fast，避免超大文件被先行上传。
+const docStyleCoverMaxBytes = 20 << 20
+
 // validateCoverImageFile 对 cover set --file 做本地校验（不上传/不读取文件内容）：
-// 文件须存在、非目录，且按扩展名推断的 MIME 必须为 image/*。返回 mimeType 与文件大小，
-// 供 dry-run 预览与真实上传前 fail-fast，避免非法文件被先行上传。
+// 文件须存在、非目录、不超过大小上限，且按扩展名推断的 MIME 必须为 image/*。
+// 返回 mimeType 与文件大小，供 dry-run 预览与真实上传前 fail-fast，避免非法文件被先行上传。
 func validateCoverImageFile(filePath string) (mimeType string, fileSize int64, err error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -257,6 +266,9 @@ func validateCoverImageFile(filePath string) (mimeType string, fileSize int64, e
 	}
 	if fileInfo.IsDir() {
 		return "", 0, fmt.Errorf("%s is a directory, not a file", filePath)
+	}
+	if fileInfo.Size() > docStyleCoverMaxBytes {
+		return "", 0, fmt.Errorf("封面图片文件过大：上限 %d 字节 (20 MiB)，实际 %d 字节 (%s)", int64(docStyleCoverMaxBytes), fileInfo.Size(), filepath.Base(filePath))
 	}
 	mimeType = inferMimeType(filepath.Base(filePath))
 	if !strings.HasPrefix(mimeType, "image/") {

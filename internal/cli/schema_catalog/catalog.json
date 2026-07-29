@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:674e6c00efb4d7f4c177ec0a1c4c097c8fb48b0045d1787c0ed001c32c51f20a",
-  "source_hash": "sha256:f2cf7fcd3a70748029688ef5653386d9b503ef898bf763acb1da04a0b150d483",
+  "surface_hash": "sha256:29d4f5f43688cc01bc2277a4528b597de4fbab89a7b2f13fe2e56df85d1c66c4",
+  "source_hash": "sha256:346ec3ac857b9a740baf03142296b1e4fb0814f713ceab4ed2ff9f46a85d6b4d",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:ced34d4510fddb0b0cd02478f0f5051b0de0aab3d6bc7e1e43aaa1a12717d3b7",
-      "surface_hash": "sha256:674e6c00efb4d7f4c177ec0a1c4c097c8fb48b0045d1787c0ed001c32c51f20a",
+      "source_hash": "sha256:31a28d1665ebb13fdb131547bda1d84ce1cc3fee0bbff821b76c2fdf6f6904ab",
+      "surface_hash": "sha256:29d4f5f43688cc01bc2277a4528b597de4fbab89a7b2f13fe2e56df85d1c66c4",
       "surface_products": 26,
-      "surface_tools": 839,
-      "tools_with_agent_summary": 839,
-      "tools_with_metadata": 839,
+      "surface_tools": 840,
+      "tools_with_agent_summary": 840,
+      "tools_with_metadata": 840,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -7955,7 +7955,7 @@
             "name": "batch_update_group_chat_settings",
             "primary_cli_path": "chat group user-settings set",
             "reviewed": true,
-            "risk": "low",
+            "risk": "medium",
             "title": "批量更新当前用户的群会话设置",
             "use_when": [
               "用户说 把这些群都设为免打扰/置顶"
@@ -16172,7 +16172,7 @@
         "id": "drive",
         "name": "钉盘文件管理",
         "runtime": true,
-        "tool_count": 40,
+        "tool_count": 41,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -16219,7 +16219,7 @@
             "canonical_path": "drive.apply_permission",
             "cli_name": "apply",
             "cli_path": "drive permission apply",
-            "confirmation": "not_required",
+            "confirmation": "user_required",
             "description": "向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。\n\n注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。",
             "effect": "write",
             "group": "permission",
@@ -16428,6 +16428,35 @@
             "use_when": [
               "用户要把钉盘普通文件（PDF/图片/Office 等非在线文档）下载到本地路径时",
               "已确认 contentType 非 ALIDOC，需要落盘本地查看时"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+            "agent_summary_source": "dws-agent-selection/drive",
+            "availability": "available",
+            "avoid_when": [
+              "下载最新版本用 drive download",
+              "在线文档（adoc）历史版本用 doc version 系列命令",
+              "在线表格（axls）历史版本用 sheet version 系列命令"
+            ],
+            "canonical_path": "drive.download_file_version",
+            "cli_name": "download-version",
+            "cli_path": "drive download-version",
+            "confirmation": "not_required",
+            "description": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "name": "download_file_version",
+            "primary_cli_path": "drive download-version",
+            "reviewed": true,
+            "risk": "low",
+            "title": "下载文件历史版本到本地",
+            "use_when": [
+              "用户要下载文件的历史版本/旧版本",
+              "版本号已通过 drive list --versions 获取"
             ]
           },
           {
@@ -26484,6 +26513,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 839
+    "tool_count": 840
   }
 }

@@ -20,15 +20,10 @@
 
 ## 创建：view create
 
-`--view-type` 支持 `Grid`、`Kanban`、`Gantt`、`Calendar`、`Gallery`、`FormDesigner`。创建时有两种方式设置可见字段：
+`--view-type` 支持 `Grid`、`Kanban`、`Gantt`、`Calendar`、`Gallery`、`FormDesigner`。创建时通过 `--config` JSON 设置可见字段：
 
 ```bash
-# 推荐：CSV typed flag；主字段必须排第一
-dws aitable view create --base-id BASE_ID --table-id TABLE_ID \
-  --view-type Grid --name "任务视图" \
-  --visible-field-ids fldPrimary,fldStatus,fldOwner
-
-# JSON 方式：可同时配置可见字段、筛选、排序和分组
+# --config JSON：可同时配置可见字段、筛选、排序和分组；主字段必须排第一
 dws aitable view create --base-id BASE_ID --table-id TABLE_ID \
   --view-type Grid --name "任务视图" \
   --config '{"visibleFieldIds":["fldPrimary","fldStatus","fldOwner"],"sort":[{"fieldId":"fldStatus","direction":"asc"}]}'
@@ -43,7 +38,7 @@ dws aitable view create --base-id BASE_ID --table-id TABLE_ID \
 | `sort` | `object[]` | 排序规则数组；兼容单个 object，CLI 会自动包装为数组 |
 | `group` | `object[]` | 分组规则数组；兼容单个 object，CLI 会自动包装为数组 |
 
-`--visible-field-ids` 与 `config.visibleFieldIds` 互斥。描述使用独立的 `--desc '{"content":[]}'`；`description`、`fieldWidths`、`aggregate`、`kanbanCard`、`ganttTimebar`、`galleryCard` 等其他 key 会在调用服务端前被拒绝，并提示对应的 `view update` 子命令。
+描述使用独立的 `--desc '{"content":[]}'`；`description`、`fieldWidths`、`aggregate`、`kanbanCard`、`ganttTimebar`、`galleryCard` 等其他 key 会在调用服务端前被拒绝，并提示对应的 `view update` 子命令。
 
 ## 读取：view get <attr>
 

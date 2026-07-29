@@ -828,7 +828,7 @@
       "canonical_path": "drive.apply_permission",
       "cli_name": "apply",
       "cli_path": "drive permission apply",
-      "confirmation": "not_required",
+      "confirmation": "user_required",
       "description": "向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。\n\n注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。",
       "display": "钉盘文件管理",
       "effect": "write",
@@ -912,14 +912,14 @@
               "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/drive.json",
-              "value": "not_required"
+              "value": "user_required"
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
           "source": "internal/cli/schema_hints/metadata/drive.json",
-          "value": "not_required"
+          "value": "user_required"
         },
         "description": {
           "candidates": [
@@ -5622,6 +5622,625 @@
       "use_when": [
         "用户要把钉盘普通文件（PDF/图片/Office 等非在线文档）下载到本地路径时",
         "已确认 contentType 非 ALIDOC，需要落盘本地查看时"
+      ]
+    },
+    "drive.download_file_version": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "CommandRegistry:canonical_path=drive.download_file_version",
+        "cobra-help:dws drive download-version",
+        "internal/cli/schema_hints/metadata/drive.json",
+        "internal/cli/schema_hints/selection/drive.json",
+        "wukong-develop:wukong/products/drive.go"
+      ],
+      "agent_summary": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+      "agent_summary_source": "dws-agent-selection/drive",
+      "availability": "available",
+      "avoid_when": [
+        "下载最新版本用 drive download",
+        "在线文档（adoc）历史版本用 doc version 系列命令",
+        "在线表格（axls）历史版本用 sheet version 系列命令"
+      ],
+      "canonical_path": "drive.download_file_version",
+      "cli_name": "download-version",
+      "cli_path": "drive download-version",
+      "confirmation": "not_required",
+      "description": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。",
+      "display": "钉盘文件管理",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws drive download-version --node \u003cdentryUuid\u003e --version 3 --output ./report_v3.pdf"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "value": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "value": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "value": [
+                "下载最新版本用 drive download",
+                "在线文档（adoc）历史版本用 doc version 系列命令",
+                "在线表格（axls）历史版本用 sheet version 系列命令"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "value": [
+            "下载最新版本用 drive download",
+            "在线文档（adoc）历史版本用 doc version 系列命令",
+            "在线表格（axls）历史版本用 sheet version 系列命令"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "drive download-version",
+              "value": "drive.download_file_version"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "drive download-version",
+          "value": "drive.download_file_version"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "value": [
+                "dws drive download-version --node \u003cdentryUuid\u003e --version 3 --output ./report_v3.pdf"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "value": [
+            "dws drive download-version --node \u003cdentryUuid\u003e --version 3 --output ./report_v3.pdf"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/drive.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "dws-tool-metadata/drive marks this tool as reviewed",
+          "source": "internal/cli/schema_hints/metadata/drive.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "下载文件历史版本到本地"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "下载文件历史版本到本地"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/drive.json",
+              "value": [
+                "用户要下载文件的历史版本/旧版本",
+                "版本号已通过 drive list --versions 获取"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：对照悟空 develop drive download --version 分支实现移植为独立命令；单一 download_file_version 远端调用，参数契约与帮助文档一致。",
+          "source": "internal/cli/schema_hints/selection/drive.json",
+          "value": [
+            "用户要下载文件的历史版本/旧版本",
+            "版本号已通过 drive list --versions 获取"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+      "is_alias": false,
+      "name": "download_file_version",
+      "parameter_count": 3,
+      "parameters": {
+        "node": {
+          "description": "文件 ID (dentryUuid) 或 URL (必填)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "文件 ID (dentryUuid) 或 URL (必填)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "文件 ID (dentryUuid) 或 URL (必填)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --node is a CLI wrapper input and does not publish a direct interface property.",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --node is a CLI wrapper input and does not publish a direct interface property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_required_inference",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": true,
+          "type": "string"
+        },
+        "output": {
+          "description": "本地保存路径 (文件路径或目录，必填)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "本地保存路径 (文件路径或目录，必填)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "本地保存路径 (文件路径或目录，必填)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --output is a CLI wrapper input and does not publish a direct interface property.",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "output"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --output is a CLI wrapper input and does not publish a direct interface property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_required_inference",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "description": "历史版本号 (必填，正整数，从 drive list --versions 获取)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "历史版本号 (必填，正整数，从 drive list --versions 获取)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "历史版本号 (必填，正整数，从 drive list --versions 获取)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --version is a CLI wrapper input and does not publish a direct interface property.",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "version"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --version is a CLI wrapper input and does not publish a direct interface property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "usage_required_inference",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "path": "drive.download_file_version",
+      "primary_cli_path": "drive download-version",
+      "product_id": "drive",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "下载文件历史版本到本地",
+      "use_when": [
+        "用户要下载文件的历史版本/旧版本",
+        "版本号已通过 drive list --versions 获取"
       ]
     },
     "drive.get_cover": {

@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **Wukong internal command sync** (#621) — ports roughly 30 leaf commands from the internal wukong repository into the open-source CLI: Drive gains `star`, `cover`, `revert`, `download-version`, `permission transfer-owner`/`apply-info`/`apply`, and `list --depth`/`--versions`; Doc gains `style cover`/`style background`; Sheet gains the `comment`, `version`, and `formula-verify` command groups plus `info --include`; Chat gains `message update-text-emotion`, the `location`/`profile` message types, and group `user-settings`/`get-mute-config`. Every new leaf is registered in the Agent-visible Runtime Schema.
+
 ### Fixed
 
 - **Name→ID resolution kept external contacts** — the shared contact resolver (`chat +dm`, `+broadcast`, …) no longer drops `search_contact_by_key_word` rows that carry only an `openDingTalkId` (external / cross-org contacts have an empty `userId`), so those people are found instead of reported missing or collapsed into a wrong single match; the display name also falls back through `nick`/`showName`/`flowerName`/`staffName`/`userName`.

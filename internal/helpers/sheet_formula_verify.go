@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,7 +49,8 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 				}
 				toolArgs["maxCells"] = v
 			}
-			return callMCPToolOnServer("sheet", "formula_verify", toolArgs)
+			exitOnError, _ := cmd.Flags().GetBool("exit-on-error")
+			return callMCPToolFormulaVerify(toolArgs, exitOnError)
 		},
 	}
 	cmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -57,15 +59,66 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 	cmd.Flags().String("targets", "", `扫描目标 JSON 数组、@文件路径 或 - 表示 stdin；每项 {"sheetId":"Sheet1","range":"A1:D100"}`)
 	cmd.Flags().Int("max-locations-per-error", 0, "每种错误类型最多返回的位置数")
 	cmd.Flags().Int("max-cells", 0, "最多扫描的单元格数")
+	cmd.Flags().Bool("exit-on-error", false, "发现公式错误时返回非 0 退出码，便于 CI/自动化使用")
 	return cmd
 }
 
-func formulaVerifyTargetsFromFlags(cmd *cobra.Command) ([]map[string]any, error) {
-	if v, _ := cmd.Flags().GetString("targets"); v != "" {
-		return parseFormulaVerifyTargets(cmd, v)
+// callMCPToolFormulaVerify 与常规打印路径的差异：--exit-on-error 需要读取
+// 返回 payload 判定是否存在公式错误，故走 ReturnText 再自行 PrintJSON。
+func callMCPToolFormulaVerify(toolArgs map[string]any, exitOnError bool) error {
+	if deps.Caller.DryRun() {
+		return callMCPToolOnServer("sheet", "formula_verify", toolArgs)
 	}
+	text, err := callMCPToolReturnTextOnServer(context.Background(), "sheet", "formula_verify", toolArgs)
+	if err != nil {
+		return err
+	}
+	if text == "" {
+		return nil
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		deps.Out.PrintRaw(text)
+		return nil
+	}
+	if parsed == nil {
+		return fmt.Errorf("formula_verify returned empty result")
+	}
+	if err := deps.Out.PrintJSON(parsed); err != nil {
+		return err
+	}
+	if exitOnError && formulaVerifyHasErrors(parsed) {
+		return fmt.Errorf("formula errors found")
+	}
+	return nil
+}
+
+func formulaVerifyHasErrors(parsed map[string]any) bool {
+	result := formulaVerifyResultObject(parsed)
+	status := strings.ToLower(strings.TrimSpace(fmt.Sprint(result["status"])))
+	if status == "errors_found" {
+		return true
+	}
+	totalErrors, ok := nonNegativeJSONInt(result["totalErrors"])
+	return ok && totalErrors > 0
+}
+
+func formulaVerifyResultObject(parsed map[string]any) map[string]any {
+	if result, ok := parsed["result"].(map[string]any); ok {
+		return result
+	}
+	return parsed
+}
+
+func formulaVerifyTargetsFromFlags(cmd *cobra.Command) ([]map[string]any, error) {
 	sheetID, _ := cmd.Flags().GetString("sheet-id")
 	rangeStr, _ := cmd.Flags().GetString("range")
+	if v, _ := cmd.Flags().GetString("targets"); v != "" {
+		if strings.TrimSpace(sheetID) != "" || strings.TrimSpace(rangeStr) != "" {
+			return nil, fmt.Errorf("--targets 不能与 --sheet-id 或 --range 同时使用")
+		}
+		return parseFormulaVerifyTargets(cmd, v)
+	}
 	if sheetID == "" && rangeStr != "" {
 		return nil, fmt.Errorf("--range 必须与 --sheet-id 配合使用")
 	}

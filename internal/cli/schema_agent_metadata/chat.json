@@ -18667,14 +18667,14 @@
           ]
         },
         "risk": {
-          "value": "low",
+          "value": "medium",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
           "candidates": [
             {
-              "value": "low",
+              "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -18707,7 +18707,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source_refs": [
         "CommandRegistry:canonical_path=chat.batch_update_group_chat_settings",
         "cobra-help:dws chat group user-settings set",

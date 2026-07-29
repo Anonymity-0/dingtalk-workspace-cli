@@ -514,18 +514,18 @@ Flags:
 
 ```
 Usage:
-  dws drive download [flags]
+  dws drive download-version [flags]
 Example:
-  dws drive download --node <dentryUuid> --version 3 --output ./report_v1.pdf --format json
-  dws drive download --node <dentryUuid> --version 3 --output <DOWNLOAD_DIR> --format json
+  dws drive download-version --node <dentryUuid> --version 3 --output ./report_v3.pdf --format json
+  dws drive download-version --node <dentryUuid> --version 3 --output <DOWNLOAD_DIR> --format json
 Flags:
       --node string       文件 ID (dentryUuid) 或 URL (必填)
       --version int       历史版本号 (必填，正整数，从 list --versions 获取)
-      --output string     本地保存路径 (文件路径或目录，不传则保存到当前目录) (可选)
+      --output string     本地保存路径 (文件路径或目录，必填)
 ```
 
-> **两步下载流程**：先调用 MCP 工具获取下载 URL 和签名头，再 HTTP GET 下载文件内容到本地。
-> 不传 `--output` 或指定目录时，优先从文件信息中获取原始文件名，获取不到时从下载 URL 推断；均不可用时使用默认名 `download.<扩展名>`。
+> **两步下载流程**：先调用 MCP 工具获取历史版本下载 URL 和签名头，再 HTTP GET 下载文件内容到本地。
+> `--output` 指定目录时，优先从文件信息中获取原始文件名，获取不到时从下载 URL 推断。
 
 #### 回滚文件到指定历史版本
 

@@ -26983,8 +26983,99 @@
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "is_alias": false,
       "name": "formula_verify",
-      "parameter_count": 6,
+      "parameter_count": 7,
       "parameters": {
+        "exit-on-error": {
+          "description": "发现公式错误时返回非 0 退出码，便于 CI/自动化使用",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "发现公式错误时返回非 0 退出码，便于 CI/自动化使用"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "发现公式错误时返回非 0 退出码，便于 CI/自动化使用"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Reviewed unpinned adapter: sheet.formula_verify has no singular pinned interface_ref; --exit-on-error is a CLI wrapper input and does not publish a direct interface property.",
+                  "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "exitOnError"
+                }
+              ],
+              "precedence": "reviewed_mapping_exclusion",
+              "resolution": "highest_precedence",
+              "review_reason": "Reviewed unpinned adapter: sheet.formula_verify has no singular pinned interface_ref; --exit-on-error is a CLI wrapper input and does not publish a direct interface property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "required": false,
+          "type": "boolean"
+        },
         "max-cells": {
           "description": "最多扫描的单元格数",
           "field_provenance": {
@@ -34913,8 +35004,105 @@
       "is_alias": false,
       "metadata_source": "embedded-mcp-metadata",
       "name": "info",
-      "parameter_count": 2,
+      "parameter_count": 3,
       "parameters": {
+        "include": {
+          "description": "可选扩展信息，逗号分隔；支持 groups / row_heights / col_widths / hidden_rows / hidden_cols / frozen",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "可选扩展信息，逗号分隔；支持 groups / row_heights / col_widths / hidden_rows / hidden_cols / frozen"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "可选扩展信息列表。当前支持 groups，用于返回 rowGroups / columnGroups 分组信息。未指定时只返回基础工作表信息、冻结信息和 mergedRanges。"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "可选扩展信息，逗号分隔；支持 groups / row_heights / col_widths / hidden_rows / hidden_cols / frozen"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "include"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "include"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "include"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "array"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "array"
+            }
+          },
+          "interface_description": "可选扩展信息列表。当前支持 groups，用于返回 rowGroups / columnGroups 分组信息。未指定时只返回基础工作表信息、冻结信息和 mergedRanges。",
+          "property": "include",
+          "required": false,
+          "type": "array"
+        },
         "node": {
           "description": "表格文档 ID 或 URL (必填)",
           "field_provenance": {
