@@ -302,6 +302,15 @@ func newDriveCommand() *cobra.Command {
   dws drive list --workspace <workspaceId>
   dws drive list --workspace <workspaceId> --folder <folderId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			pattern, _ := cmd.Flags().GetString("pattern")
+
+			depth, _ := cmd.Flags().GetInt("depth")
+			if cmd.Flags().Changed("depth") {
+				if err := validateDriveListDepth(cmd, depth); err != nil {
+					return err
+				}
+			}
+
 			// --versions 模式：列出文件历史版本（仅普通文件）
 			if cmd.Flags().Changed("versions") {
 				nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
@@ -321,6 +330,25 @@ func newDriveCommand() *cobra.Command {
 			// 如果指定了 --workspace，路由到文档空间（doc MCP server）
 			workspaceID := flagOrFallback(cmd, "workspace", "workspace-id")
 			if workspaceID != "" {
+				// depth>1 时 --pattern 放开（先递归后过滤）；--order-by/--space-id/--thumbnail
+				// 知识库无对应参数，静默忽略。
+				if depth > 1 {
+					quiet, _ := cmd.Flags().GetBool("quiet")
+					baseArgs := map[string]any{"workspaceId": workspaceID}
+					rootFolder := docFolderFlag(cmd, "node", "file-id")
+					if rootFolder != "" {
+						if err := validateDocFolderID(rootFolder); err != nil {
+							return err
+						}
+					}
+					return runDriveListDepth(cmd, newDocDepthRoute(), baseArgs, rootFolder, depth, pattern, quiet)
+				}
+				if pattern != "" {
+					return &CLIError{
+						Code:    CodeInvalidParam,
+						Message: "--pattern 仅适用于钉盘文件列表，不能与 --workspace 同时使用",
+					}
+				}
 				toolArgs := map[string]any{"workspaceId": workspaceID}
 				if folder := docFolderFlag(cmd, "node", "file-id"); folder != "" {
 					if err := validateDocFolderID(folder); err != nil {
@@ -335,6 +363,30 @@ func newDriveCommand() *cobra.Command {
 					toolArgs["pageToken"] = v
 				}
 				return callMCPToolOnServer("doc", "list_nodes", toolArgs)
+			}
+
+			if depth > 1 {
+				quiet, _ := cmd.Flags().GetBool("quiet")
+				baseArgs := map[string]any{}
+				if v, _ := cmd.Flags().GetString("space-id"); v != "" {
+					baseArgs["spaceId"] = v
+				}
+				if v, _ := cmd.Flags().GetString("order-by"); v != "" {
+					baseArgs["orderBy"] = v
+				}
+				if v, _ := cmd.Flags().GetString("order"); v != "" {
+					baseArgs["order"] = v
+				}
+				if v, _ := cmd.Flags().GetBool("thumbnail"); v {
+					baseArgs["withThumbnail"] = true
+				}
+				rootFolder := flagOrFallback(cmd, "folder", "parent-id")
+				if rootFolder != "" {
+					if err := validateDriveParentID(rootFolder); err != nil {
+						return err
+					}
+				}
+				return runDriveListDepth(cmd, newDrivePanDepthRoute(), baseArgs, rootFolder, depth, pattern, quiet)
 			}
 
 			// 默认路由：钉盘文件列表
@@ -564,7 +616,10 @@ func newDriveCommand() *cobra.Command {
 	driveListCmd.Flags().String("order", "", "排序方向: asc|desc，默认 desc (可选，仅钉盘)")
 	driveListCmd.Flags().Bool("thumbnail", false, "是否返回缩略图信息 (可选，仅钉盘)")
 	driveListCmd.Flags().Bool("versions", false, "列出文件历史版本而非文件列表 (需配合 --node)")
-	driveListCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (--versions 模式必填)")
+	driveListCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (--versions 模式下必填)")
+	driveListCmd.Flags().String("pattern", "", "按名称通配过滤结果，如 \"*日报*\" (客户端过滤) (可选)")
+	driveListCmd.Flags().Int("depth", 1, "递归列出子目录层级，默认 1(仅当前层)，最大 5；与 --cursor/--limit 互斥；与 --workspace 组合时走知识库递归 (可选)")
+	driveListCmd.Flags().Bool("quiet", false, "关闭递归进度输出(stderr)，不影响 stdout JSON (仅 --depth>1 时有效) (可选)")
 
 	driveInfoCmd.Flags().String("node", "", "节点 ID (dentryUuid) (必填)")
 	driveInfoCmd.Flags().String("space-id", "", "节点所属空间 ID (可选)")
@@ -1180,7 +1235,11 @@ func newDriveCommand() *cobra.Command {
 			reserveRole := mustGetFlag(cmd, "reserve-role")
 			recursive, _ := cmd.Flags().GetBool("recursive")
 
-			if !yesMode && !confirmDelete("转交所有者", nodeID+workspaceID) {
+			target := nodeID
+			if target == "" {
+				target = workspaceID
+			}
+			if !yesMode && !confirmDangerousAction(cmd, "转交所有者", target) {
 				return nil
 			}
 
@@ -1193,8 +1252,8 @@ func newDriveCommand() *cobra.Command {
 			if reserveRole != "" {
 				toolArgs["reserveOldOwnerRole"] = reserveRole
 			}
-			if recursive {
-				toolArgs["recursiveChange"] = true
+			if cmd.Flags().Changed("recursive") {
+				toolArgs["recursiveChange"] = recursive
 			}
 			return callMCPToolOnServer("doc", "transfer_owner", toolArgs)
 		},
@@ -1204,7 +1263,6 @@ func newDriveCommand() *cobra.Command {
 	drivePermTransferOwnerCmd.Flags().String("new-owner", "", "新所有者的用户 userId (必填)")
 	drivePermTransferOwnerCmd.Flags().String("reserve-role", "", "转交后原所有者保留角色: MANAGER / EDITOR / DOWNLOADER / READER / NONE")
 	drivePermTransferOwnerCmd.Flags().Bool("recursive", false, "是否递归变更所有子节点的所有者")
-	drivePermTransferOwnerCmd.Flags().Bool("yes", false, "跳过确认提示")
 
 	drivePermApplyInfoCmd := &cobra.Command{
 		Use:     "apply-info",
@@ -1635,7 +1693,7 @@ func newDriveCommand() *cobra.Command {
 			if err != nil || versionNum <= 0 {
 				return fmt.Errorf("flag --version is required and must be a positive integer")
 			}
-			if !commandDryRun(cmd) && !confirmDelete("回滚文件版本", fmt.Sprintf("节点 %s 回滚到版本 %d", nodeID, versionNum)) {
+			if !commandDryRun(cmd) && !confirmDangerousAction(cmd, "回滚文件版本", fmt.Sprintf("节点 %s 回滚到版本 %d", nodeID, versionNum)) {
 				return nil
 			}
 			return callMCPToolOnServer("drive", "revert_file_version", map[string]any{
@@ -1646,7 +1704,6 @@ func newDriveCommand() *cobra.Command {
 	}
 	driveRevertCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
 	driveRevertCmd.Flags().Int("version", 0, "要回滚到的历史版本号 (必填，正整数)")
-	driveRevertCmd.Flags().Bool("yes", false, "跳过确认提示")
 
 	driveCmd.AddCommand(
 		driveListCmd,

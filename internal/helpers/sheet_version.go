@@ -68,9 +68,6 @@ func newSheetVersionCmd() *cobra.Command {
 				return fmt.Errorf("flag --version is required")
 			}
 			version, _ := cmd.Flags().GetInt("version")
-			if !commandDryRun(cmd) && !confirmDelete("表格版本回滚", nodeID) {
-				return nil
-			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,
 				"version": version,

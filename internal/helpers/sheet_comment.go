@@ -149,9 +149,6 @@ func newSheetCommentCmd() *cobra.Command {
 				return err
 			}
 			commentKey := mustGetFlag(cmd, "comment-key")
-			if !confirmDelete("表格评论", commentKey) {
-				return nil
-			}
 			return callMCPToolOnServer("doc-comment", "delete_comment", map[string]any{
 				"nodeId":     nodeID,
 				"commentKey": commentKey,

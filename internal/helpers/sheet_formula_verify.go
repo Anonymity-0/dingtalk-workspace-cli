@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -18,7 +19,7 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 不指定 --sheet-id / --range / --targets 时默认扫描整本表格的全部工作表。`,
 		Example: `  dws sheet formula-verify --node NODE_ID
   dws sheet formula-verify --node NODE_ID --sheet-id Sheet1 --range A1:D100
-  dws sheet formula-verify --node NODE_ID --exit-on-error`,
+  dws sheet formula-verify --node NODE_ID --targets '[{"sheetId":"Sheet1","range":"A1:D100"}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "node"); err != nil {
 				return err
@@ -47,32 +48,27 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 				}
 				toolArgs["maxCells"] = v
 			}
-			exitOnError, _ := cmd.Flags().GetBool("exit-on-error")
-			if err := callMCPToolOnServer("sheet", "formula_verify", toolArgs); err != nil {
-				return err
-			}
-			if exitOnError {
-				return fmt.Errorf("formula errors detected (--exit-on-error)")
-			}
-			return nil
+			return callMCPToolOnServer("sheet", "formula_verify", toolArgs)
 		},
 	}
 	cmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
-	cmd.Flags().String("sheet-id", "", "工作表 ID 或名称")
-	cmd.Flags().String("range", "", "A1 范围（需与 --sheet-id 配合）")
-	cmd.Flags().String("targets", "", `扫描目标 JSON 数组或 @文件路径；每项 {"sheetId":"Sheet1","range":"A1:D100"}`)
+	cmd.Flags().String("sheet-id", "", "工作表 ID 或名称；与 --range 组成单个扫描目标")
+	cmd.Flags().String("range", "", "A1 范围；需与 --sheet-id 配合使用")
+	cmd.Flags().String("targets", "", `扫描目标 JSON 数组、@文件路径 或 - 表示 stdin；每项 {"sheetId":"Sheet1","range":"A1:D100"}`)
 	cmd.Flags().Int("max-locations-per-error", 0, "每种错误类型最多返回的位置数")
 	cmd.Flags().Int("max-cells", 0, "最多扫描的单元格数")
-	cmd.Flags().Bool("exit-on-error", false, "发现公式错误时返回非 0 退出码")
 	return cmd
 }
 
 func formulaVerifyTargetsFromFlags(cmd *cobra.Command) ([]map[string]any, error) {
 	if v, _ := cmd.Flags().GetString("targets"); v != "" {
-		return parseFormulaVerifyTargets(v)
+		return parseFormulaVerifyTargets(cmd, v)
 	}
 	sheetID, _ := cmd.Flags().GetString("sheet-id")
 	rangeStr, _ := cmd.Flags().GetString("range")
+	if sheetID == "" && rangeStr != "" {
+		return nil, fmt.Errorf("--range 必须与 --sheet-id 配合使用")
+	}
 	if sheetID != "" {
 		t := map[string]any{"sheetId": sheetID}
 		if rangeStr != "" {
@@ -83,7 +79,7 @@ func formulaVerifyTargetsFromFlags(cmd *cobra.Command) ([]map[string]any, error)
 	return nil, nil
 }
 
-func parseFormulaVerifyTargets(raw string) ([]map[string]any, error) {
+func parseFormulaVerifyTargets(cmd *cobra.Command, raw string) ([]map[string]any, error) {
 	data := raw
 	if strings.HasPrefix(raw, "@") {
 		filePath := strings.TrimPrefix(raw, "@")
@@ -93,7 +89,7 @@ func parseFormulaVerifyTargets(raw string) ([]map[string]any, error) {
 		}
 		data = string(content)
 	} else if raw == "-" {
-		content, err := os.ReadFile("/dev/stdin")
+		content, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return nil, fmt.Errorf("读取 stdin 失败: %w", err)
 		}
