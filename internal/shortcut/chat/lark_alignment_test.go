@@ -117,27 +117,35 @@ func TestMessagesSendRoutesIdentitySpecificTransports(t *testing.T) {
 		product string
 		tool    string
 		want    map[string]any
+		bodyKey string
+		body    string
 	}{
 		{
 			name:    "user",
-			args:    []string{"chat", "+messages-send", "--as", "user", "--chat-id", "cid", "--markdown", "hello", "--idempotency-key", "u1", "--yes"},
+			args:    []string{"chat", "+messages-send", "--as", "user", "--chat-id", "cid", "--markdown", "hello @D1", "--at-open-dingtalk-ids", "D1", "--at-all", "--idempotency-key", "u1", "--yes"},
 			product: "chat",
 			tool:    "send_personal_message",
 			want:    map[string]any{"openConversationId": "cid", "msgType": "markdown", "uuid": "u1"},
+			bodyKey: "content",
+			body:    "<@all> hello <@D1>",
 		},
 		{
 			name:    "bot",
-			args:    []string{"chat", "+messages-send", "--identity", "bot", "--robot-code", "robot", "--group", "cid", "--text", "hello", "--at-all", "--yes"},
+			args:    []string{"chat", "+messages-send", "--identity", "bot", "--robot-code", "robot", "--group", "cid", "--text", "<@u1> hello", "--at-user-ids", "u1", "--at-all", "--yes"},
 			product: "bot",
 			tool:    "send_robot_group_message",
 			want:    map[string]any{"robotCode": "robot", "openConversationId": "cid", "isAtAll": "true"},
+			bodyKey: "markdown",
+			body:    "@all @u1 hello",
 		},
 		{
 			name:    "webhook",
-			args:    []string{"chat", "+messages-send", "--identity", "webhook", "--webhook-token", "token", "--text", "hello", "--at-all", "--yes"},
+			args:    []string{"chat", "+messages-send", "--identity", "webhook", "--webhook-token", "token", "--text", "<@13800000000> hello", "--at-mobiles", "13800000000", "--at-all", "--yes"},
 			product: "bot",
 			tool:    "send_message_by_custom_robot",
 			want:    map[string]any{"robotToken": "token", "isAtAll": true},
+			bodyKey: "text",
+			body:    "@all @13800000000 hello",
 		},
 	}
 	for _, tt := range tests {
@@ -160,6 +168,17 @@ func TestMessagesSendRoutesIdentitySpecificTransports(t *testing.T) {
 				if !reflect.DeepEqual(call.args[key], want) {
 					t.Errorf("%s = %#v, want %#v", key, call.args[key], want)
 				}
+			}
+			if tt.bodyKey == "content" {
+				var content map[string]string
+				if err := json.Unmarshal([]byte(call.args[tt.bodyKey].(string)), &content); err != nil {
+					t.Fatal(err)
+				}
+				if content["text"] != tt.body {
+					t.Errorf("content text = %q, want %q", content["text"], tt.body)
+				}
+			} else if call.args[tt.bodyKey] != tt.body {
+				t.Errorf("%s = %#v, want %q", tt.bodyKey, call.args[tt.bodyKey], tt.body)
 			}
 		})
 	}

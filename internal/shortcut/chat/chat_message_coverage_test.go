@@ -39,10 +39,10 @@ func TestCrossPlatformCoverageListMessageRichProjection(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageMgetResourceDownloadOutcomes(t *testing.T) {
-	baseArgs := []string{"chat", "+messages-mget", "--msg-ids", "msg", "--download-resources"}
+	baseArgs := []string{"chat", "+messages-mget", "--msg-ids", "msg", "--download-resources", "--yes"}
 	readyMget := `{"result":[{"openMessageId":"msg","openConversationId":"cid","content":"{\"mediaId\":\"@file\"}"}]}`
 	missingContextMget := `{"result":[{"content":"{\"mediaId\":\"@file\"}"}]}`
-	validInfo := `{"result":{"resourceUrl":"https://example.test/resource.bin"}}`
+	validInfo := `{"result":{"resourceUrl":"https://download.dingtalk.com/resource.bin"}}`
 
 	t.Run("dry run", func(t *testing.T) {
 		helpers.InitDeps(&larkAlignmentCaller{responses: map[string]string{

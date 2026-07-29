@@ -234,7 +234,7 @@ func TestCrossPlatformCoverageFlagAndMgetValidation(t *testing.T) {
 	fake := &larkAlignmentCaller{failProductTool: "im/list_messages_by_ids"}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
-	root.SetArgs([]string{"chat", "+messages-mget", "--msg-ids", "msg"})
+	root.SetArgs([]string{"chat", "+messages-mget", "--msg-ids", "msg", "--yes"})
 	if err := root.Execute(); err == nil {
 		t.Fatal("mget lower error was swallowed")
 	}

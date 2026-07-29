@@ -284,6 +284,44 @@ func Resources(m map[string]any) []map[string]any {
 	return out
 }
 
+// ResourcesDeep returns resources from a message and each nested quoted,
+// replied-to or forwarded message. Every nested resource is projected from the
+// child message that owns it, so its download arguments never reuse the parent
+// message ID. A missing child conversation ID inherits the enclosing
+// conversation because quoted and forwarded records often omit that duplicate
+// field.
+func ResourcesDeep(m map[string]any) []map[string]any {
+	return resourcesDeep(m, "", 0)
+}
+
+const maxResourceMessageDepth = 32
+
+func resourcesDeep(m map[string]any, inheritedConversationID string, depth int) []map[string]any {
+	if m == nil || depth > maxResourceMessageDepth {
+		return nil
+	}
+	conversationID := strings.TrimSpace(fmt.Sprint(ConversationID(m)))
+	if conversationID == "" || conversationID == "<nil>" {
+		conversationID = inheritedConversationID
+	}
+	owned := m
+	if ConversationID(m) == nil && conversationID != "" {
+		owned = make(map[string]any, len(m)+1)
+		for key, value := range m {
+			owned[key] = value
+		}
+		owned["openConversationId"] = conversationID
+	}
+	out := append([]map[string]any(nil), Resources(owned)...)
+	if depth == maxResourceMessageDepth {
+		return out
+	}
+	for _, child := range nestedMessageChildren(m) {
+		out = append(out, resourcesDeep(child, conversationID, depth+1)...)
+	}
+	return out
+}
+
 var mediaIDTextRE = regexp.MustCompile(`(?i)media[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 var fileIDTextRE = regexp.MustCompile(`(?i)\bfile[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 
@@ -292,12 +330,15 @@ func collectResourceIDs(value any, targetKey string, textPattern *regexp.Regexp,
 	case map[string]any:
 		resourceType := strings.TrimSpace(fmt.Sprint(firstMessageValue(typed, "resourceType", "resource_type")))
 		for key, child := range typed {
-			normalizedKey := strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+			normalizedKey := normalizeMessageKey(key)
 			if normalizedKey == targetKey ||
 				(normalizedKey == "resourceid" && strings.EqualFold(resourceType, targetKey)) {
 				if id := resourceIDScalar(child); id != "" {
 					*out = append(*out, id)
 				}
+			}
+			if isNestedMessageBoundaryKey(normalizedKey) {
+				continue
 			}
 			collectResourceIDs(child, targetKey, textPattern, out)
 		}
@@ -325,6 +366,74 @@ func collectResourceIDs(value any, targetKey string, textPattern *regexp.Regexp,
 			}
 		}
 	}
+}
+
+func normalizeMessageKey(key string) string {
+	return strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+}
+
+func isNestedMessageBoundaryKey(key string) bool {
+	switch key {
+	case "quotedmessage", "replymessage", "quoted", "replytomessage",
+		"forwardmessages", "forwardedmessages", "forwarded":
+		return true
+	default:
+		return false
+	}
+}
+
+func nestedMessageMaps(value any) []map[string]any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return []map[string]any{typed}
+	case []map[string]any:
+		return typed
+	case []any:
+		out := make([]map[string]any, 0, len(typed))
+		for _, item := range typed {
+			if child, ok := item.(map[string]any); ok {
+				out = append(out, child)
+			}
+		}
+		return out
+	case string:
+		var decoded any
+		if json.Unmarshal([]byte(strings.TrimSpace(typed)), &decoded) == nil {
+			return nestedMessageMaps(decoded)
+		}
+	}
+	return nil
+}
+
+func nestedMessageChildren(value any) []map[string]any {
+	out := make([]map[string]any, 0)
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, child := range typed {
+			if isNestedMessageBoundaryKey(normalizeMessageKey(key)) {
+				out = append(out, nestedMessageMaps(child)...)
+				continue
+			}
+			out = append(out, nestedMessageChildren(child)...)
+		}
+	case []any:
+		for _, child := range typed {
+			out = append(out, nestedMessageChildren(child)...)
+		}
+	case []map[string]any:
+		for _, child := range typed {
+			out = append(out, nestedMessageChildren(child)...)
+		}
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			var decoded any
+			if json.Unmarshal([]byte(trimmed), &decoded) == nil {
+				out = append(out, nestedMessageChildren(decoded)...)
+			}
+		}
+	}
+	return out
 }
 
 func resourceIDScalar(value any) string {

@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface_hash": "sha256:698ccdc961c0b745e6524e33ae13d87ef4fcac012a2e833c7a727a79d35004db",
-  "source_hash": "sha256:7e52ceb70627216cc13cdbad03cb5daec57c03d03cc7f854ed06cadfa984e015",
+  "source_hash": "sha256:2336db101f882586f78322e88d8351ed8b80c9c66c6cb6268cfb7605c04077ed",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:ee1c5251720a1cefb87e97f98ee15bca1f929179c9d9a1c598ea5e0c7e281f95",
+      "source_hash": "sha256:179a67a3fd47e2ef1786aaec197d52429a6522bf61a883df70f83febf334387b",
       "surface_hash": "sha256:698ccdc961c0b745e6524e33ae13d87ef4fcac012a2e833c7a727a79d35004db",
       "surface_products": 26,
       "surface_tools": 818,
@@ -9718,19 +9718,19 @@
             "canonical_path": "chat.shortcut_at_me",
             "cli_name": "+at-me",
             "cli_path": "chat +at-me",
-            "confirmation": "not_required",
-            "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
-            "effect": "read",
-            "idempotency": "idempotent",
+            "confirmation": "user_required",
+            "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "effect": "write",
+            "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
             "name": "shortcut_at_me",
             "primary_cli_path": "chat +at-me",
             "reviewed": true,
-            "risk": "low",
+            "risk": "medium",
             "title": "查最近 @我 的消息（自动算时间窗，投影发送人/时间/内容/会话）",
             "use_when": [
-              "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。"
+              "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
             ]
           },
           {
@@ -10082,19 +10082,19 @@
             "canonical_path": "chat.shortcut_chat_messages",
             "cli_name": "+chat-messages",
             "cli_path": "chat +chat-messages",
-            "confirmation": "not_required",
-            "description": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
-            "effect": "read",
-            "idempotency": "idempotent",
+            "confirmation": "user_required",
+            "description": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "effect": "write",
+            "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
             "name": "shortcut_chat_messages",
             "primary_cli_path": "chat +chat-messages",
             "reviewed": true,
-            "risk": "low",
+            "risk": "medium",
             "title": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
             "use_when": [
-              "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+              "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
             ]
           },
           {
@@ -10628,19 +10628,19 @@
             "canonical_path": "chat.shortcut_messages_mget",
             "cli_name": "+messages-mget",
             "cli_path": "chat +messages-mget",
-            "confirmation": "not_required",
-            "description": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
-            "effect": "read",
-            "idempotency": "idempotent",
+            "confirmation": "user_required",
+            "description": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "effect": "write",
+            "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
             "name": "shortcut_messages_mget",
             "primary_cli_path": "chat +messages-mget",
             "reviewed": true,
-            "risk": "low",
+            "risk": "medium",
             "title": "根据消息 ID 批量查询消息（最多 50 条）",
             "use_when": [
-              "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
+              "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
             ]
           },
           {
@@ -10836,19 +10836,19 @@
             "canonical_path": "chat.shortcut_search_msg",
             "cli_name": "+search-msg",
             "cli_path": "chat +search-msg",
-            "confirmation": "not_required",
-            "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
-            "effect": "read",
-            "idempotency": "idempotent",
+            "confirmation": "user_required",
+            "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "effect": "write",
+            "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
             "name": "shortcut_search_msg",
             "primary_cli_path": "chat +search-msg",
             "reviewed": true,
-            "risk": "low",
+            "risk": "medium",
             "title": "多维搜索消息，可全量翻页并批量富化详情",
             "use_when": [
-              "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。"
+              "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
             ]
           },
           {
@@ -10883,24 +10883,24 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "要回复 Thread 或发送新回复时不要使用此只读入口；当前没有经过验证的 thread writer Shortcut"
+              "要回复 Thread 或发送新回复时不要使用此读取入口；当前没有经过验证的 thread writer Shortcut"
             ],
             "canonical_path": "chat.shortcut_thread_replies",
             "cli_name": "+thread-replies",
             "cli_path": "chat +thread-replies",
-            "confirmation": "not_required",
-            "description": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
-            "effect": "read",
-            "idempotency": "idempotent",
+            "confirmation": "user_required",
+            "description": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "effect": "write",
+            "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
             "name": "shortcut_thread_replies",
             "primary_cli_path": "chat +thread-replies",
             "reviewed": true,
-            "risk": "low",
+            "risk": "medium",
             "title": "拉取某条话题消息的全部回复并投影出发言人/文本/时间",
             "use_when": [
-              "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+              "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
             ]
           },
           {

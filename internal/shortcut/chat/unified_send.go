@@ -191,6 +191,14 @@ func executeMessagesSend(rt *shortcut.RuntimeContext) error {
 		if contentType == "file" || contentType == "audio" || contentType == "video" {
 			return executeMessagesSendUserFile(rt, group, openID, contentType)
 		}
+		if group != "" {
+			body = helpers.NormalizeMessageMentions(
+				body,
+				uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids")),
+				rt.Bool("at-all"),
+				true,
+			)
+		}
 		content, _ := json.Marshal(map[string]string{"title": title, "text": body})
 		params := rt.AddAIMessageTag(map[string]any{
 			"msgType": "markdown",
@@ -212,6 +220,15 @@ func executeMessagesSend(rt *shortcut.RuntimeContext) error {
 		}
 		return executeUnifiedMessageWrite(rt, "chat", "send_personal_message", params)
 	case "bot":
+		body = helpers.NormalizeMessageMentions(
+			body,
+			append(
+				uniqueShortcutStrings(rt.StrSlice("at-user-ids")),
+				uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids"))...,
+			),
+			rt.Bool("at-all"),
+			false,
+		)
 		params := map[string]any{
 			"robotCode": rt.Str("robot-code"),
 			"title":     title,
@@ -241,6 +258,15 @@ func executeMessagesSend(rt *shortcut.RuntimeContext) error {
 		}
 		return executeUnifiedMessageWrite(rt, "bot", "batch_send_robot_msg_to_users", params)
 	case "webhook":
+		body = helpers.NormalizeMessageMentions(
+			body,
+			append(
+				uniqueShortcutStrings(rt.StrSlice("at-user-ids")),
+				uniqueShortcutStrings(rt.StrSlice("at-mobiles"))...,
+			),
+			rt.Bool("at-all"),
+			false,
+		)
 		params := map[string]any{
 			"robotToken": rt.Str("webhook-token"),
 			"title":      title,

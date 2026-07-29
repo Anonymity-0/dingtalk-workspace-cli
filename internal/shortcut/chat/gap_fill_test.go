@@ -463,7 +463,7 @@ func TestCrossPlatformCoverageFindCardBizIDResponseShapes(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageMessageResourceDownloadDeduplicatesAndUsesFallbackConversation(t *testing.T) {
+func TestCrossPlatformCoverageMessageResourceDownloadKeepsNestedMessageContext(t *testing.T) {
 	resetResourceDownloadHooks(t)
 	t.Chdir(t.TempDir())
 	resourceDownload = func(
@@ -480,12 +480,16 @@ func TestCrossPlatformCoverageMessageResourceDownloadDeduplicatesAndUsesFallback
 		return 7, nil
 	}
 	fake := &larkAlignmentCaller{responses: map[string]string{
-		"im/get_resource_download_url": `{"result":{"resourceUrl":"https://example.test/resource.bin"}}`,
+		"im/get_resource_download_url": `{"result":{"resourceUrl":"https://download.dingtalk.com/resource.bin"}}`,
 	}}
 	helpers.InitDeps(fake)
 	message := map[string]any{
 		"openMessageId": "msg",
 		"content":       `{"mediaId":"@same","nested":{"mediaId":"@same"}}`,
+		"quotedMessage": map[string]any{
+			"openMessageId": "msg-quoted",
+			"content":       `{"mediaId":"@quoted"}`,
+		},
 	}
 	secondMessage := map[string]any{
 		"openMessageId": "msg-2",
@@ -497,7 +501,7 @@ func TestCrossPlatformCoverageMessageResourceDownloadDeduplicatesAndUsesFallback
 		Command: "+gap-resource-download",
 		Flags:   MessageResourceDownloadFlags(),
 		Execute: func(rt *shortcut.RuntimeContext) error {
-			ledger = DownloadMessageResources(rt, []map[string]any{message, secondMessage}, "cid-fallback")
+			ledger = DownloadMessageResources(rt, []map[string]any{message, message, secondMessage}, "cid-fallback")
 			return nil
 		},
 	})
@@ -506,12 +510,24 @@ func TestCrossPlatformCoverageMessageResourceDownloadDeduplicatesAndUsesFallback
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if ledger["discoveredCount"] != 2 || ledger["requestedCount"] != 1 ||
-		ledger["deduplicatedCount"] != 1 || ledger["downloadedCount"] != 1 {
+	if ledger["discoveredCount"] != 5 || ledger["requestedCount"] != 3 ||
+		ledger["deduplicatedCount"] != 2 || ledger["downloadedCount"] != 3 {
 		t.Fatalf("download ledger = %#v", ledger)
 	}
-	if len(fake.calls) != 1 || fake.calls[0].args["openConversationId"] != "cid-fallback" {
+	if len(fake.calls) != 3 {
 		t.Fatalf("resource lookup = %#v", fake.calls)
+	}
+	gotMessageIDs := map[string]bool{}
+	for _, call := range fake.calls {
+		if call.args["openConversationId"] != "cid-fallback" {
+			t.Errorf("resource conversation = %#v", call.args)
+		}
+		gotMessageIDs[call.args["openMessageId"].(string)] = true
+	}
+	for _, messageID := range []string{"msg", "msg-quoted", "msg-2"} {
+		if !gotMessageIDs[messageID] {
+			t.Errorf("missing resource lookup for %q: %#v", messageID, fake.calls)
+		}
 	}
 }
 
@@ -532,7 +548,7 @@ func TestCrossPlatformCoverageMessageFileResourceDownloadUsesDriveAndPreservesNa
 		return int64(len("drive-file")), nil
 	}
 	fake := &larkAlignmentCaller{responses: map[string]string{
-		"drive/download_file": `{"result":{"downloadUrl":"https://example.test/opaque","fileName":"fixture.txt"}}`,
+		"drive/download_file": `{"result":{"downloadUrl":"https://download.dingtalk.com/opaque","fileName":"fixture.txt"}}`,
 	}}
 	helpers.InitDeps(fake)
 
@@ -542,6 +558,7 @@ func TestCrossPlatformCoverageMessageFileResourceDownloadUsesDriveAndPreservesNa
 		"--type", "fileId",
 		"--resource-id", "drive-file",
 		"--output", "./downloads/",
+		"--yes",
 	})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
@@ -601,7 +618,7 @@ func TestCrossPlatformCoverageMessageResourceDownloadDisambiguatesSameNames(t *t
 		return 1, nil
 	}
 	helpers.InitDeps(&larkAlignmentCaller{responses: map[string]string{
-		"drive/download_file": `{"result":{"downloadUrl":"https://example.test/opaque","fileName":"fixture.txt"}}`,
+		"drive/download_file": `{"result":{"downloadUrl":"https://download.dingtalk.com/opaque","fileName":"fixture.txt"}}`,
 	}})
 
 	var ledger map[string]any

@@ -92,7 +92,7 @@ func TestCrossPlatformCoverageMessageReadShortcutResourceOutputValidation(t *tes
 	} {
 		helpers.InitDeps(&smartCoverageCaller{})
 		root := newPlatformCoverageRoot()
-		root.SetArgs(append(args, "--download-resources", "--output-dir", "../outside"))
+		root.SetArgs(append(args, "--download-resources", "--output-dir", "../outside", "--yes"))
 		if err := root.Execute(); err == nil {
 			t.Fatalf("unsafe output accepted: %v", args)
 		}
@@ -104,7 +104,7 @@ func TestCrossPlatformCoverageChatMessagesDefaultsToRecentHistory(t *testing.T) 
 	helpers.InitDeps(caller)
 	root := newPlatformCoverageRoot()
 	before := time.Now().Add(-2 * time.Second)
-	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--limit", "5"})
+	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--limit", "5", "--yes"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +133,7 @@ func TestCrossPlatformCoverageChatMessagesPreservesExplicitTime(t *testing.T) {
 		"chat", "+chat-messages",
 		"--group", "cid",
 		"--time", "2026-07-01 12:34:56",
+		"--yes",
 	})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)

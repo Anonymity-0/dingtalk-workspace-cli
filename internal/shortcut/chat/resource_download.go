@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -58,7 +59,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 	Intent: "当你需要拿到消息里的实际图片、视频、语音或钉盘文件，而不只是资源 ID 时使用；" +
 		"mediaId 用消息和会话身份换取下载地址，fileId 复用钉盘下载能力，再安全写入工作目录内的相对路径。" +
 		"默认不覆盖已有文件，只有显式传 --overwrite 才覆盖。",
-	Risk: shortcut.RiskRead,
+	Risk: shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "type", Type: shortcut.FlagString, Default: "mediaId", Desc: "资源类型", Enum: []string{"mediaId", "fileId"}},
 		{Name: "resource-id", Type: shortcut.FlagString, Desc: "消息中的 mediaId 或 fileId", Required: true},
@@ -233,10 +234,12 @@ func resourceDownloadInfo(data map[string]any) (string, map[string]string, error
 		parsed.Scheme = "https"
 		resourceURL = parsed.String()
 	}
-	if parsed.Scheme != "https" {
-		return "", nil, apperrors.NewAPI(
-			"资源下载接口未返回合法的 HTTPS 下载地址")
+	parsed, err = validateResourceDownloadURL(resourceURL)
+	if err != nil {
+		return "", nil, apperrors.NewAPI(fmt.Sprintf(
+			"资源下载接口返回了不受信任的下载地址: %v", err))
 	}
+	resourceURL = parsed.String()
 
 	headers := map[string]string{}
 	if values, ok := data["headers"].(map[string]any); ok {
@@ -263,7 +266,45 @@ func resourceDownloadPreferredName(data map[string]any) string {
 
 func isAliyunOSSHost(host string) bool {
 	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
-	return host == "aliyuncs.com" || strings.HasSuffix(host, ".aliyuncs.com")
+	if !strings.HasSuffix(host, ".aliyuncs.com") {
+		return false
+	}
+	for _, label := range strings.Split(strings.TrimSuffix(host, ".aliyuncs.com"), ".") {
+		if (label == "oss" || strings.HasPrefix(label, "oss-")) &&
+			!strings.Contains(label, "internal") {
+			return true
+		}
+	}
+	return false
+}
+
+func validateResourceDownloadURL(rawURL string) (*url.URL, error) {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil ||
+		parsed.Scheme != "https" ||
+		strings.TrimSpace(parsed.Host) == "" ||
+		parsed.User != nil {
+		return nil, apperrors.NewValidation("资源下载地址必须是受信任域名上的 HTTPS URL")
+	}
+	host := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(parsed.Hostname()), "."))
+	if host == "" || net.ParseIP(host) != nil || !isResourceDownloadAllowedHost(host) {
+		return nil, apperrors.NewValidation(fmt.Sprintf(
+			"资源下载地址域名 %q 不属于受信任的钉钉或 OSS 域名", host))
+	}
+	if port := parsed.Port(); port != "" && port != "443" {
+		return nil, apperrors.NewValidation("资源下载地址只允许使用 HTTPS 默认端口")
+	}
+	return parsed, nil
+}
+
+func isResourceDownloadAllowedHost(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
+	// Lower tools may return signed headers with the URL. Keep those headers
+	// confined to platform-owned public download families; extend this list
+	// only after observing another official production download host.
+	return isAliyunOSSHost(host) ||
+		host == "dingtalk.com" ||
+		strings.HasSuffix(host, ".dingtalk.com")
 }
 
 func resolveResourceDownloadPath(
@@ -403,22 +444,34 @@ func downloadResourceAtomically(
 	if client == nil {
 		client = &http.Client{Timeout: resourceDownloadTimeout}
 	}
+	parsedResourceURL, err := validateResourceDownloadURL(resourceURL)
+	if err != nil {
+		return 0, err
+	}
 	clientCopy := *client
 	client = &clientCopy
 	originalRedirect := client.CheckRedirect
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if req.URL.Scheme != "https" || strings.TrimSpace(req.URL.Host) == "" {
-			return apperrors.NewValidation("资源下载重定向必须使用 HTTPS")
+		if _, redirectErr := validateResourceDownloadURL(req.URL.String()); redirectErr != nil {
+			return apperrors.NewValidation(fmt.Sprintf(
+				"资源下载重定向指向了不受信任的地址: %v", redirectErr))
 		}
 		if len(via) >= 10 {
 			return apperrors.NewAPI("资源下载重定向次数过多")
+		}
+		if len(via) > 0 &&
+			!strings.EqualFold(req.URL.Hostname(), via[len(via)-1].URL.Hostname()) {
+			for key := range headers {
+				req.Header.Del(key)
+			}
 		}
 		if originalRedirect != nil {
 			return originalRedirect(req, via)
 		}
 		return nil
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, resourceURL, nil)
+	request, err := http.NewRequestWithContext(
+		ctx, http.MethodGet, parsedResourceURL.String(), nil)
 	if err != nil {
 		return 0, apperrors.NewValidation(fmt.Sprintf("创建资源下载请求失败: %v", err))
 	}

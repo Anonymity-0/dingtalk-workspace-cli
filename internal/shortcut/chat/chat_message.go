@@ -526,8 +526,8 @@ var MessagesMget = shortcut.Shortcut{
 	Command:     "+messages-mget",
 	Product:     "im",
 	Description: "根据消息 ID 批量查询消息（最多 50 条）",
-	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。",
-	Risk:        shortcut.RiskRead,
+	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
+	Risk:        shortcut.RiskWrite,
 	Flags: append([]shortcut.Flag{
 		{Name: "msg-ids", Type: shortcut.FlagStringSlice, Desc: "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID", Required: true},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
@@ -620,7 +620,7 @@ func DownloadMessageResources(
 ) map[string]any {
 	resources := make([]map[string]any, 0)
 	for _, message := range messages {
-		resources = append(resources, chatmsg.Resources(message)...)
+		resources = append(resources, chatmsg.ResourcesDeep(message)...)
 	}
 	discoveredCount := len(resources)
 	uniqueResources := make([]map[string]any, 0, len(resources))
@@ -635,6 +635,10 @@ func DownloadMessageResources(
 			messageID = ""
 		}
 		key := strings.ToLower(resourceType) + "\x00" + resourceID
+		if strings.EqualFold(resourceType, "mediaId") {
+			conversationID := strings.TrimSpace(fmt.Sprint(arguments["open-conversation-id"]))
+			key += "\x00" + messageID + "\x00" + conversationID
+		}
 		if resourceID != "" && resourceID != "<nil>" {
 			if seen[key] {
 				continue

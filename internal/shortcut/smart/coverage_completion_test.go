@@ -89,7 +89,7 @@ func TestCrossPlatformCoverageChatMessagesOpenIDRoute(t *testing.T) {
 	}}
 	helpers.InitDeps(caller)
 	root := newPlatformCoverageRoot()
-	root.SetArgs([]string{"chat", "+chat-messages", "--open-dingtalk-id", "D-user", "--limit", "1"})
+	root.SetArgs([]string{"chat", "+chat-messages", "--open-dingtalk-id", "D-user", "--limit", "1", "--yes"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestCrossPlatformCoverageSearchValidationAndTimeErrors(t *testing.T) {
 	for _, tail := range cases {
 		helpers.InitDeps(&smartCoverageCaller{})
 		root := newPlatformCoverageRoot()
-		root.SetArgs(append([]string{"chat", "+search-msg"}, tail...))
+		root.SetArgs(append([]string{"chat", "+search-msg", "--yes"}, tail...))
 		if err := root.Execute(); err == nil {
 			t.Errorf("invalid search args succeeded: %v", tail)
 		}
@@ -247,7 +247,7 @@ func TestCrossPlatformCoverageSearchPaginationFailureModes(t *testing.T) {
 			root := newPlatformCoverageRoot()
 			var output bytes.Buffer
 			root.SetOut(&output)
-			root.SetArgs(append([]string{"chat", "+search-msg"}, tc.args...))
+			root.SetArgs(append([]string{"chat", "+search-msg", "--yes"}, tc.args...))
 			err := root.Execute()
 			if (err != nil) != tc.wantError {
 				t.Fatalf("error = %v, wantError=%v", err, tc.wantError)

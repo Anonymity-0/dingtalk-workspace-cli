@@ -30,8 +30,8 @@ import (
 //     project each reply to {sender, text, createTime} tolerating field aliases;
 //  3. print via rt.Output as {replies, count} so it honours --format/--jq/--fields.
 //
-// Read-only: it only reads a topic's replies and reshapes them locally, never
-// posts or mutates anything.
+// The default path only reads and reshapes topic replies;
+// --download-resources additionally writes resource files locally.
 //
 //	dws chat +thread-replies --group <openconversationId> --thread-id <threadId>
 var ThreadReplies = shortcut.Shortcut{
@@ -42,8 +42,8 @@ var ThreadReplies = shortcut.Shortcut{
 	Intent: "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），" +
 		"而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，" +
 		"可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。" +
-		"这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。",
-	Risk: shortcut.RiskRead,
+		"默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
+	Risk: shortcut.RiskWrite,
 	Flags: append([]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId，必填）", Required: true},
 		{Name: "thread-id", Type: shortcut.FlagString, Desc: "话题/线程 ID（可直接使用消息列表返回的 threadId）"},

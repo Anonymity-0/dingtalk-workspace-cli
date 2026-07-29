@@ -37,8 +37,8 @@ import (
 //     aliases and one level of nesting;
 //  3. print via rt.Output as {messages, count} so it honours --format/--jq/--fields.
 //
-// Read-only: it only reads a conversation's messages and reshapes them locally,
-// never posts or mutates anything.
+// The default path only reads and reshapes conversation messages;
+// --download-resources additionally writes resource files locally.
 //
 //	dws chat +chat-messages --group <openconversation_id> --time "2025-03-01 00:00:00"
 //	dws chat +chat-messages --user <userId> --time "2025-03-01 00:00:00" --limit 50
@@ -51,8 +51,8 @@ var ChatMessages = shortcut.Shortcut{
 		"群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。" +
 		"省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。" +
 		"内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。" +
-		"这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。",
-	Risk: shortcut.RiskRead,
+		"默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
+	Risk: shortcut.RiskWrite,
 	Flags: append([]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId），与 --user 互斥"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},

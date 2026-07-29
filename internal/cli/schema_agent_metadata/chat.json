@@ -8,8 +8,8 @@
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
-      "confirmation": "not_required",
-      "effect": "read",
+      "confirmation": "user_required",
+      "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +at-me",
@@ -37,14 +37,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -69,34 +69,34 @@
           ]
         },
         "confirmation": {
-          "value": "not_required",
+          "value": "user_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "not_required",
+              "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "effect": {
-          "value": "read",
+          "value": "write",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "read",
+              "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -123,18 +123,18 @@
           ]
         },
         "idempotency": {
-          "value": "idempotent",
+          "value": "unknown",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "idempotent",
+              "value": "unknown",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -143,14 +143,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -159,14 +159,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -191,14 +191,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             },
             {
               "value": true,
@@ -210,24 +210,24 @@
           ]
         },
         "risk": {
-          "value": "low",
+          "value": "medium",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "low",
+              "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。"
+            "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -236,7 +236,7 @@
           "candidates": [
             {
               "value": [
-                "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。"
+                "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -246,11 +246,11 @@
           ]
         }
       },
-      "idempotency": "idempotent",
+      "idempotency": "unknown",
       "interface_mode": "composite",
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source_refs": [
         "ShortcutRegistry:chat +at-me",
         "cobra-help:dws chat +at-me",
@@ -259,7 +259,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。"
+        "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
       ]
     },
     "chat +bot-find": {
@@ -3623,8 +3623,8 @@
       "avoid_when": [
         "要跨多个会话按关键词、发送者或消息类型检索时使用 +search-msg；已有一批精确消息 ID 时使用 +messages-mget"
       ],
-      "confirmation": "not_required",
-      "effect": "read",
+      "confirmation": "user_required",
+      "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +chat-messages --group \u003copenConversationId\u003e --direction older",
@@ -3652,14 +3652,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -3684,34 +3684,34 @@
           ]
         },
         "confirmation": {
-          "value": "not_required",
+          "value": "user_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "not_required",
+              "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "effect": {
-          "value": "read",
+          "value": "write",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "read",
+              "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -3738,18 +3738,18 @@
           ]
         },
         "idempotency": {
-          "value": "idempotent",
+          "value": "unknown",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "idempotent",
+              "value": "unknown",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -3758,14 +3758,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -3774,14 +3774,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -3806,14 +3806,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             },
             {
               "value": true,
@@ -3825,24 +3825,24 @@
           ]
         },
         "risk": {
-          "value": "low",
+          "value": "medium",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "low",
+              "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, shared safe-output validation, resource de-duplication, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+            "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -3851,7 +3851,7 @@
           "candidates": [
             {
               "value": [
-                "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+                "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -3861,11 +3861,11 @@
           ]
         }
       },
-      "idempotency": "idempotent",
+      "idempotency": "unknown",
       "interface_mode": "composite",
       "interface_reason": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source_refs": [
         "ShortcutRegistry:chat +chat-messages",
         "cobra-help:dws chat +chat-messages",
@@ -3874,7 +3874,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+        "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
       ]
     },
     "chat +chat-mute": {
@@ -9047,8 +9047,8 @@
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
-      "confirmation": "not_required",
-      "effect": "read",
+      "confirmation": "user_required",
+      "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +messages-mget --msg-ids msgId1,msgId2"
@@ -9075,14 +9075,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -9107,34 +9107,34 @@
           ]
         },
         "confirmation": {
-          "value": "not_required",
+          "value": "user_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "not_required",
+              "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "effect": {
-          "value": "read",
+          "value": "write",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "read",
+              "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -9159,18 +9159,18 @@
           ]
         },
         "idempotency": {
-          "value": "idempotent",
+          "value": "unknown",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "idempotent",
+              "value": "unknown",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -9179,14 +9179,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -9195,14 +9195,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -9227,14 +9227,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             },
             {
               "value": true,
@@ -9246,24 +9246,24 @@
           ]
         },
         "risk": {
-          "value": "low",
+          "value": "medium",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "low",
+              "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity."
+              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
+            "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -9272,7 +9272,7 @@
           "candidates": [
             {
               "value": [
-                "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
+                "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -9282,11 +9282,11 @@
           ]
         }
       },
-      "idempotency": "idempotent",
+      "idempotency": "unknown",
       "interface_mode": "composite",
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source_refs": [
         "ShortcutRegistry:chat +messages-mget",
         "cobra-help:dws chat +messages-mget",
@@ -9295,7 +9295,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
+        "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
       ]
     },
     "chat +messages-query-send-status": {
@@ -11120,8 +11120,8 @@
       "avoid_when": [
         "只想读取一个已知会话的连续历史时使用 +chat-messages；已有精确消息 ID 时使用 +messages-mget"
       ],
-      "confirmation": "not_required",
-      "effect": "read",
+      "confirmation": "user_required",
+      "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +search-msg --query \"周报\" --senders \u003copenDingTalkId\u003e --days 3 --page-all",
@@ -11149,14 +11149,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11181,34 +11181,34 @@
           ]
         },
         "confirmation": {
-          "value": "not_required",
+          "value": "user_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "not_required",
+              "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "effect": {
-          "value": "read",
+          "value": "write",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "read",
+              "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11235,18 +11235,18 @@
           ]
         },
         "idempotency": {
-          "value": "idempotent",
+          "value": "unknown",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "idempotent",
+              "value": "unknown",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11255,14 +11255,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11271,14 +11271,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11303,14 +11303,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             },
             {
               "value": true,
@@ -11322,24 +11322,24 @@
           ]
         },
         "risk": {
-          "value": "low",
+          "value": "medium",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger.",
+          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "low",
+              "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, shared safe-output validation, and optional per-resource download ledger."
+              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。"
+            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -11348,7 +11348,7 @@
           "candidates": [
             {
               "value": [
-                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。"
+                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -11358,11 +11358,11 @@
           ]
         }
       },
-      "idempotency": "idempotent",
+      "idempotency": "unknown",
       "interface_mode": "composite",
       "interface_reason": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source_refs": [
         "ShortcutRegistry:chat +search-msg",
         "cobra-help:dws chat +search-msg",
@@ -11371,7 +11371,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。"
+        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
       ]
     },
     "chat +send-to-group": {
@@ -11637,10 +11637,10 @@
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
-        "要回复 Thread 或发送新回复时不要使用此只读入口；当前没有经过验证的 thread writer Shortcut"
+        "要回复 Thread 或发送新回复时不要使用此读取入口；当前没有经过验证的 thread writer Shortcut"
       ],
-      "confirmation": "not_required",
-      "effect": "read",
+      "confirmation": "user_required",
+      "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +thread-replies --group \u003copenConversationId\u003e --thread-id \u003cthreadId\u003e",
@@ -11668,20 +11668,20 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "avoid_when": {
           "value": [
-            "要回复 Thread 或发送新回复时不要使用此只读入口；当前没有经过验证的 thread writer Shortcut"
+            "要回复 Thread 或发送新回复时不要使用此读取入口；当前没有经过验证的 thread writer Shortcut"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -11690,7 +11690,7 @@
           "candidates": [
             {
               "value": [
-                "要回复 Thread 或发送新回复时不要使用此只读入口；当前没有经过验证的 thread writer Shortcut"
+                "要回复 Thread 或发送新回复时不要使用此读取入口；当前没有经过验证的 thread writer Shortcut"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -11700,34 +11700,34 @@
           ]
         },
         "confirmation": {
-          "value": "not_required",
+          "value": "user_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "not_required",
+              "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "effect": {
-          "value": "read",
+          "value": "write",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "read",
+              "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11754,18 +11754,18 @@
           ]
         },
         "idempotency": {
-          "value": "idempotent",
+          "value": "unknown",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "idempotent",
+              "value": "unknown",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11774,14 +11774,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11790,14 +11790,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
@@ -11822,14 +11822,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             },
             {
               "value": true,
@@ -11841,24 +11841,24 @@
           ]
         },
         "risk": {
-          "value": "low",
+          "value": "medium",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
           "candidates": [
             {
-              "value": "low",
+              "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, group fallback for resource context, and per-resource failure ledger."
+              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+            "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -11867,7 +11867,7 @@
           "candidates": [
             {
               "value": [
-                "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+                "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -11877,11 +11877,11 @@
           ]
         }
       },
-      "idempotency": "idempotent",
+      "idempotency": "unknown",
       "interface_mode": "composite",
       "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
       "reviewed": true,
-      "risk": "low",
+      "risk": "medium",
       "source_refs": [
         "ShortcutRegistry:chat +thread-replies",
         "cobra-help:dws chat +thread-replies",
@@ -11890,7 +11890,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。"
+        "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
       ]
     },
     "chat +unread-chats": {
