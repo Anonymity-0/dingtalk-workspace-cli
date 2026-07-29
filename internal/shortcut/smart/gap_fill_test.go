@@ -15,8 +15,8 @@ import (
 
 func TestCrossPlatformCoverageSafeResourceQueryDownloadsStayReadOnly(t *testing.T) {
 	for _, command := range []shortcut.Shortcut{AtMe, ChatMessages, SearchMsg, ThreadReplies} {
-		if command.Risk != shortcut.RiskRead || command.RiskWhen != nil {
-			t.Errorf("%s risk contract = %q, dynamic=%v", command.Command, command.Risk, command.RiskWhen != nil)
+		if command.Risk != shortcut.RiskRead {
+			t.Errorf("%s risk contract = %q", command.Command, command.Risk)
 		}
 	}
 }

@@ -105,7 +105,7 @@ metadata:
 | `dws chat +messages-remove-emoji` | write | 移除消息的 emoji 表情回应 |
 | `dws chat +messages-remove-text-emotion` | write | 移除消息的文字表情回应 |
 | `dws chat +messages-reply` | write | 以当前用户身份引用回复消息（自动补全原发送者） |
-| `dws chat +messages-resource-download` | write | 安全下载消息资源（图片/视频/语音/文件）到本地 |
+| `dws chat +messages-resource-download` | read | 安全下载消息资源（图片/视频/语音/文件）到工作目录内，无需交互确认 |
 | `dws chat +messages-resource-url` | read | 获取消息资源（图片/视频/语音）下载链接 |
 | `dws chat +messages-send` | write | 统一发送文本、Markdown、当前用户文件或已有 mediaId 图片 |
 | `dws chat +messages-send-by-bot` | write | 机器人向群聊发送 Markdown 消息 |
@@ -130,6 +130,7 @@ metadata:
 - 查询结果中的 `resourceRefs` 是可继续执行的资源上下文。引用、回复或合并转发中的子消息必须使用该子消息返回的 `messageId`；子消息缺会话 ID 时才继承父消息的 `openConversationId`。
 - 上述五个查询 Shortcut 与 `+messages-resource-download` 都沿用安全本地下载的 `read/not_required` 契约，不应添加 `--yes` 或触发交互确认。下载只允许工作目录内相对路径、默认不覆盖并原子落盘；需要覆盖时必须由用户显式传 `--overwrite`。
 - `+messages-send` 会按身份规范化 @ 占位符：user 使用 `<@id>` / `<@all>`，bot/webhook 使用 `@id` / `@手机号` / `@all`；只需声明 `--at-*` / `--at-all`，缺失占位符会自动补齐。
+- 流式卡片优先用 `+messages-send-card`：群聊传 `--group`，单聊 userId 传 `--receiver` 并由 CLI 只读解析，已有 openDingTalkId 则必须显式传 `--receiver-open-dingtalk-id`；三者严格三选一，禁止根据首字母猜身份类型。
 
 ## 意图表
 
@@ -145,6 +146,7 @@ metadata:
 | "查看我收藏的消息" | `dws chat +flag-list` |
 | "用机器人发消息" | `dws chat +messages-send --as bot --robot-code <code> --chat-id <id> --text "<内容>"` |
 | "Webhook 推一条" | `dws chat +messages-send --as webhook --webhook-token <token> --text "<内容>"` |
+| "发送流式卡片" | `dws chat +messages-send-card --group <openConversationId> --content "<内容>"`；单聊 userId 改用 `--receiver`，openDingTalkId 改用 `--receiver-open-dingtalk-id` |
 | "撤回消息" | `dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>` |
 | "标记未读 / 清除红点 / 全部已读" | `dws chat mark-unread` / `dws chat clear-red-point` / `dws chat clear-all-red-point` |
 | "置顶某条消息 / 取消消息置顶" | `dws chat message set-top-msg` / `dws chat message unset-top-msg` |

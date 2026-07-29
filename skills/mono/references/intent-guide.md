@@ -289,6 +289,12 @@ dws chat +messages-send --as user --open-dingtalk-id <openDingTalkId> --msg-type
 
 `+messages-send` 的 @ 占位符按身份自动规范化并补齐：user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要再手工拼 `@10`。
 
+**用 `chat +messages-send-card` 的场景**：
+- 群聊流式卡片使用 `--group <openConversationId>`。
+- 单聊已有 userId 时使用 `--receiver <userId>`，CLI 始终先只读解析为 openDingTalkId；即使 userId 以 D/d 开头也不会猜测类型，`--dry-run` 也会执行该解析。
+- 单聊已有 openDingTalkId 时必须显式使用 `--receiver-open-dingtalk-id <openDingTalkId>`，避免与 userId 混淆。
+- `--group`、`--receiver`、`--receiver-open-dingtalk-id` 严格三选一；传 `--content` 可在同一次调用中创建并结束卡片。
+
 **用 `chat +messages-send --as bot` 的场景**：
 - "让机器人在群里发一条通知" — **机器人身份**发消息
 - "给张三发一条机器人单聊消息" — 机器人单聊

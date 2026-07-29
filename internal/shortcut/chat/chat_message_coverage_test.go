@@ -89,6 +89,39 @@ func TestCrossPlatformCoverageMgetResourceDownloadOutcomes(t *testing.T) {
 			t.Fatalf("getwd ledger = %#v", ledger)
 		}
 	})
+	t.Run("zero resources skip getwd", func(t *testing.T) {
+		resetResourceDownloadHooks(t)
+		getwdCalled := false
+		resourceGetwd = func() (string, error) {
+			getwdCalled = true
+			return "", errors.New("getwd")
+		}
+		helpers.InitDeps(&larkAlignmentCaller{responses: map[string]string{
+			"im/list_messages_by_ids": `{"result":[{"openMessageId":"msg","openConversationId":"cid","content":"plain text"}]}`,
+		}})
+		root := newPlatformCoverageRoot()
+		var output bytes.Buffer
+		root.SetOut(&output)
+		root.SetArgs(baseArgs)
+		if err := root.Execute(); err != nil {
+			t.Fatalf("zero-resource download error = %v", err)
+		}
+		if getwdCalled {
+			t.Fatal("zero-resource download unnecessarily read the working directory")
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		ledger, _ := payload["resourceDownloads"].(map[string]any)
+		failures, _ := ledger["failures"].([]any)
+		if ledger["ok"] != true ||
+			ledger["requestedCount"] != float64(0) ||
+			ledger["failedCount"] != float64(0) ||
+			len(failures) != 0 {
+			t.Fatalf("zero-resource ledger = %#v", ledger)
+		}
+	})
 
 	cases := []struct {
 		name            string

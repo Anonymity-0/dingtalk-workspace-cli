@@ -56,8 +56,8 @@ func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 
 func TestCrossPlatformCoverageSafeResourceDownloadsStayReadOnly(t *testing.T) {
 	for _, command := range []shortcut.Shortcut{MessagesMget, MessagesResourceDownload} {
-		if command.Risk != shortcut.RiskRead || command.RiskWhen != nil {
-			t.Errorf("%s risk contract = %q, dynamic=%v", command.Command, command.Risk, command.RiskWhen != nil)
+		if command.Risk != shortcut.RiskRead {
+			t.Errorf("%s risk contract = %q", command.Command, command.Risk)
 		}
 	}
 }
@@ -386,7 +386,7 @@ func TestCrossPlatformCoverageMessagesSendCardResolvesReceiverForLowerTool(t *te
 	root := newPlatformCoverageRoot()
 	root.SetArgs([]string{
 		"chat", "+messages-send-card",
-		"--receiver", "user-id",
+		"--receiver", "d-user-id",
 		"--yes",
 	})
 	if err := root.Execute(); err != nil {
@@ -402,18 +402,21 @@ func TestCrossPlatformCoverageMessagesSendCardResolvesReceiverForLowerTool(t *te
 	if got := fake.calls[1].args["receiverOpenDingTalkId"]; got != "D-resolved" {
 		t.Fatalf("receiverOpenDingTalkId = %#v, want D-resolved", got)
 	}
+	if got := fake.calls[0].args["user_id_list"]; !reflect.DeepEqual(got, []string{"d-user-id"}) {
+		t.Fatalf("D/d-prefixed userId resolution args = %#v", fake.calls[0].args)
+	}
 	if _, exists := fake.calls[1].args["receiverUid"]; exists {
 		t.Fatalf("obsolete receiverUid leaked to lower tool: %#v", fake.calls[1].args)
 	}
 }
 
-func TestCrossPlatformCoverageMessagesSendCardKeepsOpenReceiver(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendCardUsesExplicitOpenReceiver(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
 	root.SetArgs([]string{
 		"chat", "+messages-send-card",
-		"--receiver", "D-direct",
+		"--receiver-open-dingtalk-id", "D-direct",
 		"--yes",
 	})
 	if err := root.Execute(); err != nil {
@@ -547,6 +550,8 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 	for _, args := range [][]string{
 		{"--group", "cid", "--content", "x", "--flow-status", "6"},
 		{"--group", "cid", "--flow-status", "2"},
+		{"--group", "cid", "--receiver-open-dingtalk-id", "D-direct"},
+		{"--receiver", "user-id", "--receiver-open-dingtalk-id", "D-direct"},
 	} {
 		helpers.InitDeps(&larkAlignmentCaller{})
 		root := newPlatformCoverageRoot()

@@ -41,73 +41,15 @@ func TestCrossPlatformCoverageRiskDefaultsToRead(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageEffectiveRiskUsesParsedFlagsAndFailsClosed(t *testing.T) {
+func TestCrossPlatformCoverageConfirmRiskPromptsForStaticWrite(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().Bool("download-resources", false, "")
-	rt := &RuntimeContext{cmd: cmd}
-	s := Shortcut{
-		Risk: RiskRead,
-		RiskWhen: func(rt *RuntimeContext) Risk {
-			if rt.Bool("download-resources") {
-				return RiskWrite
-			}
-			return RiskRead
-		},
-	}
-	if got := s.effectiveRisk(rt); got != RiskRead {
-		t.Fatalf("default effectiveRisk() = %q, want read", got)
-	}
-	if err := cmd.Flags().Set("download-resources", "true"); err != nil {
-		t.Fatal(err)
-	}
-	if got := s.effectiveRisk(rt); got != RiskWrite {
-		t.Fatalf("download effectiveRisk() = %q, want write", got)
-	}
-
-	s.Risk = RiskRead
-	s.RiskWhen = func(*RuntimeContext) Risk { return Risk("unknown") }
-	if got := s.effectiveRisk(rt); got != RiskHighWrite {
-		t.Fatalf("invalid callback effectiveRisk() = %q, want high-risk-write", got)
-	}
-	s.Risk = RiskWrite
-	s.RiskWhen = func(*RuntimeContext) Risk { return RiskHighWrite }
-	if got := s.effectiveRisk(rt); got != RiskHighWrite {
-		t.Fatalf("write-to-high upgrade effectiveRisk() = %q, want high-risk-write", got)
-	}
-	s.RiskWhen = func(*RuntimeContext) Risk { return RiskRead }
-	if got := s.effectiveRisk(rt); got != RiskWrite {
-		t.Fatalf("write-to-read downgrade effectiveRisk() = %q, want write", got)
-	}
-	s.Risk = Risk("unknown")
-	if got := s.effectiveRisk(rt); got != RiskHighWrite {
-		t.Fatalf("invalid base effectiveRisk() = %q, want high-risk-write", got)
-	}
-	s.Risk = RiskHighWrite
-	s.RiskWhen = func(*RuntimeContext) Risk { return RiskRead }
-	if got := s.effectiveRisk(rt); got != RiskHighWrite {
-		t.Fatalf("high-risk downgrade effectiveRisk() = %q, want high-risk-write", got)
-	}
-}
-
-func TestCrossPlatformCoverageConfirmRiskUsesEffectiveRisk(t *testing.T) {
-	cmd := &cobra.Command{}
-	cmd.Flags().Bool("download-resources", false, "")
-	if err := cmd.Flags().Set("download-resources", "true"); err != nil {
-		t.Fatal(err)
-	}
 	var stderr bytes.Buffer
 	cmd.SetErr(&stderr)
 	rt := &RuntimeContext{cmd: cmd}
 	s := Shortcut{
 		Service: "chat",
-		Command: "+messages-mget",
-		Risk:    RiskRead,
-		RiskWhen: func(rt *RuntimeContext) Risk {
-			if rt.Bool("download-resources") {
-				return RiskWrite
-			}
-			return RiskRead
-		},
+		Command: "+messages-send",
+		Risk:    RiskWrite,
 	}
 
 	reader, writer, err := os.Pipe()
@@ -128,50 +70,10 @@ func TestCrossPlatformCoverageConfirmRiskUsesEffectiveRisk(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !confirmRisk(rt, s) {
-		t.Fatal("dynamic write risk was not confirmed")
+		t.Fatal("static write risk was not confirmed")
 	}
-	if got := stderr.String(); !strings.Contains(got, "chat +messages-mget（write）") {
+	if got := stderr.String(); !strings.Contains(got, "chat +messages-send（write）") {
 		t.Fatalf("confirmation prompt = %q", got)
-	}
-}
-
-func TestConfirmRiskDoesNotReadStdinForDynamicReadInvocation(t *testing.T) {
-	cmd := &cobra.Command{}
-	cmd.Flags().Bool("download-resources", false, "")
-	var stderr bytes.Buffer
-	cmd.SetErr(&stderr)
-	rt := &RuntimeContext{cmd: cmd}
-	s := Shortcut{
-		Service: "chat",
-		Command: "+at-me",
-		Risk:    RiskRead,
-		RiskWhen: func(rt *RuntimeContext) Risk {
-			if rt.Bool("download-resources") {
-				return RiskWrite
-			}
-			return RiskRead
-		},
-	}
-
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	previousStdin := os.Stdin
-	os.Stdin = reader
-	t.Cleanup(func() {
-		os.Stdin = previousStdin
-		_ = reader.Close()
-	})
-
-	if !confirmRisk(rt, s) {
-		t.Fatal("dynamic read invocation was treated as a declined write")
-	}
-	if stderr.Len() != 0 {
-		t.Fatalf("dynamic read invocation prompted: %q", stderr.String())
 	}
 }
 

@@ -1199,8 +1199,14 @@
       "interface_mode": "composite",
       "availability": "available",
       "interface_reason": "Reviewed card lifecycle adapter: it can call create_and_send_card alone or compose it with update_streaming_card after extracting the returned bizId.",
+      "parameters": {
+        "receiver-open-dingtalk-id": {
+          "property": "receiverOpenDingTalkId",
+          "required": false
+        }
+      },
       "reviewed": true,
-      "review_reason": "Reviewed against create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId.",
+      "review_reason": "Reviewed against create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
       "cli_path": "chat +messages-send-card",
       "runtime_gate": "typed_yes"
     },

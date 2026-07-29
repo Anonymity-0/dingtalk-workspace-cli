@@ -461,7 +461,7 @@ func validateConstraints(rt *RuntimeContext, s Shortcut) error {
 // --dry-run is set. Read-only shortcuts never prompt. Returns false when the
 // user declines.
 func confirmRisk(rt *RuntimeContext, s Shortcut) bool {
-	risk := s.effectiveRisk(rt)
+	risk := s.risk()
 	if risk == RiskRead || rt.DryRun() || rt.Yes() {
 		return true
 	}

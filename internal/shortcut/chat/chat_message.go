@@ -660,6 +660,19 @@ func DownloadMessageResources(
 			"resources":         resources,
 		}
 	}
+	if len(resources) == 0 {
+		return map[string]any{
+			"ok":                true,
+			"partial":           false,
+			"discoveredCount":   discoveredCount,
+			"requestedCount":    0,
+			"deduplicatedCount": discoveredCount,
+			"downloadedCount":   0,
+			"failedCount":       0,
+			"downloads":         []map[string]any{},
+			"failures":          []map[string]any{},
+		}
+	}
 
 	cwd, err := resourceGetwd()
 	if err != nil {
@@ -1002,16 +1015,17 @@ var MessagesSendCard = shortcut.Shortcut{
 	Command:     "+messages-send-card",
 	Product:     "im",
 	Description: "创建流式卡片，可在同一次调用中写入内容并结束",
-	Intent:      "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。",
+	Intent:      "当你要发送一张流式卡片消息时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 做只读通讯录解析，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（与 --receiver 互斥）"},
-		{Name: "receiver", Type: shortcut.FlagString, Desc: "单聊接收者 userId 或 openDingTalkId（与 --group 互斥）；userId 包括在 --dry-run 时也会先只读解析"},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（与两个单聊接收者参数互斥）"},
+		{Name: "receiver", Type: shortcut.FlagString, Desc: "单聊接收者 userId（与 --group/--receiver-open-dingtalk-id 互斥）；始终只读解析为 openDingTalkId，包括 --dry-run 和 D/d 开头的 userId"},
+		{Name: "receiver-open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊接收者 openDingTalkId（与 --group/--receiver 互斥）；显式直传且不做通讯录解析"},
 		{Name: "content", Type: shortcut.FlagString, Desc: "创建后立即写入的卡片内容；省略时仅创建并返回 bizId"},
 		{Name: "flow-status", Type: shortcut.FlagInt, Default: "3", Desc: "自动更新状态：1处理中/2输入中/3完成/4执行中/5错误；--flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"},
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "receiver"}},
+		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "receiver", "receiver-open-dingtalk-id"}},
 		{
 			Kind:        shortcut.ConstraintCustom,
 			Flags:       []string{"flow-status"},
@@ -1034,21 +1048,19 @@ var MessagesSendCard = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		group := rt.Str("group")
 		receiver := rt.Str("receiver")
-		if group == "" && receiver == "" {
-			return fmt.Errorf("--group 或 --receiver 必填其一")
-		}
-		if group != "" && receiver != "" {
-			return fmt.Errorf("--group 与 --receiver 互斥")
-		}
+		receiverOpenID := rt.Str("receiver-open-dingtalk-id")
 		params := map[string]any{}
-		if group != "" {
+		switch {
+		case group != "":
 			params["openConversationId"] = group
-		} else {
+		case receiver != "":
 			openID, err := resolveUserOpenDingTalkID(rt, receiver)
 			if err != nil {
 				return err
 			}
 			params["receiverOpenDingTalkId"] = openID
+		default:
+			params["receiverOpenDingTalkId"] = receiverOpenID
 		}
 		content := rt.Str("content")
 		if content == "" {

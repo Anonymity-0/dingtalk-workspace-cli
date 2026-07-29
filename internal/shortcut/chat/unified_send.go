@@ -368,9 +368,6 @@ func messagesSendUserTarget(rt *shortcut.RuntimeContext) (group, openID string, 
 
 func resolveUserOpenDingTalkID(rt *shortcut.RuntimeContext, userID string) (string, error) {
 	userID = strings.TrimSpace(userID)
-	if isOpenID(userID) {
-		return userID, nil
-	}
 	data, err := rt.CallMCPData("contact", "get_user_info_by_user_ids", map[string]any{
 		"user_id_list": []string{userID},
 	})
@@ -379,7 +376,7 @@ func resolveUserOpenDingTalkID(rt *shortcut.RuntimeContext, userID string) (stri
 	}
 	openID := findOpenDingTalkID(data)
 	if openID == "" {
-		return "", apperrors.NewValidation("无法把 userId 解析为 openDingTalkId；请改传 openDingTalkId")
+		return "", apperrors.NewValidation("无法把 userId 解析为 openDingTalkId；请改用当前命令提供的显式 openDingTalkId 参数")
 	}
 	return openID, nil
 }
