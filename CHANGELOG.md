@@ -6,6 +6,14 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **Agent product identity** (#816) — adds the optional `DWS_AGENT_PRODUCT` override for the existing HTTP `claw-type` header while preserving each edition's default when unset. Product and runtime labels are caller-declared signals, not authentication credentials; services must validate supported values and must not grant access solely from them. The override does not change the separate IM message-display `clawType` parameter controlled by the edition and `--ai-tag`.
+
+### Changed
+
+- **Agent identity label hardening** (#816) — limits `DWS_AGENT_PRODUCT` and `DWS_AGENT_HOST` to 64 ASCII bytes, trims only surrounding ASCII spaces and tabs, and rejects other control or Unicode whitespace. QwenWork integrations should report the two dimensions separately as `DWS_AGENT_PRODUCT=qwenwork` plus `DWS_AGENT_HOST=cloud` or `desktop`; previously used combined Host labels such as `qwenwork_cloud` remain syntactically valid for compatibility.
+
 ## [1.0.55-beta.5] - 2026-07-28
 
 This beta validates expanded personal event consumption, complete Agent-visible

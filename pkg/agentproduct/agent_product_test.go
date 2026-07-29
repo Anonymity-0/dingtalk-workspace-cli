@@ -26,12 +26,13 @@ func TestParse(t *testing.T) {
 		want string
 	}{
 		{name: "unset", raw: "", want: ""},
-		{name: "whitespace only", raw: " \t\u3000", want: ""},
+		{name: "ASCII whitespace only", raw: " \t ", want: ""},
 		{name: "qwenwork", raw: "qwenwork", want: "qwenwork"},
 		{name: "legacy open claw", raw: "openClaw", want: "openClaw"},
 		{name: "trim", raw: " \tqwenwork\t ", want: "qwenwork"},
 		{name: "generic", raw: "agent-2_alpha", want: "agent-2_alpha"},
 		{name: "leading digit", raw: "2nd_product", want: "2nd_product"},
+		{name: "maximum length", raw: strings.Repeat("a", MaxValueBytes), want: strings.Repeat("a", MaxValueBytes)},
 	}
 	for _, tc := range valid {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,6 +58,12 @@ func TestParse(t *testing.T) {
 		{name: "leading dash", raw: "-qwenwork"},
 		{name: "leading underscore", raw: "_qwenwork"},
 		{name: "control character", raw: "qwenwork\x00cloud"},
+		{name: "vertical tab", raw: "\vqwenwork"},
+		{name: "form feed", raw: "qwenwork\f"},
+		{name: "next line", raw: "qwenwork\u0085"},
+		{name: "non-breaking space", raw: "\u00a0qwenwork"},
+		{name: "ideographic space", raw: "qwenwork\u3000"},
+		{name: "too long", raw: strings.Repeat("a", MaxValueBytes+1)},
 	}
 	for _, tc := range invalid {
 		t.Run(tc.name, func(t *testing.T) {

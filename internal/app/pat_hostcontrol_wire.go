@@ -17,7 +17,6 @@ import (
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pat"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -49,23 +48,16 @@ func hostControlProviderFromEnv() string {
 	return effectiveClawType()
 }
 
-// effectiveClawType returns the literal value injected into outbound
-// `claw-type` headers. It follows the same edition-hook and environment
-// override order as resolveIdentityHeaders so PAT hostControl cannot drift
-// from the request wire identity.
+// effectiveClawType resolves the literal value injected into outbound
+// `claw-type` headers without invoking credential hooks from PAT error
+// serialization. MergeHeaders implementations that set claw-type must satisfy
+// the edition contract that this value is independent of the base map.
 func effectiveClawType() string {
 	headers := make(map[string]string)
 	if h := edition.Get(); h != nil {
 		if h.MergeHeaders != nil {
 			headers = h.MergeHeaders(headers)
 		}
-		if h.EnterpriseCredentialHeaders != nil {
-			headers = h.EnterpriseCredentialHeaders(headers)
-		}
 	}
-	headers = applyAgentProductOverride(headers)
-	if v, ok := headers[agentproduct.HeaderName]; ok && v != "" {
-		return v
-	}
-	return edition.DefaultOSSClawType
+	return resolveEffectiveAgentProduct(headers)
 }

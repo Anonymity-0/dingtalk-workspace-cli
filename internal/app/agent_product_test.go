@@ -80,8 +80,8 @@ func TestResolveIdentityHeadersAgentProductPrecedence(t *testing.T) {
 	t.Run("unset keeps edition default", func(t *testing.T) {
 		t.Setenv(agentproduct.EnvName, "")
 		headers := resolveIdentityHeaders()
-		if got := headers[agentproduct.HeaderName]; got != "enterprise-default" {
-			t.Fatalf("%s = %q, want enterprise-default", agentproduct.HeaderName, got)
+		if got := headers[agentproduct.HeaderName]; got != "wukong" {
+			t.Fatalf("%s = %q, want wukong", agentproduct.HeaderName, got)
 		}
 	})
 
@@ -105,8 +105,8 @@ func TestResolveIdentityHeadersAgentProductPrecedence(t *testing.T) {
 	t.Run("invalid library input falls back to edition", func(t *testing.T) {
 		t.Setenv(agentproduct.EnvName, "qwen work")
 		headers := resolveIdentityHeaders()
-		if got := headers[agentproduct.HeaderName]; got != "enterprise-default" {
-			t.Fatalf("%s = %q, want enterprise-default", agentproduct.HeaderName, got)
+		if got := headers[agentproduct.HeaderName]; got != "wukong" {
+			t.Fatalf("%s = %q, want wukong", agentproduct.HeaderName, got)
 		}
 	})
 }
@@ -160,12 +160,16 @@ func TestRootRejectsInvalidAgentProductBeforeEditionHook(t *testing.T) {
 	}
 }
 
-func TestEffectiveClawTypeUsesEnterpriseCredentialHeaders(t *testing.T) {
+func TestEffectiveClawTypeDoesNotInvokeEnterpriseCredentialHeaders(t *testing.T) {
 	oldEdition := edition.Get()
 	t.Cleanup(func() { edition.Override(oldEdition) })
 
 	hookCalled := false
 	edition.Override(&edition.Hooks{
+		MergeHeaders: func(headers map[string]string) map[string]string {
+			headers[agentproduct.HeaderName] = "wukong"
+			return headers
+		},
 		EnterpriseCredentialHeaders: func(headers map[string]string) map[string]string {
 			hookCalled = true
 			headers[agentproduct.HeaderName] = "enterprise-default"
@@ -174,11 +178,61 @@ func TestEffectiveClawTypeUsesEnterpriseCredentialHeaders(t *testing.T) {
 	})
 
 	t.Setenv(agentproduct.EnvName, "")
-	if got := effectiveClawType(); got != "enterprise-default" {
-		t.Fatalf("effectiveClawType() = %q, want enterprise-default", got)
+	if got := effectiveClawType(); got != "wukong" {
+		t.Fatalf("effectiveClawType() = %q, want wukong", got)
 	}
-	if !hookCalled {
+	if hookCalled {
+		t.Fatal("EnterpriseCredentialHeaders hook ran during PAT error serialization")
+	}
+}
+
+func TestAgentProductHeaderIsSeparateFromMessageClawType(t *testing.T) {
+	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Setenv(agentproduct.EnvName, "qwenwork")
+
+	oldEdition := edition.Get()
+	t.Cleanup(func() { edition.Override(oldEdition) })
+	edition.Override(&edition.Hooks{
+		ClawTypeValue: "message-brand",
+		MergeHeaders: func(headers map[string]string) map[string]string {
+			headers[agentproduct.HeaderName] = "wukong"
+			return headers
+		},
+	})
+
+	if got := resolveIdentityHeaders()[agentproduct.HeaderName]; got != "qwenwork" {
+		t.Fatalf("HTTP %s = %q, want qwenwork", agentproduct.HeaderName, got)
+	}
+	if got := edition.ClawType(); got != "message-brand" {
+		t.Fatalf("message clawType = %q, want message-brand", got)
+	}
+}
+
+func TestResolveIdentityHeadersRestoresAgentProductAfterNilCredentialHeaders(t *testing.T) {
+	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Setenv(agentproduct.EnvName, "qwenwork")
+
+	oldEdition := edition.Get()
+	t.Cleanup(func() { edition.Override(oldEdition) })
+
+	credentialHookCalled := false
+	edition.Override(&edition.Hooks{
+		MergeHeaders: func(headers map[string]string) map[string]string {
+			headers[agentproduct.HeaderName] = "wukong"
+			return headers
+		},
+		EnterpriseCredentialHeaders: func(map[string]string) map[string]string {
+			credentialHookCalled = true
+			return nil
+		},
+	})
+
+	headers := resolveIdentityHeaders()
+	if !credentialHookCalled {
 		t.Fatal("EnterpriseCredentialHeaders hook was not called")
+	}
+	if got := headers[agentproduct.HeaderName]; got != "qwenwork" {
+		t.Fatalf("%s = %q, want qwenwork", agentproduct.HeaderName, got)
 	}
 }
 

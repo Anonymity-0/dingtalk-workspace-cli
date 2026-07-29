@@ -14,18 +14,17 @@
 package app
 
 import (
-	"os"
-
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/configmeta"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 func init() {
 	configmeta.Register(configmeta.ConfigItem{
 		Name:         agentproduct.EnvName,
 		Category:     configmeta.CategoryExternal,
-		Description:  "调用 DWS 的 Agent 产品标识；覆盖请求中的 claw-type",
+		Description:  "调用方声明的 Agent 产品标识；覆盖 HTTP claw-type，但不是认证凭据",
 		DefaultValue: "由当前发行版决定",
 		Example:      "qwenwork",
 	})
@@ -43,20 +42,30 @@ func parseAgentProduct(raw string) (string, error) {
 
 func invalidAgentProductError() error {
 	return apperrors.NewValidation(
-		"DWS_AGENT_PRODUCT must match ^[A-Za-z0-9][A-Za-z0-9_-]*$",
+		"DWS_AGENT_PRODUCT must be at most 64 bytes and match ^[A-Za-z0-9][A-Za-z0-9_-]*$",
 		apperrors.WithReason("invalid_agent_product"),
 	)
 }
 
-// applyAgentProductOverride applies a valid non-empty runtime override after
-// edition hooks have supplied their existing default. Invalid values are
-// ignored here to preserve the best-effort contract of library callers that
-// bypass root command validation.
-func applyAgentProductOverride(headers map[string]string) map[string]string {
-	value, err := agentproduct.Parse(os.Getenv(agentproduct.EnvName))
-	if err != nil || value == "" {
-		return headers
+// resolveEffectiveAgentProduct resolves the request-header identity with one
+// shared precedence rule: a valid non-empty runtime override wins, otherwise
+// the edition's MergeHeaders value wins, otherwise the OSS default is used.
+// Invalid runtime input falls back here for library callers that bypass root
+// validation; normal CLI execution rejects it before network access.
+func resolveEffectiveAgentProduct(headers map[string]string) string {
+	fallback := edition.DefaultOSSClawType
+	if value := headers[agentproduct.HeaderName]; value != "" {
+		fallback = value
 	}
+	value, err := agentproduct.ResolveFromEnv(fallback)
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func applyAgentProductOverride(headers map[string]string) map[string]string {
+	value := resolveEffectiveAgentProduct(headers)
 	if headers == nil {
 		headers = make(map[string]string)
 	}

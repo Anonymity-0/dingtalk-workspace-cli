@@ -36,6 +36,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/logging"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/safety"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/configmeta"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -1038,7 +1039,7 @@ func resolveIdentityHeaders() map[string]string {
 		headers["x-dws-channel"] = v
 	}
 
-	// DWS_AGENT_HOST is a caller-provided observation label only. Root command
+	// DWS_AGENT_HOST is a caller-declared runtime-form signal. Root command
 	// execution validates it strictly in PersistentPreRunE. Library callers
 	// that bypass the root command keep this best-effort API contract: invalid
 	// values are omitted rather than changing the public function signature.
@@ -1049,15 +1050,22 @@ func resolveIdentityHeaders() map[string]string {
 	if fn := edition.Get().MergeHeaders; fn != nil {
 		headers = fn(headers)
 	}
+	// Resolve the Agent Product before credential injection. The credential
+	// hook has a separate contract and must not be able to replace the
+	// request identity used by PAT hostControl serialization.
+	headers = applyAgentProductOverride(headers)
+	agentProduct := headers[agentproduct.HeaderName]
 	if fn := edition.Get().EnterpriseCredentialHeaders; fn != nil {
 		headers = fn(headers)
 	}
+	if headers == nil {
+		headers = make(map[string]string)
+	}
 	// DWS_AGENT_PRODUCT is the explicit caller override for the existing
-	// claw-type wire header. Apply it after edition hooks so unset/empty input
-	// preserves each edition's current default, while a valid value wins
-	// consistently. Invalid values are ignored on this best-effort library
-	// path; root command execution rejects them before network access.
-	headers = applyAgentProductOverride(headers)
+	// claw-type wire header. Reassert the resolved product after credential
+	// injection so that hook cannot alter identity. Invalid values are ignored
+	// on this best-effort library path; root execution rejects them earlier.
+	headers[agentproduct.HeaderName] = agentProduct
 	return headers
 }
 

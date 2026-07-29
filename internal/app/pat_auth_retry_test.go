@@ -30,6 +30,7 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pat"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 )
 
 func TestIsPatScopeError_MissingScope(t *testing.T) {
@@ -1010,7 +1011,7 @@ func TestHandlePatAuthCheck_HostControlledFlowIDPassthrough(t *testing.T) {
 	// open-source edition default remains "openClaw".
 	t.Setenv(authpkg.AgentCodeEnv, "agt-sales")
 	t.Setenv("DINGTALK_AGENT", "sales-copilot")
-	t.Setenv("DWS_AGENT_PRODUCT", "")
+	t.Setenv(agentproduct.EnvName, "")
 
 	mock := &mockRunner{
 		runFunc: func(ctx context.Context, inv executor.Invocation) (executor.Result, error) {

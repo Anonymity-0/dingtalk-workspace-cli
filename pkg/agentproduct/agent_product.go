@@ -27,6 +27,9 @@ const (
 	EnvName = "DWS_AGENT_PRODUCT"
 	// HeaderName is the existing wire header used for the Agent product.
 	HeaderName = "claw-type"
+	// MaxValueBytes bounds the value because it is attached to every outbound
+	// MCP request. Supported values are ASCII, so bytes and characters match.
+	MaxValueBytes = 64
 )
 
 // ErrInvalid is returned when an Agent product value is unsafe or does not
@@ -36,17 +39,21 @@ var ErrInvalid = errors.New("invalid agent product")
 
 var valuePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
-// Parse normalizes and validates a caller-provided Agent product. CR/LF is
-// rejected before trimming so it cannot be hidden at the edge of a value. An
-// unset or whitespace-only value means "use the edition default".
+// Parse normalizes and validates a caller-provided Agent product. Only
+// surrounding ASCII spaces and tabs are trimmed; other control or Unicode
+// whitespace remains visible to validation and is rejected. An unset or
+// ASCII-whitespace-only value means "use the edition default".
 func Parse(raw string) (string, error) {
 	if strings.ContainsAny(raw, "\r\n") {
 		return "", ErrInvalid
 	}
 
-	value := strings.TrimSpace(raw)
+	value := strings.Trim(raw, " \t")
 	if value == "" {
 		return "", nil
+	}
+	if len(value) > MaxValueBytes {
+		return "", ErrInvalid
 	}
 	if !valuePattern.MatchString(value) {
 		return "", ErrInvalid
