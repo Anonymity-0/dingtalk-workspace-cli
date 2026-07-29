@@ -363,6 +363,24 @@ func TestCrossPlatformCoverageResourceDownloadFilenameFallbacks(t *testing.T) {
 	if got := resourceDownloadFilename("https://example.test/a%20b.txt"); got != "a b.txt" {
 		t.Fatalf("decoded filename = %q", got)
 	}
+	for _, unsafeName := range []string{
+		"..",
+		"CON",
+		"nul.txt",
+		"COM1.log",
+		"trailing.",
+		"trailing ",
+		"line\nbreak.txt",
+		`bad:name.txt`,
+	} {
+		got := resourceDownloadFilename(
+			"https://download.dingtalk.com/fallback.bin",
+			unsafeName,
+		)
+		if got != "fallback.bin" {
+			t.Errorf("unsafe preferred name %q produced %q", unsafeName, got)
+		}
+	}
 }
 
 type resourceRoundTripper func(*http.Request) (*http.Response, error)

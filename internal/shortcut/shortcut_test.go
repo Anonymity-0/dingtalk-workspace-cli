@@ -40,6 +40,40 @@ func TestCrossPlatformCoverageRiskDefaultsToRead(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageEffectiveRiskUsesParsedFlagsAndFailsClosed(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("download-resources", false, "")
+	rt := &RuntimeContext{cmd: cmd}
+	s := Shortcut{
+		Risk: RiskRead,
+		RiskWhen: func(rt *RuntimeContext) Risk {
+			if rt.Bool("download-resources") {
+				return RiskWrite
+			}
+			return RiskRead
+		},
+	}
+	if got := s.effectiveRisk(rt); got != RiskRead {
+		t.Fatalf("default effectiveRisk() = %q, want read", got)
+	}
+	if err := cmd.Flags().Set("download-resources", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.effectiveRisk(rt); got != RiskWrite {
+		t.Fatalf("download effectiveRisk() = %q, want write", got)
+	}
+
+	s.Risk = RiskHighWrite
+	s.RiskWhen = func(*RuntimeContext) Risk { return Risk("unknown") }
+	if got := s.effectiveRisk(rt); got != RiskHighWrite {
+		t.Fatalf("invalid callback effectiveRisk() = %q, want high-risk-write", got)
+	}
+	s.RiskWhen = func(*RuntimeContext) Risk { return RiskRead }
+	if got := s.effectiveRisk(rt); got != RiskHighWrite {
+		t.Fatalf("downgrade effectiveRisk() = %q, want high-risk-write", got)
+	}
+}
+
 func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 	s := Shortcut{
 		Service:     "contact",

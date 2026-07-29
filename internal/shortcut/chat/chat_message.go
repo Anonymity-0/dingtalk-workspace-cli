@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -527,7 +528,8 @@ var MessagesMget = shortcut.Shortcut{
 	Product:     "im",
 	Description: "根据消息 ID 批量查询消息（最多 50 条）",
 	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
-	Risk:        shortcut.RiskWrite,
+	Risk:        shortcut.RiskRead,
+	RiskWhen:    MessageResourceDownloadRisk,
 	Flags: append([]shortcut.Flag{
 		{Name: "msg-ids", Type: shortcut.FlagStringSlice, Desc: "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID", Required: true},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
@@ -607,6 +609,15 @@ func ValidateMessageResourceDownload(rt *shortcut.RuntimeContext) error {
 		return nil
 	}
 	return validateResourceDownloadOutputFlag(rt.Str("output-dir"), "--output-dir")
+}
+
+// MessageResourceDownloadRisk keeps read-only invocations prompt-free while
+// requiring confirmation for the opt-in local file writes.
+func MessageResourceDownloadRisk(rt *shortcut.RuntimeContext) shortcut.Risk {
+	if rt.Bool("download-resources") {
+		return shortcut.RiskWrite
+	}
+	return shortcut.RiskRead
 }
 
 // DownloadMessageResources downloads every unique message resource reference
@@ -1090,13 +1101,37 @@ var MessagesSendCard = shortcut.Shortcut{
 func findCardBizID(value any) string {
 	switch typed := value.(type) {
 	case map[string]any:
-		for _, key := range []string{"bizId", "bizID", "biz_id"} {
+		directKeys := []string{"bizId", "bizID", "biz_id"}
+		for _, key := range directKeys {
 			if candidate := strings.TrimSpace(fmt.Sprint(typed[key])); candidate != "" && candidate != "<nil>" {
 				return candidate
 			}
 		}
-		for _, child := range typed {
-			if candidate := findCardBizID(child); candidate != "" {
+
+		// Prefer documented response envelopes before scanning extension fields.
+		// Map iteration order is deliberately randomized by Go, so an unordered
+		// recursive walk could select a stale metadata bizId.
+		envelopeKeys := []string{"result", "data", "card", "response"}
+		visited := make(map[string]struct{}, len(directKeys)+len(envelopeKeys))
+		for _, key := range directKeys {
+			visited[key] = struct{}{}
+		}
+		for _, key := range envelopeKeys {
+			visited[key] = struct{}{}
+			if candidate := findCardBizID(typed[key]); candidate != "" {
+				return candidate
+			}
+		}
+
+		remainingKeys := make([]string, 0, len(typed))
+		for key := range typed {
+			if _, ok := visited[key]; !ok {
+				remainingKeys = append(remainingKeys, key)
+			}
+		}
+		sort.Strings(remainingKeys)
+		for _, key := range remainingKeys {
+			if candidate := findCardBizID(typed[key]); candidate != "" {
 				return candidate
 			}
 		}

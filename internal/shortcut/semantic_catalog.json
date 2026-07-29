@@ -487,8 +487,8 @@
     },
     "+messages-mget": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "按最多 50 个消息 ID 批量读取并输出稳定消息投影、reaction 与 resourceRefs；可用 --download-resources 统一下载 mediaId 与 fileId，复用受信任下载域、相对路径、无覆盖和原子落盘防护，对重复资源去重并逐资源返回下载失败 ledger；因可写本地文件按 write 风险确认。",
-      "risk": "write",
+      "semantic_delta": "按最多 50 个消息 ID 批量读取并输出稳定消息投影、reaction 与 resourceRefs；可用 --download-resources 统一下载 mediaId 与 fileId，复用受信任下载域、相对路径、无覆盖和原子落盘防护，对重复资源去重并逐资源返回下载失败 ledger；默认只读，启用下载时运行时风险升级为 write。",
+      "risk": "read",
       "public": true,
       "reviewed": true
     },
@@ -628,7 +628,7 @@
     "+at-me": {
       "disposition": "primary_smart",
       "semantic_delta": "自动构造时间窗，分页拉取跨会话 @我 消息，并保留身份、引用、reaction、resourceRefs 与完整性；可选对资源去重后安全落盘并返回逐项失败 ledger。",
-      "risk": "write",
+      "risk": "read",
       "public": true,
       "reviewed": true
     },
@@ -642,7 +642,7 @@
     "+chat-messages": {
       "disposition": "primary_smart",
       "semantic_delta": "统一群聊与两类单聊目标；省略时间时自动以当前时间向前读取最近消息，并输出稳定消息身份、引用、reaction、resourceRefs、时间边界翻页和可读正文；可选对列表内资源去重后安全落盘并返回逐项失败 ledger。",
-      "risk": "write",
+      "risk": "read",
       "public": true,
       "reviewed": true
     },
@@ -678,7 +678,7 @@
     "+search-msg": {
       "disposition": "primary_smart",
       "semantic_delta": "统一关键词、发送者、@对象、会话、消息类型和机器人来源过滤；展开下层按会话分组的 conversationMessagesList，支持精确时间窗、page-all、50 条一组 mget 富化，可选安全下载命中消息资源，并以 failure ledger 显式报告截断、富化或下载失败。",
-      "risk": "write",
+      "risk": "read",
       "public": true,
       "reviewed": true
     },
@@ -692,7 +692,7 @@
     "+thread-replies": {
       "disposition": "primary_smart",
       "semantic_delta": "接受消息列表直接返回的 threadId（兼容 topicId），拉取回复并输出稳定身份、引用、reaction、resourceRefs、可读正文和时间边界分页；可选对回复资源去重后安全落盘并返回逐项失败 ledger。",
-      "risk": "write",
+      "risk": "read",
       "public": true,
       "reviewed": true
     },

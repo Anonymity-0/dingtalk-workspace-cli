@@ -461,10 +461,11 @@ func validateConstraints(rt *RuntimeContext, s Shortcut) error {
 // --dry-run is set. Read-only shortcuts never prompt. Returns false when the
 // user declines.
 func confirmRisk(rt *RuntimeContext, s Shortcut) bool {
-	if s.risk() == RiskRead || rt.DryRun() || rt.Yes() {
+	risk := s.effectiveRisk(rt)
+	if risk == RiskRead || rt.DryRun() || rt.Yes() {
 		return true
 	}
-	fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, s.risk())
+	fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, risk)
 	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
 	answer = strings.TrimSpace(strings.ToLower(answer))

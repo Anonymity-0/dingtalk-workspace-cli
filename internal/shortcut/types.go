@@ -138,6 +138,13 @@ type Shortcut struct {
 	Intent string
 	// Risk classifies the side effect; defaults to RiskRead when empty.
 	Risk Risk
+	// RiskWhen optionally refines Risk after flags have been parsed and
+	// validated. It is intended for commands that are read-only by default but
+	// gain a local or remote write mode behind an explicit opt-in flag.
+	//
+	// Distribution Schema keeps publishing the stable default Risk contract;
+	// runtime confirmation uses the value returned here.
+	RiskWhen func(rt *RuntimeContext) Risk
 	// Flags are the command-specific flags. Global flags are injected separately.
 	Flags []Flag
 	// Constraints publish and enforce relationships that individual flags cannot
@@ -191,4 +198,33 @@ func (s Shortcut) risk() Risk {
 		return RiskRead
 	}
 	return s.Risk
+}
+
+// effectiveRisk returns the invocation-specific risk after flags are resolved.
+// Invalid callback values and attempted downgrades fail closed to the
+// declarative default instead of weakening its confirmation policy.
+func (s Shortcut) effectiveRisk(rt *RuntimeContext) Risk {
+	base := s.risk()
+	if s.RiskWhen == nil {
+		return base
+	}
+	dynamic := s.RiskWhen(rt)
+	switch dynamic {
+	case RiskRead, RiskWrite, RiskHighWrite:
+	default:
+		return base
+	}
+	switch base {
+	case RiskHighWrite:
+		return RiskHighWrite
+	case RiskWrite:
+		if dynamic == RiskHighWrite {
+			return RiskHighWrite
+		}
+		return RiskWrite
+	case RiskRead:
+		return dynamic
+	default:
+		return base
+	}
 }

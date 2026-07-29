@@ -415,8 +415,7 @@ func ensureResourceDownloadParent(baseDir, parent string) error {
 
 func resourceDownloadFilename(resourceURL string, preferredName ...string) string {
 	if len(preferredName) > 0 {
-		name := filepath.Base(strings.ReplaceAll(strings.TrimSpace(preferredName[0]), "\\", "/"))
-		if name != "" && name != "." && name != string(os.PathSeparator) {
+		if name := safeResourceDownloadFilename(preferredName[0]); name != "" {
 			return name
 		}
 	}
@@ -424,13 +423,49 @@ func resourceDownloadFilename(resourceURL string, preferredName ...string) strin
 	if err == nil {
 		name, unescapeErr := url.PathUnescape(filepath.Base(parsed.Path))
 		if unescapeErr == nil {
-			name = filepath.Base(strings.ReplaceAll(name, "\\", "/"))
-			if name != "" && name != "." && name != string(os.PathSeparator) {
+			if name = safeResourceDownloadFilename(name); name != "" {
 				return name
 			}
 		}
 	}
 	return "download"
+}
+
+// safeResourceDownloadFilename returns a portable basename or an empty string
+// for names that are unsafe or unusable on a supported platform. Server-provided
+// file names are untrusted input, and downloads may be prepared on one OS then
+// consumed on another.
+func safeResourceDownloadFilename(raw string) string {
+	normalized := strings.ReplaceAll(raw, "\\", "/")
+	if strings.TrimSpace(normalized) != normalized {
+		return ""
+	}
+	name := filepath.Base(normalized)
+	if name == "" || name == "." || name == ".." ||
+		strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") {
+		return ""
+	}
+	for _, char := range name {
+		if char < 0x20 || char == 0x7f || strings.ContainsRune(`<>:"/\|?*`, char) {
+			return ""
+		}
+	}
+
+	stem := name
+	if index := strings.IndexByte(stem, '.'); index >= 0 {
+		stem = stem[:index]
+	}
+	stem = strings.ToUpper(strings.TrimRight(stem, " ."))
+	switch stem {
+	case "CON", "PRN", "AUX", "NUL":
+		return ""
+	}
+	if len(stem) == 4 &&
+		(stem[:3] == "COM" || stem[:3] == "LPT") &&
+		stem[3] >= '1' && stem[3] <= '9' {
+		return ""
+	}
+	return name
 }
 
 func downloadResourceAtomically(

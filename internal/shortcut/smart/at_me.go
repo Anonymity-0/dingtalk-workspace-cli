@@ -53,7 +53,8 @@ var AtMe = shortcut.Shortcut{
 		"内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，" +
 		"再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。" +
 		"默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
-	Risk: shortcut.RiskWrite,
+	Risk:     shortcut.RiskRead,
+	RiskWhen: chatshortcut.MessageResourceDownloadRisk,
 	Flags: append([]shortcut.Flag{
 		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（可选，默认 7）", Default: "7", Required: false},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 50）", Default: "50"},

@@ -52,7 +52,8 @@ var ChatMessages = shortcut.Shortcut{
 		"省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。" +
 		"内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。" +
 		"默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
-	Risk: shortcut.RiskWrite,
+	Risk:     shortcut.RiskRead,
+	RiskWhen: chatshortcut.MessageResourceDownloadRisk,
 	Flags: append([]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId），与 --user 互斥"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},

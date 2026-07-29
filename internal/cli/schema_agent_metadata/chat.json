@@ -8,8 +8,8 @@
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
-      "confirmation": "user_required",
-      "effect": "write",
+      "confirmation": "not_required",
+      "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +at-me",
@@ -37,14 +37,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -69,34 +69,34 @@
           ]
         },
         "confirmation": {
-          "value": "user_required",
+          "value": "not_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "user_required",
+              "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
         "effect": {
-          "value": "write",
+          "value": "read",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "write",
+              "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -123,18 +123,18 @@
           ]
         },
         "idempotency": {
-          "value": "unknown",
+          "value": "idempotent",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "unknown",
+              "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -143,14 +143,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -159,14 +159,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -191,14 +191,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             },
             {
               "value": true,
@@ -210,18 +210,18 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "low",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "medium",
+              "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -246,11 +246,11 @@
           ]
         }
       },
-      "idempotency": "unknown",
+      "idempotency": "idempotent",
       "interface_mode": "composite",
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "low",
       "source_refs": [
         "ShortcutRegistry:chat +at-me",
         "cobra-help:dws chat +at-me",
@@ -3624,8 +3624,8 @@
       "avoid_when": [
         "要跨多个会话按关键词、发送者或消息类型检索时使用 +search-msg；已有一批精确消息 ID 时使用 +messages-mget"
       ],
-      "confirmation": "user_required",
-      "effect": "write",
+      "confirmation": "not_required",
+      "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +chat-messages --group \u003copenConversationId\u003e --direction older",
@@ -3653,14 +3653,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -3685,34 +3685,34 @@
           ]
         },
         "confirmation": {
-          "value": "user_required",
+          "value": "not_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "user_required",
+              "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
         "effect": {
-          "value": "write",
+          "value": "read",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "write",
+              "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -3739,18 +3739,18 @@
           ]
         },
         "idempotency": {
-          "value": "unknown",
+          "value": "idempotent",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "unknown",
+              "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -3759,14 +3759,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -3775,14 +3775,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -3807,14 +3807,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             },
             {
               "value": true,
@@ -3826,18 +3826,18 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "low",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "medium",
+              "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut, group/direct lower read tools, optional local-file writes, shared safe-output validation, resource de-duplication, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -3862,11 +3862,11 @@
           ]
         }
       },
-      "idempotency": "unknown",
+      "idempotency": "idempotent",
       "interface_mode": "composite",
       "interface_reason": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "low",
       "source_refs": [
         "ShortcutRegistry:chat +chat-messages",
         "cobra-help:dws chat +chat-messages",
@@ -9049,8 +9049,8 @@
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
-      "confirmation": "user_required",
-      "effect": "write",
+      "confirmation": "not_required",
+      "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +messages-mget --msg-ids msgId1,msgId2"
@@ -9077,14 +9077,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -9109,34 +9109,34 @@
           ]
         },
         "confirmation": {
-          "value": "user_required",
+          "value": "not_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "user_required",
+              "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
         "effect": {
-          "value": "write",
+          "value": "read",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "write",
+              "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -9161,18 +9161,18 @@
           ]
         },
         "idempotency": {
-          "value": "unknown",
+          "value": "idempotent",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "unknown",
+              "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -9181,14 +9181,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -9197,14 +9197,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -9229,14 +9229,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             },
             {
               "value": true,
@@ -9248,18 +9248,18 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "low",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "medium",
+              "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry, mounted Cobra command, and optional local-file writes; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -9284,11 +9284,11 @@
           ]
         }
       },
-      "idempotency": "unknown",
+      "idempotency": "idempotent",
       "interface_mode": "composite",
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "low",
       "source_refs": [
         "ShortcutRegistry:chat +messages-mget",
         "cobra-help:dws chat +messages-mget",
@@ -11147,8 +11147,8 @@
       "avoid_when": [
         "只想读取一个已知会话的连续历史时使用 +chat-messages；已有精确消息 ID 时使用 +messages-mget"
       ],
-      "confirmation": "user_required",
-      "effect": "write",
+      "confirmation": "not_required",
+      "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +search-msg --query \"周报\" --senders \u003copenDingTalkId\u003e --days 3 --page-all",
@@ -11176,14 +11176,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11208,34 +11208,34 @@
           ]
         },
         "confirmation": {
-          "value": "user_required",
+          "value": "not_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "user_required",
+              "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
         "effect": {
-          "value": "write",
+          "value": "read",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "write",
+              "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11262,18 +11262,18 @@
           ]
         },
         "idempotency": {
-          "value": "unknown",
+          "value": "idempotent",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "unknown",
+              "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11282,14 +11282,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11298,14 +11298,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11330,14 +11330,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             },
             {
               "value": true,
@@ -11349,18 +11349,18 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "low",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "medium",
+              "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags, page and enrichment failure ledgers, optional local-file writes, shared safe-output validation, and per-resource download ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11385,11 +11385,11 @@
           ]
         }
       },
-      "idempotency": "unknown",
+      "idempotency": "idempotent",
       "interface_mode": "composite",
       "interface_reason": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "low",
       "source_refs": [
         "ShortcutRegistry:chat +search-msg",
         "cobra-help:dws chat +search-msg",
@@ -11667,8 +11667,8 @@
       "avoid_when": [
         "要回复 Thread 或发送新回复时不要使用此读取入口；当前没有经过验证的 thread writer Shortcut"
       ],
-      "confirmation": "user_required",
-      "effect": "write",
+      "confirmation": "not_required",
+      "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +thread-replies --group \u003copenConversationId\u003e --thread-id \u003cthreadId\u003e",
@@ -11696,14 +11696,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11728,34 +11728,34 @@
           ]
         },
         "confirmation": {
-          "value": "user_required",
+          "value": "not_required",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "user_required",
+              "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
         "effect": {
-          "value": "write",
+          "value": "read",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "write",
+              "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11782,18 +11782,18 @@
           ]
         },
         "idempotency": {
-          "value": "unknown",
+          "value": "idempotent",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "unknown",
+              "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11802,14 +11802,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11818,14 +11818,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11850,14 +11850,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             },
             {
               "value": true,
@@ -11869,18 +11869,18 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "low",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
           "candidates": [
             {
-              "value": "medium",
+              "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable thread/topic alias contract, real list_topic_replies mapping, optional local-file writes, group fallback for resource context, and per-resource failure ledger; the static runtime risk is conservatively write because --download-resources writes files."
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes."
             }
           ]
         },
@@ -11905,11 +11905,11 @@
           ]
         }
       },
-      "idempotency": "unknown",
+      "idempotency": "idempotent",
       "interface_mode": "composite",
       "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "low",
       "source_refs": [
         "ShortcutRegistry:chat +thread-replies",
         "cobra-help:dws chat +thread-replies",
