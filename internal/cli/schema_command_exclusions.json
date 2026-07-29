@@ -108,6 +108,7 @@
         "chat message list-emotion-replies",
         "chat message set-top-msg",
         "chat message unset-top-msg",
+        "chat message update-text-emotion",
         "chat mute-at-all",
         "chat mute-red-envelope",
         "chat text translate",

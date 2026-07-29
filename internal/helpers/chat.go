@@ -3150,6 +3150,39 @@ func newChatCommand() *cobra.Command {
 	chatMessageRemoveTextEmotionCmd.Flags().String("text", "", "文字内容 (必填)")
 	chatMessageRemoveTextEmotionCmd.Flags().String("background-id", "", "背景 ID (必填)")
 
+	chatMessageUpdateTextEmotionCmd := &cobra.Command{
+		Use:     "update-text-emotion",
+		Short:   "更新消息的文字表情回应",
+		Example: `  dws chat message update-text-emotion --conversation-id <openConversationId> --msg-id <openMsgId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name "赞" --text "nice" --background-id im_bg_5`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
+				return err
+			}
+			if err := validateRequiredFlags(cmd, "msg-id", "old-emotion-id", "emotion-id", "emotion-name", "text", "background-id"); err != nil {
+				return err
+			}
+			return callMCPToolOnServer("im", "update_text_emotion", map[string]any{
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openMsgId":          mustGetFlag(cmd, "msg-id"),
+				"oldEmotionId":       mustGetFlag(cmd, "old-emotion-id"),
+				"emotionId":          mustGetFlag(cmd, "emotion-id"),
+				"emotionName":        mustGetFlag(cmd, "emotion-name"),
+				"text":               mustGetFlag(cmd, "text"),
+				"backgroundId":       mustGetFlag(cmd, "background-id"),
+			})
+		},
+	}
+	chatMessageUpdateTextEmotionCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("group", "", "--conversation-id 的别名")
+	chatMessageUpdateTextEmotionCmd.Flags().String("id", "", "--conversation-id 的别名")
+	chatMessageUpdateTextEmotionCmd.Flags().String("chat", "", "--conversation-id 的别名")
+	chatMessageUpdateTextEmotionCmd.Flags().String("msg-id", "", "消息 openMsgId (必填)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("old-emotion-id", "", "待更新的原表情 ID (必填)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("emotion-id", "", "新表情 ID (必填)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("emotion-name", "", "新表情名称 (必填)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("text", "", "新文字内容 (必填)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("background-id", "", "新背景 ID (必填)")
+
 	// ── 创建文字表情（获取 emotionId）──────────────────────
 
 	chatMessageCreateTextEmotionCmd := &cobra.Command{
@@ -3379,7 +3412,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageDownloadMediaCmd.Flags().String("output", "", "本地保存路径，文件或目录 (必填)")
 	_ = chatMessageDownloadMediaCmd.MarkFlagRequired("output")
 
-	chatMessageCmd.AddCommand(chatMessageListCmd, chatMessageSendCmd, chatMessageSendByBotCmd, chatMessageRecallByBotCmd, chatMessageSendByWebhookCmd, chatMessageListTopicRepliesCmd, chatMessageListAllCmd, chatMessageListBySenderCmd, chatMessageListMentionsCmd, chatMessageListFocusedCmd, chatMessageListUnreadConversationsCmd, chatMessageSearchCmd, chatMessageListByIdsCmd, chatMessageAddEmojiCmd, chatMessageRemoveEmojiCmd, chatMessageAddTextEmotionCmd, chatMessageRemoveTextEmotionCmd, chatMessageCreateTextEmotionCmd, chatMessageSearchAdvancedCmd, chatMessageQuerySendStatusCmd, chatMessageRecallCmd, chatMessageEditCmd, chatMessageReadStatusCmd, chatMessageSendCardCmd, chatMessageUpdateCardCmd, chatMessageDownloadMediaCmd)
+	chatMessageCmd.AddCommand(chatMessageListCmd, chatMessageSendCmd, chatMessageSendByBotCmd, chatMessageRecallByBotCmd, chatMessageSendByWebhookCmd, chatMessageListTopicRepliesCmd, chatMessageListAllCmd, chatMessageListBySenderCmd, chatMessageListMentionsCmd, chatMessageListFocusedCmd, chatMessageListUnreadConversationsCmd, chatMessageSearchCmd, chatMessageListByIdsCmd, chatMessageAddEmojiCmd, chatMessageRemoveEmojiCmd, chatMessageAddTextEmotionCmd, chatMessageRemoveTextEmotionCmd, chatMessageUpdateTextEmotionCmd, chatMessageCreateTextEmotionCmd, chatMessageSearchAdvancedCmd, chatMessageQuerySendStatusCmd, chatMessageRecallCmd, chatMessageEditCmd, chatMessageReadStatusCmd, chatMessageSendCardCmd, chatMessageUpdateCardCmd, chatMessageDownloadMediaCmd)
 	chatBotCmd.AddCommand(chatBotSearchCmd)
 	chatCategoryCmd.AddCommand(chatCategoryListCmd, chatCategoryConvsCmd, chatCategoryCreateCmd, chatCategoryDeleteCmd, chatCategoryRenameCmd, chatCategoryAddConvCmd, chatCategoryRemoveConvCmd, chatCategoryListByConvCmd, chatCategoryBatchInfoCmd)
 	chatGroupCmd.AddCommand(chatGroupInfoByIdCmd)
