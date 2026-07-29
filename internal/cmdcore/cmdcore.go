@@ -153,6 +153,93 @@ type Constraint struct {
 	Description string
 }
 
+// CommandSpec is the single typed definition of a leaf command, shared by the
+// LeafSpec and (via FromShortcut) Shortcut frameworks. It carries the shared
+// base (flags, constraints, risk) plus the orchestration hooks; dispatch is a
+// property of the spec, not a separate framework:
+//
+//   - RunE, when set, is the full escape hatch: the framework only registers
+//     flags/constraints/help and hands control to RunE.
+//   - otherwise Dispatch runs after required/constraint/Validate checks, args
+//     assembly, and the Risk write-confirmation, receiving the assembled
+//     toolArgs. The adapter (FromLeafSpec) supplies the concrete dispatch
+//     (single-step MCP call / executor.Runner / etc.); cmdcore stays
+//     dispatch-agnostic and never calls an MCP tool itself.
+type CommandSpec struct {
+	Use     string
+	Short   string
+	Long    string
+	Example string
+
+	Flags       []FlagSpec
+	Constraints []Constraint
+	Risk        Risk
+
+	// Validate is the cross-flag validation hook, run after required/constraint
+	// checks and before args assembly; nil skips it.
+	Validate func(cmd *cobra.Command, args []string) error
+	// PostMount adjusts the built command after flag registration and before
+	// RunE is set (Args/DisableAutoGenTag/annotate/…); always runs.
+	PostMount func(cmd *cobra.Command)
+	// RunE, when set, fully replaces the generated body (escape hatch).
+	RunE func(cmd *cobra.Command, args []string) error
+	// Dispatch executes the command with the assembled toolArgs. Used only when
+	// RunE is nil.
+	Dispatch func(cmd *cobra.Command, args []string, toolArgs map[string]any) error
+}
+
+// NewCommand builds a cobra command from a CommandSpec. It is the single
+// orchestration path: flag registration → constraint declaration checks →
+// Runtime Schema projection → constraint help → PostMount → (RunE escape) →
+// generated RunE{ required → constraints → Validate → BuildArgs → ConfirmRisk →
+// Dispatch }. Behavior mirrors the former helpers.NewLeafCommand exactly.
+func NewCommand(spec CommandSpec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     spec.Use,
+		Short:   spec.Short,
+		Long:    spec.Long,
+		Example: spec.Example,
+	}
+	RegisterFlags(cmd, spec.Flags)
+	ValidateConstraintDecls(spec.Use, spec.Flags, spec.Constraints)
+	AnnotateConstraints(cmd, spec.Constraints)
+	if help := ConstraintHelp(spec.Constraints); help != "" {
+		cmd.Long = strings.TrimRight(cmd.Long, "\n") + help
+	}
+	if spec.PostMount != nil {
+		spec.PostMount(cmd)
+	}
+	if spec.RunE != nil {
+		cmd.RunE = spec.RunE
+		return cmd
+	}
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if err := ValidateRequired(cmd, spec.Flags); err != nil {
+			return err
+		}
+		if err := ValidateConstraints(cmd, spec.Flags, spec.Constraints); err != nil {
+			return err
+		}
+		if spec.Validate != nil {
+			if err := spec.Validate(cmd, args); err != nil {
+				return err
+			}
+		}
+		toolArgs, err := BuildArgs(cmd, spec.Flags)
+		if err != nil {
+			return err
+		}
+		if !ConfirmRisk(cmd, spec.Risk) {
+			return apperrors.NewValidation("用户取消了操作")
+		}
+		if spec.Dispatch != nil {
+			return spec.Dispatch(cmd, args, toolArgs)
+		}
+		return nil
+	}
+	return cmd
+}
+
 // RegisterFlags registers every flag (plus hidden aliases and MarkFlagRequired)
 // declared by the spec set onto cmd.
 func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {

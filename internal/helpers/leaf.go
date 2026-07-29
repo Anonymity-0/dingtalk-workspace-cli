@@ -14,12 +14,9 @@
 package helpers
 
 import (
-	"strings"
-
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
 
 // leaf.go 是叶子命令的统一构建框架。
@@ -139,55 +136,43 @@ type LeafSpec struct {
 	PostMount func(cmd *cobra.Command)
 }
 
-// NewLeafCommand 按 LeafSpec 构建叶子命令：flag 注册、约束声明检查、Schema
-// 投影、帮助渲染、required/约束校验、Risk 写确认、toolArgs 装配全部委托
-// cmdcore；本函数只负责编排顺序与 MCP dispatch（callMCPTool/OnServer/Call）。
+// NewLeafCommand 按 LeafSpec 构建叶子命令：经 FromLeafSpec 归一为
+// cmdcore.CommandSpec 后交由统一构建器 cmdcore.NewCommand 编排（flag 注册、
+// 约束声明检查、Schema 投影、帮助渲染、required/约束校验、Risk 写确认、
+// toolArgs 装配）。本函数只保留 LeafSpec→CommandSpec 的映射与 MCP dispatch
+// 闭包（callMCPTool/OnServer/Call）。所有 LeafSpec 命令（含 devapp 全部叶子）
+// 由此统一流经 cmdcore 单一 spec 路径。
 func NewLeafCommand(spec LeafSpec) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     spec.Use,
-		Short:   spec.Short,
-		Long:    spec.Long,
-		Example: spec.Example,
+	return cmdcore.NewCommand(FromLeafSpec(spec))
+}
+
+// FromLeafSpec 把 LeafSpec 归一为统一的 cmdcore.CommandSpec。契约字段
+// （Flags/Constraints/Risk）与编排钩子（Validate/PostMount/RunE）直接透传；
+// dispatch 收敛为一个闭包：Call 优先，其次显式 Server 路由，最后按 product
+// 自动路由。RunE 逃生舱存在时不设 Dispatch（与旧行为一致）。
+func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
+	cs := cmdcore.CommandSpec{
+		Use:         spec.Use,
+		Short:       spec.Short,
+		Long:        spec.Long,
+		Example:     spec.Example,
+		Flags:       spec.Flags,
+		Constraints: spec.Constraints,
+		Risk:        spec.Risk,
+		Validate:    spec.Validate,
+		PostMount:   spec.PostMount,
+		RunE:        spec.RunE,
 	}
-	cmdcore.RegisterFlags(cmd, spec.Flags)
-	cmdcore.ValidateConstraintDecls(spec.Use, spec.Flags, spec.Constraints)
-	cmdcore.AnnotateConstraints(cmd, spec.Constraints)
-	if help := cmdcore.ConstraintHelp(spec.Constraints); help != "" {
-		cmd.Long = strings.TrimRight(cmd.Long, "\n") + help
-	}
-	if spec.PostMount != nil {
-		spec.PostMount(cmd)
-	}
-	if spec.RunE != nil {
-		cmd.RunE = spec.RunE
-		return cmd
-	}
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if err := cmdcore.ValidateRequired(cmd, spec.Flags); err != nil {
-			return err
-		}
-		if err := cmdcore.ValidateConstraints(cmd, spec.Flags, spec.Constraints); err != nil {
-			return err
-		}
-		if spec.Validate != nil {
-			if err := spec.Validate(cmd, args); err != nil {
-				return err
+	if spec.RunE == nil {
+		cs.Dispatch = func(cmd *cobra.Command, _ []string, toolArgs map[string]any) error {
+			if spec.Call != nil {
+				return spec.Call(cmd, spec.Tool, toolArgs)
 			}
+			if spec.Server != "" {
+				return callMCPToolOnServer(spec.Server, spec.Tool, toolArgs)
+			}
+			return callMCPTool(spec.Tool, toolArgs)
 		}
-		toolArgs, err := cmdcore.BuildArgs(cmd, spec.Flags)
-		if err != nil {
-			return err
-		}
-		if !cmdcore.ConfirmRisk(cmd, spec.Risk) {
-			return apperrors.NewValidation("用户取消了操作")
-		}
-		if spec.Call != nil {
-			return spec.Call(cmd, spec.Tool, toolArgs)
-		}
-		if spec.Server != "" {
-			return callMCPToolOnServer(spec.Server, spec.Tool, toolArgs)
-		}
-		return callMCPTool(spec.Tool, toolArgs)
 	}
-	return cmd
+	return cs
 }
