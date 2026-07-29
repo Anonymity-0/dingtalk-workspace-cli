@@ -14,6 +14,9 @@
 package pipeline
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -82,7 +85,9 @@ func RunPreParseArgs(root *cobra.Command, engine *Engine, rawArgs []string) (*Co
 		// --format/--debug/--verbose affect this early error exactly as they do
 		// errors returned after Cobra parsing. No credentials, profiles, output
 		// paths, or execution controls are applied here.
-		primeEarlyErrorPresentation(root, target, ctx.Args)
+		if presentationErr := primeEarlyErrorPresentation(root, target, ctx.Args); presentationErr != nil {
+			slog.Debug("pipeline pre-parse presentation flags", "error", presentationErr)
+		}
 		slog.Debug("pipeline pre-parse", "error", err)
 		return ctx, err
 	}
@@ -136,10 +141,6 @@ func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
 		}
 	}
 	return out
-}
-
-func persistentFlagToken(flags *pflag.FlagSet, argument string) (*pflag.Flag, bool, bool) {
-	return newFlagTokenMatcher(flags).matchTraversalToken(argument)
 }
 
 // separatedBoolValue recognises model-friendly `--flag false` and exact
@@ -259,83 +260,55 @@ func (m *flagTokenMatcher) matchTraversalToken(argument string) (*pflag.Flag, bo
 	return m.byShorthand[string(shorthands[0])], true, true
 }
 
-func primeEarlyErrorPresentation(root, target *cobra.Command, rawArgs []string) {
+func primeEarlyErrorPresentation(root, target *cobra.Command, rawArgs []string) error {
 	if root == nil || target == nil || len(rawArgs) == 0 {
-		return
+		return nil
 	}
 	rootFlags := root.PersistentFlags()
-	presentation := map[string]bool{"format": true, "debug": true, "verbose": true}
-	matcher := newFlagTokenMatcher(target.Flags(), target.InheritedFlags())
-	for index := 0; index < len(rawArgs); index++ {
-		argument := rawArgs[index]
-		if argument == "--" {
-			break
-		}
+	presentationFlags := pflag.NewFlagSet("early-error-presentation", pflag.ContinueOnError)
+	presentationFlags.SetOutput(io.Discard)
+	presentationFlags.ParseErrorsWhitelist.UnknownFlags = true
+	presentationFlags.SetNormalizeFunc(func(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+		return pflag.NormalizedName(cmdutil.Morph(name))
+	})
 
-		if strings.HasPrefix(argument, "--") {
-			match := matcher.matchLongToken(argument)
-			if !match.recognized || match.flag == nil {
-				continue
-			}
-			value, hasValue := match.value, match.hasValue
-			if !hasValue && match.flag.NoOptDefVal != "" {
-				if index+1 < len(rawArgs) {
-					if normalized, ok := separatedBoolValue(argument, rawArgs[index+1], match.flag, false); ok {
-						index++
-						value, hasValue = normalized, true
-					} else {
-						value, hasValue = match.flag.NoOptDefVal, true
-					}
-				} else {
-					value, hasValue = match.flag.NoOptDefVal, true
-				}
-			} else if !hasValue && index+1 < len(rawArgs) {
-				index++
-				value, hasValue = rawArgs[index], true
-			}
-			if presentation[match.flag.Name] && hasValue {
-				_ = rootFlags.Set(match.flag.Name, value)
-			}
+	names := make([]string, 0, 3)
+	if source := rootFlags.Lookup("format"); source != nil {
+		value, err := rootFlags.GetString("format")
+		if err != nil {
+			return fmt.Errorf("read presentation flag --format: %w", err)
+		}
+		presentationFlags.StringP("format", source.Shorthand, value, source.Usage)
+		names = append(names, "format")
+	}
+	for _, name := range []string{"debug", "verbose"} {
+		source := rootFlags.Lookup(name)
+		if source == nil {
 			continue
 		}
+		value, err := rootFlags.GetBool(name)
+		if err != nil {
+			return fmt.Errorf("read presentation flag --%s: %w", name, err)
+		}
+		presentationFlags.BoolP(name, source.Shorthand, value, source.Usage)
+		names = append(names, name)
+	}
+	// Keep the existing contract in which a PreParse conflict wins over help;
+	// registering help prevents pflag's special unknown-help early return.
+	presentationFlags.BoolP("help", "h", false, "")
 
-		if !strings.HasPrefix(argument, "-") || argument == "-" {
+	parseErr := presentationFlags.Parse(rawArgs)
+	errs := []error{parseErr}
+	for _, name := range names {
+		if !presentationFlags.Changed(name) {
 			continue
 		}
-		shorthands := []rune(strings.TrimPrefix(argument, "-"))
-		for shorthandIndex, shorthand := range shorthands {
-			flag := matcher.byShorthand[string(shorthand)]
-			if flag == nil {
-				break
-			}
-			value, hasValue := "", false
-			if flag.NoOptDefVal != "" {
-				if shorthandIndex == 0 && len(shorthands) == 1 && index+1 < len(rawArgs) {
-					if normalized, ok := separatedBoolValue(argument, rawArgs[index+1], flag, false); ok {
-						index++
-						value, hasValue = normalized, true
-					} else {
-						value, hasValue = flag.NoOptDefVal, true
-					}
-				} else {
-					value, hasValue = flag.NoOptDefVal, true
-				}
-			} else if shorthandIndex+1 < len(shorthands) {
-				value = string(shorthands[shorthandIndex+1:])
-				value = strings.TrimPrefix(value, "=")
-				hasValue = true
-			} else if index+1 < len(rawArgs) {
-				index++
-				value, hasValue = rawArgs[index], true
-			}
-			if presentation[flag.Name] && hasValue {
-				_ = rootFlags.Set(flag.Name, value)
-			}
-			if flag.NoOptDefVal == "" {
-				break
-			}
+		value := presentationFlags.Lookup(name).Value.String()
+		if err := rootFlags.Set(name, value); err != nil {
+			errs = append(errs, fmt.Errorf("apply presentation flag --%s: %w", name, err))
 		}
 	}
+	return errors.Join(errs...)
 }
 
 // FlagInfoFromCommand extracts FlagInfo entries from a Cobra

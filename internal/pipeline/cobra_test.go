@@ -211,8 +211,8 @@ func TestRunPreParsePrimesPresentationFlagsForEarlyErrors(t *testing.T) {
 			wantDebug:  true,
 		},
 		{
-			name:        "corrected leading flags",
-			args:        []string{"--dryRun", "--formt=pretty", "--verbos", "child", "--name", "demo"},
+			name:        "normalized presentation names",
+			args:        []string{"--dryRun", "--FORMAT=pretty", "--Verbose", "child", "--name", "demo"},
 			wantFormat:  "pretty",
 			wantVerbose: true,
 		},
@@ -223,8 +223,8 @@ func TestRunPreParsePrimesPresentationFlagsForEarlyErrors(t *testing.T) {
 			wantVerbose: true,
 		},
 		{
-			name:        "detached boolean presentation values",
-			args:        []string{"--debug", "true", "-v", "false", "child", "--name", "demo"},
+			name:        "explicit boolean presentation values",
+			args:        []string{"--debug=true", "-v=false", "child", "--name", "demo"},
 			wantFormat:  "json",
 			wantDebug:   true,
 			wantVerbose: false,
@@ -258,6 +258,32 @@ func TestRunPreParsePrimesPresentationFlagsForEarlyErrors(t *testing.T) {
 	}
 }
 
+func TestRunPreParseKeepsPrimaryErrorWhenPresentationParsingFails(t *testing.T) {
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+	root.PersistentFlags().StringP("format", "f", "json", "")
+	root.PersistentFlags().Bool("debug", false, "")
+	root.PersistentFlags().BoolP("verbose", "v", false, "")
+	child := &cobra.Command{Use: "child"}
+	child.Flags().String("name", "", "")
+	root.AddCommand(child)
+
+	primaryErr := errors.New("primary pre-parse failure")
+	engine := NewEngine()
+	engine.Register(newStub("fail", PreParse, func(*Context) error { return primaryErr }))
+
+	ctx, err := RunPreParseArgs(root, engine, []string{
+		"child", "--name", "demo", "--format", "table", "--debug=maybe",
+	})
+	if ctx == nil || !errors.Is(err, primaryErr) {
+		t.Fatalf("RunPreParseArgs() = %#v, %v; want primary error", ctx, err)
+	}
+	format, _ := root.PersistentFlags().GetString("format")
+	debug, _ := root.PersistentFlags().GetBool("debug")
+	if format != "table" || debug {
+		t.Fatalf("partially valid presentation values = format:%q debug:%v", format, debug)
+	}
+}
+
 func TestCommandTraversalFlagTokenEdges(t *testing.T) {
 	raw := []string{"child"}
 	if got := argsForCommandTraversal(nil, raw); !reflect.DeepEqual(got, raw) {
@@ -273,7 +299,7 @@ func TestCommandTraversalFlagTokenEdges(t *testing.T) {
 		t.Fatalf("double-dash traversal args = %v", got)
 	}
 
-	if flag, inline, matched := persistentFlagToken(nil, "--verbose"); flag != nil || inline || matched {
+	if flag, inline, matched := newFlagTokenMatcher(nil).matchTraversalToken("--verbose"); flag != nil || inline || matched {
 		t.Fatalf("nil flag set matched: %#v, %v, %v", flag, inline, matched)
 	}
 	if flag, inline, matched := (*flagTokenMatcher)(nil).matchTraversalToken(""); flag != nil || inline || matched {
@@ -282,12 +308,19 @@ func TestCommandTraversalFlagTokenEdges(t *testing.T) {
 	if match := (*flagTokenMatcher)(nil).matchLongToken("--verbose"); match.recognized {
 		t.Fatalf("nil long matcher matched: %#v", match)
 	}
-	if flag, inline, matched := persistentFlagToken(root.PersistentFlags(), "-x"); flag != nil || inline || matched {
+	if flag, inline, matched := newFlagTokenMatcher(root.PersistentFlags()).matchTraversalToken("-x"); flag != nil || inline || matched {
 		t.Fatalf("unknown shorthand matched: %#v, %v, %v", flag, inline, matched)
 	}
-	flag, inline, matched := persistentFlagToken(root.PersistentFlags(), "-vv")
+	flag, inline, matched := newFlagTokenMatcher(root.PersistentFlags()).matchTraversalToken("-vv")
 	if !matched || !inline || flag == nil || flag.Name != "verbose" {
 		t.Fatalf("boolean shorthand cluster = %#v, %v, %v", flag, inline, matched)
+	}
+
+	duplicate := pflag.NewFlagSet("duplicate", pflag.ContinueOnError)
+	duplicate.Bool("verbose", false, "")
+	matcher := newFlagTokenMatcher(root.PersistentFlags(), duplicate)
+	if len(matcher.byName) != 2 || matcher.byName["verbose"] != root.PersistentFlags().Lookup("verbose") {
+		t.Fatalf("duplicate flag precedence = %#v", matcher.byName)
 	}
 }
 
@@ -328,7 +361,9 @@ func TestSeparatedBoolValueRecognition(t *testing.T) {
 }
 
 func TestPrimeEarlyErrorPresentationEdges(t *testing.T) {
-	primeEarlyErrorPresentation(nil, nil, nil)
+	if err := primeEarlyErrorPresentation(nil, nil, nil); err != nil {
+		t.Fatalf("nil presentation priming error = %v", err)
+	}
 
 	root := &cobra.Command{Use: "root"}
 	root.PersistentFlags().StringP("format", "f", "json", "")
@@ -338,10 +373,12 @@ func TestPrimeEarlyErrorPresentationEdges(t *testing.T) {
 	child.Flags().String("name", "", "")
 	root.AddCommand(child)
 
-	primeEarlyErrorPresentation(root, child, []string{
+	if err := primeEarlyErrorPresentation(root, child, []string{
 		"child", "--unknown", "value", "-x", "--name", "demo",
 		"-f", "table", "-v", "maybe", "--", "--debug",
-	})
+	}); err != nil {
+		t.Fatalf("presentation priming error = %v", err)
+	}
 	format, _ := root.PersistentFlags().GetString("format")
 	debug, _ := root.PersistentFlags().GetBool("debug")
 	verbose, _ := root.PersistentFlags().GetBool("verbose")
@@ -349,3 +386,70 @@ func TestPrimeEarlyErrorPresentationEdges(t *testing.T) {
 		t.Fatalf("presentation after edge argv = format:%q debug:%v verbose:%v", format, debug, verbose)
 	}
 }
+
+func TestPrimeEarlyErrorPresentationReportsParseAndContractErrors(t *testing.T) {
+	t.Run("invalid presentation value is reported after applying valid values", func(t *testing.T) {
+		root := &cobra.Command{Use: "root"}
+		root.PersistentFlags().StringP("format", "f", "json", "")
+		root.PersistentFlags().Bool("debug", false, "")
+		root.PersistentFlags().BoolP("verbose", "v", false, "")
+		child := &cobra.Command{Use: "child"}
+		root.AddCommand(child)
+
+		err := primeEarlyErrorPresentation(root, child, []string{"child", "--format", "table", "--debug=maybe"})
+		if err == nil || !strings.Contains(err.Error(), "invalid argument") {
+			t.Fatalf("invalid presentation error = %v", err)
+		}
+		format, _ := root.PersistentFlags().GetString("format")
+		debug, _ := root.PersistentFlags().GetBool("debug")
+		if format != "table" || debug {
+			t.Fatalf("partially valid presentation values = format:%q debug:%v", format, debug)
+		}
+	})
+
+	for _, test := range []struct {
+		name string
+		add  func(*pflag.FlagSet)
+		want string
+	}{
+		{name: "format type drift", add: func(flags *pflag.FlagSet) { flags.Bool("format", false, "") }, want: "read presentation flag --format"},
+		{name: "debug type drift", add: func(flags *pflag.FlagSet) {
+			flags.String("format", "json", "")
+			flags.String("debug", "", "")
+		}, want: "read presentation flag --debug"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := &cobra.Command{Use: "root"}
+			test.add(root.PersistentFlags())
+			err := primeEarlyErrorPresentation(root, root, []string{"--format", "table"})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("presentation contract error = %v, want %q", err, test.want)
+			}
+		})
+	}
+
+	t.Run("apply error is returned", func(t *testing.T) {
+		root := &cobra.Command{Use: "root"}
+		value := &rejectingPresentationString{value: "json"}
+		root.PersistentFlags().VarP(value, "format", "f", "")
+		err := primeEarlyErrorPresentation(root, root, []string{"--format", "table"})
+		if err == nil || !strings.Contains(err.Error(), "apply presentation flag --format") {
+			t.Fatalf("presentation apply error = %v", err)
+		}
+	})
+
+	t.Run("missing presentation flags are optional", func(t *testing.T) {
+		root := &cobra.Command{Use: "root"}
+		if err := primeEarlyErrorPresentation(root, root, []string{"--unknown", "value"}); err != nil {
+			t.Fatalf("optional presentation flags error = %v", err)
+		}
+	})
+}
+
+type rejectingPresentationString struct {
+	value string
+}
+
+func (v *rejectingPresentationString) Set(string) error { return errors.New("rejected") }
+func (v *rejectingPresentationString) String() string   { return v.value }
+func (*rejectingPresentationString) Type() string       { return "string" }

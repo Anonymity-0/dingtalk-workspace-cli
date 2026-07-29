@@ -168,6 +168,10 @@ func TestRunPhaseErrorAbortsChain(t *testing.T) {
 	if !strings.Contains(err.Error(), "fail") {
 		t.Errorf("error should contain handler name, got %q", err.Error())
 	}
+	var handlerErr *HandlerError
+	if !errors.As(err, &handlerErr) || handlerErr.Phase != PreParse || handlerErr.Handler != "fail" || handlerErr.Unwrap() != boom {
+		t.Fatalf("handler error = %#v, want pre-parse/fail wrapping boom", handlerErr)
+	}
 	if !h1.called {
 		t.Error("h1 should have been called")
 	}
@@ -264,6 +268,15 @@ func TestContextFlagProtectionAndConflictError(t *testing.T) {
 	}).Error()
 	if !strings.Contains(err, `for --user on "dws demo run": --user-id, --uid`) {
 		t.Fatalf("FlagConflictError.Error() = %q", err)
+	}
+
+	boolErr := (&BoolValueConflictError{
+		Command: "dws demo run",
+		Flag:    "--yes",
+		Values:  []string{"true", "false"},
+	}).Error()
+	if !strings.Contains(boolErr, `for --yes on "dws demo run": false, true`) {
+		t.Fatalf("BoolValueConflictError.Error() = %q", boolErr)
 	}
 }
 

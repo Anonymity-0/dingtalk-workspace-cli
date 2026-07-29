@@ -174,6 +174,22 @@ func (e *FlagConflictError) Error() string {
 	return fmt.Sprintf("conflicting parameter spellings for --%s on %q: %s; pass exactly one spelling", e.Canonical, e.Command, strings.Join(spellings, ", "))
 }
 
+// BoolValueConflictError is returned when one canonical boolean flag receives
+// both true and false in the same argv. Rejecting contradictory values keeps
+// the outcome independent of argument order while allowing repeated identical
+// spellings to retain Cobra's native behaviour.
+type BoolValueConflictError struct {
+	Command string
+	Flag    string
+	Values  []string
+}
+
+func (e *BoolValueConflictError) Error() string {
+	values := append([]string(nil), e.Values...)
+	sort.Strings(values)
+	return fmt.Sprintf("conflicting boolean values for --%s on %q: %s; pass exactly one value", strings.TrimPrefix(e.Flag, "--"), e.Command, strings.Join(values, ", "))
+}
+
 // FlagInfo describes a single CLI flag derived from a tool's input
 // schema. PreParse handlers use this to recognise valid flag names
 // when performing fuzzy matching or alias resolution.
@@ -182,8 +198,8 @@ type FlagInfo struct {
 	Name string
 
 	// Shorthand is the optional single-character pflag shorthand (e.g. "y"
-	// for --yes). PreParse uses it only when an exact shorthand token is
-	// followed by an explicit boolean literal.
+	// for --yes). PreParse uses exact shorthand tokens when normalising
+	// explicit boolean values; shorthand clusters retain native pflag syntax.
 	Shorthand string
 
 	// PropertyName is the original schema property key (e.g. "userId").

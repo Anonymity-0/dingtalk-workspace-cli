@@ -115,12 +115,7 @@ func Execute() (exitCode int) {
 	// This corrects model-generated errors like --userId → --user-id
 	// and --limit100 → --limit 100.
 	if err := rootRunPreParse(root, engine); err != nil {
-		err = apperrors.NewValidation(
-			err.Error(),
-			apperrors.WithReason("parameter_conflict"),
-			apperrors.WithHint("Remove the duplicate alias/canonical spelling and pass the parameter exactly once."),
-			apperrors.WithCause(err),
-		)
+		err = newPreParseValidationError(err)
 		_ = printExecutionError(root, os.Stdout, os.Stderr, err)
 		return apperrors.ExitCode(err)
 	}
@@ -143,6 +138,22 @@ func Execute() (exitCode int) {
 		return apperrors.ExitCode(err)
 	}
 	return 0
+}
+
+// newPreParseValidationError keeps pipeline handler identity in internal logs
+// while exposing only the underlying parameter-domain error to CLI users.
+func newPreParseValidationError(err error) error {
+	userErr := err
+	var handlerErr *pipeline.HandlerError
+	if stderrors.As(err, &handlerErr) && handlerErr.Unwrap() != nil {
+		userErr = handlerErr.Unwrap()
+	}
+	return apperrors.NewValidation(
+		userErr.Error(),
+		apperrors.WithReason("parameter_conflict"),
+		apperrors.WithHint("Remove the duplicate alias/canonical spelling and pass the parameter exactly once."),
+		apperrors.WithCause(userErr),
+	)
 }
 
 func isUnknownCommandError(err error) bool {
@@ -519,7 +530,13 @@ func installReviewedFlagProtectionHandlers(root *cobra.Command) {
 	var visit func(*cobra.Command)
 	visit = func(cmd *cobra.Command) {
 		if entry, ok := cli.LookupParamAlias(cmd.CommandPath()); ok && (len(entry.Blocked) > 0 || len(entry.Ambiguous) > 0) {
-			cmd.SetFlagErrorFunc(flagErrorWithSuggestions)
+			previous := cmd.FlagErrorFunc()
+			cmd.SetFlagErrorFunc(func(current *cobra.Command, err error) error {
+				if _, _, guarded := reviewedFlagProtection(current, err.Error()); guarded {
+					return flagErrorWithSuggestions(current, err)
+				}
+				return previous(current, err)
+			})
 		}
 		for _, child := range cmd.Commands() {
 			visit(child)
@@ -1328,8 +1345,9 @@ func newPipelineEngine() *pipeline.Engine {
 		// resolves reviewed synonyms to the real flag (--keyword → --query),
 		// then sticky splits glued values (--limit100 → --limit 100), then
 		// paramname fixes near-miss typos (--limt → --limit). Boolvalue runs
-		// last so every spelling of `--yes false` becomes `--yes=false` before
-		// pflag can interpret the bare bool as true.
+		// last so detached values for every real boolean flag (for example
+		// `--dry-run false`) become explicit `--flag=false` tokens before pflag
+		// can interpret the bare flag as true.
 		handlers.AliasHandler{},
 		handlers.SemanticAliasHandler{
 			// Inject the build-time reduced alias table with native types so

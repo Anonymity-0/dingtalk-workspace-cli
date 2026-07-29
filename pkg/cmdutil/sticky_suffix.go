@@ -114,7 +114,7 @@ func startsWithNumericSuffix(s string) bool {
 // NormalizeBoolLiteral reduces model-friendly boolean spellings to the exact
 // values accepted by an unambiguous --flag=true/false pflag token.
 func NormalizeBoolLiteral(s string) (string, bool) {
-	switch strings.ToLower(s) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "true", "1", "t", "yes", "on", "y":
 		return "true", true
 	case "false", "0", "f", "no", "off", "n":

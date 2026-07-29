@@ -145,3 +145,23 @@ func TestReviewedFlagProtectionAndInstallerEdges(t *testing.T) {
 		t.Fatalf("unreviewed flag protection = %q, %q, %v", flag, protection, ok)
 	}
 }
+
+func TestReviewedFlagProtectionInstallerPreservesLocalHandler(t *testing.T) {
+	root := NewRootCommand()
+	cmd := mustFindCommand(t, root, "contact", "dept", "list-children")
+	handler := cmd.FlagErrorFunc()
+
+	unreviewed := handler(cmd, fmt.Errorf("unknown flag: --not-reviewed"))
+	var structured *apperrors.Error
+	if stderrors.As(unreviewed, &structured) {
+		t.Fatalf("unreviewed error bypassed the command's local handler: %#v", structured)
+	}
+	if !strings.HasSuffix(unreviewed.Error(), "See 'dws contact dept list-children --help' for usage.") {
+		t.Fatalf("local handler output = %q", unreviewed)
+	}
+
+	guarded := handler(cmd, fmt.Errorf("unknown flag: --name"))
+	if !stderrors.As(guarded, &structured) || structured.Reason != "blocked_flag" {
+		t.Fatalf("reviewed guard did not use the central handler: %#v", guarded)
+	}
+}

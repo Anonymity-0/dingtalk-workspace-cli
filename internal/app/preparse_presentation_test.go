@@ -15,6 +15,7 @@ package app
 
 import (
 	"bytes"
+	stderrors "errors"
 	"io"
 	"strings"
 	"testing"
@@ -72,12 +73,19 @@ func TestPreParseConflictHonorsErrorPresentationFlags(t *testing.T) {
 		t.Fatalf("PreParse error verbosity = %v, want debug", got)
 	}
 
-	err = apperrors.NewValidation(
-		err.Error(),
-		apperrors.WithReason("parameter_conflict"),
-		apperrors.WithHint("Remove the duplicate alias/canonical spelling and pass the parameter exactly once."),
-		apperrors.WithCause(err),
-	)
+	err = newPreParseValidationError(err)
+	var structured *apperrors.Error
+	if !stderrors.As(err, &structured) {
+		t.Fatalf("PreParse validation error = %T, want *errors.Error", err)
+	}
+	if strings.Contains(structured.Message, "pipeline") || strings.Contains(structured.Message, "semantic-alias") ||
+		strings.Contains(structured.Cause.Error(), "pipeline") || strings.Contains(structured.Cause.Error(), "semantic-alias") {
+		t.Fatalf("internal pipeline identity leaked to user error: message=%q cause=%q", structured.Message, structured.Cause)
+	}
+	var conflict *pipeline.FlagConflictError
+	if !stderrors.As(err, &conflict) {
+		t.Fatalf("PreParse validation error lost FlagConflictError: %v", err)
+	}
 	var output bytes.Buffer
 	if printErr := printExecutionError(root, &output, &output, err); printErr != nil {
 		t.Fatalf("printExecutionError() error = %v", printErr)

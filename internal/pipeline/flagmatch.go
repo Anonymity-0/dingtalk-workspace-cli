@@ -79,8 +79,6 @@ func SplitStickyFlag(argument string, specByName map[string]FlagInfo) (StickyFla
 		return StickyFlagPair{}, false
 	}
 
-	bestLength := 0
-	bestFlag := ""
 	for index := len(bare) - 1; index >= 1; index-- {
 		prefix := bare[:index]
 		matchedFlag := ""
@@ -91,27 +89,23 @@ func SplitStickyFlag(argument string, specByName map[string]FlagInfo) (StickyFla
 				matchedFlag = normalized
 			}
 		}
-		if matchedFlag != "" && index > bestLength {
-			bestLength = index
-			bestFlag = matchedFlag
-			break
+		if matchedFlag == "" {
+			continue
 		}
-	}
-	if bestFlag == "" {
-		return StickyFlagPair{}, false
-	}
 
-	suffix := bare[bestLength:]
-	spec := specByName[bestFlag]
-	if !cmdutil.SuffixLooksLikeValue(suffix, spec.Type, spec.Format, spec.Enum) {
-		return StickyFlagPair{}, false
+		suffix := bare[index:]
+		spec := specByName[matchedFlag]
+		if !cmdutil.SuffixLooksLikeValue(suffix, spec.Type, spec.Format, spec.Enum) {
+			return StickyFlagPair{}, false
+		}
+		inline := false
+		if spec.Type == "bool" || spec.Type == "boolean" {
+			suffix, _ = cmdutil.NormalizeBoolLiteral(suffix)
+			inline = true
+		}
+		return StickyFlagPair{Flag: "--" + matchedFlag, Value: suffix, Inline: inline}, true
 	}
-	inline := false
-	if spec.Type == "bool" || spec.Type == "boolean" {
-		suffix, _ = cmdutil.NormalizeBoolLiteral(suffix)
-		inline = true
-	}
-	return StickyFlagPair{Flag: "--" + bestFlag, Value: suffix, Inline: inline}, true
+	return StickyFlagPair{}, false
 }
 
 // FuzzyMatchFlag returns the unique closest real long flag within the
