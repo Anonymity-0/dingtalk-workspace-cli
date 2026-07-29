@@ -424,9 +424,6 @@ func newDriveCommand() *cobra.Command {
 			if v, _ := cmd.Flags().GetString("space-id"); v != "" {
 				argsMap["spaceId"] = v
 			}
-			if v, _ := cmd.Flags().GetInt("version"); v > 0 {
-				argsMap["version"] = v
-			}
 
 			if deps.Caller.DryRun() {
 				deps.Out.PrintKeyValue("操作", "下载钉盘文件")
@@ -439,11 +436,7 @@ func newDriveCommand() *cobra.Command {
 
 			// Step 1: 获取下载 URL 和签名请求头
 			deps.Out.PrintInfo("[1/2] 获取下载链接...")
-			toolName := "download_file"
-			if v, _ := cmd.Flags().GetInt("version"); v > 0 {
-				toolName = "download_file_version"
-			}
-			text, err := callMCPToolReturnText(ctx, toolName, argsMap)
+			text, err := callMCPToolReturnText(ctx, "download_file", argsMap)
 			if err != nil {
 				return err
 			}
@@ -579,7 +572,6 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
-	driveDownloadCmd.Flags().Int("version", 0, "历史版本号 (可选，正整数，从 list --versions 获取)")
 
 	driveMkdirCmd.Flags().String("name", "", "文件夹名称，最长 50 字符 (必填)")
 	driveMkdirCmd.Flags().String("space-id", "", "目标空间 ID，不传则使用「我的文件」 (可选)")

@@ -43,6 +43,10 @@
       "reason": "The public pagination flag was normalized from --size to --limit.",
       "replaced_by": "oa.list_user_visible_process --limit",
       "reviewed": true
+    },
+    "drive.download_file --version": {
+      "reason": "Polymorphic dispatch: --version switches the MCP tool call from download_file to download_file_version; the version property belongs to download_file_version metadata, not download_file.",
+      "reviewed": true
     }
   },
   "bindings": {
