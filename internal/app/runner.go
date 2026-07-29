@@ -224,6 +224,24 @@ func (r *runtimeRunner) Run(ctx context.Context, invocation executor.Invocation)
 	return r.runSingle(ctx, invocation, true)
 }
 
+// RunReadOnly executes one already-classified read lookup for a semantic
+// Shortcut that is building a dry-run plan. It clones the runtime flags and
+// clears DryRun only on that clone: the process-wide caller and every ordinary
+// ToolCaller invocation retain the global execution barrier.
+func (r *runtimeRunner) RunReadOnly(ctx context.Context, invocation executor.Invocation) (executor.Result, error) {
+	if r == nil {
+		return executor.Result{}, fmt.Errorf("runtime runner is not configured")
+	}
+	clone := *r
+	if r.globalFlags != nil {
+		flags := *r.globalFlags
+		flags.DryRun = false
+		clone.globalFlags = &flags
+	}
+	invocation.DryRun = false
+	return clone.Run(ctx, invocation)
+}
+
 func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invocation, prefetchToken bool) (executor.Result, error) {
 	if r.loader == nil || r.transport == nil {
 		return r.fallback.Run(ctx, invocation)
