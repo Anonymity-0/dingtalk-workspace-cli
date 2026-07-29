@@ -5282,8 +5282,8 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 		RunE:  groupRunE,
 	}
 	chatGroupUserSettingsQueryCmd := &cobra.Command{
-		Use:   "query",
-		Short: "批量查询当前用户的群会话设置",
+		Use:     "query",
+		Short:   "批量查询当前用户的群会话设置",
 		Example: `  dws chat group user-settings query --groups cid1,cid2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "groups"); err != nil {
@@ -5303,8 +5303,8 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	}
 	chatGroupUserSettingsQueryCmd.Flags().String("groups", "", "群会话 openConversationId 列表，逗号分隔，最多 100 个 (必填)")
 	chatGroupUserSettingsSetCmd := &cobra.Command{
-		Use:   "set",
-		Short: "批量更新当前用户的群会话设置",
+		Use:     "set",
+		Short:   "批量更新当前用户的群会话设置",
 		Example: `  dws chat group user-settings set --items '[{"openConversationId":"cid1","top":true,"mute":false}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "items"); err != nil {
