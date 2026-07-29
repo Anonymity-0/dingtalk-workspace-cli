@@ -27,14 +27,58 @@ func TestPersonalOAEventListAndSchemaCommands(t *testing.T) {
 	if err := list.Execute(); err != nil {
 		t.Fatalf("event list --category oa error = %v", err)
 	}
-	for _, eventKey := range []string{
-		personal.EventOAApprovalTaskCreated,
-		personal.EventOAApprovalTaskFinished,
-		personal.EventOAApprovalTaskRedirected,
-		personal.EventOAApprovalInstanceStarted,
-		personal.EventOAApprovalInstanceTerminated,
-		personal.EventOAApprovalInstanceFinished,
-	} {
+	tests := []struct {
+		eventKey   string
+		properties []string
+	}{
+		{
+			eventKey: personal.EventOAApprovalTaskCreated,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "task_id", "title", "status", "create_time", "event_time",
+			},
+		},
+		{
+			eventKey: personal.EventOAApprovalTaskFinished,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "task_id", "title", "status", "result", "create_time",
+				"finish_time", "event_time",
+			},
+		},
+		{
+			eventKey: personal.EventOAApprovalTaskRedirected,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "task_id", "title", "status", "result", "create_time",
+				"finish_time", "event_time",
+			},
+		},
+		{
+			eventKey: personal.EventOAApprovalInstanceStarted,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "title", "status", "create_time", "event_time",
+			},
+		},
+		{
+			eventKey: personal.EventOAApprovalInstanceTerminated,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "title", "status", "create_time", "finish_time", "event_time",
+			},
+		},
+		{
+			eventKey: personal.EventOAApprovalInstanceFinished,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "title", "status", "result", "create_time", "finish_time",
+				"event_time",
+			},
+		},
+	}
+	for _, tt := range tests {
+		eventKey := tt.eventKey
 		if !strings.Contains(listOut.String(), eventKey) {
 			t.Fatalf("OA event list missing %s:\n%s", eventKey, listOut.String())
 		}
@@ -60,12 +104,16 @@ func TestPersonalOAEventListAndSchemaCommands(t *testing.T) {
 			t.Fatalf("schema body for %s = %#v", eventKey, doc["schema"])
 		}
 		properties, ok := schemaBody["properties"].(map[string]any)
-		if !ok {
-			t.Fatalf("schema properties for %s = %#v", eventKey, schemaBody["properties"])
+		if !ok || len(properties) != len(tt.properties) {
+			t.Fatalf("schema properties for %s = %#v, want %d fields", eventKey, schemaBody["properties"], len(tt.properties))
 		}
-		payload, ok := properties["payload"].(map[string]any)
-		if !ok || payload["additionalProperties"] != true {
-			t.Fatalf("schema payload for %s = %#v, want open object", eventKey, properties["payload"])
+		for _, name := range tt.properties {
+			if _, ok := properties[name].(map[string]any); !ok {
+				t.Fatalf("schema property %s for %s = %#v", name, eventKey, properties[name])
+			}
+		}
+		if _, ok := properties["payload"]; ok {
+			t.Fatalf("schema for %s exposed generic payload: %#v", eventKey, properties)
 		}
 	}
 	if strings.Contains(listOut.String(), personal.EventMention) {

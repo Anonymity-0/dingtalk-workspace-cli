@@ -474,41 +474,91 @@ func TestGroupLifecycleSchemaDocumentsUseConservativePayload(t *testing.T) {
 	}
 }
 
-func TestOAEventSchemaDocumentsUseConservativePayload(t *testing.T) {
-	wantProperties := []string{"type", "event_id", "timestamp", "subscribe_id", "payload"}
-	for _, eventKey := range []string{
-		EventOAApprovalTaskCreated,
-		EventOAApprovalTaskFinished,
-		EventOAApprovalTaskRedirected,
-		EventOAApprovalInstanceStarted,
-		EventOAApprovalInstanceTerminated,
-		EventOAApprovalInstanceFinished,
-	} {
-		t.Run(eventKey, func(t *testing.T) {
-			def, ok := Lookup(eventKey)
+func TestOAEventSchemaDocumentsMatchOutputDTO(t *testing.T) {
+	tests := []struct {
+		eventKey   string
+		properties []string
+	}{
+		{
+			eventKey: EventOAApprovalTaskCreated,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "task_id", "title", "status", "create_time", "event_time",
+			},
+		},
+		{
+			eventKey: EventOAApprovalTaskFinished,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "task_id", "title", "status", "result", "create_time",
+				"finish_time", "event_time",
+			},
+		},
+		{
+			eventKey: EventOAApprovalTaskRedirected,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "task_id", "title", "status", "result", "create_time",
+				"finish_time", "event_time",
+			},
+		},
+		{
+			eventKey: EventOAApprovalInstanceStarted,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "title", "status", "create_time", "event_time",
+			},
+		},
+		{
+			eventKey: EventOAApprovalInstanceTerminated,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "title", "status", "create_time", "finish_time", "event_time",
+			},
+		},
+		{
+			eventKey: EventOAApprovalInstanceFinished,
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "process_instance_id",
+				"process_code", "title", "status", "result", "create_time", "finish_time",
+				"event_time",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.eventKey, func(t *testing.T) {
+			def, ok := Lookup(tt.eventKey)
 			if !ok {
-				t.Fatalf("Lookup(%q) failed", eventKey)
+				t.Fatalf("Lookup(%q) failed", tt.eventKey)
 			}
 			doc := BuildSchemaDocumentForMode(def, true)
 			if doc.JQRootPath != "." {
 				t.Fatalf("jq_root_path = %q, want .", doc.JQRootPath)
 			}
 			props, ok := doc.Schema["properties"].(map[string]any)
-			if !ok || len(props) != len(wantProperties) {
-				t.Fatalf("schema.properties = %#v, want exactly %d fields", doc.Schema["properties"], len(wantProperties))
+			if !ok || len(props) != len(tt.properties) {
+				t.Fatalf("schema.properties = %#v, want exactly %d fields", doc.Schema["properties"], len(tt.properties))
 			}
-			for _, name := range wantProperties {
+			for _, name := range tt.properties {
 				if _, ok := props[name].(map[string]any); !ok {
 					t.Fatalf("schema.properties.%s = %#v, want object", name, props[name])
 				}
 			}
 			eventType := props["type"].(map[string]any)
-			if !reflect.DeepEqual(eventType["enum"], []string{eventKey}) {
-				t.Fatalf("schema.properties.type.enum = %#v, want %q", eventType["enum"], eventKey)
+			if !reflect.DeepEqual(eventType["enum"], []string{tt.eventKey}) {
+				t.Fatalf("schema.properties.type.enum = %#v, want %q", eventType["enum"], tt.eventKey)
 			}
-			payload := props["payload"].(map[string]any)
-			if payload["type"] != "object" || payload["additionalProperties"] != true {
-				t.Fatalf("schema.properties.payload = %#v, want open object", payload)
+			if _, ok := props["payload"]; ok {
+				t.Fatalf("schema.properties exposed generic payload: %#v", props)
+			}
+			for _, name := range []string{"timestamp", "create_time", "finish_time", "event_time"} {
+				property, exists := props[name].(map[string]any)
+				if !exists {
+					continue
+				}
+				if property["type"] != "integer" || property["format"] != "timestamp_ms" {
+					t.Fatalf("schema.properties.%s = %#v, want timestamp_ms integer", name, property)
+				}
 			}
 		})
 	}

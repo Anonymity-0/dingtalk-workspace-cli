@@ -87,7 +87,7 @@ description: 钉钉个人 IM 事件与 OA 审批事件长连接监听、订阅�
 1. 从用户意图选择事件码；人名或群名先解析成必填 ID。
 2. 需要了解字段时运行 `dws event schema <event_key> --flatten`，读取 `schema.properties`；此模式的 `jq_root_path` 为 `.`。
 3. 启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。单事件等待 `[event] ready event_key=<key> bus_pid=<pid> subscribe_id=<id>`；多事件先记录每条 `[event] subscription event_key=<key> subscribe_id=<id>`，再等待 `[event] ready event_count=<n> bus_pid=<pid>`。不要用 `sleep` 猜测。
-4. stdout 每行是一个扁平事件 JSON；消息、动作及群成员加入/退出事件直接读取顶层业务字段。群标题变更、群解散和 OA 事件只读取公共字段与 `payload` 中实际存在的字段。
+4. stdout 每行是一个扁平事件 JSON；消息、动作、群成员加入/退出及 OA 审批事件直接读取顶层业务字段。群标题变更和群解散只读取公共字段与 `payload` 中实际存在的字段。
 5. 需要确认监听状态时运行 `dws event status --event <event_key>`，查看 `Subscriptions` 和 `Consumers`。
 6. 任务完成后优雅结束 consume；本次新建的订阅会自动取消。复用已有订阅或需要从外部主动取消时，先用 `dws event stop <subscribe_id> --dry-run` 预览，向用户确认后再加 `--yes`；临时测试可用 `--max-events` 或 `--duration` 自动退出。
 
@@ -241,7 +241,7 @@ dws event consume user_im_message_receive_o2o \
 - 引用回复读取可选的 `quoted_message`；合并转发读取可选的 `forward_messages` 数组。两者保留内部消息的 `message_id/conversation_id/sender/sender_open_dingtalk_id/content/create_time`；不要通过“聊天记录”等本地化外层文案识别或拆分合并转发。
 - 群成员加入/退出事件读取顶层 `conversation_id`、`operator`、`operator_open_dingtalk_id`、`members`、`event_time`。`operator` 是执行操作的人，`members` 是本次加入或退出的成员数组；成员项读取 `nick` 和 `open_dingtalk_id`。系统操作或成员自行退出时，操作人字段可能为空。
 - 群标题变更和群解散当前只承诺顶层 `type/event_id/timestamp/subscribe_id/payload`。读取 `payload` 时以实际键为准，不猜测群标题、操作者等尚未确认的字段；完整原始协议用 `-f raw` 或 `--debug-raw-events` 排查。
-- OA 事件当前同样只承诺顶层 `type/event_id/timestamp/subscribe_id/payload`；`payload` 保留服务端实际业务字段并移除内部路由字段。不要猜测 `taskId`、`processInstanceId` 或完成状态枚举；payload 缺失或非法时会告警并回退输出原始 transport envelope。
+- OA 事件读取顶层 `process_instance_id/process_code/title/status/create_time/event_time`。任务事件另有 `task_id`；完成、转交或终止事件按对应 schema 提供 `finish_time`，任务完成、任务转交和实例完成还提供 `result`。`status/result` 的值以服务端实际推送为准，不自行补充枚举；缺少稳定 ID 或 payload 非法时会告警并回退输出原始 transport envelope。
 - 群自动回复使用事件顶层 `conversation_id`；单聊自动回复使用顶层 `sender_open_dingtalk_id`。
 - 已读事件读取顶层 `reader`、`reader_open_dingtalk_id`、`read_time`；撤回事件读取 `recaller`、`recaller_open_dingtalk_id`、`recall_time`。
 - 表情回应事件读取顶层 `operator`、`operator_open_dingtalk_id`、`reaction_name`、`reaction_text`、`operation_type`、`operation_time`。
@@ -252,4 +252,4 @@ dws event consume user_im_message_receive_o2o \
 | Topic | Reference | Coverage |
 |---|---|---|
 | IM | [references/event-im.md](references/event-im.md) | 十六类个人 IM 事件命令、参数、生命周期、输出解析、自测和排障 |
-| OA | [references/event-oa.md](references/event-oa.md) | 六类个人 OA 审批事件、无参数订阅、多事件消费和保守 payload 契约 |
+| OA | [references/event-oa.md](references/event-oa.md) | 六类个人 OA 审批事件、无参数订阅、多事件消费和稳定扁平输出字段 |

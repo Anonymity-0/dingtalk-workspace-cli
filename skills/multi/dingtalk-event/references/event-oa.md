@@ -41,7 +41,7 @@ dws auth login
 | “查看 OA 事件目录” | `dws event list --category oa` |
 | “查看 OA 事件输出字段” | 对对应事件运行 `dws event schema <event_key> --flatten` |
 
-三个审批任务事件分别表达任务已创建、已完成和已转交；三个审批实例事件分别表达实例已发起、已终止和已完成。首版不推断审批结果、任务 ID、实例 ID、转交对象或终止原因的具体 payload 字段。
+三个审批任务事件分别表达任务已创建、已完成和已转交；三个审批实例事件分别表达实例已发起、已终止和已完成。扁平字段来自六类事件的预发联调样本；`status` 和 `result` 保留服务端原值，不把当前样本值推断为完整枚举。
 
 ## Commands
 
@@ -85,7 +85,7 @@ dws event consume \
 
 ## Output contract
 
-`--flatten` 模式只承诺以下稳定结构：
+`--flatten` 模式的所有 OA 事件都包含以下顶层字段：
 
 ```json
 {
@@ -93,14 +93,52 @@ dws event consume \
   "event_id": "...",
   "timestamp": 0,
   "subscribe_id": "...",
-  "payload": {}
+  "process_instance_id": "...",
+  "process_code": "...",
+  "title": "...",
+  "status": "RUNNING",
+  "create_time": 0,
+  "event_time": 0
 }
 ```
 
-- `type` 是当前 event key；`event_id` 可用于去重；`timestamp` 是事件发生时间戳；`subscribe_id` 标识对应的独立订阅。
-- `payload` 是开放业务对象，schema 使用 `additionalProperties=true`。未知业务字段原样保留，内部路由字段 `uid/corpid/clientId/filterSubId/bizid/orgId/sourceId` 会被移除。
-- 不要假设 `payload` 一定包含 `taskId`、`processInstanceId`、`processCode`、审批结果或完成状态，也不要猜测状态枚举。始终以实际 payload 和 `dws event schema <event_key> --flatten` 为准。
-- payload 缺失、为空或无法解析时，consume 会在 stderr 记录 warning，并把原始 transport envelope 写到 stdout，保证事件不被静默丢弃。
+- `type` 是当前 event key；`event_id` 可用于去重；`timestamp` 是 transport 事件发生时间；`subscribe_id` 标识对应的独立订阅。
+- `process_instance_id` 是审批实例 ID，可传给 OA 审批命令的 `--instance-id`；`process_code` 是审批流程模板编码。
+- `create_time`、`finish_time` 和 `event_time` 都是毫秒时间戳。`event_time` 是审批业务事件时间，`timestamp` 是 transport 事件时间。
+- 六类事件的额外字段如下；具体事件始终以 `dws event schema <event_key> --flatten` 为准。
+
+| 事件 | 额外顶层字段 |
+|---|---|
+| `user_oa_approval_task_created` | `task_id` |
+| `user_oa_approval_task_finished` | `task_id`、`result`、`finish_time` |
+| `user_oa_approval_task_redirected` | `task_id`、`result`、`finish_time` |
+| `user_oa_approval_instance_started` | 无 |
+| `user_oa_approval_instance_terminated` | `finish_time` |
+| `user_oa_approval_instance_finished` | `result`、`finish_time` |
+
+任务完成事件示例：
+
+```json
+{
+  "type": "user_oa_approval_task_finished",
+  "event_id": "...",
+  "timestamp": 0,
+  "subscribe_id": "...",
+  "process_instance_id": "...",
+  "process_code": "...",
+  "task_id": "...",
+  "title": "测试审批",
+  "status": "FINISHED",
+  "result": "agree",
+  "create_time": 0,
+  "finish_time": 0,
+  "event_time": 0
+}
+```
+
+- `task_id` 是当前审批任务 ID，可传给接受任务 ID 的 OA 审批命令。
+- `status` 和 `result` 是服务端字符串；不要只根据当前样本把 `RUNNING/FINISHED/TERMINATED` 或 `agree/redirect` 写成封闭枚举。
+- payload 缺失、为空、缺少对应事件的稳定 ID 或无法解析时，consume 会在 stderr 记录 warning，并把原始 transport envelope 写到 stdout，保证事件不被静默丢弃。
 - 不传 `--flatten` 时保持兼容 transport envelope，业务 payload 位于 `.data | fromjson`。需要联调完整原始协议时使用不带 `--flatten` 的 `-f raw` 或 `--debug-raw-events`。
 
 ## Lifecycle

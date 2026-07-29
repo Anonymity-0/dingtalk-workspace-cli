@@ -121,15 +121,92 @@ type GroupLifecycleEventOutput struct {
 	Payload     map[string]any `json:"payload" description:"群生命周期事件业务数据，字段以服务端实际推送为准" additional_properties:"true"`
 }
 
-// OAEventOutput intentionally keeps the OA payload open until stable approval
-// samples and status enums are available. Only top-level transport routing
-// metadata is removed; all unknown business fields are preserved.
-type OAEventOutput struct {
-	Type        string         `json:"type" description:"事件类型，固定为当前 event_key"`
-	EventID     string         `json:"event_id" description:"事件 ID，可用于去重"`
-	Timestamp   int64          `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
-	SubscribeID string         `json:"subscribe_id" description:"订阅 ID"`
-	Payload     map[string]any `json:"payload" description:"OA 审批事件业务数据，字段以服务端实际推送为准" additional_properties:"true"`
+type OAApprovalTaskCreatedOutput struct {
+	Type              string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID           string `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp         int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID       string `json:"subscribe_id" description:"订阅 ID"`
+	ProcessInstanceID string `json:"process_instance_id" description:"审批实例 ID"`
+	ProcessCode       string `json:"process_code" description:"审批流程模板编码"`
+	TaskID            string `json:"task_id" description:"审批任务 ID"`
+	Title             string `json:"title" description:"审批标题"`
+	Status            string `json:"status" description:"审批任务状态"`
+	CreateTime        int64  `json:"create_time" description:"审批任务创建时间" format:"timestamp_ms"`
+	EventTime         int64  `json:"event_time" description:"审批任务事件业务时间" format:"timestamp_ms"`
+}
+
+type OAApprovalTaskFinishedOutput struct {
+	Type              string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID           string `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp         int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID       string `json:"subscribe_id" description:"订阅 ID"`
+	ProcessInstanceID string `json:"process_instance_id" description:"审批实例 ID"`
+	ProcessCode       string `json:"process_code" description:"审批流程模板编码"`
+	TaskID            string `json:"task_id" description:"审批任务 ID"`
+	Title             string `json:"title" description:"审批标题"`
+	Status            string `json:"status" description:"审批任务状态"`
+	Result            string `json:"result" description:"审批任务处理结果，值以服务端实际推送为准"`
+	CreateTime        int64  `json:"create_time" description:"审批任务创建时间" format:"timestamp_ms"`
+	FinishTime        int64  `json:"finish_time" description:"审批任务完成时间" format:"timestamp_ms"`
+	EventTime         int64  `json:"event_time" description:"审批任务事件业务时间" format:"timestamp_ms"`
+}
+
+type OAApprovalTaskRedirectedOutput struct {
+	Type              string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID           string `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp         int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID       string `json:"subscribe_id" description:"订阅 ID"`
+	ProcessInstanceID string `json:"process_instance_id" description:"审批实例 ID"`
+	ProcessCode       string `json:"process_code" description:"审批流程模板编码"`
+	TaskID            string `json:"task_id" description:"原审批任务 ID"`
+	Title             string `json:"title" description:"审批标题"`
+	Status            string `json:"status" description:"原审批任务状态"`
+	Result            string `json:"result" description:"审批任务转交结果，值以服务端实际推送为准"`
+	CreateTime        int64  `json:"create_time" description:"原审批任务创建时间" format:"timestamp_ms"`
+	FinishTime        int64  `json:"finish_time" description:"原审批任务转交完成时间" format:"timestamp_ms"`
+	EventTime         int64  `json:"event_time" description:"审批任务转交事件业务时间" format:"timestamp_ms"`
+}
+
+type OAApprovalInstanceStartedOutput struct {
+	Type              string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID           string `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp         int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID       string `json:"subscribe_id" description:"订阅 ID"`
+	ProcessInstanceID string `json:"process_instance_id" description:"审批实例 ID"`
+	ProcessCode       string `json:"process_code" description:"审批流程模板编码"`
+	Title             string `json:"title" description:"审批标题"`
+	Status            string `json:"status" description:"审批实例状态"`
+	CreateTime        int64  `json:"create_time" description:"审批实例创建时间" format:"timestamp_ms"`
+	EventTime         int64  `json:"event_time" description:"审批实例事件业务时间" format:"timestamp_ms"`
+}
+
+type OAApprovalInstanceTerminatedOutput struct {
+	Type              string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID           string `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp         int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID       string `json:"subscribe_id" description:"订阅 ID"`
+	ProcessInstanceID string `json:"process_instance_id" description:"审批实例 ID"`
+	ProcessCode       string `json:"process_code" description:"审批流程模板编码"`
+	Title             string `json:"title" description:"审批标题"`
+	Status            string `json:"status" description:"审批实例状态"`
+	CreateTime        int64  `json:"create_time" description:"审批实例创建时间" format:"timestamp_ms"`
+	FinishTime        int64  `json:"finish_time" description:"审批实例终止时间" format:"timestamp_ms"`
+	EventTime         int64  `json:"event_time" description:"审批实例终止事件业务时间" format:"timestamp_ms"`
+}
+
+type OAApprovalInstanceFinishedOutput struct {
+	Type              string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID           string `json:"event_id" description:"事件 ID，可用于去重"`
+	Timestamp         int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID       string `json:"subscribe_id" description:"订阅 ID"`
+	ProcessInstanceID string `json:"process_instance_id" description:"审批实例 ID"`
+	ProcessCode       string `json:"process_code" description:"审批流程模板编码"`
+	Title             string `json:"title" description:"审批标题"`
+	Status            string `json:"status" description:"审批实例状态"`
+	Result            string `json:"result" description:"审批实例处理结果，值以服务端实际推送为准"`
+	CreateTime        int64  `json:"create_time" description:"审批实例创建时间" format:"timestamp_ms"`
+	FinishTime        int64  `json:"finish_time" description:"审批实例完成时间" format:"timestamp_ms"`
+	EventTime         int64  `json:"event_time" description:"审批实例事件业务时间" format:"timestamp_ms"`
 }
 
 type GroupMemberEventOutput struct {
@@ -239,6 +316,22 @@ type personalGroupMemberBody struct {
 type personalGroupMemberRecord struct {
 	Nick           string `json:"nick"`
 	OpenDingTalkID string `json:"openDingTalkId"`
+}
+
+type personalOAApprovalPayload struct {
+	EventTime int64                  `json:"event_time"`
+	Body      personalOAApprovalBody `json:"body"`
+}
+
+type personalOAApprovalBody struct {
+	ProcessInstanceID string `json:"processInstanceId"`
+	ProcessCode       string `json:"processCode"`
+	TaskID            string `json:"taskId"`
+	Title             string `json:"title"`
+	Status            string `json:"status"`
+	Result            string `json:"result"`
+	CreateTime        int64  `json:"createTime"`
+	FinishTime        int64  `json:"finishTime"`
 }
 
 func (b *personalReactionBody) UnmarshalJSON(data []byte) error {
@@ -366,17 +459,7 @@ func ProjectOutput(ev transport.Event) (any, error) {
 			Payload:     payload,
 		}, nil
 	case isOAEvent(eventType):
-		payload, err := decodeConservativePayload(data.Payload)
-		if err != nil {
-			return ev, fmt.Errorf("decode personal OA payload: %w", err)
-		}
-		return OAEventOutput{
-			Type:        base.Type,
-			EventID:     base.EventID,
-			Timestamp:   base.Timestamp,
-			SubscribeID: base.SubscribeID,
-			Payload:     payload,
-		}, nil
+		return projectOAApprovalEvent(ev, base, data.Payload)
 	default:
 		return ev, fmt.Errorf("unsupported personal event type %q", eventType)
 	}
@@ -510,6 +593,112 @@ func projectGroupMemberEvent(ev transport.Event, base baseEventOutput, raw json.
 		Members:                members,
 		EventTime:              payload.EventTime,
 	}, nil
+}
+
+func projectOAApprovalEvent(ev transport.Event, base baseEventOutput, raw json.RawMessage) (any, error) {
+	var payload personalOAApprovalPayload
+	if err := decodeRequiredPayload(raw, &payload); err != nil {
+		return ev, fmt.Errorf("decode personal OA payload: %w", err)
+	}
+	if strings.TrimSpace(payload.Body.ProcessInstanceID) == "" {
+		return ev, fmt.Errorf("decode personal OA payload: processInstanceId is required")
+	}
+	if isOAApprovalTaskEvent(base.Type) && strings.TrimSpace(payload.Body.TaskID) == "" {
+		return ev, fmt.Errorf("decode personal OA payload: taskId is required for %s", base.Type)
+	}
+
+	switch base.Type {
+	case EventOAApprovalTaskCreated:
+		return OAApprovalTaskCreatedOutput{
+			Type:              base.Type,
+			EventID:           base.EventID,
+			Timestamp:         base.Timestamp,
+			SubscribeID:       base.SubscribeID,
+			ProcessInstanceID: payload.Body.ProcessInstanceID,
+			ProcessCode:       payload.Body.ProcessCode,
+			TaskID:            payload.Body.TaskID,
+			Title:             payload.Body.Title,
+			Status:            payload.Body.Status,
+			CreateTime:        payload.Body.CreateTime,
+			EventTime:         payload.EventTime,
+		}, nil
+	case EventOAApprovalTaskFinished:
+		return OAApprovalTaskFinishedOutput{
+			Type:              base.Type,
+			EventID:           base.EventID,
+			Timestamp:         base.Timestamp,
+			SubscribeID:       base.SubscribeID,
+			ProcessInstanceID: payload.Body.ProcessInstanceID,
+			ProcessCode:       payload.Body.ProcessCode,
+			TaskID:            payload.Body.TaskID,
+			Title:             payload.Body.Title,
+			Status:            payload.Body.Status,
+			Result:            payload.Body.Result,
+			CreateTime:        payload.Body.CreateTime,
+			FinishTime:        payload.Body.FinishTime,
+			EventTime:         payload.EventTime,
+		}, nil
+	case EventOAApprovalTaskRedirected:
+		return OAApprovalTaskRedirectedOutput{
+			Type:              base.Type,
+			EventID:           base.EventID,
+			Timestamp:         base.Timestamp,
+			SubscribeID:       base.SubscribeID,
+			ProcessInstanceID: payload.Body.ProcessInstanceID,
+			ProcessCode:       payload.Body.ProcessCode,
+			TaskID:            payload.Body.TaskID,
+			Title:             payload.Body.Title,
+			Status:            payload.Body.Status,
+			Result:            payload.Body.Result,
+			CreateTime:        payload.Body.CreateTime,
+			FinishTime:        payload.Body.FinishTime,
+			EventTime:         payload.EventTime,
+		}, nil
+	case EventOAApprovalInstanceStarted:
+		return OAApprovalInstanceStartedOutput{
+			Type:              base.Type,
+			EventID:           base.EventID,
+			Timestamp:         base.Timestamp,
+			SubscribeID:       base.SubscribeID,
+			ProcessInstanceID: payload.Body.ProcessInstanceID,
+			ProcessCode:       payload.Body.ProcessCode,
+			Title:             payload.Body.Title,
+			Status:            payload.Body.Status,
+			CreateTime:        payload.Body.CreateTime,
+			EventTime:         payload.EventTime,
+		}, nil
+	case EventOAApprovalInstanceTerminated:
+		return OAApprovalInstanceTerminatedOutput{
+			Type:              base.Type,
+			EventID:           base.EventID,
+			Timestamp:         base.Timestamp,
+			SubscribeID:       base.SubscribeID,
+			ProcessInstanceID: payload.Body.ProcessInstanceID,
+			ProcessCode:       payload.Body.ProcessCode,
+			Title:             payload.Body.Title,
+			Status:            payload.Body.Status,
+			CreateTime:        payload.Body.CreateTime,
+			FinishTime:        payload.Body.FinishTime,
+			EventTime:         payload.EventTime,
+		}, nil
+	case EventOAApprovalInstanceFinished:
+		return OAApprovalInstanceFinishedOutput{
+			Type:              base.Type,
+			EventID:           base.EventID,
+			Timestamp:         base.Timestamp,
+			SubscribeID:       base.SubscribeID,
+			ProcessInstanceID: payload.Body.ProcessInstanceID,
+			ProcessCode:       payload.Body.ProcessCode,
+			Title:             payload.Body.Title,
+			Status:            payload.Body.Status,
+			Result:            payload.Body.Result,
+			CreateTime:        payload.Body.CreateTime,
+			FinishTime:        payload.Body.FinishTime,
+			EventTime:         payload.EventTime,
+		}, nil
+	default:
+		return ev, fmt.Errorf("unsupported personal OA event type %q", base.Type)
+	}
 }
 
 func decodeRequiredPayload(raw json.RawMessage, target any) error {
@@ -674,8 +863,18 @@ func outputTypeForEvent(eventKey string) reflect.Type {
 		return reflect.TypeOf(GroupMemberEventOutput{})
 	case isGroupLifecycleEvent(eventKey):
 		return reflect.TypeOf(GroupLifecycleEventOutput{})
-	case isOAEvent(eventKey):
-		return reflect.TypeOf(OAEventOutput{})
+	case eventKey == EventOAApprovalTaskCreated:
+		return reflect.TypeOf(OAApprovalTaskCreatedOutput{})
+	case eventKey == EventOAApprovalTaskFinished:
+		return reflect.TypeOf(OAApprovalTaskFinishedOutput{})
+	case eventKey == EventOAApprovalTaskRedirected:
+		return reflect.TypeOf(OAApprovalTaskRedirectedOutput{})
+	case eventKey == EventOAApprovalInstanceStarted:
+		return reflect.TypeOf(OAApprovalInstanceStartedOutput{})
+	case eventKey == EventOAApprovalInstanceTerminated:
+		return reflect.TypeOf(OAApprovalInstanceTerminatedOutput{})
+	case eventKey == EventOAApprovalInstanceFinished:
+		return reflect.TypeOf(OAApprovalInstanceFinishedOutput{})
 	default:
 		return reflect.TypeOf(baseEventOutput{})
 	}
@@ -709,6 +908,12 @@ func isOAEvent(eventKey string) bool {
 		eventKey == EventOAApprovalInstanceStarted ||
 		eventKey == EventOAApprovalInstanceTerminated ||
 		eventKey == EventOAApprovalInstanceFinished
+}
+
+func isOAApprovalTaskEvent(eventKey string) bool {
+	return eventKey == EventOAApprovalTaskCreated ||
+		eventKey == EventOAApprovalTaskFinished ||
+		eventKey == EventOAApprovalTaskRedirected
 }
 
 func schemaType(t reflect.Type) string {

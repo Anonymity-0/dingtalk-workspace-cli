@@ -96,7 +96,7 @@
 1. 从用户意图选择事件码；人名或群名先解析成必填 ID。
 2. 需要了解字段时运行 `dws event schema <event_key> --flatten`，读取 `schema.properties`；此模式的 `jq_root_path` 为 `.`。
 3. 启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。单事件等待 `ready event_key=...`；多事件记录每条 `subscription event_key=... subscribe_id=...`，再等待整体 `ready event_count=...`。不要用 `sleep` 猜测。
-4. stdout 每行是一个扁平事件 JSON；消息、动作及群成员加入/退出事件读取顶层业务字段。群标题变更、群解散和 OA 事件只读取公共字段和 `payload` 中实际存在的字段。
+4. stdout 每行是一个扁平事件 JSON；消息、动作、群成员加入/退出及 OA 审批事件读取顶层业务字段。群标题变更和群解散只读取公共字段和 `payload` 中实际存在的字段。
 5. 需要确认监听状态时运行 `dws event status --event <event_key>`，查看 `Subscriptions` 和 `Consumers`。
 6. 任务完成后优雅结束 consume；本次新建的订阅会自动取消。复用已有订阅或需要从外部主动取消时，先运行 `dws event stop <subscribe_id> --dry-run`，向用户确认后再以 `--yes` 执行；自测可在 consume 加 `--max-events` 或 `--duration` 自动退出。
 
@@ -219,7 +219,7 @@ dws event stop --all --yes
 - 表情回应事件直接读取 `operator/operator_open_dingtalk_id/reaction_name/reaction_text/operation_type/operation_time`。
 - 群成员加入/退出事件读取 `conversation_id/operator/operator_open_dingtalk_id/members/event_time`。`operator` 是执行操作的人，`members` 是本次加入或退出的成员数组，成员项包含 `nick/open_dingtalk_id`；系统操作或成员自行退出时操作人字段可能为空。
 - 群标题变更和群解散当前只承诺 `type/event_id/timestamp/subscribe_id/payload`；以实际 `payload` 为准，不猜测群标题、操作者等字段。
-- OA 事件同样只承诺 `type/event_id/timestamp/subscribe_id/payload`。`payload` 是允许任意业务字段的开放对象，内部路由字段会被移除；不要猜测 `taskId`、`processInstanceId` 或审批完成状态枚举。payload 缺失或非法时 stderr 会输出 warning，stdout 回退为原始 transport envelope。
+- OA 事件读取顶层 `process_instance_id/process_code/title/status/create_time/event_time`；任务事件另有 `task_id`，完成、转交或终止事件按对应 schema 提供 `finish_time`，任务完成、任务转交和实例完成还提供 `result`。`status/result` 保留服务端实际值，不推断完整枚举；缺少稳定 ID 或 payload 非法时 stderr 会输出 warning，stdout 回退为原始 transport envelope。
 - 图片、文件等媒体消息的 `content` 可能是可读描述；合并转发媒体的下载定位信息位于对应 `forward_messages[].content`。需要实际媒体文件时调用 `dws chat message download-media`。
 - 正常动作事件输出不含内部 `payload/uid/corpid/clientId/filterSubId/bizid`；原始排查才使用 `-f raw` 或 `--debug-raw-events`。
 - 自己发的消息不作为事件回来（`isSelfLoop` 过滤）；自发验证会看到 0 事件，测试投递使用别人或机器人发消息。
