@@ -111,6 +111,15 @@ func TestResolveIdentityHeadersAgentProductPrecedence(t *testing.T) {
 	})
 }
 
+func TestApplyAgentProductOverrideAllocatesHeaders(t *testing.T) {
+	t.Setenv(agentproduct.EnvName, "qwenwork")
+
+	headers := applyAgentProductOverride(nil)
+	if got := headers[agentproduct.HeaderName]; got != "qwenwork" {
+		t.Fatalf("%s = %q, want qwenwork", agentproduct.HeaderName, got)
+	}
+}
+
 func TestRootRejectsInvalidAgentProductBeforeEditionHook(t *testing.T) {
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
 	const invalidValue = "DO_NOT ECHO"
@@ -148,6 +157,28 @@ func TestRootRejectsInvalidAgentProductBeforeEditionHook(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), invalidValue) {
 		t.Fatalf("root error must not echo invalid value: %v", err)
+	}
+}
+
+func TestEffectiveClawTypeUsesEnterpriseCredentialHeaders(t *testing.T) {
+	oldEdition := edition.Get()
+	t.Cleanup(func() { edition.Override(oldEdition) })
+
+	hookCalled := false
+	edition.Override(&edition.Hooks{
+		EnterpriseCredentialHeaders: func(headers map[string]string) map[string]string {
+			hookCalled = true
+			headers[agentproduct.HeaderName] = "enterprise-default"
+			return headers
+		},
+	})
+
+	t.Setenv(agentproduct.EnvName, "")
+	if got := effectiveClawType(); got != "enterprise-default" {
+		t.Fatalf("effectiveClawType() = %q, want enterprise-default", got)
+	}
+	if !hookCalled {
+		t.Fatal("EnterpriseCredentialHeaders hook was not called")
 	}
 }
 
