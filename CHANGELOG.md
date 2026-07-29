@@ -10,6 +10,11 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 - **Wukong internal command sync** (#621) — ports roughly 30 leaf commands from the internal wukong repository into the open-source CLI: Drive gains `star`, `cover`, `revert`, `download-version`, `permission transfer-owner`/`apply-info`/`apply`, and `list --depth`/`--versions`; Doc gains `style cover`/`style background`; Sheet gains the `comment`, `version`, and `formula-verify` command groups plus `info --include`; Chat gains `message update-text-emotion`, the `location`/`profile` message types, and group `user-settings`/`get-mute-config`. Every new leaf is registered in the Agent-visible Runtime Schema.
 - **In-place text-emotion updates** — adds `dws chat message update-text-emotion`, mapping the seven required conversation, message, old/new emotion, name, text, and background parameters to Wukong's proven `im/update_text_emotion` capability so status transitions can avoid remove-then-add flicker and duplicate network calls ([hugozhu/dingtalk-opencode-tag#85](https://github.com/hugozhu/dingtalk-opencode-tag/issues/85)).
+- **Agent product identity** (#816) — adds the optional `DWS_AGENT_PRODUCT` override for the existing HTTP `claw-type` header while preserving each edition's default when unset. Product and runtime labels are caller-declared signals, not authentication credentials; services must validate supported values and must not grant access solely from them. The override does not change the separate IM message-display `clawType` parameter controlled by the edition and `--ai-tag`.
+
+### Changed
+
+- **Agent identity label hardening** (#816) — limits `DWS_AGENT_PRODUCT` and `DWS_AGENT_HOST` to 64 ASCII bytes, trims only surrounding ASCII spaces and tabs, and rejects other control or Unicode whitespace. QwenWork integrations should report the two dimensions separately as `DWS_AGENT_PRODUCT=qwenwork` plus `DWS_AGENT_HOST=cloud` or `desktop`; previously used combined Host labels such as `qwenwork_cloud` remain syntactically valid for compatibility.
 
 ### Fixed
 
