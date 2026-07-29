@@ -15,6 +15,7 @@ package shortcut
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -63,14 +64,74 @@ func TestCrossPlatformCoverageEffectiveRiskUsesParsedFlagsAndFailsClosed(t *test
 		t.Fatalf("download effectiveRisk() = %q, want write", got)
 	}
 
-	s.Risk = RiskHighWrite
+	s.Risk = RiskRead
 	s.RiskWhen = func(*RuntimeContext) Risk { return Risk("unknown") }
 	if got := s.effectiveRisk(rt); got != RiskHighWrite {
 		t.Fatalf("invalid callback effectiveRisk() = %q, want high-risk-write", got)
 	}
+	s.Risk = RiskWrite
+	s.RiskWhen = func(*RuntimeContext) Risk { return RiskHighWrite }
+	if got := s.effectiveRisk(rt); got != RiskHighWrite {
+		t.Fatalf("write-to-high upgrade effectiveRisk() = %q, want high-risk-write", got)
+	}
+	s.RiskWhen = func(*RuntimeContext) Risk { return RiskRead }
+	if got := s.effectiveRisk(rt); got != RiskWrite {
+		t.Fatalf("write-to-read downgrade effectiveRisk() = %q, want write", got)
+	}
+	s.Risk = Risk("unknown")
+	if got := s.effectiveRisk(rt); got != RiskHighWrite {
+		t.Fatalf("invalid base effectiveRisk() = %q, want high-risk-write", got)
+	}
+	s.Risk = RiskHighWrite
 	s.RiskWhen = func(*RuntimeContext) Risk { return RiskRead }
 	if got := s.effectiveRisk(rt); got != RiskHighWrite {
-		t.Fatalf("downgrade effectiveRisk() = %q, want high-risk-write", got)
+		t.Fatalf("high-risk downgrade effectiveRisk() = %q, want high-risk-write", got)
+	}
+}
+
+func TestCrossPlatformCoverageConfirmRiskUsesEffectiveRisk(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("download-resources", false, "")
+	if err := cmd.Flags().Set("download-resources", "true"); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	rt := &RuntimeContext{cmd: cmd}
+	s := Shortcut{
+		Service: "chat",
+		Command: "+messages-mget",
+		Risk:    RiskRead,
+		RiskWhen: func(rt *RuntimeContext) Risk {
+			if rt.Bool("download-resources") {
+				return RiskWrite
+			}
+			return RiskRead
+		},
+	}
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousStdin := os.Stdin
+	os.Stdin = reader
+	t.Cleanup(func() {
+		os.Stdin = previousStdin
+		_ = reader.Close()
+		_ = writer.Close()
+	})
+	if _, err := writer.WriteString("yes\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !confirmRisk(rt, s) {
+		t.Fatal("dynamic write risk was not confirmed")
+	}
+	if got := stderr.String(); !strings.Contains(got, "chat +messages-mget（write）") {
+		t.Fatalf("confirmation prompt = %q", got)
 	}
 }
 

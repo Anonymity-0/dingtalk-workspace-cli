@@ -455,6 +455,9 @@ func TestCrossPlatformCoverageFindCardBizIDResponseShapes(t *testing.T) {
 			"metadata": map[string]any{"bizId": "stale"},
 			"result":   map[string]any{"bizId": "current"},
 		}, "current"},
+		{map[string]any{
+			"extension": map[string]any{"bizId": "fallback"},
+		}, "fallback"},
 		{`{"result":{"bizId":"json"}}`, "json"},
 		{`[{"bizId":"array-json"}]`, "array-json"},
 		{`{"bizId":`, ""},

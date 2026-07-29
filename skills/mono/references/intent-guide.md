@@ -315,7 +315,7 @@ dws chat +messages-send --as user --open-dingtalk-id <openDingTalkId> --msg-type
 
 资源读取优先在 `+at-me`、`+chat-messages`、`+messages-mget`、`+search-msg`、`+thread-replies` 上加 `--download-resources`。引用、回复或合并转发里的资源使用结果 `resourceRefs` 自带的子消息 `messageId`；子消息没有会话 ID 时才继承父消息会话。单独下载一个资源时用 `+messages-resource-download`，输出必须是工作目录内的相对路径，默认拒绝覆盖。
 
-上述查询 Shortcut 因可选本地下载能力按命令级 Schema 发布为 `write/user_required`；执行前读取 leaf Schema，确认输出目录和覆盖策略，获得用户确认后才加 `--yes`。
+上述五个查询 Shortcut 的默认 leaf Schema 契约是 `read/not_required`；仅显式传 `--download-resources` 时，运行时风险升级为 `write` 并要求确认。确认输出目录和覆盖策略、获得用户确认后才加 `--yes`。
 
 **不支持的场景**：
 - "撤回我刚发的消息"（但不知道消息 ID） — 需先通过消息拉取或搜索接口（如 `chat message list`、`chat message search-advanced` 等）获取 openMessageId，再调用 `chat message recall`

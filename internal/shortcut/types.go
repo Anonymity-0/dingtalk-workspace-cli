@@ -201,8 +201,9 @@ func (s Shortcut) risk() Risk {
 }
 
 // effectiveRisk returns the invocation-specific risk after flags are resolved.
-// Invalid callback values and attempted downgrades fail closed to the
-// declarative default instead of weakening its confirmation policy.
+// Invalid callback/base values fail closed to high-risk-write, while attempted
+// downgrades preserve the declarative default instead of weakening its
+// confirmation policy.
 func (s Shortcut) effectiveRisk(rt *RuntimeContext) Risk {
 	base := s.risk()
 	if s.RiskWhen == nil {
@@ -212,7 +213,7 @@ func (s Shortcut) effectiveRisk(rt *RuntimeContext) Risk {
 	switch dynamic {
 	case RiskRead, RiskWrite, RiskHighWrite:
 	default:
-		return base
+		return RiskHighWrite
 	}
 	switch base {
 	case RiskHighWrite:
@@ -225,6 +226,6 @@ func (s Shortcut) effectiveRisk(rt *RuntimeContext) Risk {
 	case RiskRead:
 		return dynamic
 	default:
-		return base
+		return RiskHighWrite
 	}
 }
