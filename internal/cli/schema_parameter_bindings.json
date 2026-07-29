@@ -2,8 +2,8 @@
   "version": 3,
   "baseline": {
     "manifest": "schema-parameter-bindings-v3",
-    "sha256": "sha256:9008afd72243232d4bcb37b46f1e8fc10e2bc283c8af26c59fbdb4901ebeef2f",
-    "reason": "Reviewed v3 baseline for the complete active canonical/flag/property manifest after splitting the fixed-scope minutes list commands into distinct registry identities.",
+    "sha256": "sha256:f48d7b55b6ca9719c466475ee32d678eab0deaee1d79ac4e4790c7ee441ebe7b",
+    "reason": "Reviewed v3 baseline after exposing the pinned chat.search_messages messageType, onlyRobotMessages, and searchConvType properties through exact Cobra flags.",
     "reviewed": true
   },
   "removals": {
@@ -412,8 +412,11 @@
     },
     "chat.search_messages": {
       "at-ids": "atOpenDingTakIds",
+      "conversation-type": "searchConvType",
       "conversation-ids": "openConversationIds",
       "end": "endTime",
+      "message-type": "messageType",
+      "only-robot": "onlyRobotMessages",
       "query": "keyword",
       "sender-ids": "senderOpenDingTakIds",
       "start": "startTime"

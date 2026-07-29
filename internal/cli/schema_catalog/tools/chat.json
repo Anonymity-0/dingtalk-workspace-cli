@@ -39345,7 +39345,7 @@
       "is_alias": false,
       "metadata_source": "embedded-mcp-metadata",
       "name": "search_messages",
-      "parameter_count": 11,
+      "parameter_count": 14,
       "parameters": {
         "at-ids": {
           "description": "@指定人的 openDingTalkId 列表，逗号分隔（可选）",
@@ -39677,6 +39677,103 @@
           "interface_description": "openConversationIds",
           "interface_type": "array",
           "property": "openConversationIds",
+          "required": false,
+          "type": "string"
+        },
+        "conversation-type": {
+          "description": "下层会话类型过滤值（可选，以当前 IM Schema 支持值为准）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "下层会话类型过滤值（可选，以当前 IM Schema 支持值为准）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "searchConvType"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "下层会话类型过滤值（可选，以当前 IM Schema 支持值为准）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "searchConvType"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "conversationType"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "searchConvType"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "interface_description": "searchConvType",
+          "property": "searchConvType",
           "required": false,
           "type": "string"
         },
@@ -40035,6 +40132,200 @@
           "property": "limit",
           "required": false,
           "type": "integer"
+        },
+        "message-type": {
+          "description": "下层消息类型过滤值（可选，以当前 IM Schema 支持值为准）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "下层消息类型过滤值（可选，以当前 IM Schema 支持值为准）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "messageType"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "下层消息类型过滤值（可选，以当前 IM Schema 支持值为准）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "messageType"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "messageType"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "messageType"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "interface_description": "messageType",
+          "property": "messageType",
+          "required": false,
+          "type": "string"
+        },
+        "only-robot": {
+          "description": "只搜索机器人消息（可选；显式传 false 时也会传给下层）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "只搜索机器人消息（可选；显式传 false 时也会传给下层）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "onlyRobotMessages"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "只搜索机器人消息（可选；显式传 false 时也会传给下层）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "onlyRobotMessages"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "onlyRobot"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "onlyRobotMessages"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "interface_description": "onlyRobotMessages",
+          "property": "onlyRobotMessages",
+          "required": false,
+          "type": "boolean"
         },
         "query": {
           "description": "搜索关键词（可选）",
@@ -52163,8 +52454,99 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_at_me",
-      "parameter_count": 1,
+      "parameter_count": 4,
       "parameters": {
+        "cursor": {
+          "default": "0",
+          "description": "分页游标，翻页传上次的 nextCursor",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "分页游标，翻页传上次的 nextCursor"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "分页游标，翻页传上次的 nextCursor"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "cursor"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "cursor"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "cursor",
+          "required": false,
+          "type": "string"
+        },
         "days": {
           "default": "7",
           "description": "回溯天数（可选，默认 7）",
@@ -52255,6 +52637,187 @@
           "property": "days",
           "required": false,
           "type": "integer"
+        },
+        "limit": {
+          "default": "50",
+          "description": "每页返回数量（默认 50）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "每页返回数量（默认 50）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "每页返回数量（默认 50）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "limit"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "limit"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "limit",
+          "required": false,
+          "type": "integer"
+        },
+        "no-reactions": {
+          "description": "不输出消息 reaction（默认输出）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "不输出消息 reaction（默认输出）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "不输出消息 reaction（默认输出）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "noReactions"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "noReactions"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "noReactions",
+          "required": false,
+          "type": "boolean"
         }
       },
       "path": "chat.shortcut_at_me",
@@ -54051,7 +54614,7 @@
       "cli_name": "+category-create",
       "cli_path": "chat +category-create",
       "confirmation": "user_required",
-      "description": "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。",
+      "description": "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。\n\n参数约束：\n  - --title 去除首尾空白后必须非空，且最多 15 个字符",
       "display": "群聊 / 消息 / 机器人",
       "effect": "write",
       "effect_source": "agent-hint",
@@ -54149,13 +54712,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+              "value": "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。\n\n参数约束：\n  - --title 去除首尾空白后必须非空，且最多 15 个字符"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+          "value": "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。\n\n参数约束：\n  - --title 去除首尾空白后必须非空，且最多 15 个字符"
         },
         "effect": {
           "candidates": [
@@ -54318,7 +54881,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+                "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
               ]
             }
           ],
@@ -54327,7 +54890,7 @@
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+            "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
           ]
         }
       },
@@ -54340,7 +54903,7 @@
       "parameter_count": 1,
       "parameters": {
         "title": {
-          "description": "分组名称（必填）",
+          "description": "分组名称；去除首尾空白后必须非空，且最多 15 个字符（必填）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -54348,7 +54911,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "分组名称（必填）"
+                  "value": "分组名称；去除首尾空白后必须非空，且最多 15 个字符（必填）"
                 },
                 {
                   "precedence": "default",
@@ -54360,7 +54923,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "分组名称（必填）"
+              "value": "分组名称；去除首尾空白后必须非空，且最多 15 个字符（必填）"
             },
             "property": {
               "candidates": [
@@ -54444,7 +55007,7 @@
       "source": "reviewed_command_registry",
       "title": "创建用户自定义会话分组",
       "use_when": [
-        "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传分组名称 --title。"
+        "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。"
       ]
     },
     "chat.shortcut_category_delete": {
@@ -55199,7 +55762,7 @@
       "cli_name": "+category-rename",
       "cli_path": "chat +category-rename",
       "confirmation": "user_required",
-      "description": "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。",
+      "description": "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。\n\n参数约束：\n  - --title 去除首尾空白后必须非空，且最多 15 个字符",
       "display": "群聊 / 消息 / 机器人",
       "effect": "write",
       "effect_source": "agent-hint",
@@ -55297,13 +55860,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+              "value": "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。\n\n参数约束：\n  - --title 去除首尾空白后必须非空，且最多 15 个字符"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+          "value": "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。\n\n参数约束：\n  - --title 去除首尾空白后必须非空，且最多 15 个字符"
         },
         "effect": {
           "candidates": [
@@ -55466,7 +56029,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+                "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
               ]
             }
           ],
@@ -55475,7 +56038,7 @@
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+            "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
           ]
         }
       },
@@ -55584,7 +56147,7 @@
           "type": "integer"
         },
         "title": {
-          "description": "新的分组名称（必填）",
+          "description": "新的分组名称；去除首尾空白后必须非空，且最多 15 个字符（必填）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -55592,7 +56155,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "新的分组名称（必填）"
+                  "value": "新的分组名称；去除首尾空白后必须非空，且最多 15 个字符（必填）"
                 },
                 {
                   "precedence": "default",
@@ -55604,7 +56167,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "新的分组名称（必填）"
+              "value": "新的分组名称；去除首尾空白后必须非空，且最多 15 个字符（必填）"
             },
             "property": {
               "candidates": [
@@ -55688,7 +56251,7 @@
       "source": "reviewed_command_registry",
       "title": "更新用户自定义会话分组的名称",
       "use_when": [
-        "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和新名称 --title。"
+        "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
       ]
     },
     "chat.shortcut_chat_bots": {
@@ -65981,45 +66544,46 @@
         "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_hints/selection/chat.json"
       ],
-      "agent_summary": "拉取置顶会话列表",
+      "agent_summary": "拉取置顶会话列表，可只看群聊或单聊",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
       ],
       "canonical_path": "chat.shortcut_conversation_list_top",
       "cli_name": "+conversation-list-top",
       "cli_path": "chat +conversation-list-top",
       "confirmation": "not_required",
-      "description": "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。",
+      "description": "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
-        "dws chat +conversation-list-top --limit 1000"
+        "dws chat +conversation-list-top --type group --limit 1000",
+        "dws chat +conversation-list-top --type direct --limit 1000"
       ],
       "field_provenance": {
         "agent_summary": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
-              "value": "拉取置顶会话列表"
+              "value": "拉取置顶会话列表，可只看群聊或单聊"
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "source": "internal/cli/schema_hints/selection/chat.json",
-          "value": "拉取置顶会话列表"
+          "value": "拉取置顶会话列表，可只看群聊或单聊"
         },
         "availability": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "available"
@@ -66027,7 +66591,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "available"
         },
@@ -66035,20 +66599,20 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+                "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+            "用户要查看群内被 Pin 的消息而不是侧边栏置顶会话时，改用 +messages-list-pin"
           ]
         },
         "canonical_path": {
@@ -66071,7 +66635,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "not_required"
@@ -66079,7 +66643,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "not_required"
         },
@@ -66089,19 +66653,19 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+              "value": "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+          "value": "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
         },
         "effect": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "read"
@@ -66109,7 +66673,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "read"
         },
@@ -66117,27 +66681,29 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "dws chat +conversation-list-top --limit 1000"
+                "dws chat +conversation-list-top --type group --limit 1000",
+                "dws chat +conversation-list-top --type direct --limit 1000"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "dws chat +conversation-list-top --limit 1000"
+            "dws chat +conversation-list-top --type group --limit 1000",
+            "dws chat +conversation-list-top --type direct --limit 1000"
           ]
         },
         "idempotency": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "idempotent"
@@ -66145,7 +66711,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "idempotent"
         },
@@ -66153,7 +66719,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "composite"
@@ -66161,7 +66727,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "composite"
         },
@@ -66169,7 +66735,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
@@ -66177,7 +66743,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
@@ -66201,14 +66767,14 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": true
             },
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
               "selected": false,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": true
@@ -66216,7 +66782,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": true
         },
@@ -66224,7 +66790,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+              "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "low"
@@ -66232,7 +66798,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
+          "review_reason": "Reviewed against the mounted Shortcut: --type all|group|direct is a local semantic filter over list_top_conversations.singleChat, so the composite interface owns validation and normalized output without changing lower-service arguments.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "low"
         },
@@ -66242,32 +66808,32 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "拉取置顶会话列表"
+              "value": "拉取置顶会话列表，可只看群聊或单聊"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "拉取置顶会话列表"
+          "value": "拉取置顶会话列表，可只看群聊或单聊"
         },
         "use_when": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+                "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+            "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
           ]
         }
       },
@@ -66277,7 +66843,7 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_conversation_list_top",
-      "parameter_count": 3,
+      "parameter_count": 4,
       "parameters": {
         "cursor": {
           "description": "分页游标（首次不传或 0）",
@@ -66530,6 +67096,130 @@
           "property": "limit",
           "required": false,
           "type": "integer"
+        },
+        "type": {
+          "default": "all",
+          "description": "会话类型：all 全部 / group 群聊 / direct 单聊（当前页本地过滤）（可选值: all, group, direct）",
+          "enum": [
+            "all",
+            "group",
+            "direct"
+          ],
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "会话类型：all 全部 / group 群聊 / direct 单聊（当前页本地过滤）（可选值: all, group, direct）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "会话类型：all 全部 / group 群聊 / direct 单聊（当前页本地过滤）（可选值: all, group, direct）"
+            },
+            "enum": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": [
+                    "all",
+                    "group",
+                    "direct"
+                  ]
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": []
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": [
+                "all",
+                "group",
+                "direct"
+              ]
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "type"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "type"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "type",
+          "required": false,
+          "type": "string"
         }
       },
       "path": "chat.shortcut_conversation_list_top",
@@ -66538,9 +67228,9 @@
       "reviewed": true,
       "risk": "low",
       "source": "reviewed_command_registry",
-      "title": "拉取置顶会话列表",
+      "title": "拉取置顶会话列表，可只看群聊或单聊",
       "use_when": [
-        "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，可用 --exclude-muted 排除已免打扰会话。"
+        "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。"
       ]
     },
     "chat.shortcut_dm": {
@@ -67865,7 +68555,7 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_messages_list_direct",
-      "parameter_count": 5,
+      "parameter_count": 6,
       "parameters": {
         "forward": {
           "default": "true",
@@ -68041,6 +68731,96 @@
           "property": "limit",
           "required": false,
           "type": "integer"
+        },
+        "no-reactions": {
+          "description": "不输出消息 reaction（默认输出）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "不输出消息 reaction（默认输出）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "不输出消息 reaction（默认输出）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "noReactions"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "noReactions"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "noReactions",
+          "required": false,
+          "type": "boolean"
         },
         "open-dingtalk-id": {
           "description": "对方 openDingTalkId（与 --user 二选一）",
@@ -69413,7 +70193,7 @@
       "cli_name": "+messages-mget",
       "cli_path": "chat +messages-mget",
       "confirmation": "not_required",
-      "description": "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。",
+      "description": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -69425,7 +70205,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": "根据消息 ID 批量查询消息（最多 50 条）"
@@ -69433,7 +70213,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": "根据消息 ID 批量查询消息（最多 50 条）"
         },
@@ -69457,7 +70237,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
@@ -69467,7 +70247,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -69511,13 +70291,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+              "value": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+          "value": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
@@ -69539,7 +70319,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
@@ -69549,7 +70329,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
             "dws chat +messages-mget --msg-ids msgId1,msgId2"
@@ -69630,7 +70410,7 @@
             },
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
               "selected": false,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": true
@@ -69676,20 +70456,20 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+              "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+                "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+          "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+            "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
           ]
         }
       },
@@ -69699,10 +70479,10 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_messages_mget",
-      "parameter_count": 1,
+      "parameter_count": 5,
       "parameters": {
-        "msg-ids": {
-          "description": "消息 openMsgId 列表（必填）",
+        "download-resources": {
+          "description": "自动下载消息中的全部可识别 mediaId 资源",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -69710,7 +70490,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "消息 openMsgId 列表（必填）"
+                  "value": "自动下载消息中的全部可识别 mediaId 资源"
                 },
                 {
                   "precedence": "default",
@@ -69722,7 +70502,91 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "消息 openMsgId 列表（必填）"
+              "value": "自动下载消息中的全部可识别 mediaId 资源"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "downloadResources"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "downloadResources"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "downloadResources",
+          "required": false,
+          "type": "boolean"
+        },
+        "msg-ids": {
+          "description": "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID（必填）"
             },
             "property": {
               "candidates": [
@@ -69796,6 +70660,277 @@
           "property": "msgIds",
           "required": true,
           "type": "array"
+        },
+        "no-reactions": {
+          "description": "不输出消息 reaction（默认输出）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "不输出消息 reaction（默认输出）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "不输出消息 reaction（默认输出）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "noReactions"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "noReactions"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "noReactions",
+          "required": false,
+          "type": "boolean"
+        },
+        "output-dir": {
+          "default": "./downloads",
+          "description": "资源输出目录；--output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "资源输出目录；--output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "资源输出目录；--output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "outputDir"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "outputDir"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "outputDir",
+          "required": false,
+          "type": "string"
+        },
+        "overwrite": {
+          "description": "允许覆盖同名资源文件（默认拒绝）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "允许覆盖同名资源文件（默认拒绝）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "允许覆盖同名资源文件（默认拒绝）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "overwrite"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "overwrite"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "overwrite",
+          "required": false,
+          "type": "boolean"
         }
       },
       "path": "chat.shortcut_messages_mget",
@@ -69806,7 +70941,7 @@
       "source": "reviewed_command_registry",
       "title": "根据消息 ID 批量查询消息（最多 50 条）",
       "use_when": [
-        "当你已有一批消息 openMsgId、需要批量取回它们的详细内容时使用；只读，一次最多查询 50 条。"
+        "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。"
       ]
     },
     "chat.shortcut_messages_query_send_status": {
@@ -72587,8 +73722,183 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_my_groups",
-      "parameter_count": 1,
+      "parameter_count": 3,
       "parameters": {
+        "cursor": {
+          "description": "分页游标，翻页传上次的 nextCursor",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "分页游标，翻页传上次的 nextCursor"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "分页游标，翻页传上次的 nextCursor"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "cursor"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "cursor"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "cursor",
+          "required": false,
+          "type": "string"
+        },
+        "limit": {
+          "default": "200",
+          "description": "每页返回数量（默认 200）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "每页返回数量（默认 200）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "每页返回数量（默认 200）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "limit"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "limit"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "limit",
+          "required": false,
+          "type": "integer"
+        },
         "type": {
           "description": "按群类型过滤（可选，如返回中的 groupType/conversationType，大小写不敏感）",
           "field_provenance": {
