@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **In-place text-emotion updates** — adds `dws chat message update-text-emotion`, mapping the seven required conversation, message, old/new emotion, name, text, and background parameters to Wukong's proven `im/update_text_emotion` capability so status transitions can avoid remove-then-add flicker and duplicate network calls ([hugozhu/dingtalk-opencode-tag#85](https://github.com/hugozhu/dingtalk-opencode-tag/issues/85)).
+
 ### Fixed
 
 - **Name→ID resolution kept external contacts** — the shared contact resolver (`chat +dm`, `+broadcast`, …) no longer drops `search_contact_by_key_word` rows that carry only an `openDingTalkId` (external / cross-org contacts have an empty `userId`), so those people are found instead of reported missing or collapsed into a wrong single match; the display name also falls back through `nick`/`showName`/`flowerName`/`staffName`/`userName`.
