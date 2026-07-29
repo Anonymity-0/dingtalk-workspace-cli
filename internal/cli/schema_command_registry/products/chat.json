@@ -422,8 +422,20 @@
       "cli_path": "chat +chat-role-query-user"
     },
     {
+      "canonical_path": "chat.shortcut_chat_messages",
+      "cli_path": "chat +chat-messages"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_send",
+      "cli_path": "chat +messages-send"
+    },
+    {
       "canonical_path": "chat.shortcut_messages_send_by_webhook",
       "cli_path": "chat +messages-send-by-webhook"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_send_card",
+      "cli_path": "chat +messages-send-card"
     },
     {
       "canonical_path": "chat.shortcut_messages_list_direct",
@@ -474,8 +486,16 @@
       "cli_path": "chat +my-groups"
     },
     {
+      "canonical_path": "chat.shortcut_search_msg",
+      "cli_path": "chat +search-msg"
+    },
+    {
       "canonical_path": "chat.shortcut_send_to_group",
       "cli_path": "chat +send-to-group"
+    },
+    {
+      "canonical_path": "chat.shortcut_thread_replies",
+      "cli_path": "chat +thread-replies"
     },
     {
       "canonical_path": "chat.shortcut_unread_chats",

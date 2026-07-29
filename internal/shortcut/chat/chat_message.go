@@ -14,6 +14,7 @@
 package chat
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -525,39 +526,26 @@ var MessagesMget = shortcut.Shortcut{
 	Command:     "+messages-mget",
 	Product:     "im",
 	Description: "根据消息 ID 批量查询消息（最多 50 条）",
-	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。",
+	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。",
 	Risk:        shortcut.RiskRead,
-	Flags: []shortcut.Flag{
+	Flags: append([]shortcut.Flag{
 		{Name: "msg-ids", Type: shortcut.FlagStringSlice, Desc: "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID", Required: true},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
-		{Name: "download-resources", Type: shortcut.FlagBool, Desc: "自动下载消息中的全部可识别 mediaId 资源"},
-		{Name: "output-dir", Type: shortcut.FlagString, Default: "./downloads", Desc: "资源输出目录；--output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"},
-		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖同名资源文件（默认拒绝）"},
-	},
-	Constraints: []shortcut.Constraint{
+	}, MessageResourceDownloadFlags()...),
+	Constraints: append([]shortcut.Constraint{
 		{
 			Kind:        shortcut.ConstraintCustom,
 			Flags:       []string{"msg-ids"},
 			Description: "--msg-ids 去重后必须包含 1-50 条消息 ID",
 		},
-		{
-			Kind:        shortcut.ConstraintCustom,
-			Flags:       []string{"output-dir"},
-			Description: "--output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
-		},
-	},
+	}, MessageResourceDownloadConstraints()...),
 	Tips: []string{`dws chat +messages-mget --msg-ids msgId1,msgId2`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		ids := uniqueShortcutStrings(rt.StrSlice("msg-ids"))
 		if len(ids) < 1 || len(ids) > 50 {
 			return fmt.Errorf("--msg-ids 去重后必须包含 1-50 条消息 ID，当前 %d 条", len(ids))
 		}
-		if rt.Bool("download-resources") {
-			if err := validateResourceDownloadOutputFlag(rt.Str("output-dir"), "--output-dir"); err != nil {
-				return err
-			}
-		}
-		return nil
+		return ValidateMessageResourceDownload(rt)
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		ids := uniqueShortcutStrings(rt.StrSlice("msg-ids"))
@@ -587,81 +575,179 @@ var MessagesMget = shortcut.Shortcut{
 			"messages":           messages,
 		}
 		if rt.Bool("download-resources") {
-			ledger, err := downloadMgetResources(rt, rawMessages)
-			if err != nil {
-				return err
-			}
-			payload["resourceDownloads"] = ledger
+			payload["resourceDownloads"] = DownloadMessageResources(rt, rawMessages, "")
 		}
 		return rt.Output(payload)
 	},
 }
 
-func downloadMgetResources(rt *shortcut.RuntimeContext, messages []map[string]any) (map[string]any, error) {
+// MessageResourceDownloadFlags returns the common opt-in resource workflow used
+// by message list, search, mget, @me and thread-reading Shortcuts.
+func MessageResourceDownloadFlags() []shortcut.Flag {
+	return []shortcut.Flag{
+		{Name: "download-resources", Type: shortcut.FlagBool, Desc: "自动下载消息中的全部可识别 mediaId/fileId 资源"},
+		{Name: "output-dir", Type: shortcut.FlagString, Default: "./downloads", Desc: "资源输出目录；必须是工作目录内的相对路径，禁止绝对路径和 .. 逃逸"},
+		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖同名资源文件（默认拒绝）"},
+	}
+}
+
+// MessageResourceDownloadConstraints publishes the shared safe-output rule.
+func MessageResourceDownloadConstraints() []shortcut.Constraint {
+	return []shortcut.Constraint{{
+		Kind:        shortcut.ConstraintCustom,
+		Flags:       []string{"output-dir"},
+		Description: "--output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+	}}
+}
+
+// ValidateMessageResourceDownload validates the output path only when the
+// caller opts into local writes.
+func ValidateMessageResourceDownload(rt *shortcut.RuntimeContext) error {
+	if !rt.Bool("download-resources") {
+		return nil
+	}
+	return validateResourceDownloadOutputFlag(rt.Str("output-dir"), "--output-dir")
+}
+
+// DownloadMessageResources downloads every unique message resource reference
+// and returns a per-resource success/failure ledger. A fallback conversation
+// ID lets group/thread list commands supply context when a mediaId item's lower
+// response omits it; fileId resources route through the existing drive leaf.
+func DownloadMessageResources(
+	rt *shortcut.RuntimeContext,
+	messages []map[string]any,
+	fallbackConversationID string,
+) map[string]any {
 	resources := make([]map[string]any, 0)
 	for _, message := range messages {
 		resources = append(resources, chatmsg.Resources(message)...)
 	}
+	discoveredCount := len(resources)
+	uniqueResources := make([]map[string]any, 0, len(resources))
+	seen := map[string]bool{}
+	for _, resource := range resources {
+		resourceType := strings.TrimSpace(fmt.Sprint(resource["type"]))
+		resourceID := strings.TrimSpace(fmt.Sprint(resource["resourceId"]))
+		download, _ := resource["download"].(map[string]any)
+		arguments, _ := download["arguments"].(map[string]any)
+		messageID := strings.TrimSpace(fmt.Sprint(arguments["message-id"]))
+		if messageID == "<nil>" {
+			messageID = ""
+		}
+		key := strings.ToLower(resourceType) + "\x00" + resourceID
+		if resourceID != "" && resourceID != "<nil>" {
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+		}
+		uniqueResources = append(uniqueResources, resource)
+	}
+	resources = uniqueResources
 	if rt.DryRun() {
 		return map[string]any{
-			"dryRun":         true,
-			"requestedCount": len(resources),
-			"resources":      resources,
-		}, nil
+			"dryRun":            true,
+			"discoveredCount":   discoveredCount,
+			"requestedCount":    len(resources),
+			"deduplicatedCount": discoveredCount - len(resources),
+			"resources":         resources,
+		}
 	}
 
 	cwd, err := resourceGetwd()
 	if err != nil {
-		return nil, fmt.Errorf("读取工作目录失败: %w", err)
+		return map[string]any{
+			"ok":                false,
+			"partial":           false,
+			"discoveredCount":   discoveredCount,
+			"requestedCount":    len(resources),
+			"deduplicatedCount": discoveredCount - len(resources),
+			"downloadedCount":   0,
+			"failedCount":       1,
+			"downloads":         []map[string]any{},
+			"failures": []map[string]any{{
+				"stage": "output-directory",
+				"error": fmt.Sprintf("读取工作目录失败: %v", err),
+			}},
+		}
 	}
 	outputDir := strings.TrimRight(rt.Str("output-dir"), `/\`) + string(os.PathSeparator)
 	downloads := make([]map[string]any, 0, len(resources))
 	failures := make([]map[string]any, 0)
+	plannedNames := map[string]int{}
 	for _, resource := range resources {
+		resourceType := strings.TrimSpace(fmt.Sprint(resource["type"]))
 		resourceID := strings.TrimSpace(fmt.Sprint(resource["resourceId"]))
 		download, _ := resource["download"].(map[string]any)
 		arguments, _ := download["arguments"].(map[string]any)
 		messageID := strings.TrimSpace(fmt.Sprint(arguments["message-id"]))
 		conversationID := strings.TrimSpace(fmt.Sprint(arguments["open-conversation-id"]))
-		if download["ready"] != true || resourceID == "" || messageID == "" || conversationID == "" {
+		if messageID == "<nil>" {
+			messageID = ""
+		}
+		if conversationID == "" || conversationID == "<nil>" {
+			conversationID = strings.TrimSpace(fallbackConversationID)
+		}
+		missingMediaContext := resourceType == "mediaId" &&
+			(messageID == "" || messageID == "<nil>" ||
+				conversationID == "" || conversationID == "<nil>")
+		if resourceID == "" || resourceID == "<nil>" || missingMediaContext {
 			failures = append(failures, map[string]any{
-				"resourceId": resourceID,
-				"messageId":  messageID,
-				"error":      "资源引用缺少 message-id 或 open-conversation-id",
+				"resourceType": resourceType,
+				"resourceId":   resourceID,
+				"messageId":    messageID,
+				"error":        "资源引用缺少 resource-id，或 mediaId 缺少 message-id/open-conversation-id",
 			})
 			continue
 		}
 
-		data, callErr := rt.CallMCPData("im", "get_resource_download_url", map[string]any{
-			"resourceType":       "mediaId",
-			"resourceId":         resourceID,
-			"openMessageId":      messageID,
-			"openConversationId": conversationID,
-		})
+		data, callErr := resolveMessageResourceDownloadData(
+			rt, resourceType, resourceID, messageID, conversationID)
 		if callErr != nil {
 			failures = append(failures, map[string]any{
-				"resourceId": resourceID,
-				"messageId":  messageID,
-				"error":      callErr.Error(),
+				"resourceType": resourceType,
+				"resourceId":   resourceID,
+				"messageId":    messageID,
+				"error":        callErr.Error(),
 			})
 			continue
 		}
 		resourceURL, headers, infoErr := resourceDownloadInfo(data)
 		if infoErr != nil {
 			failures = append(failures, map[string]any{
-				"resourceId": resourceID,
-				"messageId":  messageID,
-				"error":      infoErr.Error(),
+				"resourceType": resourceType,
+				"resourceId":   resourceID,
+				"messageId":    messageID,
+				"error":        infoErr.Error(),
 			})
 			continue
 		}
+		preferredName := resourceDownloadPreferredName(data)
+		output := outputDir
+		filename := resourceDownloadFilename(resourceURL, preferredName)
+		filenameKey := strings.ToLower(filename)
+		plannedNames[filenameKey]++
+		if plannedNames[filenameKey] > 1 {
+			extension := filepath.Ext(filename)
+			output = filepath.Join(
+				strings.TrimRight(outputDir, `/\`),
+				strings.TrimSuffix(filename, extension)+
+					fmt.Sprintf(" (%d)", plannedNames[filenameKey])+extension,
+			)
+		}
 		destPath, relativePath, pathErr := resolveResourceDownloadPath(
-			cwd, outputDir, resourceURL, rt.Bool("overwrite"))
+			cwd,
+			output,
+			resourceURL,
+			rt.Bool("overwrite"),
+			preferredName,
+		)
 		if pathErr != nil {
 			failures = append(failures, map[string]any{
-				"resourceId": resourceID,
-				"messageId":  messageID,
-				"error":      pathErr.Error(),
+				"resourceType": resourceType,
+				"resourceId":   resourceID,
+				"messageId":    messageID,
+				"error":        pathErr.Error(),
 			})
 			continue
 		}
@@ -669,28 +755,32 @@ func downloadMgetResources(rt *shortcut.RuntimeContext, messages []map[string]an
 			rt.Command().Context(), nil, resourceURL, headers, destPath, rt.Bool("overwrite"))
 		if downloadErr != nil {
 			failures = append(failures, map[string]any{
-				"resourceId": resourceID,
-				"messageId":  messageID,
-				"error":      downloadErr.Error(),
+				"resourceType": resourceType,
+				"resourceId":   resourceID,
+				"messageId":    messageID,
+				"error":        downloadErr.Error(),
 			})
 			continue
 		}
 		downloads = append(downloads, map[string]any{
-			"resourceId": resourceID,
-			"messageId":  messageID,
-			"localPath":  filepath.ToSlash(relativePath),
-			"sizeBytes":  size,
+			"resourceType": resourceType,
+			"resourceId":   resourceID,
+			"messageId":    messageID,
+			"localPath":    filepath.ToSlash(relativePath),
+			"sizeBytes":    size,
 		})
 	}
 	return map[string]any{
-		"ok":              len(failures) == 0,
-		"partial":         len(downloads) > 0 && len(failures) > 0,
-		"requestedCount":  len(resources),
-		"downloadedCount": len(downloads),
-		"failedCount":     len(failures),
-		"downloads":       downloads,
-		"failures":        failures,
-	}, nil
+		"ok":                len(failures) == 0,
+		"partial":           len(downloads) > 0 && len(failures) > 0,
+		"discoveredCount":   discoveredCount,
+		"requestedCount":    len(resources),
+		"deduplicatedCount": discoveredCount - len(resources),
+		"downloadedCount":   len(downloads),
+		"failedCount":       len(failures),
+		"downloads":         downloads,
+		"failures":          failures,
+	}
 }
 
 func uniqueShortcutStrings(values []string) []string {
@@ -888,22 +978,42 @@ var MessagesCreateTextEmotion = shortcut.Shortcut{
 	},
 }
 
-// MessagesSendCard creates and pushes a streaming card (create_and_send_card, im).
+// MessagesSendCard creates and optionally completes a streaming card by
+// composing create_and_send_card with update_streaming_card.
 var MessagesSendCard = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-send-card",
 	Product:     "im",
-	Description: "创建并推送流式卡片（需配合 messages-update-card）",
-	Intent:      "当你要发送一张可后续流式更新的卡片消息（如 AI 逐字输出）时使用；会实际推送卡片并返回 bizId，群 openConversationId 或单聊接收者 userId 二选一，配合 messages-update-card 更新。",
+	Description: "创建流式卡片，可在同一次调用中写入内容并结束",
+	Intent:      "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（与 --receiver 互斥）"},
 		{Name: "receiver", Type: shortcut.FlagString, Desc: "单聊接收者 userId（与 --group 互斥）"},
+		{Name: "content", Type: shortcut.FlagString, Desc: "创建后立即写入的卡片内容；省略时仅创建并返回 bizId"},
+		{Name: "flow-status", Type: shortcut.FlagInt, Default: "3", Desc: "自动更新状态：1处理中/2输入中/3完成/4执行中/5错误；--flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "receiver"}},
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"flow-status"},
+			Description: "--flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content",
+		},
 	},
-	Tips: []string{`dws chat +messages-send-card --group <openConversationId>`},
+	Tips: []string{
+		`dws chat +messages-send-card --group <openConversationId>`,
+		`dws chat +messages-send-card --group <openConversationId> --content "任务已完成"`,
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if status := rt.Int("flow-status"); status < 1 || status > 5 {
+			return fmt.Errorf("--flow-status 必须在 1-5 之间")
+		}
+		if rt.Changed("flow-status") && rt.Str("content") == "" {
+			return fmt.Errorf("--flow-status 只有与 --content 一起使用才有意义")
+		}
+		return nil
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		group := rt.Str("group")
 		receiver := rt.Str("receiver")
@@ -919,8 +1029,89 @@ var MessagesSendCard = shortcut.Shortcut{
 		} else {
 			params["receiverUid"] = receiver
 		}
-		return rt.CallMCP("create_and_send_card", params)
+		content := rt.Str("content")
+		if content == "" {
+			return rt.CallMCP("create_and_send_card", params)
+		}
+		status := rt.Int("flow-status")
+		if rt.DryRun() {
+			return rt.Output(map[string]any{
+				"dry_run":      true,
+				"executed":     false,
+				"preview_kind": "plan",
+				"actionCount":  2,
+				"failedCount":  0,
+				"actions": []map[string]any{
+					{
+						"tool":      "create_and_send_card",
+						"arguments": params,
+					},
+					{
+						"tool": "update_streaming_card",
+						"arguments": map[string]any{
+							"bizId":      "<from create_and_send_card>",
+							"msgContent": content,
+							"flowStatus": status,
+						},
+					},
+				},
+			})
+		}
+		created, err := rt.CallMCPWriteData("im", "create_and_send_card", params)
+		if err != nil {
+			return err
+		}
+		bizID := findCardBizID(created)
+		if bizID == "" {
+			return fmt.Errorf("卡片已创建但下层未返回 bizId，无法自动更新；请检查 create_and_send_card 响应")
+		}
+		updated, err := rt.CallMCPWriteData("im", "update_streaming_card", map[string]any{
+			"bizId":      bizID,
+			"msgContent": content,
+			"flowStatus": status,
+		})
+		if err != nil {
+			return fmt.Errorf("卡片已创建（bizId=%s），但自动更新失败: %w", bizID, err)
+		}
+		return rt.Output(map[string]any{
+			"ok":         true,
+			"bizId":      bizID,
+			"flowStatus": status,
+			"created":    created,
+			"updated":    updated,
+		})
 	},
+}
+
+func findCardBizID(value any) string {
+	switch typed := value.(type) {
+	case map[string]any:
+		for _, key := range []string{"bizId", "bizID", "biz_id"} {
+			if candidate := strings.TrimSpace(fmt.Sprint(typed[key])); candidate != "" && candidate != "<nil>" {
+				return candidate
+			}
+		}
+		for _, child := range typed {
+			if candidate := findCardBizID(child); candidate != "" {
+				return candidate
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if candidate := findCardBizID(child); candidate != "" {
+				return candidate
+			}
+		}
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			var nested any
+			if json.Unmarshal([]byte(trimmed), &nested) == nil {
+				return findCardBizID(nested)
+			}
+		}
+	}
+	return ""
 }
 
 // MessagesUpdateCard streams updated card content (update_streaming_card, im).

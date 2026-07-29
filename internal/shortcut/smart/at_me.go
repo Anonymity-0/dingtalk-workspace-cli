@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
 
@@ -53,16 +54,18 @@ var AtMe = shortcut.Shortcut{
 		"再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。" +
 		"这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。",
 	Risk: shortcut.RiskRead,
-	Flags: []shortcut.Flag{
+	Flags: append([]shortcut.Flag{
 		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（可选，默认 7）", Default: "7", Required: false},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 50）", Default: "50"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传上次的 nextCursor", Default: "0"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
-	},
+	}, chatshortcut.MessageResourceDownloadFlags()...),
+	Constraints: chatshortcut.MessageResourceDownloadConstraints(),
 	Tips: []string{
 		`dws chat +at-me`,
 		`dws chat +at-me --days 3`,
 	},
+	Validate: chatshortcut.ValidateMessageResourceDownload,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		// Step 1 — look-back window [now-Nd, now] in epoch millis. days defaults
 		// to 7; guard against non-positive overrides so the window stays sane.
@@ -99,6 +102,9 @@ var AtMe = shortcut.Shortcut{
 		}
 		payload := map[string]any{"messages": results}
 		chatmsg.ApplyPagination(payload, data)
+		if rt.Bool("download-resources") {
+			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, "")
+		}
 		return rt.Output(payload)
 	},
 }

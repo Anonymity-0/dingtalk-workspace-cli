@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -63,8 +62,8 @@ func TestCrossPlatformCoverageMgetResourceDownloadOutcomes(t *testing.T) {
 		}})
 		root := newPlatformCoverageRoot()
 		root.SetArgs(baseArgs)
-		if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "工作目录") {
-			t.Fatalf("getwd error = %v", err)
+		if err := root.Execute(); err != nil {
+			t.Fatalf("getwd ledger error = %v", err)
 		}
 	})
 

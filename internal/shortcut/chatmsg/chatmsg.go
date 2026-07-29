@@ -207,21 +207,25 @@ func firstMessageValue(m map[string]any, keys ...string) any {
 	return nil
 }
 
-// Resources extracts actionable media references from both structured message
-// fields and the textual mediaId notation returned by older DingTalk message
-// APIs. Every reference publishes the exact Shortcut arguments already known
-// from the message, plus ready=false and missing fields when a follow-up lookup
-// is still required. This shared shape is used by list, search, mget, quoted
-// messages and thread replies.
+// Resources extracts actionable media and drive-file references from both
+// structured message fields and the textual mediaId/fileId notation returned
+// by older DingTalk message APIs. Every reference publishes the exact Shortcut
+// arguments already known from the message, plus ready=false and missing fields
+// when a follow-up lookup is still required. This shared shape is used by list,
+// search, mget, quoted messages and thread replies.
 func Resources(m map[string]any) []map[string]any {
 	if m == nil {
 		return nil
 	}
-	ids := make([]string, 0)
-	collectMediaIDs(m, &ids)
-	ids = uniqueMediaIDs(ids)
-	sort.Strings(ids)
-	if len(ids) == 0 {
+	mediaIDs := make([]string, 0)
+	collectResourceIDs(m, "mediaid", mediaIDTextRE, &mediaIDs)
+	mediaIDs = uniqueResourceIDs(mediaIDs)
+	sort.Strings(mediaIDs)
+	fileIDs := make([]string, 0)
+	collectResourceIDs(m, "fileid", fileIDTextRE, &fileIDs)
+	fileIDs = uniqueResourceIDs(fileIDs)
+	sort.Strings(fileIDs)
+	if len(mediaIDs) == 0 && len(fileIDs) == 0 {
 		return nil
 	}
 
@@ -234,8 +238,8 @@ func Resources(m map[string]any) []map[string]any {
 		conversationID = ""
 	}
 
-	out := make([]map[string]any, 0, len(ids))
-	for _, id := range ids {
+	out := make([]map[string]any, 0, len(mediaIDs)+len(fileIDs))
+	for _, id := range mediaIDs {
 		arguments := map[string]any{
 			"type":        "mediaId",
 			"resource-id": id,
@@ -262,36 +266,53 @@ func Resources(m map[string]any) []map[string]any {
 			},
 		})
 	}
+	for _, id := range fileIDs {
+		out = append(out, map[string]any{
+			"type":       "fileId",
+			"resourceId": id,
+			"download": map[string]any{
+				"shortcut": "+messages-resource-download",
+				"arguments": map[string]any{
+					"type":        "fileId",
+					"resource-id": id,
+				},
+				"ready":   true,
+				"missing": []string{},
+			},
+		})
+	}
 	return out
 }
 
 var mediaIDTextRE = regexp.MustCompile(`(?i)media[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+var fileIDTextRE = regexp.MustCompile(`(?i)\bfile[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 
-func collectMediaIDs(value any, out *[]string) {
+func collectResourceIDs(value any, targetKey string, textPattern *regexp.Regexp, out *[]string) {
 	switch typed := value.(type) {
 	case map[string]any:
 		resourceType := strings.TrimSpace(fmt.Sprint(firstMessageValue(typed, "resourceType", "resource_type")))
 		for key, child := range typed {
 			normalizedKey := strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
-			if normalizedKey == "mediaid" || (normalizedKey == "resourceid" && strings.EqualFold(resourceType, "mediaId")) {
-				if id := mediaIDScalar(child); id != "" {
+			if normalizedKey == targetKey ||
+				(normalizedKey == "resourceid" && strings.EqualFold(resourceType, targetKey)) {
+				if id := resourceIDScalar(child); id != "" {
 					*out = append(*out, id)
 				}
 			}
-			collectMediaIDs(child, out)
+			collectResourceIDs(child, targetKey, textPattern, out)
 		}
 	case []any:
 		for _, child := range typed {
-			collectMediaIDs(child, out)
+			collectResourceIDs(child, targetKey, textPattern, out)
 		}
 	case []map[string]any:
 		for _, child := range typed {
-			collectMediaIDs(child, out)
+			collectResourceIDs(child, targetKey, textPattern, out)
 		}
 	case string:
-		for _, match := range mediaIDTextRE.FindAllStringSubmatch(typed, -1) {
+		for _, match := range textPattern.FindAllStringSubmatch(typed, -1) {
 			if len(match) > 1 {
-				if id := mediaIDScalar(match[1]); id != "" {
+				if id := resourceIDScalar(match[1]); id != "" {
 					*out = append(*out, id)
 				}
 			}
@@ -300,13 +321,13 @@ func collectMediaIDs(value any, out *[]string) {
 		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
 			var decoded any
 			if json.Unmarshal([]byte(trimmed), &decoded) == nil {
-				collectMediaIDs(decoded, out)
+				collectResourceIDs(decoded, targetKey, textPattern, out)
 			}
 		}
 	}
 }
 
-func mediaIDScalar(value any) string {
+func resourceIDScalar(value any) string {
 	text, ok := value.(string)
 	if !ok {
 		return ""
@@ -314,7 +335,7 @@ func mediaIDScalar(value any) string {
 	return strings.Trim(strings.TrimSpace(text), `"'`)
 }
 
-func uniqueMediaIDs(values []string) []string {
+func uniqueResourceIDs(values []string) []string {
 	out := make([]string, 0, len(values))
 	seen := map[string]bool{}
 	for _, value := range values {

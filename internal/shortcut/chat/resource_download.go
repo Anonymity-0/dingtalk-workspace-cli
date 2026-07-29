@@ -54,16 +54,16 @@ var MessagesResourceDownload = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-resource-download",
 	Product:     "im",
-	Description: "安全下载消息资源（图片/视频/语音）到本地",
-	Intent: "当你需要拿到消息里的实际图片、视频或语音文件，而不只是临时 URL 时使用；" +
-		"先用消息和会话身份换取下载地址，再安全写入工作目录内的相对路径。" +
+	Description: "安全下载消息资源（图片/视频/语音/文件）到本地",
+	Intent: "当你需要拿到消息里的实际图片、视频、语音或钉盘文件，而不只是资源 ID 时使用；" +
+		"mediaId 用消息和会话身份换取下载地址，fileId 复用钉盘下载能力，再安全写入工作目录内的相对路径。" +
 		"默认不覆盖已有文件，只有显式传 --overwrite 才覆盖。",
 	Risk: shortcut.RiskRead,
 	Flags: []shortcut.Flag{
-		{Name: "type", Type: shortcut.FlagString, Default: "mediaId", Desc: "资源类型", Enum: []string{"mediaId"}},
-		{Name: "resource-id", Type: shortcut.FlagString, Desc: "资源 ID（消息中的 mediaId）", Required: true},
-		{Name: "message-id", Type: shortcut.FlagString, Desc: "消息 openMessageId", Required: true},
-		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
+		{Name: "type", Type: shortcut.FlagString, Default: "mediaId", Desc: "资源类型", Enum: []string{"mediaId", "fileId"}},
+		{Name: "resource-id", Type: shortcut.FlagString, Desc: "消息中的 mediaId 或 fileId", Required: true},
+		{Name: "message-id", Type: shortcut.FlagString, Desc: "mediaId 所属消息的 openMessageId"},
+		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "mediaId 所属会话的 openConversationId"},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内的相对文件或目录路径"},
 		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖已存在的目标文件（默认拒绝）"},
 	},
@@ -73,13 +73,28 @@ var MessagesResourceDownload = shortcut.Shortcut{
 			Flags:       []string{"output"},
 			Description: "--output 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
 		},
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"type", "message-id", "open-conversation-id"},
+			Description: "--type mediaId 时必须同时提供 --message-id 和 --open-conversation-id；fileId 不需要消息上下文",
+		},
 	},
 	Tips: []string{
 		`dws chat +messages-resource-download --resource-id <mediaId> --message-id <openMessageId> --open-conversation-id <openConversationId>`,
+		`dws chat +messages-resource-download --type fileId --resource-id <fileId> --output ./downloads/`,
 		`dws chat +messages-resource-download --resource-id <mediaId> --message-id <openMessageId> --open-conversation-id <openConversationId> --output ./downloads/`,
 	},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		return validateResourceDownloadOutput(rt.Str("output"))
+		if err := validateResourceDownloadOutput(rt.Str("output")); err != nil {
+			return err
+		}
+		if rt.Str("type") == "mediaId" &&
+			(strings.TrimSpace(rt.Str("message-id")) == "" ||
+				strings.TrimSpace(rt.Str("open-conversation-id")) == "") {
+			return apperrors.NewValidation(
+				"--type mediaId 时必须同时提供 --message-id 和 --open-conversation-id")
+		}
+		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		plan := map[string]any{
@@ -101,12 +116,13 @@ var MessagesResourceDownload = shortcut.Shortcut{
 			return rt.Output(plan)
 		}
 
-		data, err := rt.CallMCPData("im", "get_resource_download_url", map[string]any{
-			"resourceType":       rt.Str("type"),
-			"resourceId":         rt.Str("resource-id"),
-			"openMessageId":      rt.Str("message-id"),
-			"openConversationId": rt.Str("open-conversation-id"),
-		})
+		data, err := resolveMessageResourceDownloadData(
+			rt,
+			rt.Str("type"),
+			rt.Str("resource-id"),
+			rt.Str("message-id"),
+			rt.Str("open-conversation-id"),
+		)
 		if err != nil {
 			return err
 		}
@@ -119,7 +135,12 @@ var MessagesResourceDownload = shortcut.Shortcut{
 			return apperrors.NewInternal(fmt.Sprintf("读取工作目录失败: %v", err))
 		}
 		destPath, relativePath, err := resolveResourceDownloadPath(
-			cwd, rt.Str("output"), resourceURL, rt.Bool("overwrite"))
+			cwd,
+			rt.Str("output"),
+			resourceURL,
+			rt.Bool("overwrite"),
+			resourceDownloadPreferredName(data),
+		)
 		if err != nil {
 			return err
 		}
@@ -136,6 +157,23 @@ var MessagesResourceDownload = shortcut.Shortcut{
 			"sizeBytes":    size,
 		})
 	},
+}
+
+func resolveMessageResourceDownloadData(
+	rt *shortcut.RuntimeContext,
+	resourceType, resourceID, messageID, conversationID string,
+) (map[string]any, error) {
+	if resourceType == "fileId" {
+		return rt.CallMCPData("drive", "download_file", map[string]any{
+			"fileId": resourceID,
+		})
+	}
+	return rt.CallMCPData("im", "get_resource_download_url", map[string]any{
+		"resourceType":       "mediaId",
+		"resourceId":         resourceID,
+		"openMessageId":      messageID,
+		"openConversationId": conversationID,
+	})
 }
 
 func validateResourceDownloadOutput(output string) error {
@@ -211,6 +249,18 @@ func resourceDownloadInfo(data map[string]any) (string, map[string]string, error
 	return resourceURL, headers, nil
 }
 
+func resourceDownloadPreferredName(data map[string]any) string {
+	for {
+		result, ok := data["result"].(map[string]any)
+		if !ok {
+			break
+		}
+		data = result
+	}
+	name, _ := data["fileName"].(string)
+	return strings.TrimSpace(name)
+}
+
 func isAliyunOSSHost(host string) bool {
 	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
 	return host == "aliyuncs.com" || strings.HasSuffix(host, ".aliyuncs.com")
@@ -219,6 +269,7 @@ func isAliyunOSSHost(host string) bool {
 func resolveResourceDownloadPath(
 	baseDir, output, resourceURL string,
 	overwrite bool,
+	preferredName ...string,
 ) (absolutePath, relativePath string, err error) {
 	if err := validateResourceDownloadOutput(output); err != nil {
 		return "", "", err
@@ -242,7 +293,7 @@ func resolveResourceDownloadPath(
 		directoryIntent ||
 		output == "."
 	if isDirectory {
-		candidate = filepath.Join(candidate, resourceDownloadFilename(resourceURL))
+		candidate = filepath.Join(candidate, resourceDownloadFilename(resourceURL, preferredName...))
 	}
 
 	parent := filepath.Dir(candidate)
@@ -321,7 +372,13 @@ func ensureResourceDownloadParent(baseDir, parent string) error {
 	return nil
 }
 
-func resourceDownloadFilename(resourceURL string) string {
+func resourceDownloadFilename(resourceURL string, preferredName ...string) string {
+	if len(preferredName) > 0 {
+		name := filepath.Base(strings.ReplaceAll(strings.TrimSpace(preferredName[0]), "\\", "/"))
+		if name != "" && name != "." && name != string(os.PathSeparator) {
+			return name
+		}
+	}
 	parsed, err := url.Parse(resourceURL)
 	if err == nil {
 		name, unescapeErr := url.PathUnescape(filepath.Base(parsed.Path))

@@ -172,15 +172,7 @@ func dryRunWriteError(product, tool string) error {
 }
 
 func looksReadTool(tool string) bool {
-	tool = strings.TrimSpace(strings.ToLower(tool))
-	for _, prefix := range []string{
-		"get_", "list_", "query_", "search_", "unread_",
-	} {
-		if strings.HasPrefix(tool, prefix) {
-			return true
-		}
-	}
-	return false
+	return helpers.IsReadToolName(tool)
 }
 
 func (rt *RuntimeContext) callMCPData(product, tool string, params map[string]any) (map[string]any, error) {

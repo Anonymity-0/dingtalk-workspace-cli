@@ -15,6 +15,7 @@ package smart
 
 import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
 
@@ -43,25 +44,26 @@ var ThreadReplies = shortcut.Shortcut{
 		"可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。" +
 		"这是纯只读操作，只做拉取与本地投影，不会发送或修改任何消息。",
 	Risk: shortcut.RiskRead,
-	Flags: []shortcut.Flag{
+	Flags: append([]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId，必填）", Required: true},
 		{Name: "thread-id", Type: shortcut.FlagString, Desc: "话题/线程 ID（可直接使用消息列表返回的 threadId）"},
 		{Name: "topic-id", Type: shortcut.FlagString, Desc: "--thread-id 的兼容别名"},
 		{Name: "time", Type: shortcut.FlagString, Desc: "起始时间，如 \"2025-03-01 00:00:00\"（可选）"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的回复条数（可选）"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出回复 reaction（默认输出）"},
-	},
-	Constraints: []shortcut.Constraint{
+	}, chatshortcut.MessageResourceDownloadFlags()...),
+	Constraints: append([]shortcut.Constraint{
 		{
 			Kind:        shortcut.ConstraintExactlyOne,
 			Flags:       []string{"thread-id", "topic-id"},
 			Description: "--thread-id 与兼容参数 --topic-id 必须且只能指定一个",
 		},
-	},
+	}, chatshortcut.MessageResourceDownloadConstraints()...),
 	Tips: []string{
 		`dws chat +thread-replies --group <openconversationId> --thread-id <threadId>`,
 		`dws chat +thread-replies --group <openconversationId> --thread-id <threadId> --time "2025-03-01 00:00:00" --limit 20`,
 	},
+	Validate: chatshortcut.ValidateMessageResourceDownload,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		// Step 1 — fetch the topic replies. Param keys (openconversationId /
 		// topicId / startTime / pageSize) are copied verbatim from chat.go's
@@ -96,6 +98,9 @@ var ThreadReplies = shortcut.Shortcut{
 			"count":   len(results),
 		}
 		chatmsg.ApplyMessagePagination(payload, data, items, "older")
+		if rt.Bool("download-resources") {
+			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, rt.Str("group"))
+		}
 		return rt.Output(payload)
 	},
 }
