@@ -10,7 +10,16 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
+
+func TestCrossPlatformCoverageSafeResourceQueryDownloadsStayReadOnly(t *testing.T) {
+	for _, command := range []shortcut.Shortcut{AtMe, ChatMessages, SearchMsg, ThreadReplies} {
+		if command.Risk != shortcut.RiskRead || command.RiskWhen != nil {
+			t.Errorf("%s risk contract = %q, dynamic=%v", command.Command, command.Risk, command.RiskWhen != nil)
+		}
+	}
+}
 
 func TestCrossPlatformCoverageMessageReadShortcutsPublishResourceDownloadPlans(t *testing.T) {
 	message := `{"openMessageId":"msg","openConversationId":"cid","content":"{\"mediaId\":\"@image\"}","quotedMessage":{"openMessageId":"quoted","content":"{\"fileId\":\"@quoted-file\"}"}}`

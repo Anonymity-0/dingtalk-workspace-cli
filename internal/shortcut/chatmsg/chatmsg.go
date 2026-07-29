@@ -322,7 +322,7 @@ func resourcesDeep(m map[string]any, inheritedConversationID string, depth int) 
 	return out
 }
 
-var mediaIDTextRE = regexp.MustCompile(`(?i)media[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+var mediaIDTextRE = regexp.MustCompile(`(?i)\bmedia[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 var fileIDTextRE = regexp.MustCompile(`(?i)\bfile[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 
 func collectResourceIDs(value any, targetKey string, textPattern *regexp.Regexp, out *[]string) {

@@ -20,8 +20,8 @@
 
 - `+messages-send` 只暴露下层真实支持的身份能力，并自动规范化、补齐对应身份的 @ 占位符。
 - `+search-msg --page-all` 连续翻页并默认按消息 ID 批量富化；续页或富化失败会保留已取得结果并返回逐项失败 ledger。
-- 五个查询 Shortcut 默认纯只读；显式传 `--download-resources` 时才在运行时升级为 `write` 并要求确认。引用、回复、合并转发中的资源使用 `resourceRefs` 自带的子消息 `messageId`；仅当子消息缺会话 ID 时继承父消息 `openConversationId`。
-- `+messages-resource-download` 始终写本地。确认相对输出目录和覆盖策略后才加 `--yes`，默认拒绝覆盖已有文件。
+- 五个查询 Shortcut 的 `--download-resources` 沿用安全本地下载的 `read/not_required` 契约，不应添加 `--yes` 或触发交互确认。引用、回复、合并转发中的资源使用 `resourceRefs` 自带的子消息 `messageId`；仅当子消息缺会话 ID 时继承父消息 `openConversationId`。
+- `+messages-resource-download` 同样无需交互确认，但只允许工作目录内相对路径、默认拒绝覆盖并原子落盘；需要覆盖时必须由用户显式传 `--overwrite`。
 - 下载器只接受经审查的钉钉与公网 OSS HTTPS 地址并逐跳校验重定向；跨主机时不会转发下层提供的请求头。
 
 ## 适用范围与安全硬约束

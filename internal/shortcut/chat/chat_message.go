@@ -16,7 +16,6 @@ package chat
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -527,9 +526,8 @@ var MessagesMget = shortcut.Shortcut{
 	Command:     "+messages-mget",
 	Product:     "im",
 	Description: "根据消息 ID 批量查询消息（最多 50 条）",
-	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
+	Intent:      "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。",
 	Risk:        shortcut.RiskRead,
-	RiskWhen:    MessageResourceDownloadRisk,
 	Flags: append([]shortcut.Flag{
 		{Name: "msg-ids", Type: shortcut.FlagStringSlice, Desc: "消息 openMsgId 列表；--msg-ids 去重后必须包含 1-50 条消息 ID", Required: true},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
@@ -611,15 +609,6 @@ func ValidateMessageResourceDownload(rt *shortcut.RuntimeContext) error {
 	return validateResourceDownloadOutputFlag(rt.Str("output-dir"), "--output-dir")
 }
 
-// MessageResourceDownloadRisk keeps read-only invocations prompt-free while
-// requiring confirmation for the opt-in local file writes.
-func MessageResourceDownloadRisk(rt *shortcut.RuntimeContext) shortcut.Risk {
-	if rt.Bool("download-resources") {
-		return shortcut.RiskWrite
-	}
-	return shortcut.RiskRead
-}
-
 // DownloadMessageResources downloads every unique message resource reference
 // and returns a per-resource success/failure ledger. A fallback conversation
 // ID lets group/thread list commands supply context when a mediaId item's lower
@@ -681,18 +670,19 @@ func DownloadMessageResources(
 			"requestedCount":    len(resources),
 			"deduplicatedCount": discoveredCount - len(resources),
 			"downloadedCount":   0,
-			"failedCount":       1,
+			"failedCount":       len(resources),
 			"downloads":         []map[string]any{},
 			"failures": []map[string]any{{
-				"stage": "output-directory",
-				"error": fmt.Sprintf("读取工作目录失败: %v", err),
+				"stage":         "output-directory",
+				"affectedCount": len(resources),
+				"error":         fmt.Sprintf("读取工作目录失败: %v", err),
 			}},
 		}
 	}
-	outputDir := strings.TrimRight(rt.Str("output-dir"), `/\`) + string(os.PathSeparator)
+	outputDir := strings.TrimRight(rt.Str("output-dir"), `/\`)
 	downloads := make([]map[string]any, 0, len(resources))
 	failures := make([]map[string]any, 0)
-	plannedNames := map[string]int{}
+	downloadedNames := map[string]bool{}
 	for _, resource := range resources {
 		resourceType := strings.TrimSpace(fmt.Sprint(resource["type"]))
 		if canonicalType, ok := canonicalMessageResourceType(resourceType); ok {
@@ -744,18 +734,9 @@ func DownloadMessageResources(
 			continue
 		}
 		preferredName := resourceDownloadPreferredName(data)
-		output := outputDir
 		filename := resourceDownloadFilename(resourceURL, preferredName)
-		filenameKey := strings.ToLower(filename)
-		plannedNames[filenameKey]++
-		if plannedNames[filenameKey] > 1 {
-			extension := filepath.Ext(filename)
-			output = filepath.Join(
-				strings.TrimRight(outputDir, `/\`),
-				strings.TrimSuffix(filename, extension)+
-					fmt.Sprintf(" (%d)", plannedNames[filenameKey])+extension,
-			)
-		}
+		filename = disambiguateResourceDownloadFilename(filename, downloadedNames)
+		output := filepath.Join(outputDir, filename)
 		destPath, relativePath, pathErr := resolveResourceDownloadPath(
 			cwd,
 			output,
@@ -783,6 +764,7 @@ func DownloadMessageResources(
 			})
 			continue
 		}
+		downloadedNames[strings.ToLower(filepath.Base(relativePath))] = true
 		downloads = append(downloads, map[string]any{
 			"resourceType": resourceType,
 			"resourceId":   resourceID,
@@ -801,6 +783,20 @@ func DownloadMessageResources(
 		"failedCount":       len(failures),
 		"downloads":         downloads,
 		"failures":          failures,
+	}
+}
+
+func disambiguateResourceDownloadFilename(filename string, used map[string]bool) string {
+	if !used[strings.ToLower(filename)] {
+		return filename
+	}
+	extension := filepath.Ext(filename)
+	stem := strings.TrimSuffix(filename, extension)
+	for sequence := 2; ; sequence++ {
+		candidate := fmt.Sprintf("%s (%d)%s", stem, sequence, extension)
+		if !used[strings.ToLower(candidate)] {
+			return candidate
+		}
 	}
 }
 
@@ -1006,11 +1002,11 @@ var MessagesSendCard = shortcut.Shortcut{
 	Command:     "+messages-send-card",
 	Product:     "im",
 	Description: "创建流式卡片，可在同一次调用中写入内容并结束",
-	Intent:      "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。",
+	Intent:      "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（与 --receiver 互斥）"},
-		{Name: "receiver", Type: shortcut.FlagString, Desc: "单聊接收者 userId（与 --group 互斥）"},
+		{Name: "receiver", Type: shortcut.FlagString, Desc: "单聊接收者 userId 或 openDingTalkId（与 --group 互斥）；userId 包括在 --dry-run 时也会先只读解析"},
 		{Name: "content", Type: shortcut.FlagString, Desc: "创建后立即写入的卡片内容；省略时仅创建并返回 bizId"},
 		{Name: "flow-status", Type: shortcut.FlagInt, Default: "3", Desc: "自动更新状态：1处理中/2输入中/3完成/4执行中/5错误；--flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"},
 	},
@@ -1048,7 +1044,11 @@ var MessagesSendCard = shortcut.Shortcut{
 		if group != "" {
 			params["openConversationId"] = group
 		} else {
-			params["receiverUid"] = receiver
+			openID, err := resolveUserOpenDingTalkID(rt, receiver)
+			if err != nil {
+				return err
+			}
+			params["receiverOpenDingTalkId"] = openID
 		}
 		content := rt.Str("content")
 		if content == "" {
@@ -1109,7 +1109,8 @@ func findCardBizID(value any) string {
 	case map[string]any:
 		directKeys := []string{"bizId", "bizID", "biz_id"}
 		for _, key := range directKeys {
-			if candidate := strings.TrimSpace(fmt.Sprint(typed[key])); candidate != "" && candidate != "<nil>" {
+			if candidate, ok := typed[key].(string); ok && strings.TrimSpace(candidate) != "" {
+				candidate = strings.TrimSpace(candidate)
 				return candidate
 			}
 		}

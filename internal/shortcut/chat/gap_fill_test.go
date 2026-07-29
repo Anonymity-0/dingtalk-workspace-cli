@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -46,6 +47,17 @@ func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 		}
 		if !strings.Contains(flag.Desc, "能力矩阵") {
 			t.Errorf("--%s does not publish identity matrix semantics: %q", flag.Name, flag.Desc)
+		}
+		if flag.Name == "user" && !strings.Contains(flag.Desc, "--dry-run") {
+			t.Errorf("--user does not publish dry-run contact resolution: %q", flag.Desc)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageSafeResourceDownloadsStayReadOnly(t *testing.T) {
+	for _, command := range []shortcut.Shortcut{MessagesMget, MessagesResourceDownload} {
+		if command.Risk != shortcut.RiskRead || command.RiskWhen != nil {
+			t.Errorf("%s risk contract = %q, dynamic=%v", command.Command, command.Risk, command.RiskWhen != nil)
 		}
 	}
 }
@@ -368,6 +380,55 @@ func TestCrossPlatformCoverageMessagesSendCardOneCallLifecycle(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageMessagesSendCardResolvesReceiverForLowerTool(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-send-card",
+		"--receiver", "user-id",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 ||
+		fake.calls[0].product != "contact" ||
+		fake.calls[0].tool != "get_user_info_by_user_ids" ||
+		fake.calls[1].product != "im" ||
+		fake.calls[1].tool != "create_and_send_card" {
+		t.Fatalf("card receiver calls = %#v", fake.calls)
+	}
+	if got := fake.calls[1].args["receiverOpenDingTalkId"]; got != "D-resolved" {
+		t.Fatalf("receiverOpenDingTalkId = %#v, want D-resolved", got)
+	}
+	if _, exists := fake.calls[1].args["receiverUid"]; exists {
+		t.Fatalf("obsolete receiverUid leaked to lower tool: %#v", fake.calls[1].args)
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendCardKeepsOpenReceiver(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-send-card",
+		"--receiver", "D-direct",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 ||
+		fake.calls[0].product != "im" ||
+		fake.calls[0].tool != "create_and_send_card" {
+		t.Fatalf("card open receiver calls = %#v", fake.calls)
+	}
+	if got := fake.calls[0].args["receiverOpenDingTalkId"]; got != "D-direct" {
+		t.Fatalf("receiverOpenDingTalkId = %#v, want D-direct", got)
+	}
+}
+
 func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *testing.T) {
 	t.Run("create only", func(t *testing.T) {
 		fake := &larkAlignmentCaller{}
@@ -403,15 +464,39 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 		if err := root.Execute(); err != nil {
 			t.Fatal(err)
 		}
-		if len(fake.calls) != 0 {
-			t.Fatalf("card dry-run made lower calls: %#v", fake.calls)
+		if len(fake.calls) != 1 ||
+			fake.calls[0].product != "contact" ||
+			fake.calls[0].tool != "get_user_info_by_user_ids" {
+			t.Fatalf("card dry-run receiver resolution calls = %#v", fake.calls)
 		}
 		var payload map[string]any
 		if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
 			t.Fatal(err)
 		}
-		if payload["actionCount"] != float64(2) {
+		actions, _ := payload["actions"].([]any)
+		create, _ := actions[0].(map[string]any)
+		arguments, _ := create["arguments"].(map[string]any)
+		if payload["actionCount"] != float64(2) ||
+			arguments["receiverOpenDingTalkId"] != "D-resolved" {
 			t.Fatalf("card plan = %#v", payload)
+		}
+	})
+
+	t.Run("receiver resolution error", func(t *testing.T) {
+		fake := &larkAlignmentCaller{failProductTool: "contact/get_user_info_by_user_ids"}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs([]string{
+			"chat", "+messages-send-card",
+			"--receiver", "user-id",
+			"--yes",
+		})
+		err := root.Execute()
+		if err == nil || !strings.Contains(err.Error(), "解析为 openDingTalkId 失败") {
+			t.Fatalf("receiver resolution error = %v", err)
+		}
+		if len(fake.calls) != 1 || fake.calls[0].tool != "get_user_info_by_user_ids" {
+			t.Fatalf("receiver resolution calls = %#v", fake.calls)
 		}
 	})
 
@@ -488,6 +573,11 @@ func TestCrossPlatformCoverageFindCardBizIDResponseShapes(t *testing.T) {
 		{map[string]any{
 			"extension": map[string]any{"bizId": "fallback"},
 		}, "fallback"},
+		{map[string]any{
+			"bizId":  map[string]any{"x": 1},
+			"result": map[string]any{"bizId": "typed"},
+		}, "typed"},
+		{map[string]any{"bizId": map[string]any{"x": 1}}, ""},
 		{`{"result":{"bizId":"json"}}`, "json"},
 		{`[{"bizId":"array-json"}]`, "array-json"},
 		{`{"bizId":`, ""},
@@ -680,6 +770,68 @@ func TestCrossPlatformCoverageMessageResourceDownloadDisambiguatesSameNames(t *t
 		t.Fatalf("download destinations = %#v", destinations)
 	}
 	if ledger["downloadedCount"] != 2 || ledger["failedCount"] != 0 {
+		t.Fatalf("download ledger = %#v", ledger)
+	}
+}
+
+func TestCrossPlatformCoverageResourceDownloadFilenameCollisionSequence(t *testing.T) {
+	used := map[string]bool{}
+	first := disambiguateResourceDownloadFilename("a.txt", used)
+	used[strings.ToLower(first)] = true
+	second := disambiguateResourceDownloadFilename("a.txt", used)
+	used[strings.ToLower(second)] = true
+	third := disambiguateResourceDownloadFilename("a (2).txt", used)
+	if first != "a.txt" || second != "a (2).txt" || third != "a (2) (2).txt" {
+		t.Fatalf("collision sequence = %q, %q, %q", first, second, third)
+	}
+}
+
+func TestCrossPlatformCoverageFailedResourceDownloadDoesNotConsumeFilename(t *testing.T) {
+	resetResourceDownloadHooks(t)
+	t.Chdir(t.TempDir())
+	destinations := make([]string, 0, 2)
+	attempt := 0
+	resourceDownload = func(
+		_ context.Context,
+		_ *http.Client,
+		_ string,
+		_ map[string]string,
+		dest string,
+		_ bool,
+	) (int64, error) {
+		destinations = append(destinations, filepath.Base(dest))
+		attempt++
+		if attempt == 1 {
+			return 0, errors.New("fixture download failed")
+		}
+		return 1, nil
+	}
+	helpers.InitDeps(&larkAlignmentCaller{responses: map[string]string{
+		"drive/download_file": `{"result":{"downloadUrl":"https://download.dingtalk.com/opaque","fileName":"fixture.txt"}}`,
+	}})
+
+	var ledger map[string]any
+	shortcut.Register(shortcut.Shortcut{
+		Service: "chat",
+		Command: "+gap-failed-colliding-resource-download",
+		Flags:   MessageResourceDownloadFlags(),
+		Execute: func(rt *shortcut.RuntimeContext) error {
+			ledger = DownloadMessageResources(rt, []map[string]any{
+				{"fileId": "file-a"},
+				{"fileId": "file-b"},
+			}, "")
+			return nil
+		},
+	})
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+gap-failed-colliding-resource-download", "--output-dir", "./downloads"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(destinations, []string{"fixture.txt", "fixture.txt"}) {
+		t.Fatalf("failed download consumed a filename: %#v", destinations)
+	}
+	if ledger["downloadedCount"] != 1 || ledger["failedCount"] != 1 {
 		t.Fatalf("download ledger = %#v", ledger)
 	}
 }

@@ -37,9 +37,8 @@ var SearchMsg = shortcut.Shortcut{
 	Description: "多维搜索消息，可全量翻页并批量富化详情",
 	Intent: "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，" +
 		"也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。" +
-		"默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。",
-	Risk:     shortcut.RiskRead,
-	RiskWhen: chatshortcut.MessageResourceDownloadRisk,
+		"--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。",
+	Risk: shortcut.RiskRead,
 	Flags: append([]shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词"},
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "--query 的别名", Hidden: true},

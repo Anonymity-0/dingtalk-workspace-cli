@@ -4,7 +4,9 @@
 package chat
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -71,9 +73,20 @@ func TestCrossPlatformCoverageMgetResourceDownloadOutcomes(t *testing.T) {
 			"im/list_messages_by_ids": readyMget,
 		}})
 		root := newPlatformCoverageRoot()
+		var output bytes.Buffer
+		root.SetOut(&output)
 		root.SetArgs(baseArgs)
 		if err := root.Execute(); err != nil {
 			t.Fatalf("getwd ledger error = %v", err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		ledger, _ := payload["resourceDownloads"].(map[string]any)
+		if ledger["requestedCount"] != float64(1) ||
+			ledger["failedCount"] != ledger["requestedCount"] {
+			t.Fatalf("getwd ledger = %#v", ledger)
 		}
 	})
 
@@ -127,5 +140,50 @@ func TestCrossPlatformCoverageMgetResourceDownloadOutcomes(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageMgetDownloadRunsWithoutConfirmation(t *testing.T) {
+	resetResourceDownloadHooks(t)
+	t.Chdir(t.TempDir())
+	resourceDownload = func(
+		_ context.Context,
+		_ *http.Client,
+		_ string,
+		_ map[string]string,
+		dest string,
+		_ bool,
+	) (int64, error) {
+		return 7, nil
+	}
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"im/list_messages_by_ids":      `{"result":[{"openMessageId":"msg","openConversationId":"cid","content":"{\"mediaId\":\"@file\"}"}]}`,
+		"im/get_resource_download_url": `{"result":{"resourceUrl":"https://download.dingtalk.com/resource.bin"}}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetIn(bytes.NewBuffer(nil))
+	root.SetArgs([]string{
+		"chat", "+messages-mget",
+		"--msg-ids", "msg",
+		"--download-resources",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 ||
+		fake.calls[0].tool != "list_messages_by_ids" ||
+		fake.calls[1].tool != "get_resource_download_url" {
+		t.Fatalf("download calls = %#v", fake.calls)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	ledger, _ := payload["resourceDownloads"].(map[string]any)
+	if ledger["downloadedCount"] != float64(1) || ledger["failedCount"] != float64(0) {
+		t.Fatalf("download ledger = %#v", ledger)
 	}
 }

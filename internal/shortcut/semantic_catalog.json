@@ -487,7 +487,7 @@
     },
     "+messages-mget": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "按最多 50 个消息 ID 批量读取并输出稳定消息投影、reaction 与 resourceRefs；可用 --download-resources 统一下载 mediaId 与 fileId，复用受信任下载域、相对路径、无覆盖和原子落盘防护，对重复资源去重并逐资源返回下载失败 ledger；默认只读，启用下载时运行时风险升级为 write。",
+      "semantic_delta": "按最多 50 个消息 ID 批量读取并输出稳定消息投影、reaction 与 resourceRefs；可用 --download-resources 统一下载 mediaId 与 fileId，复用受信任下载域、相对路径、无覆盖和原子落盘防护，对重复资源去重并逐资源返回下载失败 ledger；安全本地下载沿用 read/not_required 契约，不产生非交互确认盲区。",
       "risk": "read",
       "public": true,
       "reviewed": true
@@ -565,7 +565,7 @@
     "+messages-resource-download": {
       "disposition": "primary_smart",
       "semantic_delta": "统一承接消息 mediaId 与钉盘 fileId：分别复用 IM 临时资源 URL 和 drive.download_file，只允许钉钉/OSS HTTPS 下载域且重定向复验并隔离跨域凭据，再通过工作目录内安全路径、默认不覆盖、临时文件下载和原子发布输出结构化结果。",
-      "risk": "write",
+      "risk": "read",
       "public": true,
       "reviewed": true
     },

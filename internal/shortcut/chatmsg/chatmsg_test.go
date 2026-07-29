@@ -431,6 +431,17 @@ func TestResourcesReportsMissingDownloadContext(t *testing.T) {
 	}
 }
 
+func TestResourcesTextMediaIDRequiresWordBoundary(t *testing.T) {
+	resources := Resources(map[string]any{
+		"openMessageId":      "msg-1",
+		"openConversationId": "cid-1",
+		"content":            `notmediaId=@false mediaId=@real`,
+	})
+	if len(resources) != 1 || resources[0]["resourceId"] != "@real" {
+		t.Fatalf("resources = %#v, want only the bounded mediaId", resources)
+	}
+}
+
 func TestForwarded(t *testing.T) {
 	var project func(m map[string]any) map[string]any
 	project = func(m map[string]any) map[string]any {

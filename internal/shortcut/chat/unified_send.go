@@ -28,14 +28,14 @@ var MessagesSend = shortcut.Shortcut{
 	Command:     "+messages-send",
 	Product:     "chat",
 	Description: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
-	Intent:      "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。",
+	Intent:      "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "identity", Type: shortcut.FlagString, Default: "user", Enum: []string{"user", "bot", "webhook"}, Desc: "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束"},
 		{Name: "as", Type: shortcut.FlagString, Enum: []string{"user", "bot", "webhook"}, Desc: "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（user/bot 群聊）；受发送身份能力矩阵约束"},
 		{Name: "chat-id", Type: shortcut.FlagString, Desc: "--group 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
-		{Name: "user", Type: shortcut.FlagString, Desc: "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束"},
+		{Name: "user", Type: shortcut.FlagString, Desc: "单聊接收者 userId（user；包括 --dry-run 也会先只读解析 openDingTalkId）；受发送身份能力矩阵约束"},
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束"},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束"},
 		{Name: "open-dingtalk-ids", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束"},
@@ -359,18 +359,29 @@ func messagesSendUserTarget(rt *shortcut.RuntimeContext) (group, openID string, 
 	if openID != "" || group != "" {
 		return group, openID, nil
 	}
-	userID := rt.Str("user")
+	openID, err = resolveUserOpenDingTalkID(rt, rt.Str("user"))
+	if err != nil {
+		return "", "", err
+	}
+	return "", openID, nil
+}
+
+func resolveUserOpenDingTalkID(rt *shortcut.RuntimeContext, userID string) (string, error) {
+	userID = strings.TrimSpace(userID)
+	if isOpenID(userID) {
+		return userID, nil
+	}
 	data, err := rt.CallMCPData("contact", "get_user_info_by_user_ids", map[string]any{
 		"user_id_list": []string{userID},
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("把 --user 解析为 openDingTalkId 失败: %w", err)
+		return "", fmt.Errorf("把 userId 解析为 openDingTalkId 失败: %w", err)
 	}
-	openID = findOpenDingTalkID(data)
+	openID := findOpenDingTalkID(data)
 	if openID == "" {
-		return "", "", apperrors.NewValidation("无法把 --user 解析为 openDingTalkId；请改传 --open-dingtalk-id")
+		return "", apperrors.NewValidation("无法把 userId 解析为 openDingTalkId；请改传 openDingTalkId")
 	}
-	return "", openID, nil
+	return openID, nil
 }
 
 func executeMessagesSendUserFile(

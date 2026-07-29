@@ -52622,7 +52622,7 @@
       "cli_name": "+at-me",
       "cli_path": "chat +at-me",
       "confirmation": "not_required",
-      "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -52651,7 +52651,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "available"
@@ -52659,7 +52659,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "available"
         },
@@ -52703,7 +52703,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "not_required"
@@ -52711,7 +52711,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "not_required"
         },
@@ -52721,19 +52721,19 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "read"
@@ -52741,7 +52741,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "read"
         },
@@ -52771,7 +52771,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "idempotent"
@@ -52779,7 +52779,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "idempotent"
         },
@@ -52787,7 +52787,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "composite"
@@ -52795,7 +52795,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "composite"
         },
@@ -52803,7 +52803,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
@@ -52811,7 +52811,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
@@ -52835,7 +52835,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": true
@@ -52850,7 +52850,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": true
         },
@@ -52858,7 +52858,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "low"
@@ -52866,7 +52866,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "low"
         },
@@ -52892,7 +52892,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+                "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
               ]
             }
           ],
@@ -52901,7 +52901,7 @@
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+            "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
           ]
         }
       },
@@ -53550,7 +53550,7 @@
       "source": "reviewed_command_registry",
       "title": "查最近 @我 的消息（自动算时间窗，投影发送人/时间/内容/会话）",
       "use_when": [
-        "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+        "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
       ]
     },
     "chat.shortcut_bot_find": {
@@ -59930,7 +59930,7 @@
           ]
         ]
       },
-      "description": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -59959,7 +59959,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "available"
@@ -59967,7 +59967,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "available"
         },
@@ -60011,7 +60011,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "not_required"
@@ -60019,7 +60019,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "not_required"
         },
@@ -60029,19 +60029,19 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "read"
@@ -60049,7 +60049,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "read"
         },
@@ -60079,7 +60079,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "idempotent"
@@ -60087,7 +60087,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "idempotent"
         },
@@ -60095,7 +60095,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "composite"
@@ -60103,7 +60103,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "composite"
         },
@@ -60111,7 +60111,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger."
@@ -60119,7 +60119,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger."
         },
@@ -60143,7 +60143,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": true
@@ -60158,7 +60158,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": true
         },
@@ -60166,7 +60166,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "low"
@@ -60174,7 +60174,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "low"
         },
@@ -60200,7 +60200,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+                "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
               ]
             }
           ],
@@ -60209,7 +60209,7 @@
           "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+            "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
           ]
         }
       },
@@ -61137,7 +61137,7 @@
       "source": "reviewed_command_registry",
       "title": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
       "use_when": [
-        "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+        "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
       ]
     },
     "chat.shortcut_chat_mute": {
@@ -72161,7 +72161,7 @@
       "cli_name": "+messages-mget",
       "cli_path": "chat +messages-mget",
       "confirmation": "not_required",
-      "description": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -72189,7 +72189,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "available"
@@ -72197,7 +72197,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "available"
         },
@@ -72241,7 +72241,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "not_required"
@@ -72249,7 +72249,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "not_required"
         },
@@ -72259,19 +72259,19 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --msg-ids 去重后必须包含 1-50 条消息 ID\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "read"
@@ -72279,7 +72279,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "read"
         },
@@ -72307,7 +72307,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "idempotent"
@@ -72315,7 +72315,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "idempotent"
         },
@@ -72323,7 +72323,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "composite"
@@ -72331,7 +72331,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "composite"
         },
@@ -72339,7 +72339,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
@@ -72347,7 +72347,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
@@ -72371,7 +72371,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": true
@@ -72386,7 +72386,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": true
         },
@@ -72394,7 +72394,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "low"
@@ -72402,7 +72402,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. The published default remains read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "low"
         },
@@ -72428,7 +72428,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+                "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。"
               ]
             }
           ],
@@ -72437,7 +72437,7 @@
           "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+            "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。"
           ]
         }
       },
@@ -72909,7 +72909,7 @@
       "source": "reviewed_command_registry",
       "title": "根据消息 ID 批量查询消息（最多 50 条）",
       "use_when": [
-        "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+        "当你已有一批消息 openMsgId、需要批量取回完整详情、reaction 和可执行资源引用时使用；一次最多 50 条。--download-resources 可把所有可识别 mediaId/fileId 安全下载到工作目录内，并逐资源返回成功/失败 ledger；本地下载路径受限于工作目录、默认不覆盖同名文件，按既有安全下载约定无需交互确认。"
       ]
     },
     "chat.shortcut_messages_query_send_status": {
@@ -73972,7 +73972,7 @@
           ]
         ]
       },
-      "description": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
+      "description": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
       "display": "群聊 / 消息 / 机器人",
       "effect": "write",
       "effect_source": "agent-hint",
@@ -74077,13 +74077,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持"
+              "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持"
+          "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持"
         },
         "effect": {
           "candidates": [
@@ -74266,7 +74266,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+                "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
               ]
             }
           ],
@@ -74275,7 +74275,7 @@
           "review_reason": "Agent-authored from the verified identity/content capability matrix, userId resolution, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+            "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
           ]
         }
       },
@@ -76120,7 +76120,7 @@
           "type": "string"
         },
         "user": {
-          "description": "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束",
+          "description": "单聊接收者 userId（user；包括 --dry-run 也会先只读解析 openDingTalkId）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -76128,7 +76128,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束"
+                  "value": "单聊接收者 userId（user；包括 --dry-run 也会先只读解析 openDingTalkId）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -76140,7 +76140,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束"
+              "value": "单聊接收者 userId（user；包括 --dry-run 也会先只读解析 openDingTalkId）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -76464,7 +76464,7 @@
       "source": "reviewed_command_registry",
       "title": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
       "use_when": [
-        "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+        "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先只读解析为 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
       ]
     },
     "chat.shortcut_messages_send_by_webhook": {
@@ -77359,7 +77359,7 @@
           ]
         ]
       },
-      "description": "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content",
+      "description": "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content",
       "display": "群聊 / 消息 / 机器人",
       "effect": "write",
       "effect_source": "agent-hint",
@@ -77458,13 +77458,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"
+              "value": "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"
+          "value": "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"
         },
         "effect": {
           "candidates": [
@@ -77629,7 +77629,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
+                "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
               ]
             }
           ],
@@ -77638,7 +77638,7 @@
           "review_reason": "Agent-authored from the verified create-only and create-then-update lifecycle, two-action dry-run, bizId extraction, and partial-failure reporting.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
+            "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
           ]
         }
       },
@@ -77916,7 +77916,7 @@
           "type": "string"
         },
         "receiver": {
-          "description": "单聊接收者 userId（与 --group 互斥）",
+          "description": "单聊接收者 userId 或 openDingTalkId（与 --group 互斥）；userId 包括在 --dry-run 时也会先只读解析",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -77924,7 +77924,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "单聊接收者 userId（与 --group 互斥）"
+                  "value": "单聊接收者 userId 或 openDingTalkId（与 --group 互斥）；userId 包括在 --dry-run 时也会先只读解析"
                 },
                 {
                   "precedence": "default",
@@ -77936,7 +77936,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "单聊接收者 userId（与 --group 互斥）"
+              "value": "单聊接收者 userId 或 openDingTalkId（与 --group 互斥）；userId 包括在 --dry-run 时也会先只读解析"
             },
             "property": {
               "candidates": [
@@ -78014,7 +78014,7 @@
       "source": "reviewed_command_registry",
       "title": "创建流式卡片，可在同一次调用中写入内容并结束",
       "use_when": [
-        "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId 二选一。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
+        "当你要发送一张流式卡片消息时使用；群 openConversationId 或单聊接收者 userId/openDingTalkId 二选一。单聊目标会统一解析后以 receiverOpenDingTalkId 传给下层；userId 包括在 --dry-run 时也会先做只读通讯录解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
       ]
     },
     "chat.shortcut_messages_update_card": {
@@ -79270,7 +79270,7 @@
           ]
         ]
       },
-      "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -79299,7 +79299,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "available"
@@ -79307,7 +79307,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "available"
         },
@@ -79351,7 +79351,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "not_required"
@@ -79359,7 +79359,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "not_required"
         },
@@ -79369,19 +79369,19 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "read"
@@ -79389,7 +79389,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "read"
         },
@@ -79419,7 +79419,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "idempotent"
@@ -79427,7 +79427,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "idempotent"
         },
@@ -79435,7 +79435,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "composite"
@@ -79443,7 +79443,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "composite"
         },
@@ -79451,7 +79451,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads."
@@ -79459,7 +79459,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads."
         },
@@ -79483,7 +79483,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": true
@@ -79498,7 +79498,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": true
         },
@@ -79506,7 +79506,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "low"
@@ -79514,7 +79514,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "low"
         },
@@ -79540,7 +79540,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
               ]
             }
           ],
@@ -79549,7 +79549,7 @@
           "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
           ]
         }
       },
@@ -82005,7 +82005,7 @@
       "source": "reviewed_command_registry",
       "title": "多维搜索消息，可全量翻页并批量富化详情",
       "use_when": [
-        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。默认只读；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
       ]
     },
     "chat.shortcut_send_to_group": {
@@ -82644,7 +82644,7 @@
           ]
         ]
       },
-      "description": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -82673,7 +82673,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "available"
@@ -82681,7 +82681,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "available"
         },
@@ -82725,7 +82725,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "not_required"
@@ -82733,7 +82733,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "not_required"
         },
@@ -82743,19 +82743,19 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "read"
@@ -82763,7 +82763,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "read"
         },
@@ -82793,7 +82793,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "idempotent"
@@ -82801,7 +82801,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "idempotent"
         },
@@ -82809,7 +82809,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "composite"
@@ -82817,7 +82817,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "composite"
         },
@@ -82825,7 +82825,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely."
@@ -82833,7 +82833,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely."
         },
@@ -82857,7 +82857,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": true
@@ -82872,7 +82872,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": true
         },
@@ -82880,7 +82880,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+              "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "low"
@@ -82888,7 +82888,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. The published default is read-only; runtime risk escalates to write when --download-resources opts into local file writes.",
+          "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "value": "low"
         },
@@ -82914,7 +82914,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+                "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
               ]
             }
           ],
@@ -82923,7 +82923,7 @@
           "review_reason": "Agent-authored from the verified thread/topic alias, lower list_topic_replies mapping, stable projection, group-context fallback, and optional safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+            "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
           ]
         }
       },
@@ -83743,7 +83743,7 @@
       "source": "reviewed_command_registry",
       "title": "拉取某条话题消息的全部回复并投影出发言人/文本/时间",
       "use_when": [
-        "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；传 --download-resources 时会在工作目录写文件，因此命令按本地写入操作确认。"
+        "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
       ]
     },
     "chat.shortcut_unread_chats": {
