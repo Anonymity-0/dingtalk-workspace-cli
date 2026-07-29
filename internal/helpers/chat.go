@@ -3194,9 +3194,6 @@ func newChatCommand() *cobra.Command {
 			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
 				return err
 			}
-			if err := validateRequiredFlags(cmd, "msg-id", "old-emotion-id", "emotion-id", "emotion-name", "text", "background-id"); err != nil {
-				return err
-			}
 			return callMCPToolOnServer("im", "update_text_emotion", map[string]any{
 				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
 				"openMsgId":          mustGetFlag(cmd, "msg-id"),

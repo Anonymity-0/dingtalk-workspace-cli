@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func TestChatMessageUpdateTextEmotionMapsReplacementTemplate(t *testing.T) {
+func TestCrossPlatformCoverageChatMessageUpdateTextEmotionMapsReplacementTemplate(t *testing.T) {
 	for _, locator := range []string{"conversation-id", "group", "id", "chat"} {
 		t.Run(locator, func(t *testing.T) {
 			caller := &wukongWeeklySyncCaller{}
@@ -52,7 +52,7 @@ func TestChatMessageUpdateTextEmotionMapsReplacementTemplate(t *testing.T) {
 	}
 }
 
-func TestChatMessageUpdateTextEmotionRequiresEveryBusinessParameter(t *testing.T) {
+func TestCrossPlatformCoverageChatMessageUpdateTextEmotionRequiresEveryBusinessParameter(t *testing.T) {
 	required := []struct {
 		name string
 		args []string
