@@ -23,8 +23,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-//go:generate go run ../generator/cmd_param_aliases -root ../.. -output param_aliases_generated.go
-
 // ParamAliasEntry is the reduced parameter-alias table for one runnable Cobra
 // leaf. It is the typed value the build-time generator serializes into
 // param_aliases_generated.go and that the runtime normalizer (P2) consumes.
