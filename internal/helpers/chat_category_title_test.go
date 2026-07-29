@@ -14,8 +14,11 @@
 package helpers
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 func TestValidatedConversationCategoryTitle(t *testing.T) {
@@ -48,3 +51,35 @@ func TestValidatedConversationCategoryTitle(t *testing.T) {
 		})
 	}
 }
+
+func TestCrossPlatformCoverageCategoryCommandsRejectInvalidTitles(t *testing.T) {
+	caller := &categoryTitleCaller{}
+	old := deps
+	t.Cleanup(func() { deps = old })
+	InitDeps(caller)
+
+	for _, argv := range [][]string{
+		{"category", "create", "--title", "1234567890123456"},
+		{"category", "rename", "--category-id", "42", "--title", "   "},
+	} {
+		cmd := newChatCommand()
+		cmd.SetArgs(argv)
+		if err := cmd.Execute(); err == nil {
+			t.Fatalf("newChatCommand(%v) unexpectedly accepted an invalid title", argv)
+		}
+	}
+	if caller.calls != 0 {
+		t.Fatalf("invalid category titles reached MCP %d times", caller.calls)
+	}
+}
+
+type categoryTitleCaller struct{ calls int }
+
+func (c *categoryTitleCaller) CallTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+	c.calls++
+	return &edition.ToolResult{}, nil
+}
+func (*categoryTitleCaller) Format() string { return "json" }
+func (*categoryTitleCaller) DryRun() bool   { return false }
+func (*categoryTitleCaller) Fields() string { return "" }
+func (*categoryTitleCaller) JQ() string     { return "" }

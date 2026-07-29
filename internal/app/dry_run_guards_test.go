@@ -71,6 +71,32 @@ func TestToolCallerAdapterDryRunAllowsOnlyExplicitReadCapability(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageReadOnlyGuardErrorPaths(t *testing.T) {
+	var nilAdapter *toolCallerAdapter
+	if _, err := nilAdapter.CallReadTool(context.Background(), "im", "search_groups", nil); err == nil {
+		t.Fatal("nil adapter accepted a read-only call")
+	}
+
+	regularRunner := &capturingSuccessRunner{}
+	regular := newToolCallerAdapter(regularRunner, &GlobalFlags{DryRun: false, Format: "json"})
+	if _, err := regular.(edition.ReadToolCaller).CallReadTool(context.Background(), "im", "search_groups", nil); err != nil {
+		t.Fatalf("non-dry read should use the regular runner: %v", err)
+	}
+	if got := regularRunner.calls.Load(); got != 1 {
+		t.Fatalf("regular runner calls = %d, want 1", got)
+	}
+
+	readFailure := newToolCallerAdapter(&failingReadOnlyRunner{}, &GlobalFlags{DryRun: true, Format: "json"})
+	if _, err := readFailure.(edition.ReadToolCaller).CallReadTool(context.Background(), "im", "search_groups", nil); err == nil {
+		t.Fatal("read-only runner error was swallowed")
+	}
+
+	var nilRuntime *runtimeRunner
+	if _, err := nilRuntime.RunReadOnly(context.Background(), executor.Invocation{}); err == nil {
+		t.Fatal("nil runtime runner accepted a read-only call")
+	}
+}
+
 func TestRuntimeRunnerGlobalDryRunStopsBeforeInjectedFallback(t *testing.T) {
 	fallback := &countingErrorRunner{}
 	runner := &runtimeRunner{globalFlags: &GlobalFlags{DryRun: true}, fallback: fallback}
@@ -164,4 +190,14 @@ func (r *capturingSuccessRunner) Run(_ context.Context, invocation executor.Invo
 		Invocation: invocation,
 		Response:   map[string]any{"read": true},
 	}, nil
+}
+
+type failingReadOnlyRunner struct{}
+
+func (*failingReadOnlyRunner) Run(context.Context, executor.Invocation) (executor.Result, error) {
+	return executor.Result{}, errors.New("regular runner must not be called")
+}
+
+func (*failingReadOnlyRunner) RunReadOnly(context.Context, executor.Invocation) (executor.Result, error) {
+	return executor.Result{}, errors.New("read failed")
 }

@@ -31,6 +31,23 @@ import (
 
 const resourceDownloadTimeout = 10 * time.Minute
 
+var (
+	resourceGetwd        = os.Getwd
+	resourceAbs          = filepath.Abs
+	resourceEvalSymlinks = filepath.EvalSymlinks
+	resourceStat         = os.Stat
+	resourceLstat        = os.Lstat
+	resourceRel          = filepath.Rel
+	resourceMkdir        = os.Mkdir
+	resourceCreateTemp   = os.CreateTemp
+	resourceCopy         = io.Copy
+	resourceTempSync     = (*os.File).Sync
+	resourceTempClose    = (*os.File).Close
+	resourceRename       = os.Rename
+	resourceLink         = os.Link
+	resourceDownload     = downloadResourceAtomically
+)
+
 // MessagesResourceDownload resolves a temporary IM resource URL and saves the
 // bytes through a safe, atomic, no-clobber local-file workflow.
 var MessagesResourceDownload = shortcut.Shortcut{
@@ -97,7 +114,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		cwd, err := os.Getwd()
+		cwd, err := resourceGetwd()
 		if err != nil {
 			return apperrors.NewInternal(fmt.Sprintf("读取工作目录失败: %v", err))
 		}
@@ -106,7 +123,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		size, err := downloadResourceAtomically(
+		size, err := resourceDownload(
 			rt.Command().Context(), nil, resourceURL, headers, destPath, rt.Bool("overwrite"))
 		if err != nil {
 			return err
@@ -206,11 +223,11 @@ func resolveResourceDownloadPath(
 	if err := validateResourceDownloadOutput(output); err != nil {
 		return "", "", err
 	}
-	baseDir, err = filepath.Abs(baseDir)
+	baseDir, err = resourceAbs(baseDir)
 	if err != nil {
 		return "", "", apperrors.NewInternal(fmt.Sprintf("解析工作目录失败: %v", err))
 	}
-	realBase, err := filepath.EvalSymlinks(baseDir)
+	realBase, err := resourceEvalSymlinks(baseDir)
 	if err != nil {
 		return "", "", apperrors.NewInternal(fmt.Sprintf("解析工作目录失败: %v", err))
 	}
@@ -220,7 +237,7 @@ func resolveResourceDownloadPath(
 		strings.HasSuffix(rawOutput, "/")
 	output = filepath.Clean(rawOutput)
 	candidate := filepath.Join(realBase, output)
-	info, statErr := os.Stat(candidate)
+	info, statErr := resourceStat(candidate)
 	isDirectory := (statErr == nil && info.IsDir()) ||
 		directoryIntent ||
 		output == "."
@@ -232,18 +249,18 @@ func resolveResourceDownloadPath(
 	if err := ensureResourceDownloadParent(realBase, parent); err != nil {
 		return "", "", err
 	}
-	realParent, err := filepath.EvalSymlinks(parent)
+	realParent, err := resourceEvalSymlinks(parent)
 	if err != nil {
 		return "", "", apperrors.NewInternal(fmt.Sprintf("解析输出目录失败: %v", err))
 	}
-	parentRel, err := filepath.Rel(realBase, realParent)
+	parentRel, err := resourceRel(realBase, realParent)
 	if err != nil || parentRel == ".." ||
 		strings.HasPrefix(parentRel, ".."+string(os.PathSeparator)) {
 		return "", "", apperrors.NewValidation("--output 解析后逃逸工作目录")
 	}
 
 	absolutePath = filepath.Join(realParent, filepath.Base(candidate))
-	if info, statErr := os.Lstat(absolutePath); statErr == nil {
+	if info, statErr := resourceLstat(absolutePath); statErr == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return "", "", apperrors.NewValidation("--output 目标不能是符号链接")
 		}
@@ -257,7 +274,7 @@ func resolveResourceDownloadPath(
 	} else if !errors.Is(statErr, os.ErrNotExist) {
 		return "", "", apperrors.NewInternal(fmt.Sprintf("检查输出文件失败: %v", statErr))
 	}
-	relativePath, err = filepath.Rel(realBase, absolutePath)
+	relativePath, err = resourceRel(realBase, absolutePath)
 	if err != nil {
 		return "", "", apperrors.NewInternal(fmt.Sprintf("解析输出相对路径失败: %v", err))
 	}
@@ -265,7 +282,7 @@ func resolveResourceDownloadPath(
 }
 
 func ensureResourceDownloadParent(baseDir, parent string) error {
-	relative, err := filepath.Rel(baseDir, parent)
+	relative, err := resourceRel(baseDir, parent)
 	if err != nil || relative == ".." ||
 		strings.HasPrefix(relative, ".."+string(os.PathSeparator)) {
 		return apperrors.NewValidation("--output 解析后逃逸工作目录")
@@ -277,12 +294,12 @@ func ensureResourceDownloadParent(baseDir, parent string) error {
 	current := baseDir
 	for _, part := range strings.Split(relative, string(os.PathSeparator)) {
 		current = filepath.Join(current, part)
-		info, statErr := os.Lstat(current)
+		info, statErr := resourceLstat(current)
 		if errors.Is(statErr, os.ErrNotExist) {
-			if mkdirErr := os.Mkdir(current, 0o755); mkdirErr != nil {
+			if mkdirErr := resourceMkdir(current, 0o755); mkdirErr != nil {
 				// A concurrent creator may have won the race. Re-check the
 				// resulting entry instead of following it implicitly.
-				info, statErr = os.Lstat(current)
+				info, statErr = resourceLstat(current)
 				if statErr != nil {
 					return apperrors.NewInternal(fmt.Sprintf(
 						"创建输出目录失败: %v", mkdirErr))
@@ -362,17 +379,17 @@ func downloadResourceAtomically(
 	}
 
 	parent := filepath.Dir(destPath)
-	temp, err := os.CreateTemp(parent, "."+filepath.Base(destPath)+".part-*")
+	temp, err := resourceCreateTemp(parent, "."+filepath.Base(destPath)+".part-*")
 	if err != nil {
 		return 0, apperrors.NewInternal(fmt.Sprintf("创建下载临时文件失败: %v", err))
 	}
 	tempPath := temp.Name()
 	defer func() {
-		_ = temp.Close()
+		_ = resourceTempClose(temp)
 		_ = os.Remove(tempPath)
 	}()
 
-	size, err = io.Copy(temp, response.Body)
+	size, err = resourceCopy(temp, response.Body)
 	if err != nil {
 		return 0, apperrors.NewAPI(fmt.Sprintf("写入消息资源失败: %v", err))
 	}
@@ -381,19 +398,19 @@ func downloadResourceAtomically(
 			"消息资源大小校验失败: 下载 %d 字节，期望 %d 字节",
 			size, response.ContentLength))
 	}
-	if err := temp.Sync(); err != nil {
+	if err := resourceTempSync(temp); err != nil {
 		return 0, apperrors.NewInternal(fmt.Sprintf("同步消息资源失败: %v", err))
 	}
-	if err := temp.Close(); err != nil {
+	if err := resourceTempClose(temp); err != nil {
 		return 0, apperrors.NewInternal(fmt.Sprintf("关闭消息资源失败: %v", err))
 	}
 	if overwrite {
-		if err := os.Rename(tempPath, destPath); err != nil {
+		if err := resourceRename(tempPath, destPath); err != nil {
 			return 0, apperrors.NewInternal(fmt.Sprintf("发布消息资源失败: %v", err))
 		}
 		return size, nil
 	}
-	if err := os.Link(tempPath, destPath); err != nil {
+	if err := resourceLink(tempPath, destPath); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return 0, apperrors.NewValidation(
 				"目标文件已存在；如确认覆盖请显式传 --overwrite")

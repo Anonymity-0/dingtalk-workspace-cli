@@ -610,7 +610,7 @@ func downloadMgetResources(rt *shortcut.RuntimeContext, messages []map[string]an
 		}, nil
 	}
 
-	cwd, err := os.Getwd()
+	cwd, err := resourceGetwd()
 	if err != nil {
 		return nil, fmt.Errorf("读取工作目录失败: %w", err)
 	}
@@ -665,7 +665,7 @@ func downloadMgetResources(rt *shortcut.RuntimeContext, messages []map[string]an
 			})
 			continue
 		}
-		size, downloadErr := downloadResourceAtomically(
+		size, downloadErr := resourceDownload(
 			rt.Command().Context(), nil, resourceURL, headers, destPath, rt.Bool("overwrite"))
 		if downloadErr != nil {
 			failures = append(failures, map[string]any{

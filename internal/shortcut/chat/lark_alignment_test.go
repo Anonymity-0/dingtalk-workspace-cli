@@ -23,9 +23,11 @@ type larkAlignmentCall struct {
 }
 
 type larkAlignmentCaller struct {
-	calls      []larkAlignmentCall
-	failTarget string
-	category   string
+	calls           []larkAlignmentCall
+	failTarget      string
+	failProductTool string
+	category        string
+	responses       map[string]string
 }
 
 func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -33,8 +35,12 @@ func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, 
 	if f.failTarget != "" && args["openMessageId"] == f.failTarget {
 		return nil, errors.New("fixture write failed")
 	}
+	key := product + "/" + tool
+	if f.failProductTool == key {
+		return nil, errors.New("fixture lower call failed")
+	}
 	text := `{"success":true}`
-	switch product + "/" + tool {
+	switch key {
 	case "contact/get_current_user_profile":
 		text = `{"result":[{"orgEmployeeModel":{"userId":"self-user"}}]}`
 	case "contact/get_user_info_by_user_ids":
@@ -48,6 +54,9 @@ func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, 
 		if text == "" {
 			text = `{"result":{"hasMore":false,"list":[{"openConversationId":"cid-a","conversationName":"A"},{"openConversationId":"cid-b","conversationName":"B"}]}}`
 		}
+	}
+	if response, ok := f.responses[key]; ok {
+		text = response
 	}
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }

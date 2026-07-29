@@ -161,15 +161,12 @@ var MessagesReply = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		content, err := json.Marshal(map[string]string{
+		content, _ := json.Marshal(map[string]string{
 			"referenceOpenMessageId":   replyMessageID(rt),
 			"srcMsgSendOpenDingTalkId": refSender,
 			"replyMsgType":             "text",
 			"content":                  rt.Str("text"),
 		})
-		if err != nil {
-			return err
-		}
 		params := rt.AddAIMessageTag(map[string]any{
 			"openConversationId": rt.Str("conversation-id"),
 			"msgType":            "reply",

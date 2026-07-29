@@ -135,10 +135,7 @@ func executeMessagesSend(rt *shortcut.RuntimeContext) error {
 	}
 	switch identity {
 	case "user":
-		content, err := json.Marshal(map[string]string{"title": title, "text": body})
-		if err != nil {
-			return err
-		}
+		content, _ := json.Marshal(map[string]string{"title": title, "text": body})
 		params := rt.AddAIMessageTag(map[string]any{
 			"msgType": "markdown",
 			"content": string(content),

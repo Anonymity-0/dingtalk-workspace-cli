@@ -59,6 +59,11 @@ func TestCrossPlatformCoverageRawToolAuditLineIsSingleLineJSON(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageRawToolAuditEnabled(t *testing.T) {
+	t.Setenv("DWS_DUMP_RAW", "1")
+	dumpRawToolResponse("im", "search_groups", `{"result":[]}`)
+}
+
 func installHelpersCoreDeps(t *testing.T, caller edition.ToolCaller) (*bytes.Buffer, *bytes.Buffer) {
 	t.Helper()
 	old := deps
@@ -98,6 +103,28 @@ func TestCrossPlatformCoverageDryRunReadLookupUsesExplicitCapability(t *testing.
 	}
 	if failClosed.calls != 0 {
 		t.Fatalf("fail-closed lookup made %d regular calls", failClosed.calls)
+	}
+}
+
+func TestCrossPlatformCoverageReadLookupInitializationAndRegularExecution(t *testing.T) {
+	old := deps
+	t.Cleanup(func() { deps = old })
+	deps = nil
+	if _, err := CallMCPReadToolTextOnServer("im", "search_groups", nil); err == nil {
+		t.Fatal("uninitialized read lookup unexpectedly succeeded")
+	}
+
+	caller := &helpersCoreCaller{
+		format: "json",
+		result: textToolResult(`{"success":true,"result":{"groups":[]}}`),
+	}
+	installHelpersCoreDeps(t, caller)
+	got, err := CallMCPReadToolTextOnServer("im", "search_groups", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, `"groups"`) || caller.calls != 1 {
+		t.Fatalf("regular read result/calls = %q, %d", got, caller.calls)
 	}
 }
 
