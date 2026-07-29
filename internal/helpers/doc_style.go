@@ -305,8 +305,5 @@ func uploadDocStyleImage(ctx context.Context, nodeID, filePath, fileName, mimeTy
 	if err := httpPutFile(ctx, uploadURL, ossHeaders, filePath, fileSize); err != nil {
 		return "", err
 	}
-	if resourceID == "" {
-		return "", fmt.Errorf("upload succeeded but no resourceId returned for %s", fileName)
-	}
 	return resourceID, nil
 }
