@@ -46,7 +46,7 @@ cli_version: ">=1.0.15"
 | `aitable` | 29 | `dingtalk-aitable` | `dws shortcut list --service aitable --format json` |
 | `attendance` | 19 | `dingtalk-attendance` | `dws shortcut list --service attendance --format json` |
 | `calendar` | 20 | `dingtalk-calendar` | `dws shortcut list --service calendar --format json` |
-| `chat` | 42 | `dingtalk-chat` | `dws shortcut list --service chat --format json` |
+| `chat` | 97 | `dingtalk-chat` | `dws shortcut list --service chat --format json` |
 | `contact` | 14 | `dingtalk-contact` | `dws shortcut list --service contact --format json` |
 | `devapp` | 19 | `dingtalk-dev` | `dws shortcut list --service devapp --format json` |
 | `ding` | 4 | `dingtalk-ding` | `dws shortcut list --service ding --format json` |

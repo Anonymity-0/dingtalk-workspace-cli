@@ -22683,6 +22683,7 @@
         "internal/cli/schema_hints/selection/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.list_topic_replies",
         "skills/mono/SKILL.md",
+        "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
       ],
       "agent_summary": "分页读取指定话题的回复",
@@ -50902,7 +50903,8 @@
         "cobra-help:dws chat +at-me",
         "internal/cli/schema_command_registry.json#chat.shortcut_at_me",
         "internal/cli/schema_hints/metadata/chat.json",
-        "internal/cli/schema_hints/selection/chat.json"
+        "internal/cli/schema_hints/selection/chat.json",
+        "skills/mono/references/intent-guide.md"
       ],
       "agent_summary": "查最近 @我 的消息（自动算时间窗，投影发送人/时间/内容/会话）",
       "agent_summary_source": "dws-agent-selection/chat",
@@ -58193,7 +58195,8 @@
         "cobra-help:dws chat +chat-messages",
         "internal/cli/schema_command_registry.json#chat.shortcut_chat_messages",
         "internal/cli/schema_hints/metadata/chat.json",
-        "internal/cli/schema_hints/selection/chat.json"
+        "internal/cli/schema_hints/selection/chat.json",
+        "skills/mono/references/intent-guide.md"
       ],
       "agent_summary": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
       "agent_summary_source": "dws-agent-selection/chat",
@@ -72214,7 +72217,8 @@
         "cobra-help:dws chat +messages-send",
         "internal/cli/schema_command_registry.json#chat.shortcut_messages_send",
         "internal/cli/schema_hints/metadata/chat.json",
-        "internal/cli/schema_hints/selection/chat.json"
+        "internal/cli/schema_hints/selection/chat.json",
+        "skills/mono/references/intent-guide.md"
       ],
       "agent_summary": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
       "agent_summary_source": "dws-agent-selection/chat",
@@ -72347,6 +72351,12 @@
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "value": "user_required"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "risk-default",
+              "value": "not_required"
             }
           ],
           "precedence": "reviewed_explicit",
@@ -72376,6 +72386,12 @@
               "review_reason": "Reviewed against every executable identity/content/target validation branch and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
+              "value": "write"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "command-verb",
               "value": "write"
             }
           ],
@@ -72414,6 +72430,12 @@
               "review_reason": "Reviewed against every executable identity/content/target validation branch and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
+              "value": "unknown"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
               "value": "unknown"
             }
           ],
@@ -72501,6 +72523,12 @@
               "review_reason": "Reviewed against every executable identity/content/target validation branch and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
+              "value": "medium"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
               "value": "medium"
             }
           ],
@@ -77478,7 +77506,8 @@
         "cobra-help:dws chat +search-msg",
         "internal/cli/schema_command_registry.json#chat.shortcut_search_msg",
         "internal/cli/schema_hints/metadata/chat.json",
-        "internal/cli/schema_hints/selection/chat.json"
+        "internal/cli/schema_hints/selection/chat.json",
+        "skills/mono/references/intent-guide.md"
       ],
       "agent_summary": "多维搜索消息，可全量翻页并批量富化详情",
       "agent_summary_source": "dws-agent-selection/chat",
@@ -80882,7 +80911,8 @@
         "cobra-help:dws chat +thread-replies",
         "internal/cli/schema_command_registry.json#chat.shortcut_thread_replies",
         "internal/cli/schema_hints/metadata/chat.json",
-        "internal/cli/schema_hints/selection/chat.json"
+        "internal/cli/schema_hints/selection/chat.json",
+        "skills/mono/references/intent-guide.md"
       ],
       "agent_summary": "拉取某条话题消息的全部回复并投影出发言人/文本/时间",
       "agent_summary_source": "dws-agent-selection/chat",
