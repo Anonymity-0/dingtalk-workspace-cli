@@ -63,7 +63,8 @@ jobs:
                 filename === 'NOTICE' ||
                 filename === '.github/PULL_REQUEST_TEMPLATE.md' ||
                 filename.startsWith('.github/ISSUE_TEMPLATE/') ||
-                filename.startsWith('docs/')
+                filename.startsWith('docs/') ||
+                filename.startsWith('skills/')
               );
             const isReleaseSensitive = (filename) =>
               typeof filename === 'string' &&
