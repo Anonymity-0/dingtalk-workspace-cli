@@ -20,6 +20,36 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
+func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
+	want := []string{
+		"identity", "as", "group", "chat-id", "user", "open-dingtalk-id",
+		"users", "open-dingtalk-ids", "robot-code", "webhook-token",
+		"uuid", "idempotency-key",
+	}
+	var got []string
+	for _, constraint := range MessagesSend.Constraints {
+		if constraint.Kind == shortcut.ConstraintCustom {
+			got = constraint.Flags
+			break
+		}
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("identity constraint flags = %#v, want %#v", got, want)
+	}
+	wantSet := make(map[string]bool, len(want))
+	for _, name := range want {
+		wantSet[name] = true
+	}
+	for _, flag := range MessagesSend.Flags {
+		if !wantSet[flag.Name] {
+			continue
+		}
+		if !strings.Contains(flag.Desc, "能力矩阵") {
+			t.Errorf("--%s does not publish identity matrix semantics: %q", flag.Name, flag.Desc)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageMessagesSendCurrentUserImageAndUserResolution(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)

@@ -22,6 +22,12 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
 
+var dingTalkMessageLocation = time.FixedZone("CST", 8*60*60)
+
+func formatDingTalkMessageBoundary(now time.Time) string {
+	return now.In(dingTalkMessageLocation).Format("2006-01-02 15:04:05")
+}
+
 // ChatMessages: fetch the message list of one conversation (group OR single
 // chat) and print a clean projected list (speaker / text / time) instead of a
 // raw dump.
@@ -86,7 +92,7 @@ var ChatMessages = shortcut.Shortcut{
 		if rt.Changed("time") && rt.Str("time") != "" {
 			params["time"] = rt.Str("time")
 		} else {
-			params["time"] = time.Now().Format("2006-01-02 15:04:05")
+			params["time"] = formatDingTalkMessageBoundary(time.Now())
 		}
 		if limit := rt.IntFirst("limit", "size"); limit > 0 {
 			params["limit"] = limit
@@ -211,7 +217,7 @@ func projectChatMessageWithReactions(m map[string]any, includeReactions bool) ma
 	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
 		row["quotedMessage"] = quoted
 	}
-	if resources := chatmsg.Resources(m); len(resources) > 0 {
+	if resources := chatmsg.ResourcesDeep(m); len(resources) > 0 {
 		row["resourceRefs"] = resources
 	}
 	projectForwarded := func(item map[string]any) map[string]any {

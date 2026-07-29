@@ -388,6 +388,7 @@ func shortcutCustomConstraintEvidence(description string) []string {
 		"绝对路径",
 		"..",
 		"最多 15 个字符",
+		"能力矩阵",
 	}
 	evidence := make([]string, 0, len(probes))
 	for _, probe := range probes {

@@ -24,7 +24,7 @@ func TestCrossPlatformCoverageListMessageRichProjection(t *testing.T) {
 			"content":            `{"mediaId":"@image"}`,
 			"quotedMessage": map[string]any{
 				"openMessageId": "quoted",
-				"content":       "quoted",
+				"content":       `{"mediaId":"@quoted-image"}`,
 			},
 		},
 	}}})
@@ -35,6 +35,16 @@ func TestCrossPlatformCoverageListMessageRichProjection(t *testing.T) {
 		if _, ok := rows[0][key]; !ok {
 			t.Errorf("projection missing %s: %#v", key, rows[0])
 		}
+	}
+	resources := rows[0]["resourceRefs"].([]map[string]any)
+	if len(resources) != 2 {
+		t.Fatalf("projected resources = %#v", resources)
+	}
+	quotedArgs := resources[1]["download"].(map[string]any)["arguments"].(map[string]any)
+	if resources[1]["resourceId"] != "@quoted-image" ||
+		quotedArgs["message-id"] != "quoted" ||
+		quotedArgs["open-conversation-id"] != "cid" {
+		t.Fatalf("quoted resource context = %#v", resources[1])
 	}
 }
 

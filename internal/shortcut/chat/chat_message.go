@@ -320,7 +320,7 @@ func listMessageProjectOneWithReactions(m map[string]any, includeReactions bool)
 	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
 		row["quotedMessage"] = quoted
 	}
-	if resources := chatmsg.Resources(m); len(resources) > 0 {
+	if resources := chatmsg.ResourcesDeep(m); len(resources) > 0 {
 		row["resourceRefs"] = resources
 	}
 	projectForwarded := func(item map[string]any) map[string]any {
@@ -638,6 +638,9 @@ func DownloadMessageResources(
 	seen := map[string]bool{}
 	for _, resource := range resources {
 		resourceType := strings.TrimSpace(fmt.Sprint(resource["type"]))
+		if canonicalType, ok := canonicalMessageResourceType(resourceType); ok {
+			resourceType = canonicalType
+		}
 		resourceID := strings.TrimSpace(fmt.Sprint(resource["resourceId"]))
 		download, _ := resource["download"].(map[string]any)
 		arguments, _ := download["arguments"].(map[string]any)
@@ -692,6 +695,9 @@ func DownloadMessageResources(
 	plannedNames := map[string]int{}
 	for _, resource := range resources {
 		resourceType := strings.TrimSpace(fmt.Sprint(resource["type"]))
+		if canonicalType, ok := canonicalMessageResourceType(resourceType); ok {
+			resourceType = canonicalType
+		}
 		resourceID := strings.TrimSpace(fmt.Sprint(resource["resourceId"]))
 		download, _ := resource["download"].(map[string]any)
 		arguments, _ := download["arguments"].(map[string]any)

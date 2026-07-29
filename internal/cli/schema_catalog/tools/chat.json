@@ -73972,7 +73972,7 @@
           ]
         ]
       },
-      "description": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 身份相关目标、内容和凭据不能为空，完整能力矩阵见命令说明",
+      "description": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
       "display": "群聊 / 消息 / 机器人",
       "effect": "write",
       "effect_source": "agent-hint",
@@ -74077,13 +74077,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 身份相关目标、内容和凭据不能为空，完整能力矩阵见命令说明"
+              "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 身份相关目标、内容和凭据不能为空，完整能力矩阵见命令说明"
+          "value": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持"
         },
         "effect": {
           "candidates": [
@@ -74379,7 +74379,7 @@
           "type": "boolean"
         },
         "as": {
-          "description": "--identity 的 lark-cli 对齐别名（可选值: user, bot, webhook）",
+          "description": "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束（可选值: user, bot, webhook）",
           "enum": [
             "user",
             "bot",
@@ -74392,7 +74392,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "--identity 的 lark-cli 对齐别名（可选值: user, bot, webhook）"
+                  "value": "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束（可选值: user, bot, webhook）"
                 },
                 {
                   "precedence": "default",
@@ -74404,7 +74404,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "--identity 的 lark-cli 对齐别名（可选值: user, bot, webhook）"
+              "value": "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束（可选值: user, bot, webhook）"
             },
             "enum": {
               "candidates": [
@@ -74832,7 +74832,7 @@
           "type": "array"
         },
         "chat-id": {
-          "description": "--group 的 lark-cli 对齐别名",
+          "description": "--group 的 lark-cli 对齐别名；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -74840,7 +74840,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "--group 的 lark-cli 对齐别名"
+                  "value": "--group 的 lark-cli 对齐别名；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -74852,7 +74852,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "--group 的 lark-cli 对齐别名"
+              "value": "--group 的 lark-cli 对齐别名；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -75096,7 +75096,7 @@
           "type": "string"
         },
         "group": {
-          "description": "群 openConversationId（user/bot 群聊）",
+          "description": "群 openConversationId（user/bot 群聊）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -75104,7 +75104,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "群 openConversationId（user/bot 群聊）"
+                  "value": "群 openConversationId（user/bot 群聊）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -75116,7 +75116,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "群 openConversationId（user/bot 群聊）"
+              "value": "群 openConversationId（user/bot 群聊）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -75180,7 +75180,7 @@
           "type": "string"
         },
         "idempotency-key": {
-          "description": "--uuid 的 lark-cli 对齐别名（仅 user）",
+          "description": "--uuid 的 lark-cli 对齐别名（仅 user）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -75188,7 +75188,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "--uuid 的 lark-cli 对齐别名（仅 user）"
+                  "value": "--uuid 的 lark-cli 对齐别名（仅 user）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -75200,7 +75200,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "--uuid 的 lark-cli 对齐别名（仅 user）"
+              "value": "--uuid 的 lark-cli 对齐别名（仅 user）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -75265,7 +75265,7 @@
         },
         "identity": {
           "default": "user",
-          "description": "发送身份；身份相关目标、内容和凭据不能为空，完整能力矩阵见命令说明（可选值: user, bot, webhook）",
+          "description": "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束（可选值: user, bot, webhook）",
           "enum": [
             "user",
             "bot",
@@ -75278,7 +75278,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "发送身份；身份相关目标、内容和凭据不能为空，完整能力矩阵见命令说明（可选值: user, bot, webhook）"
+                  "value": "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束（可选值: user, bot, webhook）"
                 },
                 {
                   "precedence": "default",
@@ -75290,7 +75290,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "发送身份；身份相关目标、内容和凭据不能为空，完整能力矩阵见命令说明（可选值: user, bot, webhook）"
+              "value": "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束（可选值: user, bot, webhook）"
             },
             "enum": {
               "candidates": [
@@ -75694,7 +75694,7 @@
           "type": "string"
         },
         "open-dingtalk-id": {
-          "description": "单聊接收者 openDingTalkId（user）",
+          "description": "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -75702,7 +75702,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "单聊接收者 openDingTalkId（user）"
+                  "value": "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -75714,7 +75714,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "单聊接收者 openDingTalkId（user）"
+              "value": "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -75778,7 +75778,7 @@
           "type": "string"
         },
         "open-dingtalk-ids": {
-          "description": "批量单聊接收者 openDingTalkId（bot）",
+          "description": "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -75786,7 +75786,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "批量单聊接收者 openDingTalkId（bot）"
+                  "value": "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -75798,7 +75798,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "批量单聊接收者 openDingTalkId（bot）"
+              "value": "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -75862,7 +75862,7 @@
           "type": "array"
         },
         "robot-code": {
-          "description": "机器人 Code（identity=bot 时使用）",
+          "description": "机器人 Code（identity=bot 时使用）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -75870,7 +75870,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "机器人 Code（identity=bot 时使用）"
+                  "value": "机器人 Code（identity=bot 时使用）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -75882,7 +75882,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "机器人 Code（identity=bot 时使用）"
+              "value": "机器人 Code（identity=bot 时使用）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -76120,7 +76120,7 @@
           "type": "string"
         },
         "user": {
-          "description": "单聊接收者 userId（user；自动解析 openDingTalkId）",
+          "description": "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -76128,7 +76128,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "单聊接收者 userId（user；自动解析 openDingTalkId）"
+                  "value": "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -76140,7 +76140,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "单聊接收者 userId（user；自动解析 openDingTalkId）"
+              "value": "单聊接收者 userId（user；自动解析 openDingTalkId）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -76204,7 +76204,7 @@
           "type": "string"
         },
         "users": {
-          "description": "批量单聊接收者 userId（bot）",
+          "description": "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -76212,7 +76212,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "批量单聊接收者 userId（bot）"
+                  "value": "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -76224,7 +76224,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "批量单聊接收者 userId（bot）"
+              "value": "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -76288,7 +76288,7 @@
           "type": "array"
         },
         "uuid": {
-          "description": "幂等键（仅 user）",
+          "description": "幂等键（仅 user）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -76296,7 +76296,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "幂等键（仅 user）"
+                  "value": "幂等键（仅 user）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -76308,7 +76308,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "幂等键（仅 user）"
+              "value": "幂等键（仅 user）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [
@@ -76372,7 +76372,7 @@
           "type": "string"
         },
         "webhook-token": {
-          "description": "自定义机器人 Webhook token（identity=webhook 时使用）",
+          "description": "自定义机器人 Webhook token（identity=webhook 时使用）；受发送身份能力矩阵约束",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -76380,7 +76380,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "自定义机器人 Webhook token（identity=webhook 时使用）"
+                  "value": "自定义机器人 Webhook token（identity=webhook 时使用）；受发送身份能力矩阵约束"
                 },
                 {
                   "precedence": "default",
@@ -76392,7 +76392,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "自定义机器人 Webhook token（identity=webhook 时使用）"
+              "value": "自定义机器人 Webhook token（identity=webhook 时使用）；受发送身份能力矩阵约束"
             },
             "property": {
               "candidates": [

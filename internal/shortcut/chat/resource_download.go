@@ -89,7 +89,8 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		if err := validateResourceDownloadOutput(rt.Str("output")); err != nil {
 			return err
 		}
-		if rt.Str("type") == "mediaId" &&
+		resourceType, _ := canonicalMessageResourceType(rt.Str("type"))
+		if resourceType == "mediaId" &&
 			(strings.TrimSpace(rt.Str("message-id")) == "" ||
 				strings.TrimSpace(rt.Str("open-conversation-id")) == "") {
 			return apperrors.NewValidation(
@@ -98,8 +99,9 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		resourceType, _ := canonicalMessageResourceType(rt.Str("type"))
 		plan := map[string]any{
-			"resourceType":       rt.Str("type"),
+			"resourceType":       resourceType,
 			"resourceId":         rt.Str("resource-id"),
 			"messageId":          rt.Str("message-id"),
 			"openConversationId": rt.Str("open-conversation-id"),
@@ -119,7 +121,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 
 		data, err := resolveMessageResourceDownloadData(
 			rt,
-			rt.Str("type"),
+			resourceType,
 			rt.Str("resource-id"),
 			rt.Str("message-id"),
 			rt.Str("open-conversation-id"),
@@ -153,7 +155,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		return rt.Output(map[string]any{
 			"messageId":    rt.Str("message-id"),
 			"resourceId":   rt.Str("resource-id"),
-			"resourceType": rt.Str("type"),
+			"resourceType": resourceType,
 			"localPath":    filepath.ToSlash(relativePath),
 			"sizeBytes":    size,
 		})
@@ -164,6 +166,11 @@ func resolveMessageResourceDownloadData(
 	rt *shortcut.RuntimeContext,
 	resourceType, resourceID, messageID, conversationID string,
 ) (map[string]any, error) {
+	resourceType, ok := canonicalMessageResourceType(resourceType)
+	if !ok {
+		return nil, apperrors.NewValidation(fmt.Sprintf(
+			"不支持的消息资源类型 %q；仅支持 mediaId 或 fileId", resourceType))
+	}
 	if resourceType == "fileId" {
 		return rt.CallMCPData("drive", "download_file", map[string]any{
 			"fileId": resourceID,
@@ -175,6 +182,17 @@ func resolveMessageResourceDownloadData(
 		"openMessageId":      messageID,
 		"openConversationId": conversationID,
 	})
+}
+
+func canonicalMessageResourceType(resourceType string) (string, bool) {
+	switch {
+	case strings.EqualFold(strings.TrimSpace(resourceType), "mediaId"):
+		return "mediaId", true
+	case strings.EqualFold(strings.TrimSpace(resourceType), "fileId"):
+		return "fileId", true
+	default:
+		return strings.TrimSpace(resourceType), false
+	}
 }
 
 func validateResourceDownloadOutput(output string) error {
@@ -486,6 +504,8 @@ func downloadResourceAtomically(
 	clientCopy := *client
 	client = &clientCopy
 	originalRedirect := client.CheckRedirect
+	initialHost := strings.ToLower(parsedResourceURL.Hostname())
+	headersConfinedToInitialHost := true
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if _, redirectErr := validateResourceDownloadURL(req.URL.String()); redirectErr != nil {
 			return apperrors.NewValidation(fmt.Sprintf(
@@ -494,8 +514,14 @@ func downloadResourceAtomically(
 		if len(via) >= 10 {
 			return apperrors.NewAPI("资源下载重定向次数过多")
 		}
-		if len(via) > 0 &&
-			!strings.EqualFold(req.URL.Hostname(), via[len(via)-1].URL.Hostname()) {
+		if !strings.EqualFold(req.URL.Hostname(), initialHost) {
+			headersConfinedToInitialHost = false
+		}
+		// net/http rebuilds redirect headers from the initial request on every
+		// hop. Once a chain leaves the original host, strip lower-service
+		// headers on every later hop so a same-host redirect on the new origin
+		// cannot silently restore them.
+		if !headersConfinedToInitialHost {
 			for key := range headers {
 				req.Header.Del(key)
 			}

@@ -13,7 +13,7 @@ import (
 )
 
 func TestCrossPlatformCoverageMessageReadShortcutsPublishResourceDownloadPlans(t *testing.T) {
-	message := `{"openMessageId":"msg","openConversationId":"cid","content":"{\"mediaId\":\"@image\"}"}`
+	message := `{"openMessageId":"msg","openConversationId":"cid","content":"{\"mediaId\":\"@image\"}","quotedMessage":{"openMessageId":"quoted","content":"{\"fileId\":\"@quoted-file\"}"}}`
 	tests := []struct {
 		name      string
 		tool      string
@@ -72,11 +72,19 @@ func TestCrossPlatformCoverageMessageReadShortcutsPublishResourceDownloadPlans(t
 			if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
 				t.Fatalf("decode output: %v\n%s", err, output.String())
 			}
-			if _, ok := payload[tc.resultKey]; !ok {
+			rows, ok := payload[tc.resultKey].([]any)
+			if !ok || len(rows) != 1 {
 				t.Fatalf("payload missing %s: %#v", tc.resultKey, payload)
 			}
+			row, _ := rows[0].(map[string]any)
+			resources, _ := row["resourceRefs"].([]any)
+			if len(resources) != 2 {
+				t.Fatalf("visible resources = %#v", resources)
+			}
 			ledger, _ := payload["resourceDownloads"].(map[string]any)
-			if ledger["dryRun"] != true || ledger["requestedCount"] != float64(1) {
+			if ledger["dryRun"] != true ||
+				ledger["discoveredCount"] != float64(2) ||
+				ledger["requestedCount"] != float64(2) {
 				t.Fatalf("resource plan = %#v", ledger)
 			}
 		})
@@ -104,7 +112,7 @@ func TestCrossPlatformCoverageChatMessagesDefaultsToRecentHistory(t *testing.T) 
 	helpers.InitDeps(caller)
 	root := newPlatformCoverageRoot()
 	before := time.Now().Add(-2 * time.Second)
-	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--limit", "5", "--yes"})
+	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--limit", "5"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -116,12 +124,23 @@ func TestCrossPlatformCoverageChatMessagesDefaultsToRecentHistory(t *testing.T) 
 	if call.args["forward"] != false {
 		t.Fatalf("default forward = %#v, want false", call.args["forward"])
 	}
-	boundary, err := time.ParseInLocation("2006-01-02 15:04:05", call.args["time"].(string), time.Local)
+	boundary, err := time.ParseInLocation(
+		"2006-01-02 15:04:05",
+		call.args["time"].(string),
+		dingTalkMessageLocation,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if boundary.Before(before) || boundary.After(after) {
 		t.Fatalf("default time = %s, want current boundary", boundary)
+	}
+}
+
+func TestFormatDingTalkMessageBoundaryDoesNotDependOnProcessTimezone(t *testing.T) {
+	now := time.Date(2026, time.July, 29, 1, 2, 3, 0, time.UTC)
+	if got := formatDingTalkMessageBoundary(now); got != "2026-07-29 09:02:03" {
+		t.Fatalf("UTC process boundary = %q, want DingTalk UTC+8 wall time", got)
 	}
 }
 

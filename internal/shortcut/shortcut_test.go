@@ -135,6 +135,46 @@ func TestCrossPlatformCoverageConfirmRiskUsesEffectiveRisk(t *testing.T) {
 	}
 }
 
+func TestConfirmRiskDoesNotReadStdinForDynamicReadInvocation(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("download-resources", false, "")
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	rt := &RuntimeContext{cmd: cmd}
+	s := Shortcut{
+		Service: "chat",
+		Command: "+at-me",
+		Risk:    RiskRead,
+		RiskWhen: func(rt *RuntimeContext) Risk {
+			if rt.Bool("download-resources") {
+				return RiskWrite
+			}
+			return RiskRead
+		},
+	}
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	previousStdin := os.Stdin
+	os.Stdin = reader
+	t.Cleanup(func() {
+		os.Stdin = previousStdin
+		_ = reader.Close()
+	})
+
+	if !confirmRisk(rt, s) {
+		t.Fatal("dynamic read invocation was treated as a declined write")
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("dynamic read invocation prompted: %q", stderr.String())
+	}
+}
+
 func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 	s := Shortcut{
 		Service:     "contact",

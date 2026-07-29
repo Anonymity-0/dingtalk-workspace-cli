@@ -67,7 +67,7 @@ func TestCrossPlatformCoverageRichMessageProjections(t *testing.T) {
 		"emotionReplyList":   []any{map[string]any{"emojiName": "赞", "replyCount": 1}},
 		"quotedMessage": map[string]any{
 			"openMessageId": "quoted",
-			"content":       "quoted body",
+			"content":       `{"mediaId":"@quoted-image"}`,
 		},
 	}
 	for name, row := range map[string]map[string]any{
@@ -79,6 +79,16 @@ func TestCrossPlatformCoverageRichMessageProjections(t *testing.T) {
 			if _, ok := row[key]; !ok {
 				t.Errorf("%s projection missing %s: %#v", name, key, row)
 			}
+		}
+		resources := row["resourceRefs"].([]map[string]any)
+		if len(resources) != 2 {
+			t.Fatalf("%s projected resources = %#v", name, resources)
+		}
+		quotedArgs := resources[1]["download"].(map[string]any)["arguments"].(map[string]any)
+		if resources[1]["resourceId"] != "@quoted-image" ||
+			quotedArgs["message-id"] != "quoted" ||
+			quotedArgs["open-conversation-id"] != "cid" {
+			t.Fatalf("%s quoted resource context = %#v", name, resources[1])
 		}
 	}
 }

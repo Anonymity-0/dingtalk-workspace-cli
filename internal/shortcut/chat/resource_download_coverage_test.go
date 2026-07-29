@@ -469,18 +469,29 @@ func TestCrossPlatformCoverageDownloadResourceRedirectGuards(t *testing.T) {
 	redirectCount := 0
 	crossHost := &http.Client{Transport: resourceRoundTripper(func(request *http.Request) (*http.Response, error) {
 		redirectCount++
-		if redirectCount == 1 {
+		switch redirectCount {
+		case 1:
 			if request.Header.Get("X-Resource-Token") != "secret" {
 				t.Fatal("initial signed header missing")
 			}
 			return &http.Response{
 				StatusCode: http.StatusFound,
 				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     http.Header{"Location": []string{"https://bucket.oss-cn-hangzhou.aliyuncs.com/intermediate"}},
+			}, nil
+		case 2:
+			if request.Header.Get("X-Resource-Token") != "" {
+				t.Fatal("server-supplied header leaked on first cross-host hop")
+			}
+			return &http.Response{
+				StatusCode: http.StatusFound,
+				Body:       io.NopCloser(strings.NewReader("")),
 				Header:     http.Header{"Location": []string{"https://bucket.oss-cn-hangzhou.aliyuncs.com/final"}},
 			}, nil
-		}
-		if request.Header.Get("X-Resource-Token") != "" {
-			t.Fatal("server-supplied header leaked across download domains")
+		default:
+			if request.Header.Get("X-Resource-Token") != "" {
+				t.Fatal("server-supplied header was restored on later same-host hop")
+			}
 		}
 		return &http.Response{
 			StatusCode:    http.StatusOK,

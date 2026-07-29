@@ -23,6 +23,29 @@ import (
 	"testing"
 )
 
+func TestCrossPlatformCoverageCanonicalMessageResourceType(t *testing.T) {
+	for input, want := range map[string]string{
+		"mediaId":  "mediaId",
+		"MEDIAID":  "mediaId",
+		" fileid ": "fileId",
+		"FileId":   "fileId",
+	} {
+		got, ok := canonicalMessageResourceType(input)
+		if !ok || got != want {
+			t.Errorf("canonicalMessageResourceType(%q) = %q, %v; want %q, true",
+				input, got, ok, want)
+		}
+	}
+	if got, ok := canonicalMessageResourceType("attachment"); ok || got != "attachment" {
+		t.Errorf("unsupported resource type = %q, %v", got, ok)
+	}
+	if _, err := resolveMessageResourceDownloadData(
+		nil, "attachment", "resource", "message", "conversation",
+	); err == nil || !strings.Contains(err.Error(), "不支持的消息资源类型") {
+		t.Fatalf("unsupported resolver type error = %v", err)
+	}
+}
+
 func TestCrossPlatformCoverageResourceDownloadInfo(t *testing.T) {
 	url, headers, err := resourceDownloadInfo(map[string]any{
 		"result": map[string]any{
