@@ -3729,6 +3729,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	_ = chatSetTopCmd.MarkFlagRequired("conversation-id")
 	chatSetTopCmd.Flags().Bool("off", false, "取消置顶（不传则设置置顶）")
 
+	// ── group get-mute-config: 查询群用户禁言配置 ───────────────
+	chatGroupGetMuteConfigCmd := &cobra.Command{
+		Use:   "get-mute-config",
+		Short: "查询群用户禁言配置",
+		Long: `查询指定群的用户禁言配置，包括单独禁言黑名单、全员禁言白名单及相关操作时间。
+返回的是原始配置记录，不等同于当前被禁言成员列表；全员禁言开关也不在本命令的返回范围内。`,
+		Example: `  dws chat group get-mute-config --group <openConversationId>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "group"); err != nil {
+				return err
+			}
+			return callMCPToolOnServer("im", "get_group_mute_config", map[string]any{
+				"openConversationId": mustGetFlag(cmd, "group"),
+			})
+		},
+	}
+	chatGroupGetMuteConfigCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
+	chatGroupCmd.AddCommand(chatGroupGetMuteConfigCmd)
+
 	// ── group-mute: 全员禁言 ───────────────────────────────
 
 	chatGroupMuteCmd := &cobra.Command{

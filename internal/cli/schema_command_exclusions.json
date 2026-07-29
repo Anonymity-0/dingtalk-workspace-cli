@@ -90,6 +90,7 @@
         "chat clear-red-point",
         "chat data-auth cross-org",
         "chat group audit-join-validation",
+        "chat group get-mute-config",
         "chat group list-all",
         "chat group list-join-validations",
         "chat group members list-by-ids",
