@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -47,6 +48,20 @@ func resolveMessageForward(cmd *cobra.Command, defaultForward bool) (bool, error
 	default:
 		return false, fmt.Errorf("--direction must be newer or older")
 	}
+}
+
+const maxConversationCategoryTitleRunes = 15
+
+func validatedConversationCategoryTitle(raw string) (string, error) {
+	title := strings.TrimSpace(raw)
+	if title == "" {
+		return "", apperrors.NewValidation("--title 不能为空")
+	}
+	if utf8.RuneCountInString(title) > maxConversationCategoryTitleRunes {
+		return "", apperrors.NewValidation(fmt.Sprintf(
+			"--title 最多 %d 个字符", maxConversationCategoryTitleRunes))
+	}
+	return title, nil
 }
 
 func chatIntFlagOrFallback(cmd *cobra.Command, primary string, aliases ...string) int {
@@ -2164,6 +2179,16 @@ func newChatCommand() *cobra.Command {
 				}
 			}
 
+			if v, _ := cmd.Flags().GetString("message-type"); v != "" {
+				toolArgs["messageType"] = v
+			}
+			if cmd.Flags().Changed("only-robot") {
+				toolArgs["onlyRobotMessages"], _ = cmd.Flags().GetBool("only-robot")
+			}
+			if v, _ := cmd.Flags().GetString("conversation-type"); v != "" {
+				toolArgs["searchConvType"] = v
+			}
+
 			// start -> startTime (ISO-8601 to milliseconds)
 			if v, _ := cmd.Flags().GetString("start"); v != "" {
 				ms, err := parseISOTimeToMillis("start", v)
@@ -2659,6 +2684,9 @@ func newChatCommand() *cobra.Command {
 	_ = chatMessageSearchAdvancedCmd.Flags().MarkHidden("groups")
 	chatMessageSearchAdvancedCmd.Flags().String("group", "", "")
 	_ = chatMessageSearchAdvancedCmd.Flags().MarkHidden("group")
+	chatMessageSearchAdvancedCmd.Flags().String("message-type", "", "下层消息类型过滤值（可选，以当前 IM Schema 支持值为准）")
+	chatMessageSearchAdvancedCmd.Flags().Bool("only-robot", false, "只搜索机器人消息（可选；显式传 false 时也会传给下层）")
+	chatMessageSearchAdvancedCmd.Flags().String("conversation-type", "", "下层会话类型过滤值（可选，以当前 IM Schema 支持值为准）")
 	chatMessageSearchAdvancedCmd.Flags().String("start", "", "开始时间，ISO-8601 格式（可选）")
 	chatMessageSearchAdvancedCmd.Flags().String("end", "", "结束时间，ISO-8601 格式（可选）")
 	chatMessageSearchAdvancedCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"）")
@@ -2867,8 +2895,12 @@ func newChatCommand() *cobra.Command {
 			if err := validateRequiredFlags(cmd, "title"); err != nil {
 				return err
 			}
+			title, err := validatedConversationCategoryTitle(mustGetFlag(cmd, "title"))
+			if err != nil {
+				return err
+			}
 			return callMCPToolOnServer("im", "create_conv_category", map[string]any{
-				"title": mustGetFlag(cmd, "title"),
+				"title": title,
 			})
 		},
 	}
@@ -2902,9 +2934,13 @@ func newChatCommand() *cobra.Command {
 			if err := validateRequiredFlags(cmd, "title"); err != nil {
 				return err
 			}
+			title, err := validatedConversationCategoryTitle(mustGetFlag(cmd, "title"))
+			if err != nil {
+				return err
+			}
 			return callMCPToolOnServer("im", "rename_conv_category", map[string]any{
 				"categoryId": categoryId,
-				"title":      mustGetFlag(cmd, "title"),
+				"title":      title,
 			})
 		},
 	}
@@ -3851,7 +3887,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	_ = chatCategoryConvsCmd.MarkFlagRequired("category-id")
 
 	// category create flags
-	chatCategoryCreateCmd.Flags().String("title", "", "分组名称 (必填)")
+	chatCategoryCreateCmd.Flags().String("title", "", "分组名称，最多 15 个字符 (必填)")
 	_ = chatCategoryCreateCmd.MarkFlagRequired("title")
 
 	// category delete flags
@@ -3859,7 +3895,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 
 	// category rename flags
 	chatCategoryRenameCmd.Flags().Int64("category-id", 0, "会话分组 ID (必填)")
-	chatCategoryRenameCmd.Flags().String("title", "", "新的分组名称 (必填)")
+	chatCategoryRenameCmd.Flags().String("title", "", "新的分组名称，最多 15 个字符 (必填)")
 	_ = chatCategoryRenameCmd.MarkFlagRequired("title")
 
 	// category add-conv flags
