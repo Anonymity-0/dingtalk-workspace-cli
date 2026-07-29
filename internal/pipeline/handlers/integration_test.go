@@ -21,7 +21,7 @@ import (
 )
 
 // TestFullPreParsePipeline exercises the complete PreParse handler
-// chain: AliasHandler → StickyHandler → ParamNameHandler. It
+// chain: AliasHandler → StickyHandler → ParamNameHandler → BoolValueHandler. It
 // simulates a model-generated CLI invocation with multiple errors
 // and verifies the pipeline corrects all of them in one pass.
 func TestFullPreParsePipeline(t *testing.T) {
@@ -30,6 +30,7 @@ func TestFullPreParsePipeline(t *testing.T) {
 		AliasHandler{},
 		StickyHandler{},
 		ParamNameHandler{},
+		BoolValueHandler{},
 	)
 
 	// Numeric / boolean flag typing matters for the sticky guard. The
@@ -106,6 +107,20 @@ func TestFullPreParsePipeline(t *testing.T) {
 			want:        "--limit-value 100",
 			corrections: 1, // sticky handles both kebab-normalisation and split
 		},
+		{
+			name:        "camelCase bool with detached value",
+			args:        []string{"--dryRun", "false"},
+			flags:       []pipeline.FlagInfo{{Name: "dry-run", Type: "bool"}},
+			want:        "--dry-run=false",
+			corrections: 2, // alias(dryRun) + boolvalue(false)
+		},
+		{
+			name:        "fuzzy bool with detached value",
+			args:        []string{"--yess", "no"},
+			flags:       []pipeline.FlagInfo{{Name: "yes", Type: "bool"}},
+			want:        "--yes=false",
+			corrections: 2, // paramname(yess) + boolvalue(no)
+		},
 
 		// Hardening: a mistyped flag whose name happens to start with
 		// a real flag must NOT be split. The pipeline should leave the
@@ -177,6 +192,7 @@ func TestFullPreParsePipelineStopsAtDoubleDash(t *testing.T) {
 		SemanticAliasHandler{Lookup: fakeLookup(map[string]string{"keyword": "query"}, nil, nil)},
 		StickyHandler{},
 		ParamNameHandler{},
+		BoolValueHandler{},
 	)
 	ctx := &pipeline.Context{
 		Command: "dws demo cmd",
@@ -276,7 +292,7 @@ func TestFullPipelineEndToEnd(t *testing.T) {
 		t.Fatalf("PreParse error: %v", err)
 	}
 
-	want := "--user-id u001 --page-size 50 --verbose true"
+	want := "--user-id u001 --page-size 50 --verbose=true"
 	got := strings.Join(ctx.Args, " ")
 	if got != want {
 		t.Errorf("after PreParse: Args = %q, want %q", got, want)
@@ -333,6 +349,7 @@ func TestFullFivePhasePipeline(t *testing.T) {
 		AliasHandler{},
 		StickyHandler{},
 		ParamNameHandler{},
+		BoolValueHandler{},
 		ParamValueHandler{},
 		PreRequestHandler{},
 		PostResponseHandler{},
@@ -375,7 +392,7 @@ func TestFullFivePhasePipeline(t *testing.T) {
 		t.Fatalf("PreParse error: %v", err)
 	}
 
-	want := "--user-id u001 --page-size 50 --verbose true"
+	want := "--user-id u001 --page-size 50 --verbose=true"
 	got := strings.Join(ctx.Args, " ")
 	if got != want {
 		t.Errorf("after PreParse: Args = %q, want %q", got, want)
@@ -475,6 +492,7 @@ func TestFivePhasePipelineCorrectHandlerCounts(t *testing.T) {
 		AliasHandler{},
 		StickyHandler{},
 		ParamNameHandler{},
+		BoolValueHandler{},
 		ParamValueHandler{},
 		PreRequestHandler{},
 		PostResponseHandler{},
@@ -485,7 +503,7 @@ func TestFivePhasePipelineCorrectHandlerCounts(t *testing.T) {
 		want  int
 	}{
 		{pipeline.Register, 1},
-		{pipeline.PreParse, 3},
+		{pipeline.PreParse, 4},
 		{pipeline.PostParse, 1},
 		{pipeline.PreRequest, 1},
 		{pipeline.PostResponse, 1},
@@ -495,8 +513,8 @@ func TestFivePhasePipelineCorrectHandlerCounts(t *testing.T) {
 			t.Errorf("Handlers(%v) = %d, want %d", tt.phase, got, tt.want)
 		}
 	}
-	if got := engine.HandlerCount(); got != 7 {
-		t.Errorf("HandlerCount = %d, want 7", got)
+	if got := engine.HandlerCount(); got != 8 {
+		t.Errorf("HandlerCount = %d, want 8", got)
 	}
 }
 
@@ -522,6 +540,7 @@ func TestPreParseDoesNotBreakValidArgs(t *testing.T) {
 		AliasHandler{},
 		StickyHandler{},
 		ParamNameHandler{},
+		BoolValueHandler{},
 	)
 
 	original := []string{

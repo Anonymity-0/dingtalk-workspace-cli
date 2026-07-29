@@ -68,6 +68,32 @@ func TestSuffixLooksLikeValue_UTF8FirstRune(t *testing.T) {
 			want:   true,
 		},
 		{
+			// The caller must keep the normalized value inline as
+			// --flag=false; SuffixLooksLikeValue only validates the suffix.
+			name:   "bool + false suffix is recognized",
+			suffix: "false",
+			typ:    "bool",
+			want:   true,
+		},
+		{
+			name:   "boolean + model-friendly no suffix is recognized",
+			suffix: "no",
+			typ:    "boolean",
+			want:   true,
+		},
+		{
+			name:   "boolean + unknown suffix is rejected",
+			suffix: "maybe",
+			typ:    "boolean",
+			want:   false,
+		},
+		{
+			name:   "boolean + true suffix is recognized",
+			suffix: "true",
+			typ:    "boolean",
+			want:   true,
+		},
+		{
 			// Invalid UTF-8 (lone continuation byte 0x80) decodes as
 			// utf8.RuneError; the RuneError guard makes the fallback
 			// reject it instead of treating it as "non-letter, splittable".

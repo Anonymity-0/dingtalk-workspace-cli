@@ -32,6 +32,7 @@ func TestLeadingPersistentFlagVariantsReachTheRealCommand(t *testing.T) {
 		{name: "fuzzy boolean", args: []string{"--dry-rnu", "chat", "bot", "find", "--help"}},
 		{name: "fuzzy value", args: []string{"--profle", "corp:user", "chat", "bot", "find", "--help"}},
 		{name: "sticky value", args: []string{"--timeout30", "chat", "bot", "find", "--help"}},
+		{name: "sticky boolean value", args: []string{"--verbosefalse", "chat", "bot", "find", "--help"}},
 	}
 
 	for _, test := range tests {

@@ -1322,11 +1322,14 @@ func newPipelineEngine() *pipeline.Engine {
 		// Register handler runs during command tree building.
 		handlers.RegisterHandler{},
 
-		// PreParse handlers run in order: alias → semantic → sticky → paramname.
+		// PreParse handlers run in order: alias → semantic → sticky → paramname
+		// → boolvalue.
 		// Alias normalises case first (--userId → --user-id), then semantic
 		// resolves reviewed synonyms to the real flag (--keyword → --query),
 		// then sticky splits glued values (--limit100 → --limit 100), then
-		// paramname fixes near-miss typos (--limt → --limit).
+		// paramname fixes near-miss typos (--limt → --limit). Boolvalue runs
+		// last so every spelling of `--yes false` becomes `--yes=false` before
+		// pflag can interpret the bare bool as true.
 		handlers.AliasHandler{},
 		handlers.SemanticAliasHandler{
 			// Inject the build-time reduced alias table with native types so
@@ -1338,6 +1341,7 @@ func newPipelineEngine() *pipeline.Engine {
 		},
 		handlers.StickyHandler{},
 		handlers.ParamNameHandler{},
+		handlers.BoolValueHandler{},
 
 		// PostParse handlers normalise structured values.
 		handlers.ParamValueHandler{},

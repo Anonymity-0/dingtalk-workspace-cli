@@ -18,6 +18,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -124,6 +125,12 @@ func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
 			out = append(out, argument)
 			continue
 		}
+		if index+1 < len(rawArgs) {
+			if _, ok := separatedBoolValue(argument, rawArgs[index+1], flag, inlineValue); ok {
+				index++
+				continue
+			}
+		}
 		if !inlineValue && flag.NoOptDefVal == "" && index+1 < len(rawArgs) {
 			index++
 		}
@@ -133,6 +140,24 @@ func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
 
 func persistentFlagToken(flags *pflag.FlagSet, argument string) (*pflag.Flag, bool, bool) {
 	return newFlagTokenMatcher(flags).matchTraversalToken(argument)
+}
+
+// separatedBoolValue recognises model-friendly `--flag false` and exact
+// shorthand `-f false` spellings without mistaking an already attached value
+// or a shorthand cluster for a detached value. pflag otherwise treats a bare
+// bool flag as true and leaves the following token positional.
+func separatedBoolValue(argument, following string, flag *pflag.Flag, inlineValue bool) (string, bool) {
+	if flag == nil || (flag.Value.Type() != "bool" && flag.Value.Type() != "boolean") {
+		return "", false
+	}
+	if strings.HasPrefix(argument, "--") {
+		if inlineValue || strings.Contains(argument, "=") {
+			return "", false
+		}
+	} else if flag.Shorthand == "" || argument != "-"+flag.Shorthand {
+		return "", false
+	}
+	return cmdutil.NormalizeBoolLiteral(following)
 }
 
 type longFlagMatch struct {
@@ -254,7 +279,16 @@ func primeEarlyErrorPresentation(root, target *cobra.Command, rawArgs []string) 
 			}
 			value, hasValue := match.value, match.hasValue
 			if !hasValue && match.flag.NoOptDefVal != "" {
-				value, hasValue = match.flag.NoOptDefVal, true
+				if index+1 < len(rawArgs) {
+					if normalized, ok := separatedBoolValue(argument, rawArgs[index+1], match.flag, false); ok {
+						index++
+						value, hasValue = normalized, true
+					} else {
+						value, hasValue = match.flag.NoOptDefVal, true
+					}
+				} else {
+					value, hasValue = match.flag.NoOptDefVal, true
+				}
 			} else if !hasValue && index+1 < len(rawArgs) {
 				index++
 				value, hasValue = rawArgs[index], true
@@ -276,7 +310,16 @@ func primeEarlyErrorPresentation(root, target *cobra.Command, rawArgs []string) 
 			}
 			value, hasValue := "", false
 			if flag.NoOptDefVal != "" {
-				value, hasValue = flag.NoOptDefVal, true
+				if shorthandIndex == 0 && len(shorthands) == 1 && index+1 < len(rawArgs) {
+					if normalized, ok := separatedBoolValue(argument, rawArgs[index+1], flag, false); ok {
+						index++
+						value, hasValue = normalized, true
+					} else {
+						value, hasValue = flag.NoOptDefVal, true
+					}
+				} else {
+					value, hasValue = flag.NoOptDefVal, true
+				}
 			} else if shorthandIndex+1 < len(shorthands) {
 				value = string(shorthands[shorthandIndex+1:])
 				value = strings.TrimPrefix(value, "=")
@@ -335,6 +378,7 @@ func appendFlagInfo(infos *[]FlagInfo, seen map[string]bool, flag *pflag.Flag) {
 func flagInfoFromPflag(f *pflag.Flag) FlagInfo {
 	fi := FlagInfo{
 		Name:         f.Name,
+		Shorthand:    f.Shorthand,
 		PropertyName: f.Name,
 		Type:         f.Value.Type(),
 	}

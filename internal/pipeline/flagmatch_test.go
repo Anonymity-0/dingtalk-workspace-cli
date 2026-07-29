@@ -41,6 +41,7 @@ func TestSplitStickyFlagDirectContract(t *testing.T) {
 	specs := map[string]FlagInfo{
 		"limit":     {Name: "limit", Type: "int"},
 		"page-size": {Name: "page-size", Type: "int"},
+		"yes":       {Name: "yes", Type: "bool"},
 	}
 	tests := []struct {
 		argument string
@@ -54,6 +55,10 @@ func TestSplitStickyFlagDirectContract(t *testing.T) {
 		{argument: "--pageSize"},
 		{argument: "--unknown100"},
 		{argument: "--limitabc"},
+		{argument: "--yesfalse", want: StickyFlagPair{Flag: "--yes", Value: "false", Inline: true}, ok: true},
+		{argument: "--yestrue", want: StickyFlagPair{Flag: "--yes", Value: "true", Inline: true}, ok: true},
+		{argument: "--yesno", want: StickyFlagPair{Flag: "--yes", Value: "false", Inline: true}, ok: true},
+		{argument: "--yesmaybe"},
 		{argument: "--limit100", want: StickyFlagPair{Flag: "--limit", Value: "100"}, ok: true},
 		{argument: "--pageSize50", want: StickyFlagPair{Flag: "--page-size", Value: "50"}, ok: true},
 	}

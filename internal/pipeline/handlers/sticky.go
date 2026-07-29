@@ -18,9 +18,9 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 )
 
-// StickyHandler detects glued flag-value pairs in raw argv and splits
-// them into separate tokens. For example, "--limit100" becomes
-// "--limit", "100" when "limit" is a known flag name.
+// StickyHandler detects glued flag-value pairs in raw argv and normalizes
+// them. For example, "--limit100" becomes "--limit", "100" while a boolean
+// such as "--verbosefalse" becomes the single safe token "--verbose=false".
 //
 // The handler only operates on tokens that start with "--" and do not
 // contain "=". It tries to match the longest known flag name prefix
@@ -54,8 +54,14 @@ func (StickyHandler) Handle(ctx *pipeline.Context) error {
 		}
 		split, ok := trySplitSticky(arg, specByName)
 		if ok {
-			ctx.AddCorrection("sticky", pipeline.PreParse, split.flag, arg, split.flag+" "+split.value, "sticky")
-			result = append(result, split.flag, split.value)
+			if split.inline {
+				corrected := split.flag + "=" + split.value
+				ctx.AddCorrection("sticky", pipeline.PreParse, split.flag, arg, corrected, "sticky")
+				result = append(result, corrected)
+			} else {
+				ctx.AddCorrection("sticky", pipeline.PreParse, split.flag, arg, split.flag+" "+split.value, "sticky")
+				result = append(result, split.flag, split.value)
+			}
 		} else {
 			result = append(result, arg)
 		}
@@ -66,8 +72,9 @@ func (StickyHandler) Handle(ctx *pipeline.Context) error {
 }
 
 type stickyPair struct {
-	flag  string
-	value string
+	flag   string
+	value  string
+	inline bool
 }
 
 // trySplitSticky checks if arg looks like a glued flag-value (e.g.
@@ -86,7 +93,7 @@ type stickyPair struct {
 // split to "--page-size", "50".
 func trySplitSticky(arg string, specByName map[string]pipeline.FlagInfo) (stickyPair, bool) {
 	pair, ok := pipeline.SplitStickyFlag(arg, specByName)
-	return stickyPair{flag: pair.Flag, value: pair.Value}, ok
+	return stickyPair{flag: pair.Flag, value: pair.Value, inline: pair.Inline}, ok
 }
 
 // buildFlagSpecIndex creates an index of known flag names (without "--"

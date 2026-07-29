@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func TestCrossPlatformCoverageFlagInfoFromCommandIncludesLocalInheritedAndAnnotations(t *testing.T) {
@@ -17,7 +18,7 @@ func TestCrossPlatformCoverageFlagInfoFromCommandIncludesLocalInheritedAndAnnota
 	root := &cobra.Command{Use: "root"}
 	root.PersistentFlags().String("profile", "", "")
 	child := &cobra.Command{Use: "child"}
-	child.Flags().String("start-time", "", "")
+	child.Flags().StringP("start-time", "s", "", "")
 	child.Flags().Lookup("start-time").Annotations = map[string][]string{
 		"x-cli-format": {"date-time"},
 		"x-cli-enum":   {"one", "two"},
@@ -32,7 +33,7 @@ func TestCrossPlatformCoverageFlagInfoFromCommandIncludesLocalInheritedAndAnnota
 	for _, info := range infos {
 		byName[info.Name] = info
 	}
-	if byName["profile"].Type != "string" || byName["start-time"].Format != "date-time" ||
+	if byName["profile"].Type != "string" || byName["start-time"].Shorthand != "s" || byName["start-time"].Format != "date-time" ||
 		!reflect.DeepEqual(byName["start-time"].Enum, []string{"one", "two"}) {
 		t.Fatalf("flag infos = %#v", infos)
 	}
@@ -122,14 +123,18 @@ func TestRunPreParseResolvesCommandPastLeadingPersistentFlags(t *testing.T) {
 		executable bool
 	}{
 		{name: "boolean long flag", args: []string{"--dry-run", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
+		{name: "boolean long flag with detached false", args: []string{"--dry-run", "false", "calendar", "event", "list", "--date", "2026-03-10"}},
 		{name: "camel-case boolean long flag", args: []string{"--dryRun", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "camel-case boolean with detached false", args: []string{"--dryRun", "false", "calendar", "event", "list", "--date", "2026-03-10"}},
 		{name: "fuzzy boolean long flag", args: []string{"--dry-rnu", "calendar", "event", "list", "--date", "2026-03-10"}},
+		{name: "fuzzy boolean with detached false", args: []string{"--dry-rnu", "false", "calendar", "event", "list", "--date", "2026-03-10"}},
 		{name: "valued long flag", args: []string{"--profile", "corp:user", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
 		{name: "fuzzy valued long flag", args: []string{"--profle", "corp:user", "calendar", "event", "list", "--date", "2026-03-10"}},
 		{name: "sticky valued long flag", args: []string{"--timeout30", "calendar", "event", "list", "--date", "2026-03-10"}},
 		{name: "valued shorthand", args: []string{"-f", "json", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
 		{name: "attached shorthand", args: []string{"-fjson", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
 		{name: "clustered attached shorthand", args: []string{"-vfjson", "calendar", "event", "list", "--date", "2026-03-10"}, executable: true},
+		{name: "boolean shorthand with detached false", args: []string{"-v", "false", "calendar", "event", "list", "--date", "2026-03-10"}},
 	}
 
 	for _, test := range tests {
@@ -217,6 +222,13 @@ func TestRunPreParsePrimesPresentationFlagsForEarlyErrors(t *testing.T) {
 			wantFormat:  "raw",
 			wantVerbose: true,
 		},
+		{
+			name:        "detached boolean presentation values",
+			args:        []string{"--debug", "true", "-v", "false", "child", "--name", "demo"},
+			wantFormat:  "json",
+			wantDebug:   true,
+			wantVerbose: false,
+		},
 	}
 
 	for _, test := range tests {
@@ -279,23 +291,61 @@ func TestCommandTraversalFlagTokenEdges(t *testing.T) {
 	}
 }
 
+func TestSeparatedBoolValueRecognition(t *testing.T) {
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.BoolP("verbose", "v", false, "")
+	flags.String("format", "", "")
+	verbose := flags.Lookup("verbose")
+	format := flags.Lookup("format")
+
+	tests := []struct {
+		name      string
+		argument  string
+		following string
+		flag      *pflag.Flag
+		inline    bool
+		want      string
+		ok        bool
+	}{
+		{name: "nil flag", argument: "--verbose", following: "false"},
+		{name: "non bool", argument: "--format", following: "false", flag: format},
+		{name: "long false", argument: "--verbose", following: "false", flag: verbose, want: "false", ok: true},
+		{name: "long synonym", argument: "--verbose", following: "on", flag: verbose, want: "true", ok: true},
+		{name: "inline long", argument: "--verbosefalse", following: "false", flag: verbose, inline: true},
+		{name: "equals long", argument: "--verbose=false", following: "true", flag: verbose},
+		{name: "exact shorthand", argument: "-v", following: "0", flag: verbose, want: "false", ok: true},
+		{name: "shorthand cluster", argument: "-vv", following: "false", flag: verbose},
+		{name: "invalid literal", argument: "--verbose", following: "maybe", flag: verbose},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := separatedBoolValue(test.argument, test.following, test.flag, test.inline)
+			if got != test.want || ok != test.ok {
+				t.Fatalf("separatedBoolValue() = %q, %v; want %q, %v", got, ok, test.want, test.ok)
+			}
+		})
+	}
+}
+
 func TestPrimeEarlyErrorPresentationEdges(t *testing.T) {
 	primeEarlyErrorPresentation(nil, nil, nil)
 
 	root := &cobra.Command{Use: "root"}
 	root.PersistentFlags().StringP("format", "f", "json", "")
 	root.PersistentFlags().Bool("debug", false, "")
+	root.PersistentFlags().BoolP("verbose", "v", false, "")
 	child := &cobra.Command{Use: "child"}
 	child.Flags().String("name", "", "")
 	root.AddCommand(child)
 
 	primeEarlyErrorPresentation(root, child, []string{
 		"child", "--unknown", "value", "-x", "--name", "demo",
-		"-f", "table", "--", "--debug",
+		"-f", "table", "-v", "maybe", "--", "--debug",
 	})
 	format, _ := root.PersistentFlags().GetString("format")
 	debug, _ := root.PersistentFlags().GetBool("debug")
-	if format != "table" || debug {
-		t.Fatalf("presentation after edge argv = format:%q debug:%v", format, debug)
+	verbose, _ := root.PersistentFlags().GetBool("verbose")
+	if format != "table" || debug || !verbose {
+		t.Fatalf("presentation after edge argv = format:%q debug:%v verbose:%v", format, debug, verbose)
 	}
 }

@@ -181,6 +181,11 @@ type FlagInfo struct {
 	// Name is the canonical kebab-case flag name (e.g. "user-id").
 	Name string
 
+	// Shorthand is the optional single-character pflag shorthand (e.g. "y"
+	// for --yes). PreParse uses it only when an exact shorthand token is
+	// followed by an explicit boolean literal.
+	Shorthand string
+
 	// PropertyName is the original schema property key (e.g. "userId").
 	PropertyName string
 

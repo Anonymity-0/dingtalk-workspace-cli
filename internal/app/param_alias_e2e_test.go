@@ -191,6 +191,59 @@ func executeParamAliasE2E(t *testing.T, caller *paramAliasCaptureCaller, args ..
 	return ctx, root.Execute()
 }
 
+func TestBooleanStickyCannotBypassDestructiveConfirmation(t *testing.T) {
+	tests := []struct {
+		name           string
+		confirmation   []string
+		wantError      string
+		wantCalls      int
+		wantOriginal   string
+		wantCorrection string
+	}{
+		{name: "bare yes confirms", confirmation: []string{"--yes"}, wantCalls: 1},
+		{name: "glued false stays unconfirmed", confirmation: []string{"--yesfalse"}, wantError: "请添加 --yes 确认执行", wantOriginal: "--yesfalse", wantCorrection: "--yes=false"},
+		{name: "glued true confirms", confirmation: []string{"--yestrue"}, wantCalls: 1, wantOriginal: "--yestrue", wantCorrection: "--yes=true"},
+		{name: "detached false stays unconfirmed", confirmation: []string{"--yes", "false"}, wantError: "请添加 --yes 确认执行", wantOriginal: "--yes false", wantCorrection: "--yes=false"},
+		{name: "detached no stays unconfirmed", confirmation: []string{"--yes", "no"}, wantError: "请添加 --yes 确认执行", wantOriginal: "--yes no", wantCorrection: "--yes=false"},
+		{name: "detached zero stays unconfirmed", confirmation: []string{"--yes", "0"}, wantError: "请添加 --yes 确认执行", wantOriginal: "--yes 0", wantCorrection: "--yes=false"},
+		{name: "detached true confirms", confirmation: []string{"--yes", "true"}, wantCalls: 1, wantOriginal: "--yes true", wantCorrection: "--yes=true"},
+		{name: "detached yes confirms", confirmation: []string{"--yes", "yes"}, wantCalls: 1, wantOriginal: "--yes yes", wantCorrection: "--yes=true"},
+		{name: "detached one confirms", confirmation: []string{"--yes", "1"}, wantCalls: 1, wantOriginal: "--yes 1", wantCorrection: "--yes=true"},
+		{name: "explicit false remains unconfirmed", confirmation: []string{"--yes=false"}, wantError: "请添加 --yes 确认执行"},
+		{name: "explicit true confirms", confirmation: []string{"--yes=true"}, wantCalls: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &paramAliasCaptureCaller{}
+			args := []string{
+				"mail", "thread", "trash",
+				"--email", "user@example.com",
+				"--id", "conversation-1",
+			}
+			args = append(args, test.confirmation...)
+			ctx, err := executeParamAliasE2E(t, caller, args...)
+			if test.wantError == "" {
+				if err != nil {
+					t.Fatalf("confirmed command error = %v", err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("command error = %v, want substring %q", err, test.wantError)
+			}
+			if test.wantCorrection == "" {
+				if ctx != nil && len(ctx.Corrections) != 0 {
+					t.Fatalf("confirmation spelling received corrections: %#v", ctx.Corrections)
+				}
+			} else if ctx == nil || len(ctx.Corrections) != 1 || ctx.Corrections[0].Original != test.wantOriginal || ctx.Corrections[0].Corrected != test.wantCorrection {
+				t.Fatalf("confirmation corrections = %#v, want %q -> %q", ctx, test.wantOriginal, test.wantCorrection)
+			}
+			if len(caller.calls) != test.wantCalls {
+				t.Fatalf("destructive calls = %#v, want %d", caller.calls, test.wantCalls)
+			}
+		})
+	}
+}
+
 func TestParamAliasReadCommandFinalPayload(t *testing.T) {
 	caller := &paramAliasCaptureCaller{}
 	start := "2026-03-10T14:00:00+08:00"

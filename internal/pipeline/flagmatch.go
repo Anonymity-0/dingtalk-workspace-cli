@@ -51,11 +51,13 @@ func NormalizeFlagToken(argument string, known map[string]bool) (string, bool) {
 	return "--" + normalized + suffix, true
 }
 
-// StickyFlagPair is the canonical flag and detached value resolved from one
-// glued long-flag token.
+// StickyFlagPair is the canonical flag and value resolved from one glued
+// long-flag token. Inline is required for boolean flags because pflag treats a
+// bare boolean as true without consuming the following argv token.
 type StickyFlagPair struct {
-	Flag  string
-	Value string
+	Flag   string
+	Value  string
+	Inline bool
 }
 
 // SplitStickyFlag splits a safely recognisable glued flag/value token. The
@@ -104,7 +106,12 @@ func SplitStickyFlag(argument string, specByName map[string]FlagInfo) (StickyFla
 	if !cmdutil.SuffixLooksLikeValue(suffix, spec.Type, spec.Format, spec.Enum) {
 		return StickyFlagPair{}, false
 	}
-	return StickyFlagPair{Flag: "--" + bestFlag, Value: suffix}, true
+	inline := false
+	if spec.Type == "bool" || spec.Type == "boolean" {
+		suffix, _ = cmdutil.NormalizeBoolLiteral(suffix)
+		inline = true
+	}
+	return StickyFlagPair{Flag: "--" + bestFlag, Value: suffix, Inline: inline}, true
 }
 
 // FuzzyMatchFlag returns the unique closest real long flag within the
