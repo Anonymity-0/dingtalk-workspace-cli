@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface_hash": "sha256:29d4f5f43688cc01bc2277a4528b597de4fbab89a7b2f13fe2e56df85d1c66c4",
-  "source_hash": "sha256:346ec3ac857b9a740baf03142296b1e4fb0814f713ceab4ed2ff9f46a85d6b4d",
+  "source_hash": "sha256:c71b9bacfe2d73f5ad45151fada6fdc18bac69b266058a8b05647b6847c99835",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:31a28d1665ebb13fdb131547bda1d84ce1cc3fee0bbff821b76c2fdf6f6904ab",
+      "source_hash": "sha256:eb6e44775a6e85f92ca31c90c876f67543ab928d8a8bda04f07a33dc802f7028",
       "surface_hash": "sha256:29d4f5f43688cc01bc2277a4528b597de4fbab89a7b2f13fe2e56df85d1c66c4",
       "surface_products": 26,
       "surface_tools": 840,
@@ -11249,11 +11249,12 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "更新消息上已有的文字表情回应",
+            "agent_summary": "把消息上已有的文字表情原地替换为新的文字表情",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "新增用 add-text-emotion；移除用 remove-text-emotion"
+              "消息上还没有文字表情时使用 chat message add-text-emotion",
+              "只需清除文字表情时使用 chat message remove-text-emotion"
             ],
             "canonical_path": "chat.update_text_emotion",
             "cli_name": "update-text-emotion",
@@ -11264,14 +11265,14 @@
             "group": "message",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "interface_reason": "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
             "name": "update_text_emotion",
             "primary_cli_path": "chat message update-text-emotion",
             "reviewed": true,
             "risk": "low",
             "title": "更新消息的文字表情回应",
             "use_when": [
-              "用户说 改一下消息上的文字表情"
+              "需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"
             ]
           },
           {

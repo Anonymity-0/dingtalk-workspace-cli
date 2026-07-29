@@ -3220,9 +3220,6 @@ func newChatCommand() *cobra.Command {
 			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
 				return err
 			}
-			if err := validateRequiredFlags(cmd, "msg-id", "old-emotion-id", "emotion-id", "emotion-name", "text", "background-id"); err != nil {
-				return err
-			}
 			return callMCPToolOnServer("im", "update_text_emotion", map[string]any{
 				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
 				"openMsgId":          mustGetFlag(cmd, "msg-id"),
@@ -3244,6 +3241,10 @@ func newChatCommand() *cobra.Command {
 	chatMessageUpdateTextEmotionCmd.Flags().String("emotion-name", "", "新表情名称 (必填)")
 	chatMessageUpdateTextEmotionCmd.Flags().String("text", "", "新文字内容 (必填)")
 	chatMessageUpdateTextEmotionCmd.Flags().String("background-id", "", "新背景 ID (必填)")
+	chatMessageUpdateTextEmotionCmd.MarkFlagsOneRequired("conversation-id", "group", "id", "chat")
+	for _, name := range []string{"msg-id", "old-emotion-id", "emotion-id", "emotion-name", "text", "background-id"} {
+		_ = chatMessageUpdateTextEmotionCmd.MarkFlagRequired(name)
+	}
 
 	// ── 创建文字表情（获取 emotionId）──────────────────────
 

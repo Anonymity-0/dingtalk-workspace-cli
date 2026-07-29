@@ -2399,22 +2399,27 @@
       ]
     },
     "chat.update_text_emotion": {
-      "agent_summary": "更新消息上已有的文字表情回应",
+      "agent_summary": "把消息上已有的文字表情原地替换为新的文字表情",
       "use_when": [
-        "用户说 改一下消息上的文字表情"
+        "需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"
       ],
       "avoid_when": [
-        "新增用 add-text-emotion；移除用 remove-text-emotion"
+        "消息上还没有文字表情时使用 chat message add-text-emotion",
+        "只需清除文字表情时使用 chat message remove-text-emotion"
       ],
       "examples": [
-        "dws chat message update-text-emotion --conversation-id <cid> --msg-id <mid> --old-emotion-id <old> --emotion-id <new> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5 --format json"
+        "dws chat message update-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"
       ],
       "reviewed": true,
-      "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。",
+      "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。",
       "source_refs": [
-        "CommandRegistry:canonical_path=chat.update_text_emotion",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_text_emotion",
         "cobra-help:dws chat message update-text-emotion",
-        "wukong-develop:wukong/products"
+        "dws-wukong:d6831318",
+        "dws-wukong:bcf56ccf",
+        "dws-wukong:30f13f02",
+        "github:hugozhu/dingtalk-opencode-tag#85",
+        "live-dws-schema:im.update_text_emotion#FAILED_NOT_AUTHENTICATED"
       ]
     },
     "chat.get_group_mute_config": {

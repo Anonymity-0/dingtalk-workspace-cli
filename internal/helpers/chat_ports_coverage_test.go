@@ -127,12 +127,12 @@ func TestCrossPlatformCoverageChatUpdateTextEmotionRequiredFlags(t *testing.T) {
 		{
 			name:    "missing conversation-id and aliases",
 			args:    dropFlag("--conversation-id"),
-			wantErr: "--conversation-id",
+			wantErr: "at least one of the flags in the group [conversation-id group id chat] is required",
 		},
 		{
 			name:    "missing old-emotion-id",
 			args:    dropFlag("--old-emotion-id"),
-			wantErr: "--old-emotion-id",
+			wantErr: `required flag(s) "old-emotion-id" not set`,
 		},
 		{
 			name: "missing msg-id and background-id",
@@ -144,7 +144,7 @@ func TestCrossPlatformCoverageChatUpdateTextEmotionRequiredFlags(t *testing.T) {
 				"--emotion-name", "like",
 				"--text", "nice",
 			},
-			wantErr: "--msg-id, --background-id",
+			wantErr: `required flag(s) "background-id", "msg-id" not set`,
 		},
 	}
 	for _, test := range tests {

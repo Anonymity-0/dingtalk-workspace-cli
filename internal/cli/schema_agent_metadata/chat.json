@@ -30788,32 +30788,33 @@
       ]
     },
     "chat message update-text-emotion": {
-      "agent_summary": "更新消息上已有的文字表情回应",
+      "agent_summary": "把消息上已有的文字表情原地替换为新的文字表情",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
-        "新增用 add-text-emotion；移除用 remove-text-emotion"
+        "消息上还没有文字表情时使用 chat message add-text-emotion",
+        "只需清除文字表情时使用 chat message remove-text-emotion"
       ],
       "confirmation": "not_required",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
-        "dws chat message update-text-emotion --conversation-id \u003ccid\u003e --msg-id \u003cmid\u003e --old-emotion-id \u003cold\u003e --emotion-id \u003cnew\u003e --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5 --format json"
+        "dws chat message update-text-emotion --conversation-id \u003copenConversationId\u003e --msg-id \u003copenMessageId\u003e --old-emotion-id \u003coldEmotionId\u003e --emotion-id \u003cemotionId\u003e --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "更新消息上已有的文字表情回应",
+          "value": "把消息上已有的文字表情原地替换为新的文字表情",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。",
+          "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。",
           "candidates": [
             {
-              "value": "更新消息上已有的文字表情回应",
+              "value": "把消息上已有的文字表情原地替换为新的文字表情",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。"
+              "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。"
             }
           ]
         },
@@ -30822,34 +30823,36 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
             }
           ]
         },
         "avoid_when": {
           "value": [
-            "新增用 add-text-emotion；移除用 remove-text-emotion"
+            "消息上还没有文字表情时使用 chat message add-text-emotion",
+            "只需清除文字表情时使用 chat message remove-text-emotion"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。",
+          "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。",
           "candidates": [
             {
               "value": [
-                "新增用 add-text-emotion；移除用 remove-text-emotion"
+                "消息上还没有文字表情时使用 chat message add-text-emotion",
+                "只需清除文字表情时使用 chat message remove-text-emotion"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。"
+              "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。"
             }
           ]
         },
@@ -30858,14 +30861,20 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -30874,34 +30883,40 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
+            },
+            {
+              "value": "write",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
         "examples": {
           "value": [
-            "dws chat message update-text-emotion --conversation-id \u003ccid\u003e --msg-id \u003cmid\u003e --old-emotion-id \u003cold\u003e --emotion-id \u003cnew\u003e --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5 --format json"
+            "dws chat message update-text-emotion --conversation-id \u003copenConversationId\u003e --msg-id \u003copenMessageId\u003e --old-emotion-id \u003coldEmotionId\u003e --emotion-id \u003cemotionId\u003e --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。",
+          "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。",
           "candidates": [
             {
               "value": [
-                "dws chat message update-text-emotion --conversation-id \u003ccid\u003e --msg-id \u003cmid\u003e --old-emotion-id \u003cold\u003e --emotion-id \u003cnew\u003e --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5 --format json"
+                "dws chat message update-text-emotion --conversation-id \u003copenConversationId\u003e --msg-id \u003copenMessageId\u003e --old-emotion-id \u003coldEmotionId\u003e --emotion-id \u003cemotionId\u003e --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。"
+              "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。"
             }
           ]
         },
@@ -30910,14 +30925,20 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
+            },
+            {
+              "value": "unknown",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -30926,30 +30947,30 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
             }
           ]
         },
         "interface_reason": {
-          "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+          "value": "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
-              "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+              "value": "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
             }
           ]
         },
@@ -30974,21 +30995,21 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
             },
             {
               "value": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。"
+              "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。"
             }
           ]
         },
@@ -30997,52 +31018,63 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/chat marks this tool as reviewed",
+          "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
           "candidates": [
             {
               "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "dws-tool-metadata/chat marks this tool as reviewed"
+              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
+            },
+            {
+              "value": "medium",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
         "use_when": {
           "value": [
-            "用户说 改一下消息上的文字表情"
+            "需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。",
+          "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。",
           "candidates": [
             {
               "value": [
-                "用户说 改一下消息上的文字表情"
+                "需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "人工审阅：对照悟空 develop 同名命令实现、Cobra Long/Example 与 Runtime 确认门禁移植；不改变命令身份、参数契约或接口绑定。"
+              "review_reason": "依据 issue #85 的原地状态更新场景、Wukong 30f13f02 的真实 Cobra/MCP 映射和开源实现复核；选择语义不改变执行、安全或参数事实。"
             }
           ]
         }
       },
       "idempotency": "idempotent",
       "interface_mode": "composite",
-      "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "CommandRegistry:canonical_path=chat.update_text_emotion",
         "cobra-help:dws chat message update-text-emotion",
+        "dws-wukong:30f13f02",
+        "dws-wukong:bcf56ccf",
+        "dws-wukong:d6831318",
+        "github:hugozhu/dingtalk-opencode-tag#85",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_text_emotion",
         "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_hints/selection/chat.json",
-        "wukong-develop:wukong/products"
+        "live-dws-schema:im.update_text_emotion#FAILED_NOT_AUTHENTICATED",
+        "skills/mono/references/products/chat.md"
       ],
       "use_when": [
-        "用户说 改一下消息上的文字表情"
+        "需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"
       ]
     },
     "chat mute": {

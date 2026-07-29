@@ -9,6 +9,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 ### Added
 
 - **Wukong internal command sync** (#621) — ports roughly 30 leaf commands from the internal wukong repository into the open-source CLI: Drive gains `star`, `cover`, `revert`, `download-version`, `permission transfer-owner`/`apply-info`/`apply`, and `list --depth`/`--versions`; Doc gains `style cover`/`style background`; Sheet gains the `comment`, `version`, and `formula-verify` command groups plus `info --include`; Chat gains `message update-text-emotion`, the `location`/`profile` message types, and group `user-settings`/`get-mute-config`. Every new leaf is registered in the Agent-visible Runtime Schema.
+- **In-place text-emotion updates** — adds `dws chat message update-text-emotion`, mapping the seven required conversation, message, old/new emotion, name, text, and background parameters to Wukong's proven `im/update_text_emotion` capability so status transitions can avoid remove-then-add flicker and duplicate network calls ([hugozhu/dingtalk-opencode-tag#85](https://github.com/hugozhu/dingtalk-opencode-tag/issues/85)).
 
 ### Fixed
 
