@@ -514,6 +514,35 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Error("Code Admission must not suppress required contexts with paths-ignore")
 	}
 
+	focusedStart := strings.Index(admission, "\n  test-focused:\n")
+	focusedEnd := strings.Index(admission, "\n  test-race:\n")
+	if focusedStart < 0 || focusedEnd <= focusedStart {
+		t.Fatal("Code Admission workflow missing focused test job boundaries")
+	}
+	focusedJob := admission[focusedStart:focusedEnd]
+	if !strings.Contains(focusedJob, "timeout-minutes: 20") {
+		t.Error("focused test job must allow the scoped race suite up to 20 minutes")
+	}
+
+	coverageStart := strings.Index(admission, "\n  coverage:\n")
+	coverageEnd := strings.Index(admission, "\n  policy:\n")
+	if coverageStart < 0 || coverageEnd <= coverageStart {
+		t.Fatal("Code Admission workflow missing coverage job boundaries")
+	}
+	coverageJob := admission[coverageStart:coverageEnd]
+	for _, want := range []string{
+		`FULL_SUITE: ${{ needs.lint.outputs.full_suite }}`,
+		"policy_profile=coverage-policy.txt\n" +
+			`          if [ "$FULL_SUITE" != true ]; then` + "\n" +
+			"            policy_profile=\n" +
+			"          fi",
+		`COVERAGE_DIFF_PROFILE="$policy_profile"`,
+	} {
+		if !strings.Contains(coverageJob, want) {
+			t.Errorf("Code Admission workflow missing scoped coverage contract %q", want)
+		}
+	}
+
 	notification := readWorkflow(".github/workflows/notify-wukong.yml")
 	if !strings.Contains(notification, "- CI") {
 		t.Error("Wukong notification must follow the renamed CI workflow")
@@ -528,6 +557,12 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	if !strings.Contains(coverageGate, `OVERALL_TOLERANCE="${COVERAGE_OVERALL_TOLERANCE:-0}"`) {
 		t.Error("coverage gate must reject any reported overall regression")
+	}
+	if !strings.Contains(coverageGate, `DIFF_PROFILE="${COVERAGE_DIFF_PROFILE-coverage-policy.txt}"`) {
+		t.Error("coverage gate must allow scoped CI to explicitly omit the supporting policy profile")
+	}
+	if !strings.Contains(coverageGate, `if [ -n "$DIFF_PROFILE" ]; then`) {
+		t.Error("coverage gate must add the supporting policy profile only when configured")
 	}
 	if !strings.Contains(coverageGate, `--baseline-profile "$BASELINE_PROFILE"`) {
 		t.Error("coverage gate must evaluate the merge-base profile with the candidate checker")

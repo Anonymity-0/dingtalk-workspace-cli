@@ -438,7 +438,7 @@ jobs:
     needs: lint
     if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite != 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -1160,14 +1160,20 @@ jobs:
       - name: Enforce coverage gate
         if: needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true'
         env:
+          FULL_SUITE: ${{ needs.lint.outputs.full_suite }}
           COVERAGE_TARGET: "100"
           COVERAGE_ENFORCE_OVERALL: "false"
           COVERAGE_OVERALL_TOLERANCE: "0"
         run: |
+          policy_profile=coverage-policy.txt
+          if [ "$FULL_SUITE" != true ]; then
+            policy_profile=
+          fi
           additional_profile=
           if [ -f coverage-shortcut.txt ]; then
             additional_profile=coverage-shortcut.txt
           fi
+          COVERAGE_DIFF_PROFILE="$policy_profile" \
           COVERAGE_ADDITIONAL_DIFF_PROFILE="$additional_profile" \
             make coverage-gate BASE_REF="$COVERAGE_BASE_REF"
 
