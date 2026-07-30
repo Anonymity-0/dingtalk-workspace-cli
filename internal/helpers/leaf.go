@@ -165,9 +165,9 @@ func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 		RunE:        spec.RunE,
 	}
 	if spec.RunE == nil {
-		cs.Dispatch = func(cmd *cobra.Command, _ []string, toolArgs map[string]any) error {
+		cs.Invoke = func(c *cmdcore.Ctx, toolArgs map[string]any) error {
 			if spec.Call != nil {
-				return spec.Call(cmd, spec.Tool, toolArgs)
+				return spec.Call(c.Command(), spec.Tool, toolArgs)
 			}
 			if spec.Server != "" {
 				return callMCPToolOnServer(spec.Server, spec.Tool, toolArgs)

@@ -158,16 +158,20 @@ type Constraint struct {
 
 // CommandSpec is the single typed definition of a leaf command, shared by the
 // LeafSpec and (via FromShortcut) Shortcut frameworks. It carries the shared
-// base (flags, constraints, risk) plus the orchestration hooks; dispatch is a
-// property of the spec, not a separate framework:
+// base (flags, constraints, risk) plus the orchestration hooks. Dispatch is a
+// property of the spec, not a separate framework, and is layered so that both
+// single-step and multi-step commands are expressible:
 //
-//   - RunE, when set, is the full escape hatch: the framework only registers
-//     flags/constraints/help and hands control to RunE.
-//   - otherwise Dispatch runs after required/constraint/Validate checks, args
-//     assembly, and the Risk write-confirmation, receiving the assembled
-//     toolArgs. The adapter (FromLeafSpec) supplies the concrete dispatch
-//     (single-step MCP call / executor.Runner / etc.); cmdcore stays
-//     dispatch-agnostic and never calls an MCP tool itself.
+//   - RunE — full escape hatch: the framework only registers flags/constraints/
+//     help and hands control over.
+//   - Invoke — single-step: runs after required/constraint/Validate checks, args
+//     assembly and the Risk write-confirmation, receiving the assembled toolArgs.
+//   - Orchestrate — multi-step: runs after the same checks and confirmation but
+//     receives only the Ctx, so it can chain several backend calls itself.
+//
+// Exactly one of the three must be set; NewCommand validates this at
+// construction time. cmdcore itself stays dispatch-agnostic and never calls a
+// backend: the adapters (FromLeafSpec / FromShortcut) supply the concrete body.
 type CommandSpec struct {
 	Use     string
 	Short   string
@@ -184,26 +188,102 @@ type CommandSpec struct {
 	// PostMount adjusts the built command after flag registration and before
 	// RunE is set (Args/DisableAutoGenTag/annotate/…); always runs.
 	PostMount func(cmd *cobra.Command)
-	// RunE, when set, fully replaces the generated body (escape hatch).
+	// RunE fully replaces the generated body (escape hatch).
 	RunE func(cmd *cobra.Command, args []string) error
-	// Dispatch executes the command with the assembled toolArgs. Used only when
-	// RunE is nil.
-	Dispatch func(cmd *cobra.Command, args []string, toolArgs map[string]any) error
+	// Invoke executes a single-step command with the assembled toolArgs.
+	Invoke func(c *Ctx, toolArgs map[string]any) error
+	// Orchestrate executes a multi-step command; it assembles whatever payloads
+	// it needs from the Ctx.
+	Orchestrate func(c *Ctx) error
 }
 
+// Ctx is the framework-neutral execution context handed to Invoke/Orchestrate.
+// It deliberately knows nothing about MCP or any other backend: it exposes the
+// command, its positional args, and typed flag access that reuses the declared
+// alias → env → default fallback chain, so a consumer reading a flag through Ctx
+// gets exactly the value the required/constraint checks saw.
+type Ctx struct {
+	cmd   *cobra.Command
+	args  []string
+	flags map[string]FlagSpec
+}
+
+// newCtx builds the execution context for one command invocation.
+func newCtx(cmd *cobra.Command, args []string, flags []FlagSpec) *Ctx {
+	byName := make(map[string]FlagSpec, len(flags))
+	for _, flag := range flags {
+		byName[flag.Name] = flag
+	}
+	return &Ctx{cmd: cmd, args: args, flags: byName}
+}
+
+// Command returns the running cobra command.
+func (c *Ctx) Command() *cobra.Command { return c.cmd }
+
+// Args returns the positional arguments.
+func (c *Ctx) Args() []string { return c.args }
+
+// Str returns a flag's effective string value (explicit → alias → env →
+// default). An undeclared name yields "".
+func (c *Ctx) Str(name string) string {
+	flag, ok := c.flags[name]
+	if !ok {
+		return ""
+	}
+	return EffectiveValue(c.cmd, flag)
+}
+
+// Int returns a flag's effective integer value; an unparseable or undeclared
+// value yields 0 (BuildArgs reports the precise parse error for Invoke specs).
+func (c *Ctx) Int(name string) int {
+	flag, ok := c.flags[name]
+	if !ok {
+		return 0
+	}
+	v, err := integerValue(c.cmd, flag)
+	if err != nil {
+		return 0
+	}
+	return int(v)
+}
+
+// Bool returns a boolean flag's value.
+func (c *Ctx) Bool(name string) bool {
+	v, _ := c.cmd.Flags().GetBool(name)
+	return v
+}
+
+// StrSlice returns a list flag's effective elements (trimmed, empties dropped).
+func (c *Ctx) StrSlice(name string) []string {
+	flag, ok := c.flags[name]
+	if !ok {
+		return nil
+	}
+	return sliceValue(c.cmd, flag)
+}
+
+// Changed reports whether the user explicitly passed the flag.
+func (c *Ctx) Changed(name string) bool { return c.cmd.Flags().Changed(name) }
+
+// DryRun reports the effective global --dry-run.
+func (c *Ctx) DryRun() bool { return BoolFlag(c.cmd, "dry-run") }
+
+// Yes reports the effective global --yes.
+func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
+
 // NewCommand builds a cobra command from a CommandSpec. It is the single
-// orchestration path: flag registration → constraint declaration checks →
-// Runtime Schema projection → constraint help → PostMount → (RunE escape) →
-// generated RunE{ required → constraints → Validate → BuildArgs → ConfirmRisk →
-// Dispatch }.
+// orchestration path: dispatch declaration check → flag registration →
+// constraint declaration checks → Runtime Schema projection → constraint help →
+// PostMount → (RunE escape) → generated RunE{ required → constraints → Validate
+// → BuildArgs → ConfirmRisk → Invoke/Orchestrate }.
 //
-// Behavior matches the former helpers.NewLeafCommand with one deliberate
-// addition: that function always dispatched (Call → Server → callMCPTool), so a
-// spec without a dispatcher was impossible. Here a spec declaring neither RunE
-// nor Dispatch is a programming error and fails loudly, rather than running the
-// whole pipeline — write-confirmation prompt included — and then silently
-// exiting 0 having done nothing.
+// Behavior matches the former helpers.NewLeafCommand, which always dispatched
+// (Call → Server → callMCPTool) and therefore could not express a dispatcher-less
+// spec. Here that is a programming error caught at construction time, so a
+// malformed spec can never run the pipeline — write-confirmation prompt
+// included — and then silently exit 0 having done nothing.
 func NewCommand(spec CommandSpec) *cobra.Command {
+	validateDispatchDecl(spec)
 	cmd := &cobra.Command{
 		Use:     spec.Use,
 		Short:   spec.Short,
@@ -224,10 +304,6 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		return cmd
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if spec.Dispatch == nil {
-			return apperrors.NewInternal(fmt.Sprintf(
-				"command %q declares neither RunE nor Dispatch", spec.Use))
-		}
 		if err := ValidateRequired(cmd, spec.Flags); err != nil {
 			return err
 		}
@@ -239,6 +315,13 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 				return err
 			}
 		}
+		ctx := newCtx(cmd, args, spec.Flags)
+		if spec.Orchestrate != nil {
+			if !ConfirmRisk(cmd, spec.Risk) {
+				return apperrors.NewValidation("用户取消了操作")
+			}
+			return spec.Orchestrate(ctx)
+		}
 		toolArgs, err := BuildArgs(cmd, spec.Flags)
 		if err != nil {
 			return err
@@ -246,9 +329,31 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		if !ConfirmRisk(cmd, spec.Risk) {
 			return apperrors.NewValidation("用户取消了操作")
 		}
-		return spec.Dispatch(cmd, args, toolArgs)
+		return spec.Invoke(ctx, toolArgs)
 	}
 	return cmd
+}
+
+// validateDispatchDecl enforces "exactly one dispatcher" at build time. Like
+// ValidateConstraintDecls this panics: a spec with no runnable body (or with two
+// competing ones) is a programming error that every test and startup path should
+// trip immediately, not a condition to surface at user run time.
+func validateDispatchDecl(spec CommandSpec) {
+	declared := 0
+	if spec.RunE != nil {
+		declared++
+	}
+	if spec.Invoke != nil {
+		declared++
+	}
+	if spec.Orchestrate != nil {
+		declared++
+	}
+	if declared != 1 {
+		panic(fmt.Sprintf(
+			"command %q must declare exactly one of RunE/Invoke/Orchestrate, got %d",
+			spec.Use, declared))
+	}
 }
 
 // RegisterFlags registers every flag (plus hidden aliases and MarkFlagRequired)

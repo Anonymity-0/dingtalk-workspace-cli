@@ -61,8 +61,11 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	if cs.Risk != cmdcore.RiskHighWrite {
 		t.Fatalf("risk = %q, want high-risk-write", cs.Risk)
 	}
-	if cs.Dispatch != nil || cs.RunE != nil {
-		t.Fatal("dispatch/RunE must stay nil (multi-step Execute not modeled)")
+	if cs.Orchestrate == nil {
+		t.Fatal("multi-step Execute must project into Orchestrate")
+	}
+	if cs.Invoke != nil || cs.RunE != nil {
+		t.Fatal("only Orchestrate may be set for a shortcut projection")
 	}
 
 	if len(cs.Flags) != 5 {

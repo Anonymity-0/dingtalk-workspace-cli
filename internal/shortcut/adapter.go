@@ -14,7 +14,10 @@
 package shortcut
 
 import (
+	"fmt"
 	"strings"
+
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
@@ -31,10 +34,10 @@ import (
 // are therefore dropped by this projection — Phase 3 must extend CommandSpec (or
 // reject such specs) before wiring it in:
 //
-//   - multi-step orchestration: Shortcut.Execute(rt) uses RuntimeContext with
-//     CallMCPData/CallMCPWriteData; cmdcore's single-step Dispatch(toolArgs)
-//     cannot express it. FromShortcut therefore leaves Dispatch/RunE nil, and
-//     cmdcore.NewCommand rejects such a spec at run time rather than no-oping.
+//   - multi-step orchestration is now expressible: Shortcut.Execute(rt) is
+//     wrapped into CommandSpec.Orchestrate, so the projection is runnable. The
+//     wrapper still builds the shortcut's own RuntimeContext (which owns the MCP
+//     calls), because cmdcore stays backend-agnostic.
 //   - decline behavior: mount() returns nil when the user declines a risky
 //     shortcut, whereas cmdcore.NewCommand returns a typed validation error.
 //   - Required semantics: mount() requires the flag to be Changed (message
@@ -65,6 +68,16 @@ func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
 		Risk:        cmdcore.Risk(s.risk()),
+		// Multi-step body: cmdcore stays backend-agnostic, so the shortcut's own
+		// RuntimeContext — which owns CallMCPData/CallMCPWriteData/Output — is
+		// built here from the Ctx's command.
+		Orchestrate: func(c *cmdcore.Ctx) error {
+			if s.Execute == nil {
+				return apperrors.NewInternal(fmt.Sprintf(
+					"shortcut %s %s 未实现 Execute", s.Service, s.Command))
+			}
+			return s.Execute(&RuntimeContext{cmd: c.Command(), shortcut: s})
+		},
 	}
 }
 

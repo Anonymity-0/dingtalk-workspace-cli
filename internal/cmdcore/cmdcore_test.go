@@ -693,7 +693,7 @@ func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
 				t.Error("PostMount must run before RunE is assigned")
 			}
 		},
-		Dispatch: func(_ *cobra.Command, _ []string, toolArgs map[string]any) error {
+		Invoke: func(_ *Ctx, toolArgs map[string]any) error {
 			order = append(order, "dispatch")
 			gotArgs = toolArgs
 			return nil
@@ -727,26 +727,25 @@ func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageNewCommandRunEEscapeHatch(t *testing.T) {
+	// RunE bypasses the whole generated pipeline: the declared Required flag is
+	// left unset, so had the framework body run it would have failed validation.
 	ran := false
-	dispatched := false
 	cmd := NewCommand(CommandSpec{
 		Use:   "escape",
-		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
+		Flags: []FlagSpec{{Name: "x", Usage: "X", Required: true}},
 		RunE: func(*cobra.Command, []string) error {
 			ran = true
 			return nil
 		},
-		Dispatch: func(*cobra.Command, []string, map[string]any) error {
-			dispatched = true
-			return nil
-		},
 	})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
 	cmd.SetArgs(nil)
 	if err := cmd.Execute(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("RunE escape hatch must bypass validation, got %v", err)
 	}
-	if !ran || dispatched {
-		t.Fatalf("RunE escape hatch must win: ran=%v dispatched=%v", ran, dispatched)
+	if !ran {
+		t.Fatal("RunE escape hatch did not run")
 	}
 }
 
@@ -764,7 +763,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 			validated = true
 			return nil
 		},
-		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+		Invoke: func(*Ctx, map[string]any) error {
 			dispatched = true
 			return nil
 		},
@@ -796,7 +795,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 		Use:      "hook",
 		Flags:    []FlagSpec{{Name: "x", Usage: "X"}},
 		Validate: func(*cobra.Command, []string) error { return boom },
-		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+		Invoke: func(*Ctx, map[string]any) error {
 			dispatched = true
 			return nil
 		},
@@ -814,7 +813,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 	cmd = NewCommand(CommandSpec{
 		Use:   "args",
 		Flags: []FlagSpec{{Name: "y", Usage: "Y", Transform: func(string) (any, error) { return nil, boom }}},
-		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+		Invoke: func(*Ctx, map[string]any) error {
 			dispatched = true
 			return nil
 		},
@@ -834,7 +833,7 @@ func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
 		Use:   "risky",
 		Risk:  RiskHighWrite,
 		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
-		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+		Invoke: func(*Ctx, map[string]any) error {
 			dispatched = true
 			return nil
 		},
@@ -854,20 +853,151 @@ func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageNewCommandRejectsMissingDispatch(t *testing.T) {
-	// Neither RunE nor Dispatch is a programming error: it must fail loudly
-	// rather than run the pipeline (prompt included) and silently exit 0.
+func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.T) {
+	mustPanic := func(name string, spec CommandSpec, needle string) {
+		t.Helper()
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("%s: expected panic", name)
+			}
+			if msg, _ := r.(string); !strings.Contains(msg, needle) {
+				t.Fatalf("%s: panic = %v, want %q", name, r, needle)
+			}
+		}()
+		NewCommand(spec)
+	}
+	flags := []FlagSpec{{Name: "x", Usage: "X"}}
+
+	// Zero dispatchers: a spec with no runnable body must never reach run time,
+	// where it would have prompted for confirmation and then exited 0 doing nothing.
+	mustPanic("no dispatcher", CommandSpec{Use: "bare", Risk: RiskHighWrite, Flags: flags},
+		"must declare exactly one of RunE/Invoke/Orchestrate, got 0")
+
+	// Two competing dispatchers are equally a programming error.
+	mustPanic("two dispatchers", CommandSpec{
+		Use:         "both",
+		Flags:       flags,
+		Invoke:      func(*Ctx, map[string]any) error { return nil },
+		Orchestrate: func(*Ctx) error { return nil },
+	}, "got 2")
+	mustPanic("runE plus invoke", CommandSpec{
+		Use:    "both2",
+		Flags:  flags,
+		RunE:   func(*cobra.Command, []string) error { return nil },
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	}, "got 2")
+}
+
+func TestCrossPlatformCoverageNewCommandOrchestrateDispatch(t *testing.T) {
+	var seen struct {
+		str   string
+		n     int
+		flag  bool
+		slice []string
+		args  []string
+		dry   bool
+		yes   bool
+		chg   bool
+	}
+	t.Setenv("DWS_CMDCORE_ORCH_ENV", "from-env")
+	t.Setenv("DWS_CMDCORE_ORCH_BADINT", "not-a-number")
 	cmd := NewCommand(CommandSpec{
-		Use:   "bare",
-		Risk:  RiskHighWrite,
-		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
+		Use: "orch",
+		Flags: []FlagSpec{
+			{Name: "name", Usage: "N", Aliases: []string{"n-alias"}},
+			{Name: "env", Usage: "E", EnvVar: "DWS_CMDCORE_ORCH_ENV"},
+			{Name: "count", Usage: "C", Kind: KindInt},
+			{Name: "bad", Usage: "B", Kind: KindInt, EnvVar: "DWS_CMDCORE_ORCH_BADINT"},
+			{Name: "on", Usage: "O", Kind: KindBool},
+			{Name: "ids", Usage: "I", Kind: KindStringSlice},
+		},
+		Orchestrate: func(c *Ctx) error {
+			// Ctx accessors must honor the declared alias/env fallback chain.
+			seen.str = c.Str("name")
+			seen.n = c.Int("count")
+			seen.flag = c.Bool("on")
+			seen.slice = c.StrSlice("ids")
+			seen.args = c.Args()
+			seen.dry = c.DryRun()
+			seen.yes = c.Yes()
+			seen.chg = c.Changed("count")
+			if got := c.Str("env"); got != "from-env" {
+				t.Errorf("Ctx.Str(env) = %q, want env fallback", got)
+			}
+			if c.Command() == nil || c.Command().Use != "orch" {
+				t.Errorf("Ctx.Command() = %v", c.Command())
+			}
+			// Undeclared names resolve to zero values rather than panicking.
+			if c.Str("nope") != "" || c.Int("nope") != 0 || c.StrSlice("nope") != nil {
+				t.Error("undeclared flag must yield zero values")
+			}
+			// An unparseable effective value degrades to 0 instead of erroring.
+			if got := c.Int("bad"); got != 0 {
+				t.Errorf("Ctx.Int(bad) = %d, want 0", got)
+			}
+			return nil
+		},
 	})
+	cmd.Args = cobra.ArbitraryArgs
+	cmd.PersistentFlags().Bool("dry-run", false, "")
+	cmd.PersistentFlags().Bool("yes", false, "")
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
-	// No stdin: if the pipeline reached ConfirmRisk it would block/consume input.
-	cmd.SetArgs([]string{"--x", "v"})
-	err := cmd.Execute()
-	if err == nil || !strings.Contains(err.Error(), "declares neither RunE nor Dispatch") {
-		t.Fatalf("missing-dispatch err = %v, want typed internal error", err)
+	cmd.SetArgs([]string{"--n-alias", "via-alias", "--count", "4", "--on", "--ids", " a , b ", "--yes", "pos1"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if seen.str != "via-alias" {
+		t.Fatalf("Ctx.Str(name) = %q, want alias value", seen.str)
+	}
+	if seen.n != 4 || !seen.flag || !seen.chg {
+		t.Fatalf("typed accessors = %+v", seen)
+	}
+	if !reflect.DeepEqual(seen.slice, []string{"a", "b"}) {
+		t.Fatalf("Ctx.StrSlice = %#v", seen.slice)
+	}
+	if !reflect.DeepEqual(seen.args, []string{"pos1"}) {
+		t.Fatalf("Ctx.Args = %#v", seen.args)
+	}
+	if seen.dry || !seen.yes {
+		t.Fatalf("global flags: dry=%v yes=%v", seen.dry, seen.yes)
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing.T) {
+	ran := false
+	build := func() *cobra.Command {
+		cmd := NewCommand(CommandSpec{
+			Use:         "risky-orch",
+			Risk:        RiskHighWrite,
+			Flags:       []FlagSpec{{Name: "x", Usage: "X"}},
+			Orchestrate: func(*Ctx) error { ran = true; return nil },
+		})
+		cmd.PersistentFlags().Bool("dry-run", false, "")
+		cmd.PersistentFlags().Bool("yes", false, "")
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetErr(&strings.Builder{})
+		return cmd
+	}
+	// Declining must abort before the orchestration body runs.
+	declined := build()
+	declined.SetIn(strings.NewReader("no\n"))
+	declined.SetArgs([]string{"--x", "v"})
+	if err := declined.Execute(); err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+		t.Fatalf("declined orchestrate err = %v", err)
+	}
+	if ran {
+		t.Fatal("declined orchestrate must not run the body")
+	}
+	// --yes bypasses the prompt and runs it.
+	confirmed := build()
+	confirmed.SetArgs([]string{"--x", "v", "--yes"})
+	if err := confirmed.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !ran {
+		t.Fatal("confirmed orchestrate did not run")
 	}
 }
