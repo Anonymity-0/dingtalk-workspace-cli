@@ -96,6 +96,49 @@ func TestLeafSpecCallDoesNotAssembleBusinessParams(t *testing.T) {
 	}
 }
 
+// TestLeafSpecWriteGuardHasAnnotatedPostMount enforces declare-OR-annotate:
+// Validate that calls devAppRequireWriteGuard must PostMount via devAppMetaWrite
+// (explicit runtime_gate), not a bare surface meta helper.
+func TestLeafSpecWriteGuardHasAnnotatedPostMount(t *testing.T) {
+	for _, call := range leafSpecCompositeLits(t) {
+		validate := fieldExpr(call, "Validate")
+		if validate == nil || !astCallsIdent(validate, "devAppRequireWriteGuard") {
+			continue
+		}
+		post := fieldExpr(call, "PostMount")
+		if post == nil {
+			t.Errorf("%s: write-guard Validate without PostMount; use devAppMetaWrite", call.pos)
+			continue
+		}
+		if !astCallsIdent(post, "devAppMetaWrite") {
+			t.Errorf("%s: write-guard leaf PostMount must be devAppMetaWrite(...) so confirmation is annotated", call.pos)
+		}
+	}
+}
+
+func astCallsIdent(root ast.Node, name string) bool {
+	found := false
+	ast.Inspect(root, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.CallExpr:
+			switch fun := x.Fun.(type) {
+			case *ast.Ident:
+				if fun.Name == name {
+					found = true
+					return false
+				}
+			case *ast.SelectorExpr:
+				if fun.Sel.Name == name {
+					found = true
+					return false
+				}
+			}
+		}
+		return !found
+	})
+	return found
+}
+
 type leafSpecLit struct {
 	pos string
 	lit *ast.CompositeLit

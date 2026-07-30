@@ -49,6 +49,13 @@ const (
 	runtimeSchemaFlagRequiredAnnotation     = "dws.schema.required"
 	runtimeSchemaFlagRequiredWhenAnnotation = "dws.schema.required_when"
 	runtimeSchemaFlagExampleAnnotation      = "dws.schema.example"
+
+	// Contract surface (cmdcore / LeafSpec) embedded onto the live Cobra leaf so
+	// Schema generation can project parameters/constraints/Risk without a second
+	// source of truth. See docs/flag-help-schema-homology.md.
+	runtimeSchemaContractAnnotation   = "dws.schema.contract"
+	runtimeSchemaRiskAnnotation       = "dws.schema.risk"
+	runtimeSchemaRuntimeGateAnnotation = "dws.schema.runtime_gate"
 )
 
 // RuntimeSchemaConstraints describes cross-parameter rules that cannot be
@@ -304,6 +311,123 @@ func AnnotateRuntimeFlagExample(cmd *cobra.Command, flagName, example string) {
 	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
 		setFlagAnnotation(flag, runtimeSchemaFlagExampleAnnotation, strings.TrimSpace(example))
 	}
+}
+
+// AnnotateRuntimeContract marks a command as carrying a cmdcore/LeafSpec
+// Contract surface. Schema assembly treats embedded flag annotations and, when
+// set, AnnotateRuntimeRisk as Contract-authored facts (path A homology).
+func AnnotateRuntimeContract(cmd *cobra.Command) {
+	if cmd == nil {
+		return
+	}
+	setRuntimeCommandAnnotation(cmd, runtimeSchemaContractAnnotation, "cmdcore")
+}
+
+// AnnotateRuntimeRisk records the Contract Risk string (read|write|high-risk-write)
+// for Schema Safety projection. Empty risk is a no-op so write-guard leaves that
+// leave Risk unset keep reviewed hint safety.
+func AnnotateRuntimeRisk(cmd *cobra.Command, risk string) {
+	if cmd == nil {
+		return
+	}
+	risk = strings.TrimSpace(risk)
+	if risk == "" {
+		return
+	}
+	AnnotateRuntimeContract(cmd)
+	setRuntimeCommandAnnotation(cmd, runtimeSchemaRiskAnnotation, risk)
+}
+
+// AnnotateRuntimeGate records a non-Risk confirmation path (e.g.
+// devAppRequireWriteGuard). Homology rule: every confirmation fact is either
+// Contract-declared (Risk) or explicitly annotated (this gate / reviewed hints).
+func AnnotateRuntimeGate(cmd *cobra.Command, gate string) {
+	if cmd == nil {
+		return
+	}
+	gate = strings.TrimSpace(gate)
+	if gate == "" {
+		return
+	}
+	AnnotateRuntimeContract(cmd)
+	setRuntimeCommandAnnotation(cmd, runtimeSchemaRuntimeGateAnnotation, gate)
+}
+
+// RuntimeContractRisk returns the Contract Risk annotation when present.
+func RuntimeContractRisk(cmd *cobra.Command) (string, bool) {
+	if cmd == nil || cmd.Annotations == nil {
+		return "", false
+	}
+	risk := strings.TrimSpace(cmd.Annotations[runtimeSchemaRiskAnnotation])
+	if risk == "" {
+		return "", false
+	}
+	return risk, true
+}
+
+// RuntimeContractGate returns the annotated runtime confirmation gate when present.
+func RuntimeContractGate(cmd *cobra.Command) (string, bool) {
+	if cmd == nil || cmd.Annotations == nil {
+		return "", false
+	}
+	gate := strings.TrimSpace(cmd.Annotations[runtimeSchemaRuntimeGateAnnotation])
+	if gate == "" {
+		return "", false
+	}
+	return gate, true
+}
+
+// HasDeclaredOrAnnotatedConfirmation reports whether confirmation semantics are
+// covered by Contract Risk or an explicit runtime_gate annotation.
+func HasDeclaredOrAnnotatedConfirmation(cmd *cobra.Command) bool {
+	if _, ok := RuntimeContractRisk(cmd); ok {
+		return true
+	}
+	_, ok := RuntimeContractGate(cmd)
+	return ok
+}
+
+// applyContractRiskToSafety overlays Schema Safety fields from an embedded
+// Contract Risk value. Path A: Contract wins effect/risk/confirmation for the
+// managed surface; other Safety fields (e.g. idempotency) are preserved.
+func applyContractRiskToSafety(base SafetySpec, contractRisk string) SafetySpec {
+	out := base
+	switch strings.TrimSpace(contractRisk) {
+	case "write":
+		out.Effect = "write"
+		out.EffectSource = "cmdcore.contract"
+		out.Risk = "medium"
+		out.Confirmation = "user_required"
+	case "high-risk-write":
+		out.Effect = "destructive"
+		out.EffectSource = "cmdcore.contract"
+		out.Risk = "high"
+		out.Confirmation = "user_required"
+	case "read":
+		out.Effect = "read"
+		out.EffectSource = "cmdcore.contract"
+		out.Risk = "low"
+		out.Confirmation = "not_required"
+	}
+	return out
+}
+
+// applyContractGateToSafety ensures a write-guard annotation cannot leave Schema
+// claiming confirmation is not required. Reviewed effect/risk are kept when set.
+func applyContractGateToSafety(base SafetySpec, gate string) SafetySpec {
+	out := base
+	if strings.TrimSpace(gate) == "" {
+		return out
+	}
+	out.Confirmation = "user_required"
+	if out.Effect == "" || out.Effect == "read" {
+		out.Effect = "write"
+		out.EffectSource = "cmdcore.contract_gate"
+	}
+	if out.Risk == "" || out.Risk == "low" {
+		out.Risk = "medium"
+	}
+	return out
 }
 
 // AnnotateRuntimeConstraints records command-level parameter relationships.

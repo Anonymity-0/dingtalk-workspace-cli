@@ -1,11 +1,17 @@
 # RFC：将 DWS 命令执行收敛到一套类型化契约
 
-- **状态**：draft v5，征求设计评审
+- **状态**：draft v5.1，征求设计评审
 - **范围**：`internal/cmdcore`、`internal/helpers`（`LeafSpec`）、`internal/shortcut`
 - **实现基线**：PR #830 的 `6fb08c9e`
 - **应丢弃的原型**：`0f08484d`（`Invoke` / `Orchestrate` / `Ctx`）
+- **同源决策**：[`flag-help-schema-homology.md`](flag-help-schema-homology.md)（路径 A：Contract 权威）
+- **框架声明定义**：本文 **§5.0**（今日 `CommandSpec`/`LeafSpec` 与目标 `Contract`）
 
 本文档取代收敛方案的前三版草案。它保留了 PR #830 中有价值的部分——一份声明同时驱动运行时校验、Runtime Schema 和帮助信息，外加严格的漂移门禁——但不把原型提交引入的派发 API 固化下来。
+
+v5.1 的变更：
+
+- **flag / help / schema 同源**已拍板为路径 A：Contract / LeafSpec 为 CLI 表面权威，且 **必须经 cobra 注解嵌入 Schema 生成物**（`dws.schema.contract` / property / type / required / constraints / 显式 `dws.schema.risk`）。`schema_mcp_metadata` 只做 interface 同源，不得生成 flag。身份/selection 继续评审源。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md)。
 
 v5 的变更，全部来自第二轮独立评审并经过代码级复核。它们修的是 v4 自己引入的规范矛盾，因此逐条列出而不是折进正文：
 
@@ -32,7 +38,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 
 > 收敛到一套可执行的 CLI **契约**，而不是一个万能结构体，也不是「一次后端调用」与「多次后端调用」之间的区分。
 
-声明与执行在**框架边界**处分离，而不是靠强迫每条命令各自持有一个 Handler 来分离。一条受管命令声明的是 CLI 表面、校验规则，以及——当它只有一次后端调用时——调用绑定。固定流水线由框架执行。只有在控制流无法声明时才存在命令式 `Handler`。MCP 载荷绑定与响应投影都不放在 `cmdcore` 内。裸 Cobra 命令被明确排除在受管命令保证之外。现存裸命令通过清单方式豁免；只有新增的裸注册才需要迁移元数据。
+声明与执行在**框架边界**处分离，而不是靠强迫每条命令各自持有一个 Handler 来分离（定义见 **§5.0**）。一条受管命令声明的是 CLI 表面、校验规则，以及——当它只有一次后端调用时——调用绑定；执行钩子不得充当第二套表面权威。固定流水线由框架执行。只有在控制流无法声明时才存在命令式 `Handler`。MCP 载荷绑定与响应投影都不放在 `cmdcore` 内。裸 Cobra 命令被明确排除在受管命令保证之外。现存裸命令通过清单方式豁免；只有新增的裸注册才需要迁移元数据。
 
 ---
 
@@ -53,6 +59,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 13. 每一次受管的后端/输出副作用都必须由调用级许可（permit）把关；不要把裸输入流或裸后端 helper 暴露给受管 Handler。
 14. 保持遗留行为 bug-for-bug 兼容，**除非**该行为本身是正确性缺陷。§3.4 的非交互确认要在差分门禁能够要求它之前修好，因为兼容门禁会保护它所度量的一切。
 15. 把「没有可用的交互输入」当作一种独立的确认结果，与接受和拒绝都不同。
+16. **flag / help / schema 参数面同源取路径 A，且 Contract 必须嵌入 Schema**：Contract（LeafSpec 门面）经 `cmdcore.NewCommand` 写入 cobra Schema 注解，供 catalog/agent metadata 组装消费；MCP meta 不得创建 CLI flag；1:1 MCP 透传仅作可选子集。**硬规则**：每份 help/Schema 事实须 **声明 OR 人工标注**，禁止纯推断。**声明** = `LeafSpec`/`CommandSpec` 数据字段（`Flags`/`Constraints`/非空 `Risk`/…），钩子不算声明；未设 `Risk` 的写命令须 `runtime_gate` 标注。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.1–§1.3。
 16. 让 dry-run 输出与 `@file`/stdin 输入成为声明式的契约能力，而不是逐 handler 的代码，这样覆盖率就是框架的属性，而不依赖作者自觉。
 17. 从 M1 起要求新命令使用新核心，使框架在 Shortcut 分批迁移之前就已改善代码库。
 18. 把 LeafSpec 已上线的 `Bind → Call → callMCPTool` 路径视为「声明可以完成执行」的存在性证明：27 个源声明 / 28 条上线命令，生产环境 `RunE` 用量为零。Shortcut 应当获得同样的绑定词汇，而不是把每个 `Execute` 都包成 Handler。
@@ -258,9 +265,95 @@ Definition（仅声明；不可编译）
 
 形态 1 和 2 正是 LeafSpec 已经在全部 28 条上线命令上交付的东西（形态 1；生产环境尚无响应投影器）。形态 3 保留给 21 条多步与 10 条纯本地 Shortcut，以及未来任何提示内容或调用扇出无法声明的命令。
 
+### 5.0 框架上的「声明」定义（今日实现 + 目标 Contract）
+
+本节把「声明」钉在**命令框架**上，而不仅在同源文档里。**Schema 叶子（`cli.ToolSpec`）的每一个字段组都必须在本节有权威归属**——声明、标注、评审源或组装派生物；不得出现「Schema 有、框架未定义谁写」的空洞。字段级细节见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.2–§1.4。
+
+#### 5.0.1 三层分工（加评审源）
+
+| 层 | 含义 | 今日落点 | 目标落点 |
+|---|---|---|---|
+| **声明（declare）** | 结构体**数据字段**写出的 CLI 表面事实；框架据此注册、校验、确认、投影 | `cmdcore.CommandSpec` 契约字段；门面 `helpers.LeafSpec` / Shortcut 映射 | `Definition.Contract`（§5.1） |
+| **执行（execute）** | 钩子 / Handler / 派发闭包；消费已装配参数，不发明表面 | `Validate` / `Call`·`Invoke`·`Orchestrate` / `RunE` / `PostMount` | `mcpbind` 派发器或 `Handler` |
+| **标注（annotate）** | 声明字段装不下时的显式补充；禁止推断 | `cli.AnnotateRuntime*` / `runtime_gate` / 手写 cobra 注解 | 同左；受管命令优先升格进 Contract |
+| **评审源（reviewed）** | 非 Contract、但经评审的 Schema 权威（identity / selection / interface / 部分 Safety） | `schema_command_registry`、`schema_hints/*`、`schema_mcp_metadata`、dry-run registry | 同左；不得创建 CLI flag |
+
+硬规则：
+
+1. **CLI 表面事实**（parameters 形状、约束、confirmation/effect 中由执行路径决定的部分）：**声明 OR 标注**；钩子不算声明。
+2. **非 CLI 表面的 Schema 字段**（identity、selection、interface_*）：必须有**评审源**，不得从 MCP/执行体推断出 CLI flag，也不得用 Contract 偷换 registry 身份。
+
+#### 5.0.2 今日契约字段（`CommandSpec` / `LeafSpec`）
+
+下列字段**是**框架声明面（经 `cmdcore.NewCommand` 生效并嵌入 `dws.schema.*`）：
+
+- `Flags`（含 Name/Kind/Default/Required/MarkRequired/Usage 等注册面）
+- `Constraints`
+- **非空** `Risk`（空值 = 运行时当只读确认，且**不**嵌入 `dws.schema.risk`）
+- `ConstParams`（载荷声明；不上用户 flag 表）
+- `Use` / `Short` / `Long` / `Example`（cobra help；**不是** Schema canonical identity）
+
+下列字段**不是**声明面（编排 / 执行）：
+
+- `Validate`、`PostMount`、`Call` / `Invoke` / `Orchestrate`、`RunE`
+- Leaf 的 `Server` / `Tool`（路由；Schema interface 另由 MCP meta / bindings 表达）
+
+验收（框架门禁，而非口头约定）：
+
+1. 业务 flag 只出现在 `Flags`（或领域工具注入 + 同源允许的 annotate），不在 `PostMount`/`Validate` 里 `Flags().String`；
+2. 业务参数只由 `Flags`/`ConstParams` 装配，不在 `Call`/`Execute` 里 `params[k]=…`；
+3. 写副作用：要么非空 `Risk`（框架 `ConfirmRisk` + Schema overlay），要么显式 `runtime_gate` 标注（今日 write-guard）；二者皆无则不合格；
+4. Schema `ToolSpec` 全字段组均落在 §5.0.4 表中某一权威格，禁止无主字段。
+
+#### 5.0.3 与目标 `Contract` 的对应
+
+```text
+今日 LeafSpec / CommandSpec.Flags|Constraints|Risk|…
+        ≈  目标 Definition.Contract
+今日 Call / Invoke / Orchestrate / RunE
+        ≈  目标 mcpbind 派发 或 Handler（形态 1/2/3）
+今日 Validate / PostMount
+        ≈  目标 Validators / 收窄后的挂载钩子（不得再充当第二套 flag 权威）
+```
+
+收敛不得把「声明」偷换成「每个命令一个 Handler」：声明覆盖度以**数据字段**衡量；执行体是扩展点，不是声明的替代品（§3.5）。
+
+#### 5.0.4 Schema 全覆盖：`ToolSpec` 字段权威（命令框架视角）
+
+以下对照 `internal/cli.ToolSpec`（及嵌套类型）。**每一行必须有且仅有一个写入权威类**；组装器只投影，不发明。
+
+| Schema 字段组 | 子字段 / 内容 | 权威类 | 今日写入面 | 框架声明？ |
+|---|---|---|---|---|
+| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 评审源 | `schema_command_registry`（+ reviewed manual additions） | 否（Contract 不取代 identity） |
+| **Display / Title / Description** | 产品展示名；工具 title/description | 评审源为主；cobra Short/Long 可作候选 | registry 产品名；hints/metadata / cobra help 解析 | Short/Long 可声明，但 **canonical 文案不以 Contract 胜 identity** |
+| **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
+| | `description`（usage 文案） | 声明 usage；hints 可 overlay 文案 | `FlagSpec.Usage`；`schema_hints/metadata` 仅补 description | usage **是**；overlay 不得改 type/required/default |
+| | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
+| | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍 hints/手工；目标进 Contract / reviewed 约束 | 有则须 declare 或 reviewed annotate |
+| | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
+| **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
+| **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
+| **Safety** | `effect`, `risk`, `confirmation` | **声明**（非空 `Risk`）**或标注**（`runtime_gate`）或迁移期 reviewed Safety | `Risk` / `AnnotateRuntimeGate` / `schema_hints/metadata` safety | 写路径必须 declare 或 annotate；空 Risk 不嵌入 |
+| | `idempotency` | 评审源（或未来 Contract） | reviewed metadata | 今日非框架声明；不得推断 |
+| | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
+| **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |
+| **Interface** | `interface_mode`, `interface_ref`, `availability`, `reason` | 评审源 | MCP meta + agent metadata 解析 | 否；与 CLI Identity 分离 |
+| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 评审源 | `schema_hints/selection` | 否 |
+| **FieldProvenance** | 各字段 winner / candidates | 组装派生物 | Schema 组装器 | 派生；须与 delivered value 一致 |
+| **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | hints / embedded MCP / resolver | 不构成 CLI 表面 |
+| **ConstParams**（框架有、Schema parameters 无） | 固定 toolArgs | **声明**（载荷） | `ConstParams` | **是**（故意不上 parameter 表） |
+
+产品级 Schema（`ProductSpec` 的 description / selection）权威在 registry + selection hints，**不在**单命令 Contract。
+
+冲突规则（路径 A）：
+
+- parameters 的 type / required / default / name 集合：**Contract/cobra 胜** hints 与 MCP；
+- Safety 的 confirmation/effect：非空 Contract `Risk` 胜；否则 `runtime_gate` 胜「假装 not_required」；再否则 reviewed Safety；
+- Identity / Selection / Interface：**评审源胜**，Contract 不得改写 canonical path 或发明 RPC。
+
 ### 5.1 Definition、Contract 与 Handler
 
-下面的 API 草图固定包边界；具体命名可在实现阶段调整。
+下面的 API 草图固定包边界；具体命名可在实现阶段调整。`Contract` 即 §5.0 声明面的目标形态。
 
 ```go
 // Definition 仅是声明。它没有 Handler 字段，因此「已声明但没有执行所有者」
@@ -1051,7 +1144,7 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 | 非 Shortcut 受管定义的 Cobra 命令 Hidden | 可执行 Contract | 挂载的命令可见性与声明匹配 |
 | Shortcut 列表成员资格与语义 disposition | 经评审的 Shortcut 可见性解析器 | public/all 列表成员资格与经评审决策匹配 |
 | Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
-| 运行时 Risk 与确认 | 可执行 Contract，经评审的安全批准 | 经评审的 risk 与可执行 risk 不能不一致 |
+| 运行时 Risk 与确认 | 可执行 Contract（非空 `Risk`）或显式 annotate（如 `runtime_gate`）；见 §5.0 | 不得靠推断；空 Risk 不嵌入 schema risk；写命令须 Risk 或 gate |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
 | Agent 选择文案（`use_when`、`avoid_when`、摘要） | 经评审的 hints/catalog | 身份解析到活契约 |
 
@@ -1660,10 +1753,11 @@ PR #830 可携带 RFC 供评审，但不得把 `Invoke`/`Orchestrate` 原型原�
 - 每条命令式规则由稳定 RuleID 恰好认领一次并被测试；
 - 每个 PostMount 能力有具名表示，或留在显式裸清单中；`PostMount` 不得注册业务 flag；
 - 新旧 Shortcut 执行器回滚经测试，且遗留执行器可移除；
-- Runtime Schema 权威按字段文档化，冲突失败闭合；
+- Runtime Schema 权威按字段文档化，冲突失败闭合；受管命令满足同源文档中的 `HOM-P*` / `HOM-S*` / `HOM-I1` / `HOM-D1`（或等价门禁）；
 - 启动、构造、编译与按调用性能预算通过，**包括 §M4 的绝对冷启动/二进制大小/峰值 RSS 上限**，而不只是逐 PR 相对阈值；
 - 全部必需本地与远程门禁为绿；
-- **没有 `Execute`/`Call` 函数体只为装配参数而存在**：可声明的 flag→载荷、常量、包含策略、表面元数据一律走声明；门禁可证明 Call/Execute 字面量不再做 `params[k]=…` 类装配（具名工具注入如 cursor 除外）。执行体本身是一等扩展点，允许存在，不计入「残留」，不要求逐条审批理由。把 376 个 Execute 改名为 376 个 Handler 却仍只做参数装配，**不**满足本标准；反过来，保留真正的业务/投影/多步执行体**不**扣分。
+- **没有 `Execute`/`Call` 函数体只为装配参数而存在**：可声明的 flag→载荷、常量、包含策略、表面元数据一律走声明；门禁可证明 Call/Execute 字面量不再做 `params[k]=…` 类装配（具名工具注入如 cursor 除外）。执行体本身是一等扩展点，允许存在，不计入「残留」，不要求逐条审批理由。把 376 个 Execute 改名为 376 个 Handler 却仍只做参数装配，**不**满足本标准；反过来，保留真正的业务/投影/多步执行体**不**扣分；
+- **flag / help / schema 参数面同源（路径 A）**：不存在以 MCP meta 为 flag 权威的主通道；若启用 1:1 透传子集，必须满足同源文档 §5 的准入条件并与 Leaf/Shortcut 路径互斥。
 
 1195 暂定手写命令普查的迁移是后续项目，不是 Shortcut/Leaf 收敛的条件。
 
@@ -1707,3 +1801,4 @@ PR #830 可携带 RFC 供评审，但不得把 `Invoke`/`Orchestrate` 原型原�
 20. 每条门禁是否既有相对阈值又有绝对上限，还是可以被逐 PR 的小增量累积绕过（§M4）。
 21. 每一条要求「逐条对等」的门禁，其比较对象的语义是否已在别处定义；有没有哪条门禁按构造无法满足（§5.7 投影器错误归类、M5b 阶段 A）。
 22. 本 RFC 引用的每个计数，是否已由签入脚本产出，还是仍是暂定值（§3.5、§5.11）。
+23. flag / help / schema 是否仍存在第二写入者（hints 改写 type/required、MCP meta 创建 flag、Safety 与 Risk 各说各话）；同源是否被误读成「用平台 meta 生成全部 CLI」（决策 16、[`flag-help-schema-homology.md`](flag-help-schema-homology.md)）。

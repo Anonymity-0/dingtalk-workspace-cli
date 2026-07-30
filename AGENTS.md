@@ -21,6 +21,25 @@ primary paths, aliases, and navigation. Edit it only when reviewed exposure,
 identity, primary path, or aliases change; parameter, Skill, and metadata-only
 changes must not rewrite it mechanically.
 
+## Command framework declaration
+
+- Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**（含 **§5.0.4 Schema/`ToolSpec` 全覆盖**）
+- Today: `helpers.LeafSpec` → `cmdcore.CommandSpec` → `cmdcore.NewCommand`
+- **Declare** = data fields (`Flags`, `Constraints`, non-empty `Risk`, `ConstParams`, Use/Short/…)
+- **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
+- **Annotate** = explicit `dws.schema.runtime_gate` / reviewed Safety when Risk is not set
+- **Reviewed** = identity / selection / interface / dry-run / idempotency（非 Contract，不造 CLI flag）
+- Empty `Risk` does not embed `dws.schema.risk`; write commands need non-empty `Risk` or gate annotate
+- Every `cli.ToolSpec` field group must have an authority in §5.0.4 — no ownerless Schema facts
+
+## flag / help / schema homology
+
+- Decision (path A — Contract/LeafSpec is CLI-surface authority **and must embed into Schema**): `docs/flag-help-schema-homology.md`
+- Hard rule: every help/Schema fact is **declared** **or** **annotated**; never inference-only (§1.1–§1.3; framework §5.0).
+- Embed path: `cmdcore.NewCommand` → `dws.schema.*` annotations → Schema catalog assembly
+- MCP metadata must not create CLI flags; optional 1:1 passthrough is a gated subset only.
+- Planned gate IDs: `HOM-P*`, `HOM-S*`, `HOM-I1`, `HOM-D1` (see that doc §4).
+
 ## Agent Schema contract
 
 The Schema data flow is one way:

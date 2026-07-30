@@ -719,6 +719,12 @@ func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
 	if cmd.Annotations["dws.schema.constraints"] == "" {
 		t.Fatal("schema constraints not projected")
 	}
+	if cmd.Annotations["dws.schema.contract"] != "cmdcore" {
+		t.Fatalf("contract embed marker = %q", cmd.Annotations["dws.schema.contract"])
+	}
+	if got := cmd.Flags().Lookup("a").Annotations["dws.schema.property"]; len(got) == 0 || got[0] != "aKey" {
+		t.Fatalf("flag a property annotation = %#v, want aKey", cmd.Flags().Lookup("a").Annotations["dws.schema.property"])
+	}
 
 	cmd.SetArgs([]string{"--a", "v"})
 	if err := cmd.Execute(); err != nil {
@@ -1005,6 +1011,42 @@ func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing
 	}
 	if !ran {
 		t.Fatal("confirmed orchestrate did not run")
+	}
+}
+
+func TestNewCommandEmbedsContractRiskIntoSchema(t *testing.T) {
+	cmd := NewCommand(CommandSpec{
+		Use:  "wipe",
+		Risk: RiskHighWrite,
+		Flags: []FlagSpec{
+			{Name: "id", Usage: "ID", Required: true, Bind: "versionId", Kind: KindString},
+			{Name: "count", Usage: "N", Kind: KindInt, Default: "1"},
+		},
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	})
+	if cmd.Annotations["dws.schema.risk"] != string(RiskHighWrite) {
+		t.Fatalf("risk annotation = %q", cmd.Annotations["dws.schema.risk"])
+	}
+	id := cmd.Flags().Lookup("id")
+	if id.Annotations["dws.schema.required"][0] != "true" {
+		t.Fatalf("id required annotation = %#v", id.Annotations["dws.schema.required"])
+	}
+	if id.Annotations["dws.schema.type"][0] != "string" {
+		t.Fatalf("id type = %#v", id.Annotations["dws.schema.type"])
+	}
+	if cmd.Flags().Lookup("count").Annotations["dws.schema.type"][0] != "integer" {
+		t.Fatalf("count type = %#v", cmd.Flags().Lookup("count").Annotations["dws.schema.type"])
+	}
+	// Empty Risk must not stamp a read default that would clobber write-guard leaves.
+	plain := NewCommand(CommandSpec{
+		Use:    "list",
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	})
+	if _, ok := plain.Annotations["dws.schema.risk"]; ok {
+		t.Fatal("empty Risk must not embed dws.schema.risk")
+	}
+	if plain.Annotations["dws.schema.contract"] != "cmdcore" {
+		t.Fatal("contract marker still required when Risk empty")
 	}
 }
 

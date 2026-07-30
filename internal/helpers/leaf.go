@@ -19,26 +19,28 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
 
-// leaf.go 是叶子命令的统一构建框架。
+// leaf.go 是叶子命令的统一构建框架（命令框架的 Leaf 门面）。
 //
-// 现状问题：每个叶子命令手写 cobra.Command，required 校验、别名回退、环境
-// 变量回退、值转换、参数装配、派发调用在各个产品文件里各写一份，行为难以
-// 保持一致。LeafSpec 把这些共性收敛为声明式结构：命令只声明「flag 集合 +
-// 绑定关系」，框架统一执行。默认派发走 MCP 直连（callMCPTool）；非 MCP
-// 命令（如 devapp 走 executor.Runner）通过 LeafSpec.Call 注入自己的派发器，
-// 复用同一套 flag/校验/装配逻辑。复杂命令可通过 LeafSpec.RunE 完全自定义
-// （逃生舱），不在框架适用范围内强行套用。
+// 声明 vs 执行（框架规则，详见 RFC §5.0 / 同源文档 §1.2）：
 //
-// 收敛纪律（Phase 2）：flag 注册、有效值回退链、required 校验、约束校验/声明
-// 检查、Risk 写确认、toolArgs 装配、Runtime Schema 投影、帮助渲染与编排顺序
-// 均已下沉到 internal/cmdcore：本文件不再自行编排，NewLeafCommand 只做
-// LeafSpec→cmdcore.CommandSpec 的映射（FromLeafSpec），并把 dispatch
-// （callMCPTool/callMCPToolOnServer/Call）作为闭包交给统一构建器。
-// 等价性由 check-generated-drift（catalog 零漂移，覆盖构建期投影）与
-// leaf/risk/约束单测（覆盖运行期流水线）共同兜底。
+//   - 声明 = LeafSpec 数据字段：Flags、Constraints、非空 Risk、ConstParams、
+//     Use/Short/Long/Example。经 FromLeafSpec → cmdcore.NewCommand 注册并
+//     嵌入 dws.schema.*。
+//   - 执行 = Validate / Call / RunE / PostMount。钩子消费已装配参数，不得
+//     发明 CLI 表面（业务 flag/params）。
+//   - 标注 = 声明字段装不下时的显式注解（如 write-guard 的 runtime_gate）。
 //
-// 迁移纪律：从手写命令迁移到 LeafSpec 时，flag 名、默认值、usage 文案、
-// MarkFlagRequired、required 错误格式、toolArgs 键与值必须逐字保持一致。
+// LeafSpec 把共性收敛为声明式结构：命令声明 flag 集合与绑定，框架统一校验、
+// 装配与投影。默认派发走 MCP 直连；非 MCP 命令通过 Call 注入派发器。复杂
+// 命令可用 RunE 逃生舱。
+//
+// 收敛纪律（Phase 2）：flag 注册、有效值回退链、required/约束、Risk 写确认、
+// toolArgs 装配、Schema 投影与帮助渲染均在 internal/cmdcore；本文件只做
+// LeafSpec→CommandSpec 映射与 dispatch 闭包。等价性由 catalog 漂移门禁与
+// leaf/risk/约束单测共同兜底。
+//
+// 迁移纪律：迁入 LeafSpec 时 flag 名、默认值、usage、MarkFlagRequired、
+// required 错误格式、toolArgs 键与值必须逐字保持一致。
 
 // LeafFlagKind 是 flag 的值类型（cmdcore.FlagKind 的别名）。
 type LeafFlagKind = cmdcore.FlagKind
@@ -92,9 +94,13 @@ const (
 // 同时投影到 Agent Runtime Schema 并渲染进 --help 的「参数约束」段。
 type LeafConstraint = cmdcore.Constraint
 
-// LeafSpec 声明一个 MCP 直连叶子命令。契约字段（Flags/Constraints/Risk）由
-// cmdcore 共享基座统一处理；dispatch 字段（Server/Tool/Call/RunE）与
-// PostMount/Validate 编排逻辑留在 helpers。
+// LeafSpec 是命令框架的 Leaf 声明门面（映射为 cmdcore.CommandSpec）。
+//
+// 声明面（数据字段）：Flags、Constraints、非空 Risk、ConstParams、
+// Use/Short/Long/Example。空 Risk 不嵌入 dws.schema.risk；写副作用须非空
+// Risk 或 PostMount/手写路径上的显式 runtime_gate 标注。
+//
+// 执行面（不算声明）：Validate、Call、RunE、PostMount；Server/Tool 仅路由。
 type LeafSpec struct {
 	Use     string
 	Short   string
@@ -102,43 +108,36 @@ type LeafSpec struct {
 	Example string
 
 	// Server 非空时走 callMCPToolOnServer（显式 server 路由），否则走
-	// callMCPTool（按 product 路由）。Call 非空时两者都被忽略。
+	// callMCPTool（按 product 路由）。Call 非空时两者都被忽略。不是 CLI 声明。
 	Server string
 	Tool   string
 	Flags  []LeafFlag
 	// Constraints 是跨 flag 的关系约束（至少一个 / 恰好一个 / 互斥），由
 	// cmdcore 统一校验并投影到 Runtime Schema 与 --help。复杂的条件式校验
-	// 仍放 Validate 钩子。
+	// 仍放 Validate 钩子（钩子本身不是约束声明）。
 	Constraints []LeafConstraint
 
-	// Risk 声明副作用等级，驱动执行前的写确认（对齐 shortcut 框架的
-	// Risk 语义）。默认 LeafRiskRead：只读，从不提示。LeafRiskWrite /
-	// LeafRiskHighWrite 在未加 --yes 且非 --dry-run 时提示确认，用户拒绝
-	// 则中止且不派发。
+	// Risk 声明副作用等级，驱动 ConfirmRisk（对齐 shortcut）。非空时嵌入
+	// dws.schema.risk。空值运行时当只读且不嵌入 schema risk。
 	Risk LeafRisk
 
 	// ConstParams 是与 flag 无关的固定载荷（如 precheckOnly），在 flag 装配
-	// 之后并入 toolArgs。它们从不满足 Required。
+	// 之后并入 toolArgs。载荷声明，不上用户 flag 表；从不满足 Required。
 	ConstParams map[string]any
 
-	// Call 是执行体切面：非空时替代默认的 callMCPTool/callMCPToolOnServer。
-	// 供非 MCP 直连命令（如 devapp 走 executor.Runner）注入派发与响应处理。
-	// 收到的 toolArgs 已由 Flags/ConstParams 装配完成；Call 不应再写业务参数。
-	// 分页等横切能力由领域工具（如 devAppCallCursor）在执行侧处理，不进声明。
+	// Call 是执行体：非空时替代默认 MCP 派发。toolArgs 已由 Flags/ConstParams
+	// 装配完成；Call 不应再写业务参数。分页等横切由领域工具处理，不进声明。
 	Call func(cmd *cobra.Command, tool string, args map[string]any) error
 
-	// Validate 是跨 flag 校验钩子（如时间区间、互斥关系），在 required
-	// 校验之后、toolArgs 装配之前执行；nil 时跳过。单 flag 的格式转换
-	// 应放在 LeafFlag.Transform，不要放进 Validate。
+	// Validate 是编排钩子（条件式校验），不是声明面。单 flag 转换用
+	// LeafFlag.Transform；可声明的互斥/至少一个应写 Constraints。
 	Validate func(cmd *cobra.Command, args []string) error
 
-	// RunE 非空时完全自定义执行体（逃生舱），框架只负责注册 flag。
+	// RunE 非空时完全自定义执行体（逃生舱）；表面事实仍须 Flags 声明或 annotate。
 	RunE func(cmd *cobra.Command, args []string) error
 
-	// PostMount 在 flag 注册完成之后、RunE 设定之前对构建好的 cmd 做最终
-	// 调整（设置 Args/DisableAutoGenTag、调用 annotate/preferLegacy 等）。
-	// 业务 flag 必须写在 Flags 里；分页 flag 由领域工具在 PostMount 注入，
-	// 不作为 LeafSpec 声明字段。
+	// PostMount 是挂载收尾钩子（annotate/领域工具等），不是声明面。
+	// 业务 flag 必须写在 Flags；分页由领域工具注入。
 	PostMount func(cmd *cobra.Command)
 }
 

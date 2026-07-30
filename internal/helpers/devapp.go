@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
@@ -286,7 +287,7 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppEventSubscribeTool),
+		PostMount: devAppMetaWrite(devAppEventSubscribeTool),
 	})
 }
 
@@ -313,7 +314,7 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppEventUnsubscribeTool),
+		PostMount: devAppMetaWrite(devAppEventUnsubscribeTool),
 	})
 }
 
@@ -382,7 +383,7 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppCreateTool),
+		PostMount: devAppMetaWrite(devAppCreateTool),
 	})
 }
 
@@ -412,7 +413,7 @@ func newDevAppUpdateCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppUpdateTool),
+		PostMount: devAppMetaWrite(devAppUpdateTool),
 	})
 }
 
@@ -453,7 +454,7 @@ func newDevAppLifecycleCommand(runner executor.Runner, use, short, tool string) 
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(tool),
+		PostMount: devAppMetaWrite(tool),
 	})
 }
 
@@ -511,6 +512,7 @@ func newDevAppDeleteCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("confirm-name", "", "二次确认：必须与被删应用的名称一致（不可逆操作的防误删）")
 	preferLegacyLeaf(cmd)
 	annotateDevAppTool(cmd, devAppDeleteTool)
+	cli.AnnotateRuntimeGate(cmd, devAppWriteGuardGate)
 	return cmd
 }
 
@@ -600,7 +602,7 @@ func newDevAppWebappConfigCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppWebappSetTool),
+		PostMount: devAppMetaWrite(devAppWebappSetTool),
 	})
 }
 
@@ -654,7 +656,7 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppPermissionAddTool),
+		PostMount: devAppMetaWrite(devAppPermissionAddTool),
 	})
 }
 
@@ -681,7 +683,7 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppPermissionRmTool),
+		PostMount: devAppMetaWrite(devAppPermissionRmTool),
 	})
 }
 
@@ -731,7 +733,7 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppMemberAddTool),
+		PostMount: devAppMetaWrite(devAppMemberAddTool),
 	})
 }
 
@@ -763,7 +765,7 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppMemberRemoveTool),
+		PostMount: devAppMetaWrite(devAppMemberRemoveTool),
 	})
 }
 
@@ -797,7 +799,7 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppSecurityConfigTool),
+		PostMount: devAppMetaWrite(devAppSecurityConfigTool),
 	})
 }
 
@@ -838,6 +840,7 @@ func newDevAppRobotSubmitCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("task-id", "", "失败重试时传入原 taskId；为空时服务端自动生成")
 	preferLegacyLeaf(cmd)
 	annotateDevAppTool(cmd, devAppRobotSubmitTool)
+	cli.AnnotateRuntimeGate(cmd, devAppWriteGuardGate)
 	return cmd
 }
 
@@ -920,6 +923,7 @@ func newDevAppRobotConfigCommand(runner executor.Runner) *cobra.Command {
 	registerDevAppRobotConfigFlags(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevAppTool(cmd, devAppRobotConfigUpsertTool)
+	cli.AnnotateRuntimeGate(cmd, devAppWriteGuardGate)
 	return cmd
 }
 
@@ -944,7 +948,7 @@ func newDevAppRobotEnableCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppRobotEnableTool),
+		PostMount: devAppMetaWrite(devAppRobotEnableTool),
 	})
 }
 
@@ -967,7 +971,7 @@ func newDevAppRobotOfflineCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppRobotOfflineTool),
+		PostMount: devAppMetaWrite(devAppRobotOfflineTool),
 	})
 }
 
@@ -1101,7 +1105,7 @@ func newDevAppVersionCreateCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppVersionCreateTool),
+		PostMount: devAppMetaWrite(devAppVersionCreateTool),
 	})
 }
 
@@ -1185,7 +1189,7 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(devAppVersionPublishTool),
+		PostMount: devAppMetaWrite(devAppVersionPublishTool),
 	})
 }
 
@@ -1269,6 +1273,19 @@ func devAppCall(runner executor.Runner) func(*cobra.Command, string, map[string]
 // devAppMeta 返回纯收尾 PostMount 闭包（无额外 flag 的命令用）。
 func devAppMeta(tool string) func(*cobra.Command) {
 	return func(cmd *cobra.Command) { devAppLeafMeta(cmd, tool) }
+}
+
+// devAppWriteGuardGate is the homology annotation for leaves that confirm via
+// devAppRequireWriteGuard instead of Contract Risk (declare OR annotate).
+const devAppWriteGuardGate = "devAppRequireWriteGuard"
+
+// devAppMetaWrite is PostMount for write leaves: surface meta + explicit
+// runtime_gate annotation so Schema confirmation is never inference-only.
+func devAppMetaWrite(tool string) func(*cobra.Command) {
+	return func(cmd *cobra.Command) {
+		cli.AnnotateRuntimeGate(cmd, devAppWriteGuardGate)
+		devAppLeafMeta(cmd, tool)
+	}
 }
 
 func runDevAppTool(runner executor.Runner, cmd *cobra.Command, tool string, params map[string]any) error {

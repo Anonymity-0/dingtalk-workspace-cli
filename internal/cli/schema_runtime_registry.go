@@ -203,6 +203,11 @@ func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchem
 	paths := []string{entry.PrimaryCLIPath, entry.CLIPath, canonicalPath}
 	paths = append(paths, entry.Aliases...)
 	safety, interfaceSpec, selection, provenance, _ := agentToolContractForPathsFromMetadata(metadata.Agent, paths...)
+	if contractRisk, ok := RuntimeContractRisk(entry.Command); ok {
+		safety = applyContractRiskToSafety(safety, contractRisk)
+	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
+		safety = applyContractGateToSafety(safety, gate)
+	}
 	if metadataSource == "" && hasEmbeddedMeta {
 		metadataSource = "embedded-mcp-metadata"
 		textProvenance["metadata_source"] = runtimeSchemaFieldProvenance(
@@ -214,6 +219,49 @@ func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchem
 	}
 	for field, fieldProvenance := range textProvenance {
 		provenance[field] = fieldProvenance
+	}
+	if contractRisk, ok := RuntimeContractRisk(entry.Command); ok {
+		provenance["risk"] = resolvedFieldProvenance(
+			safety.Risk,
+			"cmdcore.contract",
+			"dws.schema.risk",
+			"reviewed_explicit",
+			"contract_risk_annotation",
+			"Contract Risk embedded on Cobra leaf ("+contractRisk+")",
+		)
+		provenance["confirmation"] = resolvedFieldProvenance(
+			safety.Confirmation,
+			"cmdcore.contract",
+			"dws.schema.risk",
+			"reviewed_explicit",
+			"contract_risk_annotation",
+			"Contract Risk embedded on Cobra leaf ("+contractRisk+")",
+		)
+		provenance["effect"] = resolvedFieldProvenance(
+			safety.Effect,
+			"cmdcore.contract",
+			"dws.schema.risk",
+			"reviewed_explicit",
+			"contract_risk_annotation",
+			"Contract Risk embedded on Cobra leaf ("+contractRisk+")",
+		)
+	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
+		provenance["runtime_gate"] = resolvedFieldProvenance(
+			gate,
+			"cmdcore.contract",
+			"dws.schema.runtime_gate",
+			"reviewed_explicit",
+			"contract_runtime_gate_annotation",
+			"Confirmation path annotated on Cobra leaf ("+gate+")",
+		)
+		provenance["confirmation"] = resolvedFieldProvenance(
+			safety.Confirmation,
+			"cmdcore.contract",
+			"dws.schema.runtime_gate",
+			"reviewed_explicit",
+			"contract_runtime_gate_annotation",
+			"Confirmation path annotated on Cobra leaf ("+gate+")",
+		)
 	}
 	provenance["canonical_path"] = entry.IdentityField
 	if dryRun != nil {

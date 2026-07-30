@@ -17,6 +17,21 @@
 // checks + runtime enforcement, Risk-driven write confirmation, toolArgs
 // assembly, and Agent Runtime Schema projection.
 //
+// Declaration vs execution (framework rule):
+//
+//   - Declare = CommandSpec data fields (Flags, Constraints, non-empty Risk,
+//     ConstParams, Use/Short/Long/Example). NewCommand registers, validates,
+//     confirms, and embeds those facts into dws.schema.*.
+//   - Execute = Validate / Invoke / Orchestrate / RunE / PostMount. Hooks
+//     consume assembled args; they must not invent the CLI surface.
+//   - Annotate = explicit cobra annotations when a fact is not (yet) a Contract
+//     field (e.g. write-guard runtime_gate). Inference-only Schema/help is
+//     forbidden.
+//   - Reviewed non-Contract Schema (identity, selection, interface_*, dry-run,
+//     idempotency) has its own sources and must not create CLI flags.
+//
+// Full ToolSpec field authority: RFC §5.0.4 / homology §1.4.
+//
 // It is deliberately dispatch-agnostic: it never calls an MCP tool. The
 // LeafSpec framework (internal/helpers) and, later, the Shortcut framework wrap
 // these primitives and supply their own dispatch (single-step MCP / multi-step
@@ -78,7 +93,7 @@ type FlagSpec struct {
 	Name    string   // flag name (kebab-case)
 	Usage   string   // registration usage text
 	Kind    FlagKind // value type, defaults to KindString
-	Default string // registration default for every Kind; also the fallback-chain tail when aliases/env are empty
+	Default string   // registration default for every Kind; also the fallback-chain tail when aliases/env are empty
 
 	// Required, when true, validates a non-empty effective value in RunE. Plain
 	// Required flags aggregate into a cmdutil.ValidateRequiredFlags-compatible
@@ -161,10 +176,17 @@ type Constraint struct {
 }
 
 // CommandSpec is the single typed definition of a leaf command, shared by the
-// LeafSpec and (via FromShortcut) Shortcut frameworks. It carries the shared
-// base (flags, constraints, risk) plus the orchestration hooks. Dispatch is a
-// property of the spec, not a separate framework, and is layered so that both
-// single-step and multi-step commands are expressible:
+// LeafSpec and (via FromShortcut) Shortcut frameworks.
+//
+// Declaration surface (data fields — the only place CLI/help/schema facts are
+// authored for managed leaves):
+//
+//	Flags, Constraints, non-empty Risk, ConstParams, Use/Short/Long/Example
+//
+// Empty Risk means runtime read confirmation (no prompt) and does NOT embed
+// dws.schema.risk; write side-effects then require an explicit annotate path.
+//
+// Execution surface (hooks — not declaration):
 //
 //   - RunE — full escape hatch: the framework only registers flags/constraints/
 //     help and hands control over.
@@ -172,10 +194,12 @@ type Constraint struct {
 //     assembly and the Risk write-confirmation, receiving the assembled toolArgs.
 //   - Orchestrate — multi-step: runs after the same checks and confirmation but
 //     receives only the Ctx, so it can chain several backend calls itself.
+//   - Validate / PostMount — orchestration only; must not register business flags
+//     or assemble business params that belong in Flags/ConstParams.
 //
-// Exactly one of the three must be set; NewCommand validates this at
-// construction time. cmdcore itself stays dispatch-agnostic and never calls a
-// backend: the adapters (FromLeafSpec / FromShortcut) supply the concrete body.
+// Exactly one of RunE / Invoke / Orchestrate must be set; NewCommand validates
+// this at construction time. cmdcore itself stays dispatch-agnostic and never
+// calls a backend: the adapters (FromLeafSpec / FromShortcut) supply the body.
 type CommandSpec struct {
 	Use     string
 	Short   string
@@ -186,11 +210,11 @@ type CommandSpec struct {
 	Constraints []Constraint
 	Risk        Risk
 	// ConstParams are fixed toolArgs merged after flag assembly (e.g. precheckOnly).
-	// They are not flags and never satisfy Required.
+	// They are payload declaration, not user flags, and never satisfy Required.
 	ConstParams map[string]any
 
 	// Validate is the cross-flag validation hook, run after required/constraint
-	// checks and before args assembly; nil skips it.
+	// checks and before args assembly; nil skips it. Not a declaration surface.
 	Validate func(cmd *cobra.Command, args []string) error
 	// PostMount adjusts the built command after flag registration and before
 	// RunE is set (Args/DisableAutoGenTag/annotate/…); always runs. Business
@@ -300,6 +324,7 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 	}
 	RegisterFlags(cmd, spec.Flags)
 	ValidateConstraintDecls(spec.Use, spec.Flags, spec.Constraints)
+	embedContractIntoSchema(cmd, spec)
 	AnnotateConstraints(cmd, spec.Constraints)
 	if help := ConstraintHelp(spec.Constraints); help != "" {
 		cmd.Long = strings.TrimRight(cmd.Long, "\n") + help
@@ -780,6 +805,43 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 		}
 	}
 	return false
+}
+
+// embedContractIntoSchema projects CommandSpec flag/Risk facts onto the live
+// Cobra leaf as native Schema annotations. Catalog generation reads those
+// annotations (native_annotation / dws.schema.risk), so flag/help/schema stay
+// Contract-homologous without MCP meta creating flags.
+func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
+	cli.AnnotateRuntimeContract(cmd)
+	if strings.TrimSpace(string(spec.Risk)) != "" {
+		cli.AnnotateRuntimeRisk(cmd, string(spec.Risk.Effective()))
+	}
+	required := make([]string, 0, len(spec.Flags))
+	for _, flag := range spec.Flags {
+		name := strings.TrimSpace(flag.Name)
+		if name == "" {
+			continue
+		}
+		requiredFlag := flag.Required || flag.MarkRequired
+		cli.AnnotateRuntimeFlag(cmd, name, strings.TrimSpace(flag.Bind), flagKindSchemaType(flag.Kind), requiredFlag, "")
+		if requiredFlag {
+			required = append(required, name)
+		}
+	}
+	cli.AnnotateRuntimeRequiredFlags(cmd, required...)
+}
+
+func flagKindSchemaType(kind FlagKind) string {
+	switch kind {
+	case KindInt:
+		return "integer"
+	case KindBool:
+		return "boolean"
+	case KindStringSlice:
+		return "array"
+	default:
+		return "string"
+	}
 }
 
 // AnnotateConstraints projects the relationship constraints into the Agent
