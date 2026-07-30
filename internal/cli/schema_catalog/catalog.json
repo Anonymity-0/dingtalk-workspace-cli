@@ -1,7 +1,7 @@
 {
   "version": 1,
   "surface_hash": "sha256:29d4f5f43688cc01bc2277a4528b597de4fbab89a7b2f13fe2e56df85d1c66c4",
-  "source_hash": "sha256:03889698dc1710eb048ebac965be3ee21b99f8df4d6338e9653bc0430a978638",
+  "source_hash": "sha256:3dcad29c4e7f0653621e9aeaf8a7ad663d1495e7c373e297f9a49a5c918af41e",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
@@ -12417,9 +12417,9 @@
         "tool_count": 34,
         "tools": [
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "向应用添加开发者或管理员成员",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "只查看现有成员时使用 dev app member list"
@@ -12429,11 +12429,15 @@
             "cli_path": "dev app member add",
             "confirmation": "user_required",
             "description": "添加开放平台应用成员",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.member",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "add_dev_app_members",
             "primary_cli_path": "dev app member add",
             "reviewed": true,
@@ -12444,9 +12448,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "为应用申请一个或多个接口权限",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "查找或核对已有权限时使用 dev app permission list"
@@ -12456,11 +12460,15 @@
             "cli_path": "dev app permission add",
             "confirmation": "user_required",
             "description": "申请开放平台应用权限点",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.permission",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "apply_dev_app_permissions",
             "primary_cli_path": "dev app permission add",
             "reviewed": true,
@@ -12525,9 +12533,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "创建钉钉开放平台应用并返回 unifiedAppId/凭证信息",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "应用已存在只需改信息时用 dev app update",
@@ -12538,11 +12546,15 @@
             "cli_path": "dev app create",
             "confirmation": "user_required",
             "description": "创建开放平台企业内部应用",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "create_dev_app",
             "primary_cli_path": "dev app create",
             "reviewed": true,
@@ -12553,9 +12565,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "为应用当前配置创建待发布版本",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "只是查看已有版本时使用 dev app version list"
@@ -12565,11 +12577,15 @@
             "cli_path": "dev app version create",
             "confirmation": "user_required",
             "description": "基于当前配置创建应用新版本",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.version",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "create_dev_app_version",
             "primary_cli_path": "dev app version create",
             "reviewed": true,
@@ -12580,9 +12596,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "删除开放平台企业内部应用（不可恢复）",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "只需临时下架时用 dev app disable",
@@ -12593,11 +12609,15 @@
             "cli_path": "dev app delete",
             "confirmation": "user_required",
             "description": "删除开放平台企业内部应用（不可逆，需 --confirm-name 二次确认）",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "destructive",
             "group": "app",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "delete_dev_app",
             "primary_cli_path": "dev app delete",
             "reviewed": true,
@@ -12608,9 +12628,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "停用指定开放平台应用",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "永久删除应用使用 dev app delete"
@@ -12620,11 +12640,15 @@
             "cli_path": "dev app disable",
             "confirmation": "user_required",
             "description": "停用开放平台企业内部应用",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "disable_dev_app",
             "primary_cli_path": "dev app disable",
             "reviewed": true,
@@ -12635,9 +12659,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "停用指定应用的机器人能力",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "停用整个应用使用 dev app disable"
@@ -12647,11 +12671,15 @@
             "cli_path": "dev app robot disable",
             "confirmation": "user_required",
             "description": "停用现有应用的机器人能力",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.robot",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "disable_dev_app_robot",
             "primary_cli_path": "dev app robot disable",
             "reviewed": true,
@@ -12662,9 +12690,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "启用指定开放平台应用",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "启用应用内机器人能力使用 dev app robot enable"
@@ -12674,11 +12702,15 @@
             "cli_path": "dev app enable",
             "confirmation": "user_required",
             "description": "启用开放平台企业内部应用",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "enable_dev_app",
             "primary_cli_path": "dev app enable",
             "reviewed": true,
@@ -12689,9 +12721,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "启用指定应用的机器人能力",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "建立本地 Stream 连接使用 dev connect"
@@ -12701,11 +12733,15 @@
             "cli_path": "dev app robot enable",
             "confirmation": "user_required",
             "description": "启用现有应用机器人能力（纯启用，无需配置字段）",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.robot",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "enable_dev_app_robot",
             "primary_cli_path": "dev app robot enable",
             "reviewed": true,
@@ -12716,9 +12752,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "获取指定开放平台应用详情",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "需要搜索或分页浏览多个应用时使用 dev app list"
@@ -12728,11 +12764,15 @@
             "cli_path": "dev app get",
             "confirmation": "not_required",
             "description": "查询开放平台企业内部应用详情",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "get_dev_app",
             "primary_cli_path": "dev app get",
             "reviewed": true,
@@ -12743,9 +12783,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "读取指定应用的客户端凭证",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "不要把凭证内容用于普通应用详情查询或写入日志"
@@ -12755,11 +12795,15 @@
             "cli_path": "dev app credentials get",
             "confirmation": "not_required",
             "description": "读取开放平台应用凭证",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.credentials",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "get_dev_app_credentials",
             "primary_cli_path": "dev app credentials get",
             "reviewed": true,
@@ -12770,9 +12814,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "获取指定应用版本的详细内容",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "查看发布进度时使用 dev app version status"
@@ -12782,11 +12826,15 @@
             "cli_path": "dev app version get",
             "confirmation": "not_required",
             "description": "查询指定版本详情",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.version",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "get_dev_app_version_detail",
             "primary_cli_path": "dev app version get",
             "reviewed": true,
@@ -12797,9 +12845,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "查询指定应用版本的发布或审批状态",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "需要版本配置详情时使用 dev app version get"
@@ -12809,11 +12857,15 @@
             "cli_path": "dev app version status",
             "confirmation": "not_required",
             "description": "查询版本发布/审批状态",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.version",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "get_dev_app_version_status",
             "primary_cli_path": "dev app version status",
             "reviewed": true,
@@ -12824,9 +12876,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "获取指定应用的机器人配置和状态",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "查询机器人建号异步任务使用 dev app robot result"
@@ -12836,11 +12888,15 @@
             "cli_path": "dev app robot get",
             "confirmation": "not_required",
             "description": "查询现有应用的机器人配置",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.robot",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "get_extension_robot_config",
             "primary_cli_path": "dev app robot get",
             "reviewed": true,
@@ -12851,9 +12907,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "获取指定应用的网页入口配置",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "修改网页入口时使用 dev app webapp config"
@@ -12863,11 +12919,15 @@
             "cli_path": "dev app webapp get",
             "confirmation": "not_required",
             "description": "查询网页应用配置",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.webapp",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "get_extension_webapp_config",
             "primary_cli_path": "dev app webapp get",
             "reviewed": true,
@@ -12878,9 +12938,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "按条件分页查询开放平台应用",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "已经持有明确 unifiedAppId 时使用 dev app get"
@@ -12890,11 +12950,15 @@
             "cli_path": "dev app list",
             "confirmation": "not_required",
             "description": "查询开放平台企业内部应用列表",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "list_dev_app",
             "primary_cli_path": "dev app list",
             "reviewed": true,
@@ -12905,9 +12969,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "列出或搜索应用可订阅的事件",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "订阅或退订事件使用对应写命令"
@@ -12917,11 +12981,15 @@
             "cli_path": "dev app event list",
             "confirmation": "not_required",
             "description": "查询应用已订阅的事件列表",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.event",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "list_dev_app_events",
             "primary_cli_path": "dev app event list",
             "reviewed": true,
@@ -12932,9 +13000,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "列出指定应用的协作成员",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "新增或移除成员使用对应 member 写命令"
@@ -12944,11 +13012,15 @@
             "cli_path": "dev app member list",
             "confirmation": "not_required",
             "description": "查询开放平台应用成员",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.member",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "list_dev_app_members",
             "primary_cli_path": "dev app member list",
             "reviewed": true,
@@ -12959,9 +13031,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "查询应用权限及其授权状态",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "新增或移除权限使用对应 permission 写命令"
@@ -12971,11 +13043,15 @@
             "cli_path": "dev app permission list",
             "confirmation": "not_required",
             "description": "查询开放平台应用权限列表",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.permission",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "list_dev_app_permissions",
             "primary_cli_path": "dev app permission list",
             "reviewed": true,
@@ -12986,9 +13062,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "分页列出应用的历史和待发布版本",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "已知版本并需详情或状态时使用 get 或 status"
@@ -12998,11 +13074,15 @@
             "cli_path": "dev app version list",
             "confirmation": "not_required",
             "description": "分页查询应用版本列表",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.version",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "list_dev_app_versions",
             "primary_cli_path": "dev app version list",
             "reviewed": true,
@@ -13013,9 +13093,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "发布开放平台应用指定版本（可先预检）",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "还没有 versionId 时先 version create / list / get",
@@ -13026,11 +13106,15 @@
             "cli_path": "dev app version publish",
             "confirmation": "user_required",
             "description": "发布指定版本（含高敏权限需 --confirmed-sensitive）",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.version",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "publish_dev_app_version",
             "primary_cli_path": "dev app version publish",
             "reviewed": true,
@@ -13041,9 +13125,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "查询机器人建号异步任务结果",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "没有建号任务时先使用 dev app robot submit"
@@ -13053,11 +13137,15 @@
             "cli_path": "dev app robot result",
             "confirmation": "not_required",
             "description": "查询机器人异步创建任务结果",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "read",
             "group": "app.robot",
             "idempotency": "idempotent",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "query_robot_create_result",
             "primary_cli_path": "dev app robot result",
             "reviewed": true,
@@ -13068,9 +13156,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "从应用移除开发者或管理员成员",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "删除应用本身或只查看成员时不要使用"
@@ -13080,11 +13168,15 @@
             "cli_path": "dev app member remove",
             "confirmation": "user_required",
             "description": "移除开放平台应用成员",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.member",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "remove_dev_app_members",
             "primary_cli_path": "dev app member remove",
             "reviewed": true,
@@ -13095,9 +13187,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "移除应用的一个或多个接口权限",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "只查看权限状态时使用 dev app permission list"
@@ -13107,11 +13199,15 @@
             "cli_path": "dev app permission remove",
             "confirmation": "user_required",
             "description": "取消开放平台应用权限点",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.permission",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "remove_dev_app_permissions",
             "primary_cli_path": "dev app permission remove",
             "reviewed": true,
@@ -13153,9 +13249,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "创建或更新应用的机器人能力配置",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "机器人建号使用 robot submit，本地建联使用 dev connect"
@@ -13165,11 +13261,15 @@
             "cli_path": "dev app robot config",
             "confirmation": "user_required",
             "description": "创建或更新现有应用的机器人配置（upsert）",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.robot",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "set_extension_robot_config",
             "primary_cli_path": "dev app robot config",
             "reviewed": true,
@@ -13180,9 +13280,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "创建或更新应用网页入口配置",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "只查看当前网页配置时使用 dev app webapp get"
@@ -13192,11 +13292,15 @@
             "cli_path": "dev app webapp config",
             "confirmation": "user_required",
             "description": "配置网页应用能力",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.webapp",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "set_extension_webapp_config",
             "primary_cli_path": "dev app webapp config",
             "reviewed": true,
@@ -13207,9 +13311,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "提交机器人建号异步任务",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "已有任务应先用 robot result 轮询，不能重复提交"
@@ -13219,11 +13323,15 @@
             "cli_path": "dev app robot submit",
             "confirmation": "user_required",
             "description": "异步提交钉钉智能体机器人创建任务（支持失败重试）",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.robot",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "submit_robot_create_task",
             "primary_cli_path": "dev app robot submit",
             "reviewed": true,
@@ -13234,9 +13342,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "为应用订阅指定事件码",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "查询事件码或已有订阅时先使用 dev app event list"
@@ -13246,11 +13354,15 @@
             "cli_path": "dev app event subscribe",
             "confirmation": "user_required",
             "description": "订阅应用事件回调",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.event",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "subscribe_dev_app_events",
             "primary_cli_path": "dev app event subscribe",
             "reviewed": true,
@@ -13261,9 +13373,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "取消应用的指定事件订阅",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "只是查看事件订阅时使用 dev app event list"
@@ -13273,11 +13385,15 @@
             "cli_path": "dev app event unsubscribe",
             "confirmation": "user_required",
             "description": "取消订阅应用事件",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.event",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "unsubscribe_dev_app_events",
             "primary_cli_path": "dev app event unsubscribe",
             "reviewed": true,
@@ -13288,9 +13404,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "更新开放平台应用名称/描述/图标等基础信息",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "创建新应用用 create；停用/启用用 disable/enable；改安全配置用 security config"
@@ -13300,11 +13416,15 @@
             "cli_path": "dev app update",
             "confirmation": "user_required",
             "description": "修改开放平台企业内部应用基础信息",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "update_dev_app",
             "primary_cli_path": "dev app update",
             "reviewed": true,
@@ -13315,9 +13435,9 @@
             ]
           },
           {
-            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_metadata_source": "cmdcore.contract",
             "agent_summary": "更新应用 IP 白名单、回调和单点登录地址",
-            "agent_summary_source": "dws-agent-selection/dev",
+            "agent_summary_source": "cmdcore.SchemaDecl",
             "availability": "available",
             "avoid_when": [
               "普通应用名称和描述更新使用 dev app update"
@@ -13327,11 +13447,15 @@
             "cli_path": "dev app security config",
             "confirmation": "user_required",
             "description": "更新开放平台应用安全配置",
+            "dry_run": {
+              "preview_kind": "invocation"
+            },
             "effect": "write",
             "group": "app.security",
             "idempotency": "unknown",
             "interface_mode": "composite",
             "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "metadata_source": "cmdcore.contract",
             "name": "update_dev_app_security_config",
             "primary_cli_path": "dev app security config",
             "reviewed": true,

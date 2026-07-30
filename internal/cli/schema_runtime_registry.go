@@ -289,37 +289,25 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 		}
 		selection = *final.Selection
 	}
+	// Declared selection provenance metadata: the declaration lives in reviewed
+	// source code, so the catalog keeps the same uniform agent_* shape as
+	// legacy-path tools. Reviewed is assembly-derived (declarations are
+	// code-reviewed by construction), never author-provided.
+	if strings.TrimSpace(selection.AgentSummarySource) == "" && strings.TrimSpace(selection.AgentSummary) != "" {
+		selection.AgentSummarySource = "cmdcore.SchemaDecl"
+	}
+	if selection.SourceRefs == nil {
+		selection.SourceRefs = []string{"cmdcore.SchemaDecl"}
+	}
+	if strings.TrimSpace(selection.MetadataSource) == "" {
+		selection.MetadataSource = "cmdcore.contract"
+	}
+	if selection.Reviewed == nil {
+		reviewed := true
+		selection.Reviewed = &reviewed
+	}
 
-	provenance := map[string]FieldProvenance{
-		"canonical_path": resolvedFieldProvenance(
-			identity.CanonicalPath,
-			"cmdcore.contract",
-			"cmdcore.SchemaDecl",
-			"contract_final",
-			"contract_pass_through",
-			"Contract final Schema identity",
-		),
-	}
-	if final.Safety != nil || safety.Confirmation != "" {
-		provenance["confirmation"] = resolvedFieldProvenance(
-			safety.Confirmation,
-			"cmdcore.contract",
-			"cmdcore.SchemaDecl",
-			"contract_final",
-			"contract_pass_through",
-			"Contract final Schema safety",
-		)
-	}
-	if final.DryRun != nil {
-		provenance["dry_run"] = resolvedFieldProvenance(
-			*final.DryRun,
-			"cmdcore.contract",
-			"cmdcore.SchemaDecl",
-			"contract_final",
-			"contract_pass_through",
-			"Contract final Schema dry_run",
-		)
-	}
+	provenance := contractFinalProvenance(identity, title, description, safety, interfaceSpec, selection, final.DryRun)
 
 	return ToolSpecFromRuntime(RuntimeToolSpecInput{
 		Identity:        identity,
@@ -336,6 +324,66 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 		Selection:       selection,
 		FieldProvenance: provenance,
 	})
+}
+
+// contractFinalProvenance records one pass-through winner per delivered field.
+// The final Schema provenance gate requires a winner for every required tool
+// field (safety/interface/agent_summary unconditionally, selection slices and
+// dry_run when present), so declared leaves must emit the full set, not only
+// the fields they happened to author.
+func contractFinalProvenance(identity ToolIdentitySpec, title, description string, safety SafetySpec, iface InterfaceSpec, selection SelectionSpec, dryRun *DryRunSpec) map[string]FieldProvenance {
+	prov := func(value any, sourceRef string) FieldProvenance {
+		return resolvedFieldProvenance(
+			value,
+			"cmdcore.contract",
+			sourceRef,
+			"contract_final",
+			"contract_pass_through",
+			"Contract final Schema pass-through",
+		)
+	}
+	out := map[string]FieldProvenance{
+		"canonical_path":  prov(identity.CanonicalPath, "cmdcore.SchemaDecl"),
+		"title":           prov(title, "cmdcore.SchemaDecl"),
+		"description":     prov(description, "cmdcore.SchemaDecl"),
+		"metadata_source": prov("cmdcore.contract", "cmdcore.SchemaDecl"),
+		"effect":          prov(safety.Effect, "cmdcore.SchemaDecl"),
+		"risk":            prov(safety.Risk, "cmdcore.SchemaDecl"),
+		"confirmation":    prov(safety.Confirmation, "cmdcore.SchemaDecl"),
+		"idempotency":     prov(safety.Idempotency, "cmdcore.SchemaDecl"),
+		"interface_mode":  prov(iface.Mode, "cmdcore.SchemaDecl"),
+		"availability":    prov(iface.Availability, "cmdcore.SchemaDecl"),
+		"agent_summary":   prov(selection.AgentSummary, "cmdcore.SchemaDecl"),
+	}
+	var ref any
+	if iface.Ref != nil {
+		ref = *iface.Ref
+	}
+	out["interface_ref"] = prov(ref, "cmdcore.SchemaDecl")
+	if strings.TrimSpace(iface.Reason) != "" ||
+		strings.TrimSpace(iface.Mode) == InterfaceModeComposite ||
+		strings.TrimSpace(iface.Availability) == InterfaceUnavailable {
+		out["interface_reason"] = prov(iface.Reason, "cmdcore.SchemaDecl")
+	}
+	for field, values := range map[string][]string{
+		"use_when":      selection.UseWhen,
+		"avoid_when":    selection.AvoidWhen,
+		"prerequisites": selection.Prerequisites,
+		"tips":          selection.Tips,
+		"workflow_refs": selection.WorkflowRefs,
+		"examples":      selection.Examples,
+	} {
+		if values != nil {
+			out[field] = prov(values, "cmdcore.SchemaDecl")
+		}
+	}
+	if selection.Reviewed != nil {
+		out["reviewed"] = prov(*selection.Reviewed, "cmdcore.SchemaDecl")
+	}
+	if dryRun != nil {
+		out["dry_run"] = prov(*dryRun, "cmdcore.SchemaDecl")
+	}
+	return out
 }
 
 // validateContractFinalIdentity guards the pass-through contract: on a bound

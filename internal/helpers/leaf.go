@@ -97,6 +97,16 @@ type LeafConstraint = cmdcore.Constraint
 // LeafSchema 是 Schema 最终载荷声明（cmdcore.SchemaDecl 别名）。
 type LeafSchema = cmdcore.SchemaDecl
 
+// SchemaDecl 嵌套类型别名（与 LeafSchema 配套使用）。
+type (
+	LeafPositionalDecl = cmdcore.PositionalDecl
+	LeafSafetyDecl     = cmdcore.SafetyDecl
+	LeafDryRunDecl     = cmdcore.DryRunDecl
+	LeafInterfaceDecl  = cmdcore.InterfaceDecl
+	LeafSelectionDecl  = cmdcore.SelectionDecl
+	LeafIdentityDecl   = cmdcore.IdentityDecl
+)
+
 // LeafSpec 是命令框架的 Leaf 声明门面（映射为 cmdcore.CommandSpec）。
 //
 // 声明面 = Schema 最终数据源：Flags（含 parameter Schema 字段）、Constraints、
@@ -123,6 +133,12 @@ type LeafSpec struct {
 	// Risk 声明副作用等级，驱动 ConfirmRisk（对齐 shortcut）。非空时嵌入
 	// dws.schema.risk 并合成 Schema.Safety。
 	Risk LeafRisk
+
+	// ConfirmFirst 为 true 时确认门先于 required/约束/Validate 校验执行
+	//（devapp 旧版写守卫语义：写命令未带 --yes 时快速失败
+	// confirmation_required，与参数完整性无关）。默认 false 保持 shortcut
+	// 顺序（先校验，后端调用前再确认）。
+	ConfirmFirst bool
 
 	// ConstParams 是与 flag 无关的固定载荷（如 precheckOnly），在 flag 装配
 	// 之后并入 toolArgs。载荷声明，不上用户 flag 表；从不满足 Required。
@@ -163,18 +179,19 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 // 自动路由。RunE 逃生舱存在时不设 Dispatch（与旧行为一致）。
 func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 	cs := cmdcore.CommandSpec{
-		Use:         spec.Use,
-		Short:       spec.Short,
-		Long:        spec.Long,
-		Example:     spec.Example,
-		Flags:       spec.Flags,
-		Constraints: spec.Constraints,
-		Risk:        spec.Risk,
-		ConstParams: spec.ConstParams,
-		Schema:      spec.Schema,
-		Validate:    spec.Validate,
-		PostMount:   spec.PostMount,
-		RunE:        spec.RunE,
+		Use:          spec.Use,
+		Short:        spec.Short,
+		Long:         spec.Long,
+		Example:      spec.Example,
+		Flags:        spec.Flags,
+		Constraints:  spec.Constraints,
+		Risk:         spec.Risk,
+		ConfirmFirst: spec.ConfirmFirst,
+		ConstParams:  spec.ConstParams,
+		Schema:       spec.Schema,
+		Validate:     spec.Validate,
+		PostMount:    spec.PostMount,
+		RunE:         spec.RunE,
 	}
 	if spec.RunE == nil {
 		cs.Invoke = func(c *cmdcore.Ctx, toolArgs map[string]any) error {

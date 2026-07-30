@@ -61,14 +61,14 @@ func TestDevAppCredentialsGetLeafDispatchesTrimmedArgs(t *testing.T) {
 	}
 }
 
-// TestDevAppLifecycleLeafWriteGuardAndArgs 验证写守卫拦截/放行 + toolArgs 装配。
+// TestDevAppLifecycleLeafWriteGuardAndArgs 验证框架确认门拦截/放行 + toolArgs 装配。
 func TestDevAppLifecycleLeafWriteGuardAndArgs(t *testing.T) {
 	r := &fakeDevAppRunner{}
-	cmd := newDevAppLifecycleCommand(r, "enable", "启用应用", devAppEnableTool)
+	cmd := newDevAppLifecycleCommand(r, "enable", "启用应用", devAppEnableTool, LeafSelectionDecl{})
 	if err := cmd.Flags().Set("unified-app-id", "APP-9"); err != nil {
 		t.Fatal(err)
 	}
-	// 无 --yes / --dry-run：写守卫必须拦下（devAppRequireWriteGuard）。
+	// 无 --yes / --dry-run：LeafRiskWrite 声明的 ConfirmRisk 必须拦下。
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("RunE() without --yes: want write-guard error, got nil")
 	}
@@ -225,11 +225,11 @@ func TestDevAppVersionPublishLeaf(t *testing.T) {
 
 // TestDevAppGetLeafDualKey 验证二选一定位键。
 func TestDevAppGetLeafDualKey(t *testing.T) {
-	// 都不传：报错。
+	// 都不传：报错（框架统一约束措辞）。
 	r := &fakeDevAppRunner{}
 	cmd := newDevAppGetCommand(r)
 	if err := cmd.RunE(cmd, nil); err == nil ||
-		!strings.Contains(err.Error(), "请传入 --unified-app-id 或 --app-key") {
+		!strings.Contains(err.Error(), "请至少指定 --unified-app-id、--app-key 之一") {
 		t.Fatalf("err = %v, want 二选一报错", err)
 	}
 	// 只 app-key：params 含 appKey，无 unifiedAppId。
@@ -315,10 +315,10 @@ func TestDevAppUpdateLeaf(t *testing.T) {
 	cmd.Flags().Bool("yes", false, "")
 	_ = cmd.Flags().Set("yes", "true")
 	_ = cmd.Flags().Set("unified-app-id", "APP-U")
-	// 全空：至少一项拦。
+	// 全空：至少一项拦（框架统一约束措辞）。
 	if err := cmd.RunE(cmd, nil); err == nil ||
-		!strings.Contains(err.Error(), "至少提供一项待更新字段") {
-		t.Fatalf("err = %v, want 至少提供一项待更新字段", err)
+		!strings.Contains(err.Error(), "请至少指定 --name、--desc、--icon-media-id 之一") {
+		t.Fatalf("err = %v, want 请至少指定 --name、--desc、--icon-media-id 之一", err)
 	}
 	_ = cmd.Flags().Set("desc", " 新描述 ")
 	if err := cmd.RunE(cmd, nil); err != nil {
@@ -376,8 +376,8 @@ func TestDevAppSecurityConfigLeaf(t *testing.T) {
 	_ = cmd.Flags().Set("unified-app-id", "APP-S")
 	// 全空：至少一项拦。
 	if err := cmd.RunE(cmd, nil); err == nil ||
-		!strings.Contains(err.Error(), "至少提供一项安全配置") {
-		t.Fatalf("err = %v, want 至少提供一项安全配置", err)
+		!strings.Contains(err.Error(), "请至少指定 --ip-whitelist、--redirect-urls、--sso-urls 之一") {
+		t.Fatalf("err = %v, want 请至少指定 --ip-whitelist、--redirect-urls、--sso-urls 之一", err)
 	}
 	// 设 ip-whitelist：注入 []string，其余省略。
 	_ = cmd.Flags().Set("ip-whitelist", "10.0.0.1; 10.0.0.2")
@@ -438,8 +438,8 @@ func TestDevAppWebappConfigLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := cmd.RunE(cmd, nil)
-	if err == nil || !strings.Contains(err.Error(), "至少提供一项网页应用配置") {
-		t.Fatalf("err = %v, want 至少提供一项网页应用配置", err)
+	if err == nil || !strings.Contains(err.Error(), "请至少指定 --h5-page-type、--homepage-url、--pc-homepage-url、--omp-url 之一") {
+		t.Fatalf("err = %v, want 请至少指定 --h5-page-type、--homepage-url、--pc-homepage-url、--omp-url 之一", err)
 	}
 
 	// 只设一项：该项入参，其余 OmitEmpty 省略。
@@ -489,7 +489,7 @@ func TestDevAppLeafToolArgsTable(t *testing.T) {
 		{"app create", newDevAppCreateCommand, map[string]string{"name": "DemoApp"}, true, devAppCreateTool, map[string]any{"name": "DemoApp"}, []string{"desc", "iconMediaId"}},
 		{"robot config get", newDevAppRobotConfigGetCommand, map[string]string{"unified-app-id": "APP-C"}, false, devAppRobotConfigGetTool, map[string]any{"unifiedAppId": "APP-C"}, nil},
 		{"lifecycle disable", func(r executor.Runner) *cobra.Command {
-			return newDevAppLifecycleCommand(r, "disable", "停用应用", devAppDisableTool)
+			return newDevAppLifecycleCommand(r, "disable", "停用应用", devAppDisableTool, LeafSelectionDecl{})
 		}, map[string]string{"unified-app-id": "APP-D"}, true, devAppDisableTool, map[string]any{"unifiedAppId": "APP-D"}, nil},
 	}
 	for _, c := range cases {

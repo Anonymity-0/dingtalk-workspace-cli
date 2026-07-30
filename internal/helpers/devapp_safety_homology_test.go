@@ -58,10 +58,11 @@ func TestDevAppWriteLeavesDeclareOrAnnotateConfirmation(t *testing.T) {
 				walk(child, path)
 				continue
 			}
-			gate, hasGate := cli.RuntimeContractGate(child)
-			if hasGate && gate != devAppWriteGuardGate {
-				t.Errorf("%s: unexpected runtime_gate %q", path, gate)
-			}
+		// devapp 全树已声明化：确认事实只能来自 Contract Risk，
+		// 任何 runtime_gate 标注都是回归（声明 > 标注，旧路径专用）。
+		if gate, hasGate := cli.RuntimeContractGate(child); hasGate {
+			t.Errorf("%s: unexpected runtime_gate %q; devapp leaves declare Contract Risk", path, gate)
+		}
 			if _, ok := want[path]; !ok {
 				continue
 			}

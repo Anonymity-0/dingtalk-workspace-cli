@@ -218,6 +218,13 @@ type CommandSpec struct {
 	Flags       []FlagSpec
 	Constraints []Constraint
 	Risk        Risk
+	// ConfirmFirst runs the Risk write-confirmation before required/constraint/
+	// Validate checks instead of after them. Use it where the legacy semantics
+	// were guard-first (a write without --yes fails fast with
+	// confirmation_required regardless of parameter completeness). The default
+	// preserves the shortcut order (checks first, confirmation just before the
+	// backend call).
+	ConfirmFirst bool
 	// ConstParams are fixed toolArgs merged after flag assembly (e.g. precheckOnly).
 	// They are payload declaration, not user flags, and never satisfy Required.
 	ConstParams map[string]any
@@ -318,8 +325,9 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 // NewCommand builds a cobra command from a CommandSpec. It is the single
 // orchestration path: dispatch declaration check → flag registration →
 // constraint declaration checks → Runtime Schema projection → constraint help →
-// PostMount → (RunE escape) → generated RunE{ required → constraints → Validate
-// → BuildArgs → ConfirmRisk → Invoke/Orchestrate }.
+// PostMount → (RunE escape) → generated RunE{ [ConfirmFirst: ConfirmRisk →]
+// required → constraints → Validate → BuildArgs → ConfirmRisk →
+// Invoke/Orchestrate }.
 //
 // Behavior matches the former helpers.NewLeafCommand, which always dispatched
 // (Call → Server → callMCPTool) and therefore could not express a dispatcher-less
@@ -349,6 +357,11 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		return cmd
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if spec.ConfirmFirst {
+			if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+				return err
+			}
+		}
 		if err := ValidateRequired(cmd, spec.Flags); err != nil {
 			return err
 		}
@@ -362,8 +375,10 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		}
 		ctx := newCtx(cmd, args, spec.Flags)
 		if spec.Orchestrate != nil {
-			if err := ConfirmRisk(cmd, spec.Risk); err != nil {
-				return err
+			if !spec.ConfirmFirst {
+				if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+					return err
+				}
 			}
 			return spec.Orchestrate(ctx)
 		}
@@ -374,8 +389,10 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		for key, value := range spec.ConstParams {
 			toolArgs[key] = value
 		}
-		if err := ConfirmRisk(cmd, spec.Risk); err != nil {
-			return err
+		if !spec.ConfirmFirst {
+			if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+				return err
+			}
 		}
 		return spec.Invoke(ctx, toolArgs)
 	}
@@ -892,9 +909,9 @@ func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
 	}
 	if schema.Interface != nil {
 		iface := &cli.InterfaceSpec{
-			Mode: strings.TrimSpace(schema.Interface.Mode),
+			Mode:         strings.TrimSpace(schema.Interface.Mode),
 			Availability: strings.TrimSpace(schema.Interface.Availability),
-			Reason: strings.TrimSpace(schema.Interface.Reason),
+			Reason:       strings.TrimSpace(schema.Interface.Reason),
 		}
 		if pid := strings.TrimSpace(schema.Interface.ProductID); pid != "" {
 			iface.Ref = &cli.InterfaceRefSpec{ProductID: pid, RPCName: strings.TrimSpace(schema.Interface.RPCName)}
@@ -908,7 +925,7 @@ func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
 		len(sel.Tips) > 0 || len(sel.WorkflowRefs) > 0 {
 		payload.Selection = &cli.SelectionSpec{
 			AgentSummary: strings.TrimSpace(sel.AgentSummary),
-			UseWhen: sel.UseWhen, AvoidWhen: sel.AvoidWhen,
+			UseWhen:      sel.UseWhen, AvoidWhen: sel.AvoidWhen,
 			Prerequisites: sel.Prerequisites, Tips: sel.Tips,
 			WorkflowRefs: sel.WorkflowRefs, Examples: sel.Examples,
 		}

@@ -621,8 +621,13 @@ func auditCompositeSchemaDisposition(canonical string, tool map[string]any) []st
 	provenance := schemaMap(tool["field_provenance"])
 	for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
 		entry := provenance[field]
-		if strings.TrimSpace(schemaString(entry["precedence"])) != "reviewed_explicit" {
-			problems = append(problems, fmt.Sprintf("%s composite %s is not backed by reviewed_explicit provenance", canonical, field))
+		// A composite disposition must be backed by an explicit authoritative
+		// source: legacy reviewed hints ("reviewed_explicit") or a Contract
+		// SchemaDecl pass-through ("contract_final"); declaration is the
+		// stronger backing per the declare-or-annotate rule.
+		precedence := strings.TrimSpace(schemaString(entry["precedence"]))
+		if precedence != "reviewed_explicit" && precedence != "contract_final" {
+			problems = append(problems, fmt.Sprintf("%s composite %s is not backed by reviewed_explicit/contract_final provenance", canonical, field))
 		}
 	}
 	return problems

@@ -23,6 +23,42 @@ type dryRunCapabilityGroup struct {
 // CI executes each selected example and compares the observed preview kind to
 // this reviewed declaration.
 var reviewedDryRunCapabilityGroups = []dryRunCapabilityGroup{
+	// devapp 全树：--dry-run 在 CLI 本地拼装调用预览（参数原样展示 +
+	// 远端 schema 对比），不发起任何远端读/写（delete 经网关 dry_run 干跑，
+	// 同样无远端读）。
+	{PreviewKind: DryRunPreviewInvocation, CanonicalPaths: []string{
+		"dev.add_dev_app_members",
+		"dev.apply_dev_app_permissions",
+		"dev.create_dev_app",
+		"dev.create_dev_app_version",
+		"dev.delete_dev_app",
+		"dev.disable_dev_app",
+		"dev.disable_dev_app_robot",
+		"dev.enable_dev_app",
+		"dev.enable_dev_app_robot",
+		"dev.get_dev_app",
+		"dev.get_dev_app_credentials",
+		"dev.get_dev_app_version_detail",
+		"dev.get_dev_app_version_status",
+		"dev.get_extension_robot_config",
+		"dev.get_extension_webapp_config",
+		"dev.list_dev_app",
+		"dev.list_dev_app_events",
+		"dev.list_dev_app_members",
+		"dev.list_dev_app_permissions",
+		"dev.list_dev_app_versions",
+		"dev.publish_dev_app_version",
+		"dev.query_robot_create_result",
+		"dev.remove_dev_app_members",
+		"dev.remove_dev_app_permissions",
+		"dev.set_extension_robot_config",
+		"dev.set_extension_webapp_config",
+		"dev.submit_robot_create_task",
+		"dev.subscribe_dev_app_events",
+		"dev.unsubscribe_dev_app_events",
+		"dev.update_dev_app",
+		"dev.update_dev_app_security_config",
+	}},
 	{PreviewKind: DryRunPreviewRequest, CanonicalPaths: []string{
 		"event.stop",
 	}},

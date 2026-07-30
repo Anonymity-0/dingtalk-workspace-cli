@@ -96,22 +96,14 @@ func TestLeafSpecCallDoesNotAssembleBusinessParams(t *testing.T) {
 	}
 }
 
-// TestLeafSpecWriteGuardHasAnnotatedPostMount enforces declare-OR-annotate:
-// Validate that calls devAppRequireWriteGuard must PostMount via devAppMetaWrite
-// (explicit runtime_gate), not a bare surface meta helper.
-func TestLeafSpecWriteGuardHasAnnotatedPostMount(t *testing.T) {
+// TestLeafSpecNoLegacyWriteGuard pins the migration end-state: devapp leaves
+// declare Contract Risk (ConfirmRisk by the framework, or a manual call inside
+// a RunE escape hatch); the legacy devAppRequireWriteGuard helper is gone and
+// must not be reintroduced in LeafSpec Validate hooks.
+func TestLeafSpecNoLegacyWriteGuard(t *testing.T) {
 	for _, call := range leafSpecCompositeLits(t) {
-		validate := fieldExpr(call, "Validate")
-		if validate == nil || !astCallsIdent(validate, "devAppRequireWriteGuard") {
-			continue
-		}
-		post := fieldExpr(call, "PostMount")
-		if post == nil {
-			t.Errorf("%s: write-guard Validate without PostMount; use devAppMetaWrite", call.pos)
-			continue
-		}
-		if !astCallsIdent(post, "devAppMetaWrite") {
-			t.Errorf("%s: write-guard leaf PostMount must be devAppMetaWrite(...) so confirmation is annotated", call.pos)
+		if validate := fieldExpr(call, "Validate"); validate != nil && astCallsIdent(validate, "devAppRequireWriteGuard") {
+			t.Errorf("%s: LeafSpec must not call devAppRequireWriteGuard; declare Risk instead", call.pos)
 		}
 	}
 }

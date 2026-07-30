@@ -445,7 +445,7 @@ func TestCrossPlatformCoverageDevAppGetRequiresLocator(t *testing.T) {
 	root.SetArgs([]string{"get"})
 
 	err := root.Execute()
-	if err == nil || !strings.Contains(err.Error(), "--unified-app-id 或 --app-key") {
+	if err == nil || !strings.Contains(err.Error(), "请至少指定 --unified-app-id、--app-key 之一") {
 		t.Fatalf("error = %v, want locator validation", err)
 	}
 }
@@ -970,7 +970,7 @@ func TestDevAppSecurityConfigRequiresAtLeastOneConfig(t *testing.T) {
 	if err == nil {
 		t.Fatal("Execute() error = nil, want validation error")
 	}
-	if !strings.Contains(err.Error(), "至少提供一项安全配置：--ip-whitelist、--redirect-urls 或 --sso-urls") {
+	if !strings.Contains(err.Error(), "请至少指定 --ip-whitelist、--redirect-urls、--sso-urls 之一") {
 		t.Fatalf("error = %q", err.Error())
 	}
 	if runner.last.Tool != "" {
