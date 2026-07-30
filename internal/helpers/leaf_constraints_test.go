@@ -509,6 +509,50 @@ func leafRiskRun(t *testing.T, risk LeafRisk, stdin string, args ...string) (boo
 	return called, cmd.Execute()
 }
 
+// TestCrossPlatformCoverageLeafRiskUnderRootGlobalFlags mirrors the production
+// shape: the ROOT command owns the global --yes/--dry-run persistent flags and
+// the leaf is a child, so the inherited / root-persistent lookup path is what
+// resolves them (leafRiskRun registers them on the leaf itself, where
+// cmd.Root() == cmd).
+func TestCrossPlatformCoverageLeafRiskUnderRootGlobalFlags(t *testing.T) {
+	run := func(globalFlag string, stdin string) (bool, error) {
+		called := false
+		leaf := NewLeafCommand(leafRiskSpec(LeafRiskHighWrite, &called))
+		root := &cobra.Command{Use: "dws"}
+		root.PersistentFlags().Bool("yes", false, "")
+		root.PersistentFlags().Bool("dry-run", false, "")
+		root.AddCommand(leaf)
+		root.SilenceErrors = true
+		root.SilenceUsage = true
+		if stdin != "" {
+			root.SetIn(strings.NewReader(stdin))
+		}
+		args := []string{"danger", "--id", "x"}
+		if globalFlag != "" {
+			args = append(args, globalFlag)
+		}
+		root.SetArgs(args)
+		return called, root.Execute()
+	}
+
+	// root-level --yes bypasses the prompt (no stdin available).
+	if called, err := run("--yes", ""); err != nil || !called {
+		t.Fatalf("root --yes err = %v called = %v", err, called)
+	}
+	// root-level --dry-run bypasses the prompt.
+	if called, err := run("--dry-run", ""); err != nil || !called {
+		t.Fatalf("root --dry-run err = %v called = %v", err, called)
+	}
+	// without either, the leaf prompts and honors a decline.
+	called, err := run("", "no\n")
+	if called {
+		t.Fatal("declined write must not dispatch")
+	}
+	if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+		t.Fatalf("declined err = %v", err)
+	}
+}
+
 func TestCrossPlatformCoverageLeafRiskReadNeverPrompts(t *testing.T) {
 	// 只读：无 stdin 也直接派发。
 	if called, err := leafRiskRun(t, LeafRiskRead, "", "--id", "x"); err != nil || !called {

@@ -25,10 +25,13 @@
 // in how they dispatch — the first step toward a single typed command registry.
 //
 // Behavioral contract: this package is a pure extraction of the logic that
-// previously lived in internal/helpers/leaf.go. Flag registration, value
+// previously lived in internal/helpers/leaf.go, so flag registration, value
 // fallback, required/constraint semantics, risk wording, and schema projection
-// must remain byte-for-byte equivalent; check-generated-drift (catalog
-// unchanged) and the leaf unit tests are the proof.
+// stay semantically identical. The evidence is split: check-generated-drift
+// (catalog unchanged) proves only the build-time projection — identity, flags,
+// help and annotations — while the runtime pipeline (required validation,
+// toolArgs assembly, write confirmation, dispatch order) is evidenced solely by
+// this package's own tests plus the leaf/risk/constraint unit tests.
 package cmdcore
 
 import (
@@ -192,7 +195,14 @@ type CommandSpec struct {
 // orchestration path: flag registration → constraint declaration checks →
 // Runtime Schema projection → constraint help → PostMount → (RunE escape) →
 // generated RunE{ required → constraints → Validate → BuildArgs → ConfirmRisk →
-// Dispatch }. Behavior mirrors the former helpers.NewLeafCommand exactly.
+// Dispatch }.
+//
+// Behavior matches the former helpers.NewLeafCommand with one deliberate
+// addition: that function always dispatched (Call → Server → callMCPTool), so a
+// spec without a dispatcher was impossible. Here a spec declaring neither RunE
+// nor Dispatch is a programming error and fails loudly, rather than running the
+// whole pipeline — write-confirmation prompt included — and then silently
+// exiting 0 having done nothing.
 func NewCommand(spec CommandSpec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     spec.Use,
@@ -214,6 +224,10 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		return cmd
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if spec.Dispatch == nil {
+			return apperrors.NewInternal(fmt.Sprintf(
+				"command %q declares neither RunE nor Dispatch", spec.Use))
+		}
 		if err := ValidateRequired(cmd, spec.Flags); err != nil {
 			return err
 		}
@@ -232,10 +246,7 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		if !ConfirmRisk(cmd, spec.Risk) {
 			return apperrors.NewValidation("用户取消了操作")
 		}
-		if spec.Dispatch != nil {
-			return spec.Dispatch(cmd, args, toolArgs)
-		}
-		return nil
+		return spec.Dispatch(cmd, args, toolArgs)
 	}
 	return cmd
 }
@@ -406,7 +417,7 @@ func BuildArgs(cmd *cobra.Command, flags []FlagSpec) (map[string]any, error) {
 	return toolArgs, nil
 }
 
-// effectiveValue reads the value by "explicit main flag → alias → env →
+// EffectiveValue reads the value by "explicit main flag → alias → env →
 // registration default" order (string form, integers uniformly formatted);
 // Trim TrimSpace's the result.
 func EffectiveValue(cmd *cobra.Command, flag FlagSpec) string {
@@ -490,14 +501,14 @@ func ValidateConstraintDecls(use string, flags []FlagSpec, constraints []Constra
 		switch constraint.Kind {
 		case AtLeastOne, ExactlyOne, MutuallyExclusive:
 		default:
-			panic(fmt.Sprintf("leaf %q: unknown constraint kind %q", use, constraint.Kind))
+			panic(fmt.Sprintf("command %q: unknown constraint kind %q", use, constraint.Kind))
 		}
 		if len(constraint.Flags) < 2 {
-			panic(fmt.Sprintf("leaf %q: constraint %s needs at least two flags", use, constraint.Kind))
+			panic(fmt.Sprintf("command %q: constraint %s needs at least two flags", use, constraint.Kind))
 		}
 		for _, name := range constraint.Flags {
 			if !declared[name] {
-				panic(fmt.Sprintf("leaf %q: constraint %s references undeclared flag %q", use, constraint.Kind, name))
+				panic(fmt.Sprintf("command %q: constraint %s references undeclared flag %q", use, constraint.Kind, name))
 			}
 		}
 	}
@@ -599,7 +610,7 @@ func ConfirmRisk(cmd *cobra.Command, risk Risk) bool {
 	return answer == "yes" || answer == "y"
 }
 
-// boolFlag robustly reads a bool flag that may live on the command, its
+// BoolFlag robustly reads a bool flag that may live on the command, its
 // inherited flags, or the root's persistent flags (e.g. root-injected global
 // --yes / --dry-run). Returns the first flagset that resolves the name.
 func BoolFlag(cmd *cobra.Command, name string) bool {

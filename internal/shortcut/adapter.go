@@ -14,6 +14,8 @@
 package shortcut
 
 import (
+	"strings"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
 
@@ -24,37 +26,63 @@ import (
 //
 // Scope (Phase 2): this is the typed seam only — it is NOT wired into the live
 // mount() path. The Shortcut runtime keeps its own mount/RuntimeContext/Execute
-// so the 376 shipped shortcuts are provably unaffected (catalog + `shortcut
-// list` unchanged). The following Shortcut-specific semantics are intentionally
-// NOT modeled by cmdcore yet and are therefore not carried here:
+// so the shipped shortcuts are provably unaffected (catalog + `shortcut list`
+// unchanged). The following Shortcut semantics are NOT modeled by cmdcore and
+// are therefore dropped by this projection — Phase 3 must extend CommandSpec (or
+// reject such specs) before wiring it in:
 //
 //   - multi-step orchestration: Shortcut.Execute(rt) uses RuntimeContext with
 //     CallMCPData/CallMCPWriteData; cmdcore's single-step Dispatch(toolArgs)
-//     cannot express it. FromShortcut leaves Dispatch/RunE nil.
+//     cannot express it. FromShortcut therefore leaves Dispatch/RunE nil, and
+//     cmdcore.NewCommand rejects such a spec at run time rather than no-oping.
 //   - decline behavior: mount() returns nil when the user declines a risky
 //     shortcut, whereas cmdcore.NewCommand returns a typed validation error.
-//     Unifying this is a Phase 3 decision.
-//   - Flag.Enum / Flag.Hidden and the "custom" constraint kind: shortcut-only
-//     extras validated inside the Shortcut framework; cmdcore's base does not
-//     model them, so they are dropped from the projection.
+//   - Required semantics: mount() requires the flag to be Changed (message
+//     "缺少必填参数 --x"), while cmdcore.ValidateRequired accepts any effective
+//     value including a registration Default or env fallback — so a Required
+//     shortcut flag with a non-empty Default is always satisfied under cmdcore.
+//   - typed defaults: mount() registers Bool/Int/StringSlice defaults parsed
+//     from Flag.Default; cmdcore.RegisterFlag hardcodes false/0/nil and treats
+//     Default only as a string fallback-chain tail, so bool/slice defaults are
+//     lost and an int default would not surface in --help.
+//   - Flag.Enum and Flag.Hidden: enum validation stays inside the Shortcut
+//     framework, and CommandSpec has no hidden-command/flag field.
+//   - Shortcut.Tips: mount() renders them as Example; Example is left empty here.
+//   - the "custom" constraint kind (enforced by Shortcut.Validate), plus the
+//     required-flag/enum runtime-schema annotations and hidden-flag filtering
+//     that annotateRuntimeSchemaContract applies, have no cmdcore counterpart.
 //
 // Wiring FromShortcut into mount() (Phase 3) must be gated by byte-identical
 // `dws schema --all` + `shortcut list` output, exactly as the leaf migration
 // was gated by catalog zero-drift.
 func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 	return cmdcore.CommandSpec{
-		Use:         s.Command,
-		Short:       s.Description,
-		Long:        shortcutLongHelp(s),
+		Use:   s.Command,
+		Short: s.Description,
+		// Only the prose part: cmdcore.NewCommand appends its own 参数约束
+		// section, so reusing shortcutLongHelp here would render it twice.
+		Long:        shortcutIntentProse(s),
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
 		Risk:        cmdcore.Risk(s.risk()),
 	}
 }
 
+// shortcutIntentProse returns just the intent/description prose that precedes
+// the 参数约束 section in shortcutLongHelp, so the constraint section is rendered
+// exactly once (by cmdcore.NewCommand).
+func shortcutIntentProse(s Shortcut) string {
+	prose := strings.TrimSpace(s.Intent)
+	if prose == "" {
+		prose = strings.TrimSpace(s.Description)
+	}
+	return prose
+}
+
 // fromShortcutFlags maps shortcut.Flag values into cmdcore.FlagSpec, carrying
-// only the shared-base fields (name, kind, default, usage, required). Enum and
-// Hidden are shortcut-only extras and are not represented in the cmdcore base.
+// the shared-base fields. Usage keeps mount()'s flagHelp decoration (必填 /
+// 可选值) so the projected help matches the live shortcut. Enum and Hidden have
+// no cmdcore representation (see the FromShortcut doc block).
 func fromShortcutFlags(flags []Flag) []cmdcore.FlagSpec {
 	if len(flags) == 0 {
 		return nil
@@ -63,7 +91,7 @@ func fromShortcutFlags(flags []Flag) []cmdcore.FlagSpec {
 	for _, f := range flags {
 		out = append(out, cmdcore.FlagSpec{
 			Name:     f.Name,
-			Usage:    f.Desc,
+			Usage:    flagHelp(f),
 			Kind:     fromShortcutFlagKind(f.Type),
 			Default:  f.Default,
 			Required: f.Required,
@@ -102,7 +130,7 @@ func fromShortcutConstraints(constraints []Constraint) []cmdcore.Constraint {
 		}
 		out = append(out, cmdcore.Constraint{
 			Kind:        kind,
-			Flags:       c.Flags,
+			Flags:       append([]string(nil), c.Flags...),
 			Description: c.Description,
 		})
 	}

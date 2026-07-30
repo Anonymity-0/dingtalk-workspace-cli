@@ -29,12 +29,13 @@ import (
 // 复用同一套 flag/校验/装配逻辑。复杂命令可通过 LeafSpec.RunE 完全自定义
 // （逃生舱），不在框架适用范围内强行套用。
 //
-// 收敛纪律（Phase 1）：flag 注册、有效值回退链、required 校验、约束校验/声明
-// 检查、Risk 写确认、toolArgs 装配、Runtime Schema 投影、帮助渲染均已下沉到
-// internal/cmdcore 共享基座；本文件只保留 LeafSpec 外壳（含 MCP dispatch 字段）
-// 与 NewLeafCommand 编排。dispatch（callMCPTool/callMCPToolOnServer/Call）仍留
-// 在 helpers。由 check-generated-drift（catalog 零漂移）与命令兼容性检查兜底
-// 证明等价——cmdcore 是纯抽取，行为逐字保持不变。
+// 收敛纪律（Phase 2）：flag 注册、有效值回退链、required 校验、约束校验/声明
+// 检查、Risk 写确认、toolArgs 装配、Runtime Schema 投影、帮助渲染与编排顺序
+// 均已下沉到 internal/cmdcore：本文件不再自行编排，NewLeafCommand 只做
+// LeafSpec→cmdcore.CommandSpec 的映射（FromLeafSpec），并把 dispatch
+// （callMCPTool/callMCPToolOnServer/Call）作为闭包交给统一构建器。
+// 等价性由 check-generated-drift（catalog 零漂移，覆盖构建期投影）与
+// leaf/risk/约束单测（覆盖运行期流水线）共同兜底。
 //
 // 迁移纪律：从手写命令迁移到 LeafSpec 时，flag 名、默认值、usage 文案、
 // MarkFlagRequired、required 错误格式、toolArgs 键与值必须逐字保持一致。

@@ -854,16 +854,20 @@ func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageNewCommandNilDispatchNoOps(t *testing.T) {
-	// Neither RunE nor Dispatch: the pipeline runs and then no-ops.
+func TestCrossPlatformCoverageNewCommandRejectsMissingDispatch(t *testing.T) {
+	// Neither RunE nor Dispatch is a programming error: it must fail loudly
+	// rather than run the pipeline (prompt included) and silently exit 0.
 	cmd := NewCommand(CommandSpec{
 		Use:   "bare",
+		Risk:  RiskHighWrite,
 		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
 	})
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
+	// No stdin: if the pipeline reached ConfirmRisk it would block/consume input.
 	cmd.SetArgs([]string{"--x", "v"})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("nil-dispatch command should no-op, got %v", err)
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "declares neither RunE nor Dispatch") {
+		t.Fatalf("missing-dispatch err = %v, want typed internal error", err)
 	}
 }
