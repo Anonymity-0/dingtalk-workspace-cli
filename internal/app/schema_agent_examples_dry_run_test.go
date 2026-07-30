@@ -36,6 +36,12 @@ var (
 	manualAgentExamplePlaceholderPattern = regexp.MustCompile(`<([^>]+)>`)
 	manualAgentExampleDryRunJSONPattern  = regexp.MustCompile(`(?i)"dry_run"\s*:\s*true`)
 	manualAgentExampleDryRunPlanPattern  = regexp.MustCompile(`(?i)"preview_kind"\s*:\s*"plan"`)
+	// manualAgentExampleDryRunInvocationPattern recognizes the executor
+	// envelope (and the dev connect preview, which mirrors its shape): the
+	// top-level contract is an invocation that merely embeds the would-be
+	// request inside response, so it must classify as invocation, not request.
+	manualAgentExampleDryRunInvocationPattern = regexp.MustCompile(
+		`"kind"\s*:\s*"(?:(?:helper|compat|workflow)_invocation|connect_preview)"`)
 )
 
 // TestManualAgentExamplesContract is the always-on gate. It validates every
@@ -395,6 +401,9 @@ func manualAgentExampleDryRunEvidence(capture manualAgentExampleCapture) (string
 	if manualAgentExampleDryRunJSONPattern.MatchString(capture.Output) && manualAgentExampleDryRunPlanPattern.MatchString(capture.Output) {
 		return cli.DryRunPreviewPlan, true
 	}
+	if manualAgentExampleDryRunJSONPattern.MatchString(capture.Output) && manualAgentExampleDryRunInvocationPattern.MatchString(capture.Output) {
+		return cli.DryRunPreviewInvocation, true
+	}
 	if manualAgentExampleDryRunJSONPattern.MatchString(capture.Output) {
 		return cli.DryRunPreviewRequest, true
 	}
@@ -445,6 +454,37 @@ func TestCrossPlatformCoverageManualAgentExampleDryRunEvidenceClassifiesStructur
 		DryRunChecks: 1,
 	}) {
 		t.Fatal("non-dry-run structured plan was accepted as evidence")
+	}
+}
+
+func TestManualAgentExampleDryRunEvidenceClassifiesExecutorEnvelopeAsInvocation(t *testing.T) {
+	// Executor dry-run envelope: invocation at top level, the would-be request
+	// nested inside response — must classify as invocation, never request.
+	envelope := `{
+  "invocation": {"kind": "helper_invocation", "stage": "helper_override", "implemented": false,
+    "dry_run": true, "canonical_product": "devapp", "tool": "create_dev_app"},
+  "response": {"dry_run": true, "request": {"jsonrpc": "2.0", "method": "tools/call"},
+    "note": "execution skipped by --dry-run"}
+}`
+	kind, observed := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: envelope})
+	if !observed || kind != cli.DryRunPreviewInvocation {
+		t.Fatalf("executor envelope classified as kind=%q observed=%v, want invocation", kind, observed)
+	}
+	for _, invKind := range []string{"compat_invocation", "workflow_invocation", "connect_preview"} {
+		out := strings.Replace(envelope, "helper_invocation", invKind, 1)
+		if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: out}); !ok || kind != cli.DryRunPreviewInvocation {
+			t.Fatalf("kind %q envelope classified as %q/%v, want invocation", invKind, kind, ok)
+		}
+	}
+	// A bare MCP dry-run document has no invocation kind and stays request.
+	mcpDoc := `{"dry_run": true, "executed": false, "tool": "get_dev_app", "arguments": {}}`
+	if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: mcpDoc}); !ok || kind != cli.DryRunPreviewRequest {
+		t.Fatalf("bare MCP dry-run classified as %q/%v, want request", kind, ok)
+	}
+	// Plan still wins over an invocation-shaped payload.
+	planDoc := `{"dry_run": true, "preview_kind": "plan", "kind": "helper_invocation"}`
+	if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: planDoc}); !ok || kind != cli.DryRunPreviewPlan {
+		t.Fatalf("plan precedence broken: %q/%v", kind, ok)
 	}
 }
 

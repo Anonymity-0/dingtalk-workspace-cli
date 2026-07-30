@@ -15,6 +15,10 @@ type finalSchemaSafetyWant struct {
 	risk         string
 	confirmation string
 	idempotency  string
+	// provenance is the expected field_provenance precedence; empty defaults
+	// to "reviewed_explicit" (hints path). Contract-declared tools (devapp)
+	// deliver "contract_final".
+	provenance string
 }
 
 func TestReviewedMutationSafetyReachesFinalSchema(t *testing.T) {
@@ -34,26 +38,29 @@ func TestReviewedMutationSafetyReachesFinalSchema(t *testing.T) {
 }
 
 func TestDevAppWriteGuardRequiresFinalSchemaConfirmation(t *testing.T) {
+	// devapp 全树已声明化：provenance 为 contract_final；风险按可逆性分级
+	// （可逆写 medium / 难撤回 high-write / 删除与发布 destructive）。
+	const declared = "contract_final"
 	wants := []finalSchemaSafetyWant{
-		{canonical: "dev.add_dev_app_members", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.apply_dev_app_permissions", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.create_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.create_dev_app_version", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.delete_dev_app", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.disable_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.disable_dev_app_robot", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.enable_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.enable_dev_app_robot", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.publish_dev_app_version", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.remove_dev_app_members", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.remove_dev_app_permissions", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.set_extension_robot_config", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.set_extension_webapp_config", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.submit_robot_create_task", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.subscribe_dev_app_events", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.unsubscribe_dev_app_events", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.update_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "dev.update_dev_app_security_config", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown"},
+		{canonical: "dev.add_dev_app_members", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.apply_dev_app_permissions", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.create_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.create_dev_app_version", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.delete_dev_app", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.disable_dev_app", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.disable_dev_app_robot", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.enable_dev_app", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.enable_dev_app_robot", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.publish_dev_app_version", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.remove_dev_app_members", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.remove_dev_app_permissions", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.set_extension_robot_config", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.set_extension_webapp_config", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.submit_robot_create_task", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.subscribe_dev_app_events", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.unsubscribe_dev_app_events", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.update_dev_app", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.update_dev_app_security_config", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 	}
 	assertFinalSchemaSafety(t, wants)
 }
@@ -77,13 +84,17 @@ func assertFinalSchemaSafety(t *testing.T, wants []finalSchemaSafetyWant) {
 				"confirmation": want.confirmation,
 				"idempotency":  want.idempotency,
 			}
+			wantProvenance := want.provenance
+			if wantProvenance == "" {
+				wantProvenance = "reviewed_explicit"
+			}
 			provenance := schemaContractMap(tool["field_provenance"])
 			for field, expected := range values {
 				if got := schemaContractString(tool[field]); got != expected {
 					t.Errorf("%s = %q, want %q", field, got, expected)
 				}
-				if got := schemaContractString(provenance[field]["precedence"]); got != "reviewed_explicit" {
-					t.Errorf("%s provenance precedence = %q, want reviewed_explicit", field, got)
+				if got := schemaContractString(provenance[field]["precedence"]); got != wantProvenance {
+					t.Errorf("%s provenance precedence = %q, want %s", field, got, wantProvenance)
 				}
 			}
 		})
