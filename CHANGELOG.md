@@ -6,6 +6,23 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.56-beta.1] - 2026-07-30
+
+This beta starts the v1.0.56 line on top of v1.0.55 and packages PRs #817 and
+#806. It closes the remaining Agent-visible IM shortcut gaps and introduces
+reviewed command-scoped parameter normalization without guessing business
+identifiers or values.
+
+### Added
+
+- **Complete IM shortcut workflows** (#817) — publishes the previously excluded `+chat-messages`, `+messages-send`, `+messages-send-card`, `+search-msg`, and `+thread-replies` shortcuts in Runtime Schema. Unified send, streaming-card delivery, advanced search, thread replies, and opt-in resource downloads now share reviewed parameters, selection guidance, and runtime-aligned safety semantics.
+- **Reviewed parameter concept normalization** (#806) — adds a closed parameter-concept dictionary and generated command-level alias table, covering reviewed IM synonyms while preserving the boundaries between group, conversation, user, open-user, cursor, and paging identifiers.
+
+### Fixed
+
+- **Message delivery and resource handling** (#817) — resolves direct recipients through exact contact search, preserves rich and nested message resources, avoids same-name download overwrites, and prevents read shortcuts from silently returning empty results on non-interactive input.
+- **Parameter parsing safety** (#806) — rejects ambiguous, blocked, or conflicting aliases before dispatch, normalizes explicit boolean values such as `--dry-run false`, and keeps internal pre-parse handler details out of user-visible errors.
+
 ## [1.0.55-beta.8] - 2026-07-30
 
 This beta revalidates the `v1.0.55-beta.7` product baseline through a complete
