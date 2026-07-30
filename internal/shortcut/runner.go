@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -26,6 +27,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -476,7 +478,12 @@ func confirmRisk(rt *RuntimeContext, s Shortcut) (bool, error) {
 	if s.risk() == RiskRead || rt.DryRun() || rt.Yes() {
 		return true, nil
 	}
-	fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, s.risk())
+	// Terminal-gated prompt, mirroring cmdcore.ConfirmRisk: non-interactive
+	// callers (agent/CI) get the structured confirmation_required error without
+	// a noise prompt line on stderr; piped answers are still honored.
+	if stdinIsTerminal(rt.cmd.InOrStdin()) {
+		fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, s.risk())
+	}
 	reader := bufio.NewReader(rt.cmd.InOrStdin())
 	answer, err := reader.ReadString('\n')
 	if errors.Is(err, io.EOF) && strings.TrimSpace(answer) == "" {
@@ -487,6 +494,19 @@ func confirmRisk(rt *RuntimeContext, s Shortcut) (bool, error) {
 	}
 	answer = strings.TrimSpace(strings.ToLower(answer))
 	return answer == "yes" || answer == "y", nil
+}
+
+// stdinIsTerminal reports whether the given input is a real terminal; cobra
+// SetIn buffers and other non-file readers are treated as non-interactive.
+// An ioctl-level TTY check is required — a plain character-device stat would
+// misclassify redirects like `< /dev/null`.
+func stdinIsTerminal(in io.Reader) bool {
+	file, ok := in.(*os.File)
+	if !ok {
+		return false
+	}
+	fd := file.Fd()
+	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 }
 
 func confirmationRequiredError(operation string) error {

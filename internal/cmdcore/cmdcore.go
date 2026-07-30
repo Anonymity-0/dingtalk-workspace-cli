@@ -58,6 +58,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -847,8 +848,15 @@ func ConfirmRisk(cmd *cobra.Command, risk Risk) error {
 	if risk.Effective() == RiskRead || BoolFlag(cmd, "dry-run") || BoolFlag(cmd, "yes") {
 		return nil
 	}
-	output := cmd.ErrOrStderr()
-	fmt.Fprintf(output, "即将执行 %s（%s），确认继续？(yes/no): ", cmd.CommandPath(), risk.Effective())
+	// Only print the interactive prompt on a real terminal. In non-interactive
+	// environments (agent/CI: pipe, closed stdin, /dev/null) the prompt is
+	// noise on stderr ahead of the structured confirmation_required error —
+	// callers there must pass --yes/--dry-run instead of answering. A piped
+	// answer (printf 'yes\n' | cmd) is still honored: the read happens either
+	// way, only the prompt print is terminal-gated.
+	if stdinIsTerminal(cmd.InOrStdin()) {
+		fmt.Fprintf(cmd.ErrOrStderr(), "即将执行 %s（%s），确认继续？(yes/no): ", cmd.CommandPath(), risk.Effective())
+	}
 	reader := bufio.NewReader(cmd.InOrStdin())
 	answer, err := reader.ReadString('\n')
 	if errors.Is(err, io.EOF) && strings.TrimSpace(answer) == "" {
@@ -862,6 +870,19 @@ func ConfirmRisk(cmd *cobra.Command, risk Risk) error {
 		return nil
 	}
 	return apperrors.NewValidation("用户取消了操作")
+}
+
+// stdinIsTerminal reports whether the given input is a real terminal. Only
+// *os.File inputs can be terminals; cobra SetIn buffers and other readers are
+// treated as non-interactive. An ioctl-level TTY check is required — a plain
+// character-device stat would misclassify redirects like `< /dev/null`.
+func stdinIsTerminal(in io.Reader) bool {
+	file, ok := in.(*os.File)
+	if !ok {
+		return false
+	}
+	fd := file.Fd()
+	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 }
 
 func confirmationRequiredError(operation string) error {

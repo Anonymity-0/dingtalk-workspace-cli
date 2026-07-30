@@ -74,8 +74,11 @@ func TestCrossPlatformCoverageConfirmRiskPromptsForStaticWrite(t *testing.T) {
 	if ok, err := confirmRisk(rt, s); err != nil || !ok {
 		t.Fatalf("static write risk was not confirmed: ok=%v err=%v", ok, err)
 	}
-	if got := stderr.String(); !strings.Contains(got, "chat +messages-send（write）") {
-		t.Fatalf("confirmation prompt = %q", got)
+	// A pipe is not a terminal: the prompt must be suppressed (the structured
+	// error carries the semantics for non-interactive callers), while the
+	// piped answer is still honored.
+	if got := stderr.String(); got != "" {
+		t.Fatalf("non-terminal stdin must not print a prompt, got %q", got)
 	}
 }
 

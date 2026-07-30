@@ -597,6 +597,36 @@ func TestCrossPlatformCoverageConfirmRisk(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageConfirmRiskSuppressesPromptOffTerminal(t *testing.T) {
+	// Non-terminal stdin (buffer/pipe/EOF): the interactive prompt line must
+	// not pollute stderr — the structured error carries the semantics. Piped
+	// answers still confirm.
+	var stderr strings.Builder
+	cmd := newTestCommand()
+	cmd.PersistentFlags().Bool("yes", false, "")
+	cmd.PersistentFlags().Bool("dry-run", false, "")
+	cmd.SetIn(strings.NewReader(""))
+	cmd.SetErr(&stderr)
+	if err := ConfirmRisk(cmd, RiskWrite); err == nil {
+		t.Fatal("EOF must fail closed")
+	}
+	if got := stderr.String(); got != "" {
+		t.Fatalf("non-terminal stdin must not print a prompt, got %q", got)
+	}
+
+	var answered strings.Builder
+	piped := newTestCommand()
+	piped.PersistentFlags().Bool("yes", false, "")
+	piped.SetIn(strings.NewReader("yes\n"))
+	piped.SetErr(&answered)
+	if err := ConfirmRisk(piped, RiskWrite); err != nil {
+		t.Fatalf("piped answer must confirm, got %v", err)
+	}
+	if got := answered.String(); got != "" {
+		t.Fatalf("piped answer path must also skip the prompt, got %q", got)
+	}
+}
+
 func TestCrossPlatformCoverageBoolFlag(t *testing.T) {
 	if BoolFlag(nil, "yes") {
 		t.Fatal("nil command must report false")
