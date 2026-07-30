@@ -218,7 +218,7 @@ func TestCrossPlatformCoverageChatSendResolvesUserBeforeDispatch(t *testing.T) {
 	}
 }
 
-func TestChatSendAndReplyUseAgentProductForIMClawType(t *testing.T) {
+func TestChatSendAndReplyDefaultToAgentProductForIMClawType(t *testing.T) {
 	t.Setenv(agentproduct.EnvName, "qwenwork")
 
 	tests := []struct {
@@ -227,11 +227,11 @@ func TestChatSendAndReplyUseAgentProductForIMClawType(t *testing.T) {
 	}{
 		{
 			name: "send",
-			args: []string{"message", "send", "--open-dingtalk-id", "D1", "--text", "hello", "--ai-tag=true"},
+			args: []string{"message", "send", "--open-dingtalk-id", "D1", "--text", "hello"},
 		},
 		{
 			name: "reply",
-			args: []string{"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "mid", "--ref-sender", "D1", "--text", "hello", "--ai-tag=true"},
+			args: []string{"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "mid", "--ref-sender", "D1", "--text", "hello"},
 		},
 	}
 
@@ -246,6 +246,40 @@ func TestChatSendAndReplyUseAgentProductForIMClawType(t *testing.T) {
 			}
 			if got := caller.calls[0].args["clawType"]; got != "qwenwork" {
 				t.Fatalf("clawType = %#v, want qwenwork", got)
+			}
+		})
+	}
+}
+
+func TestChatSendAndReplyDisableAITagWithEmptyClawType(t *testing.T) {
+	t.Setenv(agentproduct.EnvName, "qwenwork")
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "send",
+			args: []string{"message", "send", "--open-dingtalk-id", "D1", "--text", "hello", "--ai-tag=false"},
+		},
+		{
+			name: "reply",
+			args: []string{"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "mid", "--ref-sender", "D1", "--text", "hello", "--ai-tag=false"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &chatChangedContractCaller{}
+			if err := executeChatChangedContract(t, caller, tc.args...); err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].toolName != "send_personal_message" {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+			got, present := caller.calls[0].args["clawType"]
+			if !present || got != "" {
+				t.Fatalf("clawType = %#v, present = %v; want present empty string", got, present)
 			}
 		})
 	}
