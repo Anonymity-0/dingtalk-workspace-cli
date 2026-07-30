@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Fixed
+
+- **Non-interactive write confirmation (H0)** — write/high-risk Shortcut prompts and `cmdcore.ConfirmRisk` no longer treat EOF / closed stdin as an interactive decline. Agent and CI callers now get a typed `confirmation_required` validation error instead of exit 0 with a write that never ran. Interactive `no` still declines without error for Shortcuts; cmdcore interactive decline still returns the existing cancel validation error. Pass `--yes` or `--dry-run` to skip the prompt.
+
 ## [1.0.55-beta.8] - 2026-07-30
 
 This beta revalidates the `v1.0.55-beta.7` product baseline through a complete

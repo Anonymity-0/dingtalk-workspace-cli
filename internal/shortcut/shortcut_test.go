@@ -15,10 +15,12 @@ package shortcut
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -69,8 +71,8 @@ func TestCrossPlatformCoverageConfirmRiskPromptsForStaticWrite(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if !confirmRisk(rt, s) {
-		t.Fatal("static write risk was not confirmed")
+	if ok, err := confirmRisk(rt, s); err != nil || !ok {
+		t.Fatalf("static write risk was not confirmed: ok=%v err=%v", ok, err)
 	}
 	if got := stderr.String(); !strings.Contains(got, "chat +messages-send（write）") {
 		t.Fatalf("confirmation prompt = %q", got)
@@ -388,6 +390,66 @@ func TestBuiltInCommandsExcludeUserDefinedShortcuts(t *testing.T) {
 }
 
 func noop(_ *RuntimeContext) error { return nil }
+
+func TestConfirmRiskEOFRequiresConfirmation(t *testing.T) {
+	s := Shortcut{Service: "chat", Command: "+send", Risk: RiskWrite, Execute: noop}
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().Bool("yes", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	cmd := mount(s)
+	root.AddCommand(cmd)
+	cmd.SetIn(strings.NewReader(""))
+	cmd.SetErr(&bytes.Buffer{})
+	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+
+	ok, err := confirmRisk(rt, s)
+	if ok {
+		t.Fatal("EOF must not proceed")
+	}
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("EOF err = %#v, want confirmation_required", err)
+	}
+}
+
+func TestConfirmRiskInteractiveDeclineIsSilent(t *testing.T) {
+	s := Shortcut{Service: "chat", Command: "+send", Risk: RiskWrite, Execute: noop}
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().Bool("yes", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	cmd := mount(s)
+	root.AddCommand(cmd)
+	cmd.SetIn(strings.NewReader("no\n"))
+	cmd.SetErr(&bytes.Buffer{})
+	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+
+	ok, err := confirmRisk(rt, s)
+	if err != nil {
+		t.Fatalf("interactive decline must not error, got %v", err)
+	}
+	if ok {
+		t.Fatal("interactive decline must not proceed")
+	}
+}
+
+func TestConfirmRiskYesBypassesPrompt(t *testing.T) {
+	s := Shortcut{Service: "chat", Command: "+send", Risk: RiskHighWrite, Execute: noop}
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().Bool("yes", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	cmd := mount(s)
+	root.AddCommand(cmd)
+	if err := root.PersistentFlags().Set("yes", "true"); err != nil {
+		t.Fatal(err)
+	}
+	cmd.SetIn(strings.NewReader("")) // would be unavailable without --yes
+	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+
+	ok, err := confirmRisk(rt, s)
+	if err != nil || !ok {
+		t.Fatalf("--yes must proceed, ok=%v err=%v", ok, err)
+	}
+}
 
 func TestCrossPlatformCoverageCallMCPWriteDataRejectsDryRun(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}

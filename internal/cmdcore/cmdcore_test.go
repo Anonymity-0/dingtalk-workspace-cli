@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -553,41 +554,46 @@ func TestCrossPlatformCoverageConfirmRisk(t *testing.T) {
 		cmd := newTestCommand()
 		cmd.PersistentFlags().Bool("yes", false, "")
 		cmd.PersistentFlags().Bool("dry-run", false, "")
-		if stdin != "" {
-			cmd.SetIn(strings.NewReader(stdin))
-		}
+		cmd.SetIn(strings.NewReader(stdin))
 		cmd.SetErr(&strings.Builder{})
 		return cmd
 	}
 
 	// read-only never prompts
-	if !ConfirmRisk(newRiskCmd(""), RiskRead) {
+	if err := ConfirmRisk(newRiskCmd(""), RiskRead); err != nil {
 		t.Fatal("read risk must pass")
 	}
-	if !ConfirmRisk(newRiskCmd(""), "") {
+	if err := ConfirmRisk(newRiskCmd(""), ""); err != nil {
 		t.Fatal("empty risk must pass as read")
 	}
 	// --yes and --dry-run bypass the prompt
 	yes := newRiskCmd("")
 	_ = yes.PersistentFlags().Set("yes", "true")
-	if !ConfirmRisk(yes, RiskHighWrite) {
+	if err := ConfirmRisk(yes, RiskHighWrite); err != nil {
 		t.Fatal("--yes must bypass")
 	}
 	dry := newRiskCmd("")
 	_ = dry.PersistentFlags().Set("dry-run", "true")
-	if !ConfirmRisk(dry, RiskWrite) {
+	if err := ConfirmRisk(dry, RiskWrite); err != nil {
 		t.Fatal("--dry-run must bypass")
 	}
 	// interactive accept / decline
 	for _, answer := range []string{"yes\n", "y\n", "YES\n"} {
-		if !ConfirmRisk(newRiskCmd(answer), RiskWrite) {
-			t.Fatalf("answer %q must confirm", answer)
+		if err := ConfirmRisk(newRiskCmd(answer), RiskWrite); err != nil {
+			t.Fatalf("answer %q must confirm, got %v", answer, err)
 		}
 	}
 	for _, answer := range []string{"no\n", "\n", "maybe\n"} {
-		if ConfirmRisk(newRiskCmd(answer), RiskHighWrite) {
-			t.Fatalf("answer %q must decline", answer)
+		err := ConfirmRisk(newRiskCmd(answer), RiskHighWrite)
+		if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+			t.Fatalf("answer %q must decline with cancel, got %v", answer, err)
 		}
+	}
+	// EOF / closed stdin is ConfirmUnavailable, not decline
+	err := ConfirmRisk(newRiskCmd(""), RiskWrite)
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("EOF must be confirmation_required, got %#v", err)
 	}
 }
 

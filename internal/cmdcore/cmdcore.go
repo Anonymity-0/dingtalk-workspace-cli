@@ -36,7 +36,9 @@ package cmdcore
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -323,8 +325,8 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		}
 		ctx := newCtx(cmd, args, spec.Flags)
 		if spec.Orchestrate != nil {
-			if !ConfirmRisk(cmd, spec.Risk) {
-				return apperrors.NewValidation("用户取消了操作")
+			if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+				return err
 			}
 			return spec.Orchestrate(ctx)
 		}
@@ -335,8 +337,8 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		for key, value := range spec.ConstParams {
 			toolArgs[key] = value
 		}
-		if !ConfirmRisk(cmd, spec.Risk) {
-			return apperrors.NewValidation("用户取消了操作")
+		if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+			return err
 		}
 		return spec.Invoke(ctx, toolArgs)
 	}
@@ -720,21 +722,42 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 }
 
 // ConfirmRisk reproduces the shortcut framework's confirmRisk write-confirmation
-// semantics: read-only, --dry-run, or --yes pass through; write/high-risk-write
-// prompt in interactive mode and return false when the user declines. The prompt
-// wording matches the shortcut runner verbatim (command path substitutes the
-// shortcut's Service+Command), keeping atomic-command and smart-shortcut
-// confirmation identical.
-func ConfirmRisk(cmd *cobra.Command, risk Risk) bool {
+// prompt wording (command path substitutes Service+Command). Semantics:
+//
+//   - read-only, --dry-run, or --yes → nil (proceed);
+//   - interactive yes/y → nil;
+//   - interactive decline → validation "用户取消了操作" (existing cmdcore path);
+//   - no interactive answer (EOF / closed stdin) → confirmation_required.
+//
+// EOF must not be treated as decline: that silently drops writes in agent/CI.
+func ConfirmRisk(cmd *cobra.Command, risk Risk) error {
 	if risk.Effective() == RiskRead || BoolFlag(cmd, "dry-run") || BoolFlag(cmd, "yes") {
-		return true
+		return nil
 	}
 	output := cmd.ErrOrStderr()
 	fmt.Fprintf(output, "即将执行 %s（%s），确认继续？(yes/no): ", cmd.CommandPath(), risk.Effective())
 	reader := bufio.NewReader(cmd.InOrStdin())
-	answer, _ := reader.ReadString('\n')
+	answer, err := reader.ReadString('\n')
+	if errors.Is(err, io.EOF) && strings.TrimSpace(answer) == "" {
+		return confirmationRequiredError(cmd.CommandPath())
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
+		return confirmationRequiredError(cmd.CommandPath())
+	}
 	answer = strings.TrimSpace(strings.ToLower(answer))
-	return answer == "yes" || answer == "y"
+	if answer == "yes" || answer == "y" {
+		return nil
+	}
+	return apperrors.NewValidation("用户取消了操作")
+}
+
+func confirmationRequiredError(operation string) error {
+	return apperrors.NewValidation(
+		fmt.Sprintf("%s 是写操作，当前环境无法交互确认；加 --dry-run 预览，或确认后加 --yes 执行", operation),
+		apperrors.WithReason("confirmation_required"),
+		apperrors.WithHint("非交互环境（agent/CI）必须显式传入 --yes，不能依赖 stdin 提示"),
+		apperrors.WithActions("确认目标与变更影响", "以相同参数追加 --yes 执行"),
+	)
 }
 
 // BoolFlag robustly reads a bool flag that may live on the command, its

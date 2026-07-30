@@ -16,8 +16,9 @@ package shortcut
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -246,7 +247,12 @@ func mount(s Shortcut) *cobra.Command {
 				return err
 			}
 		}
-		if !confirmRisk(rt, s) {
+		ok, err := confirmRisk(rt, s)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			// Interactive decline: keep today's exit-0 / nil behavior.
 			return nil
 		}
 		if s.Execute == nil {
@@ -458,18 +464,38 @@ func validateConstraints(rt *RuntimeContext, s Shortcut) error {
 }
 
 // confirmRisk prompts before a write/high-risk-write shortcut unless --yes or
-// --dry-run is set. Read-only shortcuts never prompt. Returns false when the
-// user declines.
-func confirmRisk(rt *RuntimeContext, s Shortcut) bool {
-	risk := s.risk()
-	if risk == RiskRead || rt.DryRun() || rt.Yes() {
-		return true
+// --dry-run is set. Read-only shortcuts never prompt.
+//
+// Returns:
+//   - (true, nil) to proceed (accepted, or no prompt needed);
+//   - (false, nil) after an interactive decline (caller keeps exit 0);
+//   - (false, confirmation_required) when no interactive answer is available
+//     (EOF / closed stdin). That case must not report success for a write that
+//     never ran.
+func confirmRisk(rt *RuntimeContext, s Shortcut) (bool, error) {
+	if s.risk() == RiskRead || rt.DryRun() || rt.Yes() {
+		return true, nil
 	}
-	fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, risk)
-	reader := bufio.NewReader(os.Stdin)
-	answer, _ := reader.ReadString('\n')
+	fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, s.risk())
+	reader := bufio.NewReader(rt.cmd.InOrStdin())
+	answer, err := reader.ReadString('\n')
+	if errors.Is(err, io.EOF) && strings.TrimSpace(answer) == "" {
+		return false, confirmationRequiredError(fmt.Sprintf("%s %s", s.Service, s.Command))
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, confirmationRequiredError(fmt.Sprintf("%s %s", s.Service, s.Command))
+	}
 	answer = strings.TrimSpace(strings.ToLower(answer))
-	return answer == "yes" || answer == "y"
+	return answer == "yes" || answer == "y", nil
+}
+
+func confirmationRequiredError(operation string) error {
+	return apperrors.NewValidation(
+		fmt.Sprintf("%s 是写操作，当前环境无法交互确认；加 --dry-run 预览，或确认后加 --yes 执行", operation),
+		apperrors.WithReason("confirmation_required"),
+		apperrors.WithHint("非交互环境（agent/CI）必须显式传入 --yes，不能依赖 stdin 提示"),
+		apperrors.WithActions("确认目标与变更影响", "以相同参数追加 --yes 执行"),
+	)
 }
 
 // globalBool reads a bool flag that may live on the command, inherited flags, or
