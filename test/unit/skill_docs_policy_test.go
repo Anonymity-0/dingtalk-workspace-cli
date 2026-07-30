@@ -130,6 +130,47 @@ func TestEventSkillUsesFlatOutputContract(t *testing.T) {
 	}
 }
 
+func TestEventSkillPinsSubscriptionRetryBudget(t *testing.T) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller(0) failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+	paths := []string{
+		filepath.Join(root, "skills", "multi", "dingtalk-event", "SKILL.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-event", "references", "event-im.md"),
+		filepath.Join(root, "skills", "mono", "references", "products", "event.md"),
+		filepath.Join(root, "docs", "event-subprocess-contract.md"),
+	}
+	for _, path := range paths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		text := string(content)
+		for _, required := range []string{
+			"16",
+			"--profile",
+			"retryable=false",
+			"max_additional_attempts=0",
+			"retryable=true",
+			"max_additional_attempts=2",
+			"retryable=unknown",
+			"max_additional_attempts=1",
+			"retry_after_seconds",
+			"next_retry_at",
+			"in_flight",
+			"cooldown",
+			"subscribe_id",
+			"trace_id",
+		} {
+			if !strings.Contains(text, required) {
+				t.Errorf("%s missing subscription retry contract %q", path, required)
+			}
+		}
+	}
+}
+
 func TestEventSkillFrontmatterAdvertisesGroupMemberLifecycle(t *testing.T) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {

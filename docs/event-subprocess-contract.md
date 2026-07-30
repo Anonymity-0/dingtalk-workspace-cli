@@ -4,7 +4,7 @@ Defines the stable `dws event consume` subprocess contract so an
 orchestrator can determine when the consumer is ready, stop it cleanly,
 and machine-read why it exited.
 
-Scope of this branch: the four **contract** items below. Reconnect
+Scope of this branch: the five **contract** items below. Reconnect
 resilience (keeping the stream alive across a transient upstream drop) is
 tracked separately and intentionally out of scope here.
 
@@ -91,6 +91,42 @@ Ownership-based cleanup:
   subscription is still present (reuse case preserved).
 - T4c (control): `kill -9` leaves subscribe_id lingering (documented risk;
   we only guarantee SIGTERM is clean, we do not fix kill -9 itself).
+
+### 5. Subscription-create retry budget
+
+This policy covers all 16 public personal-event keys and every logical
+subscription in a multi-event command. It applies only before the ready
+marker; reconnecting an established Stream remains a separate mechanism.
+
+- ID resolution, `event consume`, and later `event status/stop` must use the
+  same `--profile`. A user or conversation ID resolved under another profile
+  must not be reused for the current subscription.
+- A logical subscription is keyed by the current profile/identity, event key,
+  rule type, target, and filters. A new `subscribe_id`, `trace_id`, or process
+  does not reset its retry budget.
+- `retryable=false` means `max_additional_attempts=0`.
+- `retryable=true` means `max_additional_attempts=2`. A caller must honor
+  `retry_after_seconds` or `next_retry_at` when present and must not retry
+  early.
+- An omitted retryable value (`retryable=unknown`) means
+  `max_additional_attempts=1`; a second unknown failure stops the operation.
+- `in_flight` means the original logical request is still running.
+  `cooldown` and `terminal_hold` mean a guard is already delaying or blocking
+  it. These states must not recursively launch `event consume`, start a
+  parallel equivalent subscription, or reset the budget with a new subId or
+  trace. The caller waits for the original request/guard or stops.
+- A multi-event command remains one original operation. A caller must not
+  split out a failed event, reorder events, or restart the command to bypass
+  a budget. Existing startup rollback cleans subscriptions created before a
+  later item fails.
+
+**Verification**
+- T5a: non-retryable, retryable, and unknown failures allow respectively
+  0, 2, and 1 additional attempts for the same logical subscription.
+- T5b: a changed subId/trace or process restart does not increase the budget.
+- T5c: `in_flight`/`cooldown` does not recursively issue another create.
+- T5d: multi-event startup cannot be split or reordered to bypass the guard,
+  and a partial startup still rolls back earlier subscriptions.
 
 ## Out of scope (next branch)
 
