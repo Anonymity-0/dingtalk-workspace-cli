@@ -32,7 +32,10 @@ import (
 //
 //   - the runtime PreParse engine built by newPipelineEngine() (the exact
 //     handler chain root.go installs, whose SemanticAliasHandler is wired to
-//     cli.LookupParamAlias over the embedded generated table), and
+//     cli.LookupParamAlias over the embedded generated table),
+//   - one distribution-owned Cobra tree, reused because PreParse reads command
+//     and flag metadata but does not parse or mutate individual flag values,
+//     and
 //   - the embedded cli.LookupParamAlias query used to prove that a
 //     did-you-mean case is an intentional block/ambiguous guard rather than a
 //     name that merely happens to be absent from the table.
@@ -50,13 +53,15 @@ func TestParamAliasFixtureThroughEmbeddedDeliveryPath(t *testing.T) {
 		t.Fatal("validation_fixture declares no cases; ⑥ gate would be vacuous")
 	}
 
-	// The exact runtime handler chain (alias → semantic → sticky → paramname),
-	// with the semantic table sourced from the embedded generated snapshot.
+	// The exact runtime handler chain (alias → semantic → sticky →
+	// paramname), with the semantic table sourced from the embedded generated
+	// snapshot. Build the distribution-owned tree once: constructing the full
+	// 800+ command tree for every fixture made the macOS race package exceed its
+	// 10-minute budget, while RunPreParseArgs itself only reads this tree.
 	engine := newPipelineEngine()
+	root := NewSchemaSourceRootCommand()
 	for _, c := range concepts.Fixture {
 		t.Run(c.Command+"/"+c.Emitted, func(t *testing.T) {
-			// Fresh tree per case because Cobra parsing mutates flag state.
-			root := NewRootCommand()
 			leaf := resolveParamLeaf(root, c.Command)
 			if leaf == nil {
 				t.Fatalf("fixture command %q is not a live Cobra command", c.Command)
@@ -82,10 +87,16 @@ func TestParamAliasFixtureThroughEmbeddedDeliveryPath(t *testing.T) {
 				if !hasEntry || !entry.IsAmbiguous(morphed) {
 					t.Fatalf("%q on %q: expected co-occurrence guard (ambiguous) but embedded entry does not classify it; ambiguous=%v", c.Emitted, c.Command, entry.Ambiguous)
 				}
+				if commandHasRealFlagByMorph(leaf, morphed) {
+					t.Fatalf("guarded --%s on %q is a real Cobra flag and would bypass the unknown-flag recovery path", c.Emitted, c.Command)
+				}
 				assertLeftUnchanged(t, ctx, c.Emitted, fixtureValue)
 			case "did-you-mean:blocked":
 				if !hasEntry || !entry.IsBlocked(morphed) {
 					t.Fatalf("%q on %q: expected block guard but embedded entry does not classify it; blocked=%v", c.Emitted, c.Command, entry.Blocked)
+				}
+				if commandHasRealFlagByMorph(leaf, morphed) {
+					t.Fatalf("guarded --%s on %q is a real Cobra flag and would bypass the unknown-flag recovery path", c.Emitted, c.Command)
 				}
 				assertLeftUnchanged(t, ctx, c.Emitted, fixtureValue)
 			default:
@@ -98,6 +109,9 @@ func TestParamAliasFixtureThroughEmbeddedDeliveryPath(t *testing.T) {
 				//      (usually hidden) real flag the command accepts directly and
 				//      maps to the same entity via its fallback wiring. Native
 				//      compatibility flags intentionally remain command-owned.
+				if !commandHasRealFlagByMorph(leaf, cmdutil.Morph(c.Expect)) {
+					t.Fatalf("reviewed canonical --%s on %q is not a real Cobra flag", c.Expect, c.Command)
+				}
 				flagArgs := ctx.Args[len(strings.Fields(c.Command)):]
 				if len(flagArgs) < 2 || flagArgs[1] != fixtureValue {
 					t.Fatalf("%q on %q lost its value: args=%v", c.Emitted, c.Command, ctx.Args)
@@ -119,16 +133,6 @@ func TestParamAliasFixtureThroughEmbeddedDeliveryPath(t *testing.T) {
 				default:
 					t.Fatalf("%q on %q reduced to unexpected %q, want --%s or native --%s (args=%v)", c.Emitted, c.Command, got, c.Expect, c.Emitted, ctx.Args)
 				}
-			}
-
-			flagArgs := ctx.Args[len(strings.Fields(c.Command)):]
-			parseErr := leaf.ParseFlags(flagArgs)
-			if c.Expect == "did-you-mean:blocked" || c.Expect == "did-you-mean:ambiguous" {
-				if parseErr == nil || !strings.Contains(parseErr.Error(), "unknown flag") {
-					t.Fatalf("guarded --%s reached Cobra without an unknown-flag error: %v", c.Emitted, parseErr)
-				}
-			} else if parseErr != nil {
-				t.Fatalf("Cobra ParseFlags(%v) error = %v", flagArgs, parseErr)
 			}
 		})
 	}

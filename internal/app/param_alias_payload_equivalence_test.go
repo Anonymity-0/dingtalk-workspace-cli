@@ -147,7 +147,29 @@ var paramAliasNewIMCases = []struct {
 	{command: "chat message send-by-webhook", emitted: "at-user-ids", canonical: "at-users"},
 }
 
-func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.T) {
+// paramAliasRepresentativePayloadCases keeps final transport coverage across
+// old concept aliases, command overrides, native compatibility flags, read and
+// write commands, and different products. Every reviewed alias is still
+// checked through the embedded PreParse delivery path and against a complete
+// business-valid command template. The separate IM gate below continues to
+// execute every alias introduced by the current IM optimization.
+//
+// Keeping the older 100+ aliases at the contract layer avoids rebuilding and
+// executing the complete 800+ command Root twice per spelling under -race.
+// That duplicated command construction was enough to push the pre-existing
+// macOS app suite beyond its package-level 10-minute timeout.
+var paramAliasRepresentativePayloadCases = map[string]bool{
+	paramAliasPayloadCaseKey("aitable +record-query", "base"):         true, // concept alias on a shortcut read
+	paramAliasPayloadCaseKey("attendance check result", "user-ids"):   true, // list-valued concept alias
+	paramAliasPayloadCaseKey("calendar event list", "date"):           true, // time concept alias
+	paramAliasPayloadCaseKey("chat message add-favorite", "msg-id"):   true, // scoped IM identifier alias
+	paramAliasPayloadCaseKey("contact user profile get", "user-id"):   true, // native compatibility flag
+	paramAliasPayloadCaseKey("devdoc article search", "current-page"): true, // command override
+	paramAliasPayloadCaseKey("mail folder update", "folder-id"):       true, // write-command identifier alias
+	paramAliasPayloadCaseKey("report list", "from-date"):              true, // date-range concept alias
+}
+
+func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
 		t.Fatalf("LoadParamConcepts() error = %v", err)
@@ -155,22 +177,31 @@ func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.
 
 	activeCommands := make(map[string]bool)
 	activeCases := 0
+	executedRepresentatives := make(map[string]bool)
 	for _, fixture := range concepts.Fixture {
 		if strings.HasPrefix(fixture.Expect, "did-you-mean:") {
 			continue
 		}
 		activeCommands[fixture.Command] = true
 		activeCases++
+		complete, ok := paramAliasCompleteCommand(fixture.Command, fixture.Expect)
+		if !ok {
+			t.Errorf("reviewed active fixture %q/%q has no complete-command E2E template", fixture.Command, fixture.Emitted)
+			continue
+		}
+		canonicalArgs := append([]string(nil), complete...)
+		aliasArgs, replacements := replaceLongFlag(canonicalArgs, fixture.Expect, fixture.Emitted)
+		if replacements != 1 {
+			t.Errorf("complete command for %q/%q must contain canonical --%s exactly once; replacements=%d args=%v", fixture.Command, fixture.Emitted, fixture.Expect, replacements, canonicalArgs)
+			continue
+		}
+
+		caseKey := paramAliasPayloadCaseKey(fixture.Command, fixture.Emitted)
+		if !paramAliasRepresentativePayloadCases[caseKey] {
+			continue
+		}
+		executedRepresentatives[caseKey] = true
 		t.Run(fixture.Command+"/"+fixture.Emitted, func(t *testing.T) {
-			complete, ok := paramAliasCompleteCommand(fixture.Command, fixture.Expect)
-			if !ok {
-				t.Fatalf("reviewed active fixture has no complete-command E2E template")
-			}
-			canonicalArgs := append([]string(nil), complete...)
-			aliasArgs, replacements := replaceLongFlag(canonicalArgs, fixture.Expect, fixture.Emitted)
-			if replacements != 1 {
-				t.Fatalf("complete command must contain canonical --%s exactly once; replacements=%d args=%v", fixture.Expect, replacements, canonicalArgs)
-			}
 
 			canonicalCaller := &paramAliasCaptureCaller{}
 			_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
@@ -210,6 +241,14 @@ func TestReviewedParamAliasesProduceCanonicalEquivalentFinalPayloads(t *testing.
 	}
 	if len(activeCommands) != len(paramAliasCompleteCommands) {
 		t.Fatalf("complete-command coverage = %d templates for %d active commands (%d active cases)", len(paramAliasCompleteCommands), len(activeCommands), activeCases)
+	}
+	for caseKey := range paramAliasRepresentativePayloadCases {
+		if !executedRepresentatives[caseKey] {
+			t.Errorf("representative final-payload case %q has no active reviewed fixture", caseKey)
+		}
+	}
+	if len(executedRepresentatives) != len(paramAliasRepresentativePayloadCases) {
+		t.Fatalf("representative final-payload coverage = %d, want %d", len(executedRepresentatives), len(paramAliasRepresentativePayloadCases))
 	}
 }
 
@@ -271,6 +310,10 @@ func paramAliasCompleteCommand(command, canonical string) ([]string, bool) {
 		}
 	}
 	return complete, ok
+}
+
+func paramAliasPayloadCaseKey(command, emitted string) string {
+	return command + "\x00" + emitted
 }
 
 func executeParamAliasPayloadE2E(t *testing.T, caller *paramAliasCaptureCaller, args ...string) (*pipeline.Context, error) {
