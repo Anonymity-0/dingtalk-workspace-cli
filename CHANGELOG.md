@@ -8,7 +8,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Fixed
 
-- **Non-interactive write confirmation (H0)** — write/high-risk Shortcut prompts and `cmdcore.ConfirmRisk` no longer treat EOF / closed stdin as an interactive decline. Agent and CI callers now get a typed `confirmation_required` validation error instead of exit 0 with a write that never ran. Interactive `no` still declines without error for Shortcuts; cmdcore interactive decline still returns the existing cancel validation error. Pass `--yes` or `--dry-run` to skip the prompt.
+- **Unified command safety and Shortcut runtime (H0)** — Shortcut leaves now execute through `cmdcore.NewCommand`, sharing the same typed Safety confirmation gate as Leaf commands. EOF / closed stdin returns `confirmation_required`, and interactive `no` returns the existing non-zero cancellation validation error instead of reporting success for an operation that did not run. Pass `--yes` or `--dry-run` to skip the prompt.
 
 ## [1.0.56-beta.2] - 2026-07-30
 

@@ -64,8 +64,9 @@ func TestCrossPlatformCoverageRegisterFlagsAllKinds(t *testing.T) {
 		{Name: "s", Usage: "S", Default: "d"},
 		{Name: "i", Usage: "I", Kind: KindInt, Aliases: []string{"i-alias"}},
 		{Name: "b", Usage: "B", Kind: KindBool},
-		{Name: "sl", Usage: "SL", Kind: KindStringSlice, Aliases: []string{"sl-alias"}},
+		{Name: "sl", Usage: "SL", Kind: KindStringSlice, Default: "a,b", Aliases: []string{"sl-alias"}},
 		{Name: "req", Usage: "R", MarkRequired: true},
+		{Name: "hidden", Usage: "H", Hidden: true},
 	})
 
 	if f := cmd.Flags().Lookup("s"); f == nil || f.DefValue != "d" || f.Usage != "S" {
@@ -86,6 +87,12 @@ func TestCrossPlatformCoverageRegisterFlagsAllKinds(t *testing.T) {
 	}
 	if cmd.Flags().Lookup("i-alias").Value.Type() != "int" {
 		t.Fatal("int alias must be registered as int")
+	}
+	if got, _ := cmd.Flags().GetStringSlice("sl"); !reflect.DeepEqual(got, []string{"a", "b"}) {
+		t.Fatalf("string-slice default = %#v, want [a b]", got)
+	}
+	if hidden := cmd.Flags().Lookup("hidden"); hidden == nil || !hidden.Hidden {
+		t.Fatalf("real hidden flag = %#v", hidden)
 	}
 	if ann := cmd.Flags().Lookup("req").Annotations[cobra.BashCompOneRequiredFlag]; len(ann) == 0 {
 		t.Fatal("MarkRequired did not reach cobra")
@@ -303,6 +310,45 @@ func TestCrossPlatformCoverageValidateRequired(t *testing.T) {
 	if err := ValidateRequired(cmd, optional); err != nil {
 		t.Fatalf("optional err = %v", err)
 	}
+
+	// Shortcut compatibility requires the token itself even when a default is
+	// registered, and preserves the authored error.
+	changed := []FlagSpec{{
+		Name: "explicit", Usage: "E", Default: "fallback", Required: true,
+		ValidationMode: ValidationShortcut, RequiredError: "缺少必填参数 --explicit：显式参数",
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, changed)
+	if err := ValidateRequired(cmd, changed); err == nil ||
+		err.Error() != "缺少必填参数 --explicit：显式参数" {
+		t.Fatalf("ValidationShortcut missing error = %v", err)
+	}
+	_ = cmd.Flags().Set("explicit", "fallback")
+	if err := ValidateRequired(cmd, changed); err != nil {
+		t.Fatalf("ValidationShortcut explicit value failed: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageValidateEnums(t *testing.T) {
+	flags := []FlagSpec{
+		{Name: "mode", Usage: "M", Enum: []string{"a", "b"}},
+		{Name: "items", Usage: "I", Kind: KindStringSlice, Enum: []string{"x", "y"}},
+	}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("mode", "bad")
+	if err := ValidateEnums(cmd, flags); err == nil ||
+		!strings.Contains(err.Error(), `参数 --mode 取值 "bad" 不合法`) {
+		t.Fatalf("invalid scalar enum error = %v", err)
+	}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("mode", "a")
+	_ = cmd.Flags().Set("items", "x,bad")
+	if err := ValidateEnums(cmd, flags); err == nil ||
+		!strings.Contains(err.Error(), `参数 --items 取值 "bad" 不合法`) {
+		t.Fatalf("invalid slice enum error = %v", err)
+	}
 }
 
 // ── toolArgs assembly ──────────────────────────────────────────────
@@ -423,6 +469,9 @@ func TestCrossPlatformCoverageValidateConstraintDeclsPanics(t *testing.T) {
 	flags := []FlagSpec{{Name: "a", Usage: "A"}, {Name: "b", Usage: "B"}}
 	// valid declaration does not panic
 	ValidateConstraintDecls("ok", flags, []Constraint{{Kind: ExactlyOne, Flags: []string{"a", "b"}}})
+	ValidateConstraintDecls("custom", flags, []Constraint{{
+		Kind: Custom, Flags: []string{"a"}, Description: "由 Validate 执行",
+	}})
 
 	mustPanic := func(name string, constraints []Constraint, needle string) {
 		t.Helper()
@@ -439,6 +488,8 @@ func TestCrossPlatformCoverageValidateConstraintDeclsPanics(t *testing.T) {
 	}
 	mustPanic("unknown kind", []Constraint{{Kind: "bogus", Flags: []string{"a", "b"}}}, "unknown constraint kind")
 	mustPanic("too few flags", []Constraint{{Kind: AtLeastOne, Flags: []string{"a"}}}, "needs at least two flags")
+	mustPanic("custom no flags", []Constraint{{Kind: Custom, Description: "x"}}, "needs at least one flag")
+	mustPanic("custom no description", []Constraint{{Kind: Custom, Flags: []string{"a"}}}, "requires a description")
 	mustPanic("undeclared", []Constraint{{Kind: AtLeastOne, Flags: []string{"a", "zzz"}}}, "references undeclared flag")
 }
 
@@ -668,6 +719,9 @@ func TestCrossPlatformCoverageBoolFlag(t *testing.T) {
 
 func TestCrossPlatformCoverageAnnotateConstraints(t *testing.T) {
 	cmd := newTestCommand()
+	for _, name := range []string{"a", "b", "c", "d", "e", "f"} {
+		cmd.Flags().String(name, "", "")
+	}
 	AnnotateConstraints(cmd, []Constraint{
 		{Kind: AtLeastOne, Flags: []string{"a", "b"}},
 		{Kind: ExactlyOne, Flags: []string{"c", "d"}},

@@ -18,57 +18,35 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/spf13/cobra"
 )
 
-// adapter.go bridges the Shortcut framework toward the unified cmdcore typed
-// spec. FromShortcut maps a Shortcut's SHARED BASE (flags, constraints, safety,
-// help identity) into a cmdcore.CommandSpec so both frameworks can eventually
-// share one flag + constraint + safety base.
+// adapter.go is the compatibility boundary between Shortcut declarations and
+// the unified cmdcore runtime. Shortcut keeps its RuntimeContext and Execute
+// hooks because they own MCP orchestration, while cmdcore owns command/flag
+// construction, declarative validation, Schema annotations and confirmation.
 //
-// Scope (Phase 2): this is the typed seam only — it is NOT wired into the live
-// mount() path. The Shortcut runtime keeps its own mount/RuntimeContext/Execute
-// so the shipped shortcuts are provably unaffected (catalog + `shortcut list`
-// unchanged). The following Shortcut semantics are NOT modeled by cmdcore and
-// are therefore dropped by this projection — Phase 3 must extend CommandSpec (or
-// reject such specs) before wiring it in:
-//
-//   - multi-step orchestration is now expressible: Shortcut.Execute(rt) is
-//     wrapped into CommandSpec.Orchestrate, so the projection is runnable. The
-//     wrapper still builds the shortcut's own RuntimeContext (which owns the MCP
-//     calls), because cmdcore stays backend-agnostic.
-//   - decline behavior: mount() returns nil when the user declines a risky
-//     shortcut, whereas cmdcore.NewCommand returns a typed validation error.
-//   - Required semantics: mount() requires the flag to be Changed (message
-//     "缺少必填参数 --x"), while cmdcore.ValidateRequired accepts any effective
-//     value including a registration Default or env fallback — so a Required
-//     shortcut flag with a non-empty Default is always satisfied under cmdcore.
-//   - typed defaults: mount() registers Bool/Int/StringSlice defaults parsed
-//     from Flag.Default; cmdcore.RegisterFlag hardcodes false/0/nil and treats
-//     Default only as a string fallback-chain tail, so bool/slice defaults are
-//     lost and an int default would not surface in --help.
-//   - Flag.Enum and Flag.Hidden: enum validation stays inside the Shortcut
-//     framework, and CommandSpec has no hidden-command/flag field.
-//   - Shortcut.Tips: mount() renders them as Example; Example is left empty here.
-//   - the "custom" constraint kind (enforced by Shortcut.Validate), plus the
-//     required-flag/enum runtime-schema annotations and hidden-flag filtering
-//     that annotateRuntimeSchemaContract applies, have no cmdcore counterpart.
-//
-// Wiring FromShortcut into mount() (Phase 3) must be gated by byte-identical
-// `dws schema --all` + `shortcut list` output, exactly as the leaf migration
-// was gated by catalog zero-drift.
+// Shortcut.Risk intentionally remains a legacy declaration for this migration
+// stage. shortcutSafetySpec expands it once into the existing Schema safety
+// model; removing Risk is a separate catalog migration after live convergence.
 func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 	return cmdcore.CommandSpec{
-		Use:   s.Command,
-		Short: s.Description,
+		Use:     s.Command,
+		Short:   s.Description,
+		Example: shortcutExamples(s.Tips),
+		Hidden:  s.Hidden,
 		// Only the prose part: cmdcore.NewCommand appends its own 参数约束
-		// section, so reusing shortcutLongHelp here would render it twice.
+		// section, so the adapter must not pre-render it.
 		Long:        shortcutIntentProse(s),
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
 		Safety:      shortcutSafetySpec(s.risk()),
+		// Preserve the shipped Shortcut Catalog provenance: Cobra remains the
+		// source for type/default/usage, while cmdcore adds Required/Enum/rules.
+		ParameterProjection: cmdcore.ProjectCobraParameters,
+		Validate:            fromShortcutValidate(s),
 		// Multi-step body: cmdcore stays backend-agnostic, so the shortcut's own
 		// RuntimeContext — which owns CallMCPData/CallMCPWriteData/Output — is
 		// built here from the Ctx's command.
@@ -79,6 +57,22 @@ func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 			}
 			return s.Execute(&RuntimeContext{cmd: c.Command(), shortcut: s})
 		},
+	}
+}
+
+func shortcutExamples(tips []string) string {
+	if len(tips) == 0 {
+		return ""
+	}
+	return "  " + strings.Join(tips, "\n  ")
+}
+
+func fromShortcutValidate(s Shortcut) func(*cobra.Command, []string) error {
+	if s.Validate == nil {
+		return nil
+	}
+	return func(cmd *cobra.Command, _ []string) error {
+		return s.Validate(&RuntimeContext{cmd: cmd, shortcut: s})
 	}
 }
 
@@ -105,9 +99,8 @@ func shortcutSafetySpec(risk Risk) cli.SafetySpec {
 	}
 }
 
-// shortcutIntentProse returns just the intent/description prose that precedes
-// the 参数约束 section in shortcutLongHelp, so the constraint section is rendered
-// exactly once (by cmdcore.NewCommand).
+// shortcutIntentProse returns just the intent/description prose so the
+// constraint section is rendered exactly once by cmdcore.NewCommand.
 func shortcutIntentProse(s Shortcut) string {
 	prose := strings.TrimSpace(s.Intent)
 	if prose == "" {
@@ -116,10 +109,10 @@ func shortcutIntentProse(s Shortcut) string {
 	return prose
 }
 
-// fromShortcutFlags maps shortcut.Flag values into cmdcore.FlagSpec, carrying
-// the shared-base fields. Usage keeps mount()'s flagHelp decoration (必填 /
-// 可选值) so the projected help matches the live shortcut. Enum and Hidden have
-// no cmdcore representation (see the FromShortcut doc block).
+// fromShortcutFlags maps every Shortcut flag fact into cmdcore.
+// ValidationShortcut preserves declaration-order Required/Enum checks, the
+// historical "the token itself must be present" contract and its exact
+// missing-flag message even when a registration default exists.
 func fromShortcutFlags(flags []Flag) []cmdcore.FlagSpec {
 	if len(flags) == 0 {
 		return nil
@@ -127,11 +120,15 @@ func fromShortcutFlags(flags []Flag) []cmdcore.FlagSpec {
 	out := make([]cmdcore.FlagSpec, 0, len(flags))
 	for _, f := range flags {
 		out = append(out, cmdcore.FlagSpec{
-			Name:     f.Name,
-			Usage:    flagHelp(f),
-			Kind:     fromShortcutFlagKind(f.Type),
-			Default:  f.Default,
-			Required: f.Required,
+			Name:           f.Name,
+			Usage:          flagHelp(f),
+			Kind:           fromShortcutFlagKind(f.Type),
+			Default:        f.Default,
+			Hidden:         f.Hidden,
+			Required:       f.Required,
+			ValidationMode: cmdcore.ValidationShortcut,
+			RequiredError:  fmt.Sprintf("缺少必填参数 --%s：%s", f.Name, f.Desc),
+			Enum:           append([]string(nil), f.Enum...),
 		})
 	}
 	return out
@@ -152,9 +149,8 @@ func fromShortcutFlagKind(t FlagType) cmdcore.FlagKind {
 	}
 }
 
-// fromShortcutConstraints maps the known relationship constraints into the
-// cmdcore base. The shortcut-only "custom" kind (enforced by Shortcut.Validate)
-// has no cmdcore equivalent and is dropped.
+// fromShortcutConstraints maps both generic relationships and custom
+// declaration/help facts. Custom runtime checks remain in Shortcut.Validate.
 func fromShortcutConstraints(constraints []Constraint) []cmdcore.Constraint {
 	if len(constraints) == 0 {
 		return nil
@@ -163,7 +159,7 @@ func fromShortcutConstraints(constraints []Constraint) []cmdcore.Constraint {
 	for _, c := range constraints {
 		kind, ok := fromShortcutConstraintKind(c.Kind)
 		if !ok {
-			continue
+			panic(fmt.Sprintf("unknown shortcut constraint kind %q", c.Kind))
 		}
 		out = append(out, cmdcore.Constraint{
 			Kind:        kind,
@@ -174,9 +170,7 @@ func fromShortcutConstraints(constraints []Constraint) []cmdcore.Constraint {
 	return out
 }
 
-// fromShortcutConstraintKind maps a shortcut ConstraintKind to its cmdcore
-// equivalent; the second return is false for kinds cmdcore does not model
-// (e.g. ConstraintCustom).
+// fromShortcutConstraintKind maps a shortcut ConstraintKind to cmdcore.
 func fromShortcutConstraintKind(k ConstraintKind) (cmdcore.ConstraintKind, bool) {
 	switch k {
 	case ConstraintAtLeastOne:
@@ -185,6 +179,8 @@ func fromShortcutConstraintKind(k ConstraintKind) (cmdcore.ConstraintKind, bool)
 		return cmdcore.ExactlyOne, true
 	case ConstraintMutuallyExclusive:
 		return cmdcore.MutuallyExclusive, true
+	case ConstraintCustom:
+		return cmdcore.Custom, true
 	default:
 		return "", false
 	}

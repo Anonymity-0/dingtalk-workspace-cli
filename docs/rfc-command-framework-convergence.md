@@ -128,7 +128,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 
 PR #830 为项目提供了一个有用的共享基座和针对它的直接测试。其零漂移结果，是对这些产物所覆盖的生成表面的有效证据。它的包级测试覆盖了 LeafSpec 运行时流水线。
 
-它**没有**证明 `FromShortcut` 可以替换上线的 `mount()`，因为该适配器并未上线，且仍然丢失运行时语义。本地的 `Invoke`/`Orchestrate` 原型让这套投影可被调用，但没有填补那些语义缺口。
+PR #830 当时**没有**证明 `FromShortcut` 可以替换上线的 `mount()`，因为该适配器尚未上线并会丢失运行时语义。后续收敛阶段已经补齐 Hidden、typed default、Changed-required、Enum、Custom/Validate 与隐藏参数 Schema 投影，并将 live `mount()` 切换为 `cmdcore.NewCommand(FromShortcut(s))`；该结论由全量 Shortcut surface 差异测试、Catalog 零漂移和统一确认行为测试守护。
 
 ### 3.4 一个兼容策略绝不应保留的已上线缺陷
 

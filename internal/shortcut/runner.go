@@ -14,20 +14,15 @@
 package shortcut
 
 import (
-	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -224,121 +219,7 @@ func (rt *RuntimeContext) Output(payload any) error {
 
 // mount compiles a Shortcut into a cobra command.
 func mount(s Shortcut) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    s.Command,
-		Short:  s.Description,
-		Long:   shortcutLongHelp(s),
-		Hidden: s.Hidden,
-	}
-	if len(s.Tips) > 0 {
-		cmd.Example = "  " + strings.Join(s.Tips, "\n  ")
-	}
-	registerFlags(cmd, s.Flags)
-	annotateRuntimeSchemaContract(cmd, s)
-
-	cmd.RunE = func(c *cobra.Command, _ []string) error {
-		rt := &RuntimeContext{cmd: c, shortcut: s}
-		if err := validateFlags(rt, s); err != nil {
-			return err
-		}
-		if err := validateConstraints(rt, s); err != nil {
-			return err
-		}
-		if s.Validate != nil {
-			if err := s.Validate(rt); err != nil {
-				return err
-			}
-		}
-		ok, err := confirmRisk(rt, s)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			// Interactive decline: keep today's exit-0 / nil behavior.
-			return nil
-		}
-		if s.Execute == nil {
-			return apperrors.NewInternal(fmt.Sprintf("shortcut %s %s 未实现 Execute", s.Service, s.Command))
-		}
-		return s.Execute(rt)
-	}
-	return cmd
-}
-
-// annotateRuntimeSchemaContract projects the declarative shortcut invocation
-// contract onto its real Cobra leaf. Stable identity still comes exclusively
-// from the reviewed CommandRegistry; these annotations only preserve parameter
-// and constraint facts that Cobra cannot represent by itself.
-func annotateRuntimeSchemaContract(cmd *cobra.Command, s Shortcut) {
-	publicFlags := make(map[string]bool, len(s.Flags))
-	requiredFlags := make([]string, 0)
-	for _, flag := range s.Flags {
-		if flag.Hidden {
-			continue
-		}
-		publicFlags[flag.Name] = true
-		if flag.Required {
-			requiredFlags = append(requiredFlags, flag.Name)
-		}
-		if len(flag.Enum) > 0 {
-			cli.AnnotateRuntimeFlagEnum(cmd, flag.Name, flag.Enum...)
-		}
-	}
-
-	var constraints cli.RuntimeSchemaConstraints
-	for _, constraint := range s.Constraints {
-		flags := make([]string, 0, len(constraint.Flags))
-		for _, flagName := range constraint.Flags {
-			if publicFlags[flagName] {
-				flags = append(flags, flagName)
-			}
-		}
-		switch constraint.Kind {
-		case ConstraintAtLeastOne:
-			if len(flags) == 1 {
-				requiredFlags = append(requiredFlags, flags[0])
-			} else if len(flags) > 1 {
-				constraints.RequireOneOf = append(constraints.RequireOneOf, flags)
-			}
-		case ConstraintExactlyOne:
-			if len(flags) == 1 {
-				requiredFlags = append(requiredFlags, flags[0])
-			} else if len(flags) > 1 {
-				constraints.RequireOneOf = append(constraints.RequireOneOf, flags)
-				constraints.MutuallyExclusive = append(constraints.MutuallyExclusive, flags)
-			}
-		case ConstraintMutuallyExclusive:
-			if len(flags) > 1 {
-				constraints.MutuallyExclusive = append(constraints.MutuallyExclusive, flags)
-			}
-		}
-	}
-	cli.AnnotateRuntimeRequiredFlags(cmd, requiredFlags...)
-	cli.AnnotateRuntimeConstraints(cmd, constraints)
-}
-
-// registerFlags declares each Flag on the command with its type/default/desc.
-func registerFlags(cmd *cobra.Command, flags []Flag) {
-	for _, f := range flags {
-		desc := flagHelp(f)
-		switch f.Type {
-		case FlagBool:
-			cmd.Flags().Bool(f.Name, f.Default == "true", desc)
-		case FlagInt:
-			cmd.Flags().Int(f.Name, atoiDefault(f.Default), desc)
-		case FlagStringSlice:
-			var defaults []string
-			if value := strings.TrimSpace(f.Default); value != "" {
-				defaults = strings.Split(value, ",")
-			}
-			cmd.Flags().StringSlice(f.Name, defaults, desc)
-		default: // FlagString and empty
-			cmd.Flags().String(f.Name, f.Default, desc)
-		}
-		if f.Hidden {
-			_ = cmd.Flags().MarkHidden(f.Name)
-		}
-	}
+	return cmdcore.NewCommand(FromShortcut(s))
 }
 
 func flagHelp(f Flag) string {
@@ -358,72 +239,6 @@ func flagHelp(f Flag) string {
 	return f.Desc + "（" + strings.Join(parts, "；") + "）"
 }
 
-func shortcutLongHelp(s Shortcut) string {
-	long := strings.TrimSpace(s.Intent)
-	if long == "" {
-		long = strings.TrimSpace(s.Description)
-	}
-	if len(s.Constraints) == 0 {
-		return long
-	}
-	lines := make([]string, 0, len(s.Constraints))
-	for _, constraint := range s.Constraints {
-		lines = append(lines, "  - "+constraintHelp(constraint))
-	}
-	return long + "\n\n参数约束：\n" + strings.Join(lines, "\n")
-}
-
-func constraintHelp(constraint Constraint) string {
-	if strings.TrimSpace(constraint.Description) != "" {
-		return constraint.Description
-	}
-	switch constraint.Kind {
-	case ConstraintAtLeastOne:
-		return fmt.Sprintf("%s 至少指定一个", dashed(constraint.Flags))
-	case ConstraintExactlyOne:
-		return fmt.Sprintf("%s 必须且只能指定一个", dashed(constraint.Flags))
-	case ConstraintMutuallyExclusive:
-		return fmt.Sprintf("%s 互斥，最多指定一个", dashed(constraint.Flags))
-	default:
-		return fmt.Sprintf("%s 使用未识别的约束类型 %q", dashed(constraint.Flags), constraint.Kind)
-	}
-}
-
-// validateFlags enforces the declarative Required and Enum constraints.
-func validateFlags(rt *RuntimeContext, s Shortcut) error {
-	for _, f := range s.Flags {
-		if f.Required && !rt.Changed(f.Name) {
-			return apperrors.NewValidation(fmt.Sprintf("缺少必填参数 --%s：%s", f.Name, f.Desc))
-		}
-		if f.Required && rt.Changed(f.Name) {
-			switch f.Type {
-			case FlagStringSlice:
-				if !hasNonEmptyString(rt.StrSlice(f.Name)) {
-					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", f.Name))
-				}
-			case FlagString, "":
-				if rt.Str(f.Name) == "" {
-					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", f.Name))
-				}
-			}
-		}
-		if len(f.Enum) > 0 && rt.Changed(f.Name) {
-			values := []string{rt.Str(f.Name)}
-			if f.Type == FlagStringSlice {
-				values = rt.StrSlice(f.Name)
-			}
-			for _, val := range values {
-				val = strings.TrimSpace(val)
-				if !contains(f.Enum, val) {
-					return apperrors.NewValidation(fmt.Sprintf(
-						"参数 --%s 取值 %q 不合法，允许值：%s", f.Name, val, strings.Join(f.Enum, ", ")))
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func hasNonEmptyString(values []string) bool {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -431,91 +246,6 @@ func hasNonEmptyString(values []string) bool {
 		}
 	}
 	return false
-}
-
-func validateConstraints(rt *RuntimeContext, s Shortcut) error {
-	for _, constraint := range s.Constraints {
-		if len(constraint.Flags) == 0 {
-			return apperrors.NewInternal(fmt.Sprintf(
-				"shortcut %s %s 的约束 %q 未声明参数", s.Service, s.Command, constraint.Kind))
-		}
-		switch constraint.Kind {
-		case ConstraintAtLeastOne:
-			if err := rt.AtLeastOne(constraint.Flags...); err != nil {
-				return err
-			}
-		case ConstraintExactlyOne:
-			if err := rt.ExactlyOne(constraint.Flags...); err != nil {
-				return err
-			}
-		case ConstraintMutuallyExclusive:
-			if err := rt.MutuallyExclusive(constraint.Flags...); err != nil {
-				return err
-			}
-		case ConstraintCustom:
-			if strings.TrimSpace(constraint.Description) == "" {
-				return apperrors.NewInternal(fmt.Sprintf(
-					"shortcut %s %s 的 custom 约束缺少描述", s.Service, s.Command))
-			}
-		default:
-			return apperrors.NewInternal(fmt.Sprintf(
-				"shortcut %s %s 使用未知约束类型 %q", s.Service, s.Command, constraint.Kind))
-		}
-	}
-	return nil
-}
-
-// confirmRisk prompts before a write/high-risk-write shortcut unless --yes or
-// --dry-run is set. Read-only shortcuts never prompt.
-//
-// Returns:
-//   - (true, nil) to proceed (accepted, or no prompt needed);
-//   - (false, nil) after an interactive decline (caller keeps exit 0);
-//   - (false, confirmation_required) when no interactive answer is available
-//     (EOF / closed stdin). That case must not report success for a write that
-//     never ran.
-func confirmRisk(rt *RuntimeContext, s Shortcut) (bool, error) {
-	if s.risk() == RiskRead || rt.DryRun() || rt.Yes() {
-		return true, nil
-	}
-	// Terminal-gated prompt, mirroring cmdcore.ConfirmRisk: non-interactive
-	// callers (agent/CI) get the structured confirmation_required error without
-	// a noise prompt line on stderr; piped answers are still honored.
-	if stdinIsTerminal(rt.cmd.InOrStdin()) {
-		fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, s.risk())
-	}
-	reader := bufio.NewReader(rt.cmd.InOrStdin())
-	answer, err := reader.ReadString('\n')
-	if errors.Is(err, io.EOF) && strings.TrimSpace(answer) == "" {
-		return false, confirmationRequiredError(fmt.Sprintf("%s %s", s.Service, s.Command))
-	}
-	if err != nil && !errors.Is(err, io.EOF) {
-		return false, confirmationRequiredError(fmt.Sprintf("%s %s", s.Service, s.Command))
-	}
-	answer = strings.TrimSpace(strings.ToLower(answer))
-	return answer == "yes" || answer == "y", nil
-}
-
-// stdinIsTerminal reports whether the given input is a real terminal; cobra
-// SetIn buffers and other non-file readers are treated as non-interactive.
-// An ioctl-level TTY check is required — a plain character-device stat would
-// misclassify redirects like `< /dev/null`.
-func stdinIsTerminal(in io.Reader) bool {
-	file, ok := in.(*os.File)
-	if !ok {
-		return false
-	}
-	fd := file.Fd()
-	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
-}
-
-func confirmationRequiredError(operation string) error {
-	return apperrors.NewValidation(
-		fmt.Sprintf("%s 是写操作，当前环境无法交互确认；加 --dry-run 预览，或确认后加 --yes 执行", operation),
-		apperrors.WithReason("confirmation_required"),
-		apperrors.WithHint("非交互环境（agent/CI）必须显式传入 --yes，不能依赖 stdin 提示"),
-		apperrors.WithActions("确认目标与变更影响", "以相同参数追加 --yes 执行"),
-	)
 }
 
 // globalBool reads a bool flag that may live on the command, inherited flags, or

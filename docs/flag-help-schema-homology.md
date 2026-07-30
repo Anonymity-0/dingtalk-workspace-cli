@@ -67,7 +67,7 @@ cmdcore/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 | 字段 | 声明什么 | 运行时 | 嵌入 Schema / help |
 |---|---|---|---|
 | `Flags[]`（`FlagSpec` / `LeafFlag`） | 用户可见参数面：名、类型、默认、必填、usage | 注册 cobra flag；装配 toolArgs | `dws.schema.property` / `type` / `required`；`--help` Flags |
-| `Constraints[]` | 跨 flag 关系：`at_least_one` / `exactly_one` / `mutually_exclusive` | `ValidateConstraints` | `dws.schema.constraints`；`--help`「参数约束」 |
+| `Constraints[]` | 跨 flag 关系：`at_least_one` / `exactly_one` / `mutually_exclusive`；`custom` 记录钩子校验 | 通用关系由 `ValidateConstraints` 执行；`custom` 由 `Validate` 执行 | `dws.schema.constraints`；`--help`「参数约束」 |
 | `Safety`（`cli.SafetySpec`） | effect/risk/confirmation/idempotency 四个独立事实 | `confirmation=user_required` 时 `ConfirmSafety`；`--yes` / `--dry-run` 跳过 | 同一个 SafetySpec 原样进入 Contract Final（`HOM-S1`） |
 | `ConstParams` | 固定载荷（不上 flag 表） | 并入 toolArgs；不满足 Required | **不**投影为用户 parameter |
 | `Use` / `Short` / `Long` / `Example` | 命令身份文案与示例 | cobra 自身 | help；identity 仍以 registry 为准 |

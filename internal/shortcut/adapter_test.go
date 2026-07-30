@@ -23,16 +23,15 @@ import (
 )
 
 // TestCrossPlatformCoverageFromShortcutMapsSharedBase verifies FromShortcut
-// projects a Shortcut's shared-base fields (identity, flags of every kind,
-// known constraints, risk) into a cmdcore.CommandSpec, and that shortcut-only
-// extras (Enum/Hidden, the custom constraint) plus multi-step dispatch are not
-// modeled (Dispatch/RunE stay nil).
+// projects the complete live Shortcut surface into cmdcore.
 func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	s := Shortcut{
 		Service:     "chat",
 		Command:     "+demo",
 		Description: "演示",
 		Risk:        RiskHighWrite,
+		Hidden:      true,
+		Tips:        []string{"dws chat +demo --name a"},
 		Flags: []Flag{
 			{Name: "name", Type: FlagString, Desc: "名称", Required: true, Default: "d", Enum: []string{"a", "b"}, Hidden: true},
 			{Name: "count", Type: FlagInt, Desc: "数量"},
@@ -46,12 +45,16 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 			{Kind: ConstraintMutuallyExclusive, Flags: []string{"name", "flag"}},
 			{Kind: ConstraintCustom, Flags: []string{"note"}, Description: "自定义由 Validate 保证"},
 		},
+		Validate: func(*RuntimeContext) error { return nil },
 	}
 
 	cs := FromShortcut(s)
 
 	if cs.Use != "+demo" || cs.Short != "演示" {
 		t.Fatalf("identity = %q/%q", cs.Use, cs.Short)
+	}
+	if !cs.Hidden || cs.Example != "  dws chat +demo --name a" {
+		t.Fatalf("hidden/example = %v/%q", cs.Hidden, cs.Example)
 	}
 	// Long carries ONLY the intent prose: cmdcore.NewCommand renders the
 	// 参数约束 section, so it must not already be present here.
@@ -68,6 +71,9 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	if cs.Invoke != nil || cs.RunE != nil {
 		t.Fatal("only Orchestrate may be set for a shortcut projection")
 	}
+	if cs.Validate == nil {
+		t.Fatal("Shortcut.Validate must project into CommandSpec.Validate")
+	}
 
 	if len(cs.Flags) != 5 {
 		t.Fatalf("flags len = %d, want 5", len(cs.Flags))
@@ -79,7 +85,10 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 		}
 	}
 	name := cs.Flags[0]
-	if name.Name != "name" || !name.Required || name.Default != "d" {
+	if name.Name != "name" || !name.Required || name.Default != "d" ||
+		!name.Hidden || name.ValidationMode != cmdcore.ValidationShortcut ||
+		name.RequiredError != "缺少必填参数 --name：名称" ||
+		strings.Join(name.Enum, ",") != "a,b" {
 		t.Fatalf("name flag base fields = %#v", name)
 	}
 	// Usage keeps mount()'s flagHelp decoration (必填 / 可选值).
@@ -90,15 +99,19 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 		t.Fatalf("enum decoration lost from usage: %q", name.Usage)
 	}
 
-	// custom constraint dropped; the other three carried in order.
-	if len(cs.Constraints) != 3 {
-		t.Fatalf("constraints len = %d, want 3 (custom dropped)", len(cs.Constraints))
+	// All constraints, including custom declaration/help facts, are carried.
+	if len(cs.Constraints) != 4 {
+		t.Fatalf("constraints len = %d, want 4", len(cs.Constraints))
 	}
 	if cs.Constraints[0].Kind != cmdcore.ExactlyOne || cs.Constraints[0].Description != "二选一" {
 		t.Fatalf("constraint[0] = %#v", cs.Constraints[0])
 	}
 	if cs.Constraints[1].Kind != cmdcore.AtLeastOne || cs.Constraints[2].Kind != cmdcore.MutuallyExclusive {
 		t.Fatalf("constraint kinds = %#v", cs.Constraints)
+	}
+	if cs.Constraints[3].Kind != cmdcore.Custom ||
+		cs.Constraints[3].Description != "自定义由 Validate 保证" {
+		t.Fatalf("custom constraint = %#v", cs.Constraints[3])
 	}
 	// The projected Flags slice must be a copy, not an alias of the registry's.
 	cs.Constraints[0].Flags[0] = "mutated"
@@ -107,10 +120,9 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	}
 }
 
-// TestCrossPlatformCoverageFromShortcutMatchesMountSurface pins the projection
-// against the live mount() surface: flag set (names/types/usage) and rendered
-// Long must agree. This is the class of test that catches a double-rendered
-// 参数约束 or a lost flagHelp decoration before Phase 3 wires the adapter in.
+// TestCrossPlatformCoverageFromShortcutMatchesMountSurface pins the live
+// adapter surface: flag set (names/types/usage) and rendered Long must agree.
+// This catches a double-rendered 参数约束 or lost flagHelp decoration.
 func TestCrossPlatformCoverageFromShortcutMatchesMountSurface(t *testing.T) {
 	s := Shortcut{
 		Service:     "chat",

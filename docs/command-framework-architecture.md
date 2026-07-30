@@ -194,10 +194,13 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 
 `NewLeafCommand` 经 `FromLeafSpec()` 归一为 `CommandSpec`，再交 `NewCommand()` 构建。
 
-### Shortcut（智能快捷方式，Phase 3 接入）
+### Shortcut（智能快捷方式，已接入 live mount）
 
 ```go
-// typed seam —— 当前未接入运行时 mount()
+func mount(s Shortcut) *cobra.Command {
+    return cmdcore.NewCommand(FromShortcut(s))
+}
+
 spec := FromShortcut(Shortcut{
     Service: "chat",
     Command: "+demo",
@@ -207,7 +210,9 @@ spec := FromShortcut(Shortcut{
 })
 ```
 
-Shortcut 本次仍保留自身的 `Risk`。未接入 live mount 的 adapter 只在边界将它展开成完整 `cli.SafetySpec`；cmdcore/Leaf 不再保留该枚举。
+Shortcut 当前仍保留自身的 `Risk`，adapter 只在边界将它展开成完整
+`cli.SafetySpec`；cmdcore/Leaf 不再保留该枚举。Shortcut 的 Cobra
+type/default/usage provenance 保持不变，cmdcore 统一补充 Required、Enum 和关系约束投影。
 
 ## 文件结构
 
@@ -216,7 +221,8 @@ Shortcut 本次仍保留自身的 `Risk`。未接入 live mount 的 adapter 只�
 | `internal/cmdcore/cmdcore.go` | 核心类型 + NewCommand 构建器 + 运行时管线 |
 | `internal/cmdcore/schema_decl.go` | SchemaDecl 载荷类型 + 声明完整性守卫 |
 | `internal/helpers/leaf.go` | LeafSpec 门面 + type alias + FromLeafSpec 映射 |
-| `internal/shortcut/adapter.go` | FromShortcut 映射 (typed seam) |
+| `internal/shortcut/adapter.go` | FromShortcut 完整映射与 Risk 兼容边界 |
+| `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 cmdcore |
 
 ## Schema 投影
 

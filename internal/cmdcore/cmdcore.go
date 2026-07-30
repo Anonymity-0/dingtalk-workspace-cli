@@ -87,6 +87,19 @@ const (
 	KindStringSlice
 )
 
+// FlagValidationMode selects runtime validation semantics for a flag.
+//
+// The zero value keeps LeafSpec's fallback-aware effective-value semantics.
+// ValidationShortcut preserves Shortcut's declaration-order checks: Required
+// means the user must explicitly provide the flag token (even with a default),
+// followed immediately by that flag's Enum validation.
+type FlagValidationMode string
+
+const (
+	ValidationEffective FlagValidationMode = ""
+	ValidationShortcut  FlagValidationMode = "shortcut"
+)
+
 // FlagSpec declares how a flag is registered and bound into MCP toolArgs. Its
 // fields intentionally mirror the former helpers.LeafFlag one-for-one so that
 // helpers can alias to it without touching any call site.
@@ -95,13 +108,16 @@ type FlagSpec struct {
 	Usage   string   // registration usage text
 	Kind    FlagKind // value type, defaults to KindString
 	Default string   // registration default for every Kind; also the fallback-chain tail when aliases/env are empty
+	Hidden  bool     // hide the real flag from help/Schema while keeping it invocable
 
 	// Required, when true, validates a non-empty effective value in RunE. Plain
 	// Required flags aggregate into a cmdutil.ValidateRequiredFlags-compatible
 	// error; when EnvVar is configured the env var is a fallback and, still
 	// empty, RequiredHint (or a default hint) is reported.
-	Required     bool
-	RequiredHint string
+	Required       bool
+	ValidationMode FlagValidationMode
+	RequiredError  string // exact missing-token error for ValidationShortcut
+	RequiredHint   string
 	// MarkRequired, when true, calls cobra MarkFlagRequired (the hard floor for
 	// the catalog required projection); cobra errors before RunE.
 	MarkRequired bool
@@ -146,6 +162,10 @@ const (
 	ExactlyOne ConstraintKind = "exactly_one"
 	// MutuallyExclusive allows at most one of Flags.
 	MutuallyExclusive ConstraintKind = "mutually_exclusive"
+	// Custom documents validation implemented by CommandSpec.Validate. cmdcore
+	// validates the declaration and renders its help, but does not infer the
+	// command-specific runtime rule.
+	Custom ConstraintKind = "custom"
 )
 
 // Constraint declares a relationship over a group of flags. It is enforced
@@ -161,6 +181,20 @@ type Constraint struct {
 	// Description, when non-empty, replaces the constraint's default help text.
 	Description string
 }
+
+// ParameterProjectionMode selects how declared flags are embedded into Runtime
+// Schema annotations.
+type ParameterProjectionMode string
+
+const (
+	// ProjectDeclaredParameters makes the declaration the final parameter
+	// authority. This is the LeafSpec/cmdcore default.
+	ProjectDeclaredParameters ParameterProjectionMode = ""
+	// ProjectCobraParameters preserves Cobra usage/type/default provenance and
+	// annotates only facts Cobra cannot express: Required and Enum. Shortcut
+	// uses this mode to converge its runtime without rewriting Catalog facts.
+	ProjectCobraParameters ParameterProjectionMode = "cobra"
+)
 
 // CommandSpec is the single typed definition of a leaf command, shared by the
 // LeafSpec and (via FromShortcut) Shortcut frameworks.
@@ -194,9 +228,13 @@ type CommandSpec struct {
 	Short   string
 	Long    string
 	Example string
+	Hidden  bool
 
 	Flags       []FlagSpec
 	Constraints []Constraint
+	// ParameterProjection controls whether parameter facts are final
+	// declaration annotations or Cobra-backed compatibility facts.
+	ParameterProjection ParameterProjectionMode
 	// Safety is the command's single safety source. The same cli.SafetySpec is
 	// used for runtime confirmation and the published Schema. A completely
 	// empty value keeps the historical read-only default; a non-empty value
@@ -334,6 +372,7 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		Short:   spec.Short,
 		Long:    spec.Long,
 		Example: example,
+		Hidden:  spec.Hidden,
 	}
 	RegisterFlags(cmd, spec.Flags)
 	ValidateConstraintDecls(spec.Use, spec.Flags, spec.Constraints)
@@ -361,6 +400,9 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 			}
 		}
 		if err := ValidateRequired(cmd, spec.Flags); err != nil {
+			return err
+		}
+		if err := ValidateEnums(cmd, spec.Flags); err != nil {
 			return err
 		}
 		if err := ValidateConstraints(cmd, spec.Flags, spec.Constraints); err != nil {
@@ -476,6 +518,9 @@ func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {
 		if flag.MarkRequired {
 			_ = cmd.MarkFlagRequired(flag.Name)
 		}
+		if flag.Hidden {
+			_ = cmd.Flags().MarkHidden(flag.Name)
+		}
 	}
 }
 
@@ -494,7 +539,11 @@ func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 	case KindBool:
 		cmd.Flags().Bool(name, def == "true", usage)
 	case KindStringSlice:
-		cmd.Flags().StringSlice(name, nil, usage)
+		var defaults []string
+		if value := strings.TrimSpace(def); value != "" {
+			defaults = strings.Split(value, ",")
+		}
+		cmd.Flags().StringSlice(name, defaults, usage)
 	default:
 		cmd.Flags().String(name, def, usage)
 	}
@@ -507,9 +556,41 @@ func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 // declared "main flag → alias → env" fallback: a compatible alias counts as
 // provided.
 func ValidateRequired(cmd *cobra.Command, flags []FlagSpec) error {
+	for _, flag := range flags {
+		if flag.ValidationMode != ValidationShortcut {
+			continue
+		}
+		if flag.Required {
+			registered := cmd.Flags().Lookup(flag.Name)
+			if registered == nil || !registered.Changed {
+				message := strings.TrimSpace(flag.RequiredError)
+				if message == "" {
+					message = fmt.Sprintf("缺少必填参数 --%s", flag.Name)
+				}
+				return apperrors.NewValidation(message)
+			}
+			switch flag.Kind {
+			case KindStringSlice:
+				values, _ := cmd.Flags().GetStringSlice(flag.Name)
+				if !sliceHasValue(values) {
+					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", flag.Name))
+				}
+			case KindString:
+				value, _ := cmd.Flags().GetString(flag.Name)
+				if strings.TrimSpace(value) == "" {
+					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", flag.Name))
+				}
+			}
+		}
+		if err := validateEnum(cmd, flag); err != nil {
+			return err
+		}
+	}
+
 	var plain []string
 	for _, flag := range flags {
-		if flag.Required && flag.EnvVar == "" && flag.RequiredHint == "" && !hasEffectiveValue(cmd, flag) {
+		if flag.Required && flag.ValidationMode != ValidationShortcut &&
+			flag.EnvVar == "" && flag.RequiredHint == "" && !hasEffectiveValue(cmd, flag) {
 			plain = append(plain, flag.Name)
 		}
 	}
@@ -517,7 +598,8 @@ func ValidateRequired(cmd *cobra.Command, flags []FlagSpec) error {
 		return err
 	}
 	for _, flag := range flags {
-		if !flag.Required || (flag.EnvVar == "" && flag.RequiredHint == "") {
+		if !flag.Required || flag.ValidationMode == ValidationShortcut ||
+			(flag.EnvVar == "" && flag.RequiredHint == "") {
 			continue
 		}
 		if !hasEffectiveValue(cmd, flag) {
@@ -526,6 +608,47 @@ func ValidateRequired(cmd *cobra.Command, flags []FlagSpec) error {
 				hint = fmt.Sprintf("flag --%s is required", flag.Name)
 			}
 			return fmt.Errorf("%s", hint)
+		}
+	}
+	return nil
+}
+
+// ValidateEnums enforces the accepted values declared on changed flags. A
+// registration default does not trigger validation, matching Shortcut's
+// historical behavior.
+func ValidateEnums(cmd *cobra.Command, flags []FlagSpec) error {
+	for _, flag := range flags {
+		if flag.ValidationMode == ValidationShortcut {
+			continue
+		}
+		if err := validateEnum(cmd, flag); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateEnum(cmd *cobra.Command, flag FlagSpec) error {
+	if len(flag.Enum) == 0 || !cmd.Flags().Changed(flag.Name) {
+		return nil
+	}
+	values := []string{flagString(cmd, flag.Kind, flag.Name)}
+	if flag.Kind == KindStringSlice {
+		values, _ = cmd.Flags().GetStringSlice(flag.Name)
+	}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		valid := false
+		for _, allowed := range flag.Enum {
+			if value == allowed {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return apperrors.NewValidation(fmt.Sprintf(
+				"参数 --%s 取值 %q 不合法，允许值：%s",
+				flag.Name, value, strings.Join(flag.Enum, ", ")))
 		}
 	}
 	return nil
@@ -724,11 +847,18 @@ func ValidateConstraintDecls(use string, flags []FlagSpec, constraints []Constra
 	for _, constraint := range constraints {
 		switch constraint.Kind {
 		case AtLeastOne, ExactlyOne, MutuallyExclusive:
+			if len(constraint.Flags) < 2 {
+				panic(fmt.Sprintf("command %q: constraint %s needs at least two flags", use, constraint.Kind))
+			}
+		case Custom:
+			if len(constraint.Flags) < 1 {
+				panic(fmt.Sprintf("command %q: constraint %s needs at least one flag", use, constraint.Kind))
+			}
+			if strings.TrimSpace(constraint.Description) == "" {
+				panic(fmt.Sprintf("command %q: custom constraint requires a description", use))
+			}
 		default:
 			panic(fmt.Sprintf("command %q: unknown constraint kind %q", use, constraint.Kind))
-		}
-		if len(constraint.Flags) < 2 {
-			panic(fmt.Sprintf("command %q: constraint %s needs at least two flags", use, constraint.Kind))
 		}
 		for _, name := range constraint.Flags {
 			if !declared[name] {
@@ -811,6 +941,9 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 				return apperrors.NewValidation(fmt.Sprintf(
 					"参数 %s 互斥，只能指定其一（当前指定了 %s）", dashed(constraint.Flags), dashed(set)))
 			}
+		case Custom:
+			// The declaration is published and rendered in help. Its actual
+			// command-specific rule remains owned by CommandSpec.Validate.
 		}
 	}
 	return nil
@@ -907,11 +1040,28 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 // leaf as the final Schema payload (dws.schema.*). Assembly pass-throughs these
 // annotations; declared fields do not compete with reviewed hints.
 func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
+	if spec.ParameterProjection == ProjectCobraParameters {
+		for _, flag := range spec.Flags {
+			name := strings.TrimSpace(flag.Name)
+			if name == "" || flag.Hidden {
+				continue
+			}
+			if flag.Required || flag.MarkRequired {
+				cli.AnnotateRuntimeRequiredFlags(cmd, name)
+			}
+			if len(flag.Enum) > 0 {
+				cli.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
+			}
+		}
+		embedSchemaDecl(cmd, spec)
+		return
+	}
+
 	cli.AnnotateRuntimeContract(cmd)
 	required := make([]string, 0, len(spec.Flags))
 	for _, flag := range spec.Flags {
 		name := strings.TrimSpace(flag.Name)
-		if name == "" {
+		if name == "" || flag.Hidden {
 			continue
 		}
 		requiredFlag := flag.Required || flag.MarkRequired
@@ -1056,18 +1206,36 @@ func flagKindSchemaType(kind FlagKind) string {
 // (matching the handwritten commands' use of AnnotateRuntimeConstraints).
 func AnnotateConstraints(cmd *cobra.Command, constraints []Constraint) {
 	var projected cli.RuntimeSchemaConstraints
+	var required []string
 	for _, constraint := range constraints {
-		flags := append([]string(nil), constraint.Flags...)
+		flags := make([]string, 0, len(constraint.Flags))
+		for _, name := range constraint.Flags {
+			flag := cmd.Flags().Lookup(name)
+			if flag != nil && !flag.Hidden {
+				flags = append(flags, name)
+			}
+		}
 		switch constraint.Kind {
 		case AtLeastOne:
-			projected.RequireOneOf = append(projected.RequireOneOf, flags)
+			if len(flags) == 1 {
+				required = append(required, flags[0])
+			} else if len(flags) > 1 {
+				projected.RequireOneOf = append(projected.RequireOneOf, flags)
+			}
 		case ExactlyOne:
-			projected.RequireOneOf = append(projected.RequireOneOf, flags)
-			projected.MutuallyExclusive = append(projected.MutuallyExclusive, flags)
+			if len(flags) == 1 {
+				required = append(required, flags[0])
+			} else if len(flags) > 1 {
+				projected.RequireOneOf = append(projected.RequireOneOf, flags)
+				projected.MutuallyExclusive = append(projected.MutuallyExclusive, flags)
+			}
 		case MutuallyExclusive:
-			projected.MutuallyExclusive = append(projected.MutuallyExclusive, flags)
+			if len(flags) > 1 {
+				projected.MutuallyExclusive = append(projected.MutuallyExclusive, flags)
+			}
 		}
 	}
+	cli.AnnotateRuntimeRequiredFlags(cmd, required...)
 	cli.AnnotateRuntimeConstraints(cmd, projected)
 }
 

@@ -24,7 +24,7 @@ changes must not rewrite it mechanically.
 ## Command framework declaration
 
 - Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
-- Today: `helpers.LeafSpec` → `cmdcore.CommandSpec` (+ `Schema`) → `cmdcore.NewCommand`
+- Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `cmdcore.CommandSpec` (+ optional `Schema`) → `cmdcore.NewCommand`
 - **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Schema` (ToolSpec groups)
 - `Safety` uses the existing `cli.SafetySpec` directly. Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); assembly **pass-throughs** Final.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority

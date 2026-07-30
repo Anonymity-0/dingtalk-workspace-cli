@@ -16,7 +16,6 @@ package shortcut
 import (
 	"bytes"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -43,36 +42,31 @@ func TestCrossPlatformCoverageRiskDefaultsToRead(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageConfirmRiskPromptsForStaticWrite(t *testing.T) {
-	cmd := &cobra.Command{}
+func TestCrossPlatformCoverageLiveMountAcceptsPipedWriteConfirmation(t *testing.T) {
 	var stderr bytes.Buffer
-	cmd.SetErr(&stderr)
-	rt := &RuntimeContext{cmd: cmd}
+	called := false
 	s := Shortcut{
 		Service: "chat",
 		Command: "+messages-send",
 		Risk:    RiskWrite,
+		Execute: func(*RuntimeContext) error {
+			called = true
+			return nil
+		},
 	}
 
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+	root.PersistentFlags().Bool("yes", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	root.AddCommand(mount(s))
+	root.SetArgs([]string{s.Command})
+	root.SetIn(strings.NewReader("yes\n"))
+	root.SetErr(&stderr)
+	if err := root.Execute(); err != nil {
+		t.Fatalf("static write risk was not confirmed: %v", err)
 	}
-	previousStdin := os.Stdin
-	os.Stdin = reader
-	t.Cleanup(func() {
-		os.Stdin = previousStdin
-		_ = reader.Close()
-		_ = writer.Close()
-	})
-	if _, err := writer.WriteString("yes\n"); err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if ok, err := confirmRisk(rt, s); err != nil || !ok {
-		t.Fatalf("static write risk was not confirmed: ok=%v err=%v", ok, err)
+	if !called {
+		t.Fatal("confirmed write did not execute")
 	}
 	// A pipe is not a terminal: the prompt must be suppressed (the structured
 	// error carries the semantics for non-interactive callers), while the
@@ -87,6 +81,8 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 		Service:     "contact",
 		Command:     "+search-user",
 		Description: "search",
+		Hidden:      true,
+		Tips:        []string{"dws contact +search-user --query name"},
 		Flags: []Flag{
 			{Name: "query", Type: FlagString, Required: true, Enum: []string{"name", "mobile"}},
 			{Name: "limit", Type: FlagInt, Default: "20"},
@@ -95,6 +91,7 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 			{Name: "mode", Type: FlagString},
 			{Name: "start", Type: FlagString},
 			{Name: "end", Type: FlagString},
+			{Name: "legacy", Type: FlagString, Hidden: true},
 		},
 		Constraints: []Constraint{
 			{
@@ -115,6 +112,9 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 	if cmd.Use != "+search-user" {
 		t.Fatalf("Use = %q, want +search-user", cmd.Use)
 	}
+	if !cmd.Hidden || cmd.Example != "  dws contact +search-user --query name" {
+		t.Fatalf("hidden/example = %v/%q", cmd.Hidden, cmd.Example)
+	}
 	for _, name := range []string{"query", "limit", "verbose", "ids"} {
 		if cmd.Flags().Lookup(name) == nil {
 			t.Errorf("flag --%s not registered", name)
@@ -125,6 +125,9 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 	}
 	if v, _ := cmd.Flags().GetStringSlice("ids"); strings.Join(v, ",") != "self,team" {
 		t.Errorf("ids default = %#v, want [self team]", v)
+	}
+	if hidden := cmd.Flags().Lookup("legacy"); hidden == nil || !hidden.Hidden {
+		t.Fatalf("hidden flag = %#v", hidden)
 	}
 	query := cmd.Flags().Lookup("query")
 	if got := query.Annotations["dws.schema.required"]; len(got) != 1 || got[0] != "true" {
@@ -229,31 +232,48 @@ func TestCrossPlatformCoverageValidateFlagsRequiredAndEnum(t *testing.T) {
 			{Name: "query", Required: true},
 			{Name: "order", Enum: []string{"asc", "desc"}},
 		},
+		Execute: noop,
+	}
+	run := func(args ...string) error {
+		cmd := mount(s)
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetArgs(args)
+		return cmd.Execute()
+	}
+
+	if err := run(); err == nil || err.Error() != "缺少必填参数 --query：" {
+		t.Fatalf("missing required error = %v", err)
+	}
+	if err := run("--query", "张三"); err != nil {
+		t.Fatalf("required-only execution failed: %v", err)
+	}
+	if err := run("--query", "张三", "--order", "sideways"); err == nil ||
+		!strings.Contains(err.Error(), `参数 --order 取值 "sideways" 不合法`) {
+		t.Fatalf("invalid enum error = %v", err)
+	}
+	if err := run("--query", "张三", "--order", "asc"); err != nil {
+		t.Fatalf("valid enum failed: %v", err)
+	}
+}
+
+func TestLiveMountPreservesRequiredEnumDeclarationOrder(t *testing.T) {
+	s := Shortcut{
+		Service: "contact",
+		Command: "+validation-order",
+		Flags: []Flag{
+			{Name: "order", Enum: []string{"asc", "desc"}},
+			{Name: "query", Required: true},
+		},
+		Execute: noop,
 	}
 	cmd := mount(s)
-
-	// Missing required flag → error.
-	rt := &RuntimeContext{cmd: cmd, shortcut: s}
-	if err := validateFlags(rt, s); err == nil {
-		t.Fatal("expected error for missing required --query")
-	}
-
-	// Set required, leave enum unset → ok.
-	_ = cmd.Flags().Set("query", "张三")
-	if err := validateFlags(rt, s); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Invalid enum → error.
-	_ = cmd.Flags().Set("order", "sideways")
-	if err := validateFlags(rt, s); err == nil {
-		t.Fatal("expected error for invalid --order enum")
-	}
-
-	// Valid enum → ok.
-	_ = cmd.Flags().Set("order", "asc")
-	if err := validateFlags(rt, s); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--order", "sideways"})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), `参数 --order 取值 "sideways" 不合法`) {
+		t.Fatalf("validation order changed: %v", err)
 	}
 }
 
@@ -265,25 +285,51 @@ func TestCrossPlatformCoverageValidateFlagsRejectsEmptyRequiredValuesAndInvalidS
 			{Name: "id", Type: FlagString, Required: true},
 			{Name: "artifacts", Type: FlagStringSlice, Enum: []string{"summary", "todos"}},
 		},
+		Execute: noop,
 	}
-	cmd := mount(s)
-	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+	run := func(args ...string) error {
+		cmd := mount(s)
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetArgs(args)
+		return cmd.Execute()
+	}
 
-	_ = cmd.Flags().Set("id", "   ")
-	if err := validateFlags(rt, s); err == nil {
-		t.Fatal("expected empty required string to fail")
+	if err := run("--id", "   "); err == nil ||
+		err.Error() != "必填参数 --id 不能为空" {
+		t.Fatalf("empty required string error = %v", err)
 	}
-	_ = cmd.Flags().Set("id", "task-1")
-	_ = cmd.Flags().Set("artifacts", "summary,unknown")
-	if err := validateFlags(rt, s); err == nil {
-		t.Fatal("expected invalid string-slice enum value to fail")
+	if err := run("--id", "task-1", "--artifacts", "summary,unknown"); err == nil ||
+		!strings.Contains(err.Error(), `参数 --artifacts 取值 "unknown" 不合法`) {
+		t.Fatalf("invalid string-slice enum error = %v", err)
 	}
-	cmd = mount(s)
-	rt = &RuntimeContext{cmd: cmd, shortcut: s}
-	_ = cmd.Flags().Set("id", "task-1")
-	_ = cmd.Flags().Set("artifacts", "summary,todos")
-	if err := validateFlags(rt, s); err != nil {
+	if err := run("--id", "task-1", "--artifacts", "summary,todos"); err != nil {
 		t.Fatalf("valid string-slice enum failed: %v", err)
+	}
+}
+
+func TestLiveMountRequiredDefaultStillRequiresChanged(t *testing.T) {
+	s := Shortcut{
+		Service: "contact",
+		Command: "+required-default",
+		Flags: []Flag{
+			{Name: "query", Type: FlagString, Default: "fallback", Desc: "查询词", Required: true},
+		},
+		Execute: noop,
+	}
+	run := func(args ...string) error {
+		cmd := mount(s)
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetArgs(args)
+		return cmd.Execute()
+	}
+	if err := run(); err == nil ||
+		err.Error() != "缺少必填参数 --query：查询词" {
+		t.Fatalf("registration default satisfied explicit requirement: %v", err)
+	}
+	if err := run("--query", "fallback"); err != nil {
+		t.Fatalf("explicit required default failed: %v", err)
 	}
 }
 
@@ -298,23 +344,72 @@ func TestCrossPlatformCoverageDeclarativeConstraintsRejectEmptyAndConflictingVal
 		Constraints: []Constraint{
 			{Kind: ConstraintExactlyOne, Flags: []string{"group", "user"}},
 		},
+		Execute: noop,
 	}
-	cmd := mount(s)
-	rt := &RuntimeContext{cmd: cmd, shortcut: s}
-	if err := validateConstraints(rt, s); err == nil {
-		t.Fatal("expected missing exactly-one flags to fail")
+	run := func(args ...string) error {
+		cmd := mount(s)
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetArgs(args)
+		return cmd.Execute()
 	}
-	_ = cmd.Flags().Set("group", " ")
-	if err := validateConstraints(rt, s); err == nil {
-		t.Fatal("empty flag must not satisfy exactly-one")
+
+	if err := run(); err == nil || err.Error() != "请指定 --group、--user 之一" {
+		t.Fatalf("missing exactly-one error = %v", err)
 	}
-	_ = cmd.Flags().Set("group", "cid-1")
-	if err := validateConstraints(rt, s); err != nil {
+	if err := run("--group", " "); err == nil ||
+		err.Error() != "请指定 --group、--user 之一" {
+		t.Fatalf("empty exactly-one error = %v", err)
+	}
+	if err := run("--group", "cid-1"); err != nil {
 		t.Fatalf("one non-empty flag should pass: %v", err)
 	}
-	_ = cmd.Flags().Set("user", "user-1")
-	if err := validateConstraints(rt, s); err == nil {
-		t.Fatal("two flags must violate exactly-one")
+	if err := run("--group", "cid-1", "--user", "user-1"); err == nil ||
+		!strings.Contains(err.Error(), "只能指定其一") {
+		t.Fatalf("two flags error = %v", err)
+	}
+}
+
+func TestLiveMountCustomConstraintRunsShortcutValidate(t *testing.T) {
+	validated := false
+	executed := false
+	s := Shortcut{
+		Service: "aitable",
+		Command: "+upload",
+		Flags: []Flag{
+			{Name: "file-size", Type: FlagInt, Required: true},
+		},
+		Constraints: []Constraint{{
+			Kind:        ConstraintCustom,
+			Flags:       []string{"file-size"},
+			Description: "--file-size 必须大于 0",
+		}},
+		Validate: func(rt *RuntimeContext) error {
+			validated = true
+			if rt.Int("file-size") <= 0 {
+				return apperrors.NewValidation("--file-size 必须大于 0")
+			}
+			return nil
+		},
+		Execute: func(*RuntimeContext) error {
+			executed = true
+			return nil
+		},
+	}
+
+	cmd := mount(s)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--file-size", "0"})
+	err := cmd.Execute()
+	if err == nil || err.Error() != "--file-size 必须大于 0" {
+		t.Fatalf("custom validation error = %v", err)
+	}
+	if !validated || executed {
+		t.Fatalf("validated/executed = %v/%v", validated, executed)
+	}
+	if !strings.Contains(cmd.Long, "--file-size 必须大于 0") {
+		t.Fatalf("custom constraint missing from help: %q", cmd.Long)
 	}
 }
 
@@ -394,63 +489,105 @@ func TestBuiltInCommandsExcludeUserDefinedShortcuts(t *testing.T) {
 
 func noop(_ *RuntimeContext) error { return nil }
 
-func TestConfirmRiskEOFRequiresConfirmation(t *testing.T) {
-	s := Shortcut{Service: "chat", Command: "+send", Risk: RiskWrite, Execute: noop}
-	root := &cobra.Command{Use: "dws"}
+func TestLiveMountEOFRequiresConfirmation(t *testing.T) {
+	called := false
+	s := Shortcut{
+		Service: "chat", Command: "+send", Risk: RiskWrite,
+		Execute: func(*RuntimeContext) error {
+			called = true
+			return nil
+		},
+	}
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	cmd := mount(s)
 	root.AddCommand(cmd)
-	cmd.SetIn(strings.NewReader(""))
-	cmd.SetErr(&bytes.Buffer{})
-	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+	root.SetArgs([]string{s.Command})
+	root.SetIn(strings.NewReader(""))
+	root.SetErr(&bytes.Buffer{})
 
-	ok, err := confirmRisk(rt, s)
-	if ok {
-		t.Fatal("EOF must not proceed")
-	}
+	err := root.Execute()
 	var appErr *apperrors.Error
 	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
 		t.Fatalf("EOF err = %#v, want confirmation_required", err)
 	}
+	if called {
+		t.Fatal("EOF must not execute")
+	}
 }
 
-func TestConfirmRiskInteractiveDeclineIsSilent(t *testing.T) {
-	s := Shortcut{Service: "chat", Command: "+send", Risk: RiskWrite, Execute: noop}
-	root := &cobra.Command{Use: "dws"}
+func TestLiveMountInteractiveDeclineReturnsCancelError(t *testing.T) {
+	called := false
+	s := Shortcut{
+		Service: "chat", Command: "+send", Risk: RiskWrite,
+		Execute: func(*RuntimeContext) error {
+			called = true
+			return nil
+		},
+	}
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	cmd := mount(s)
 	root.AddCommand(cmd)
-	cmd.SetIn(strings.NewReader("no\n"))
-	cmd.SetErr(&bytes.Buffer{})
-	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+	root.SetArgs([]string{s.Command})
+	root.SetIn(strings.NewReader("no\n"))
+	root.SetErr(&bytes.Buffer{})
 
-	ok, err := confirmRisk(rt, s)
-	if err != nil {
-		t.Fatalf("interactive decline must not error, got %v", err)
+	err := root.Execute()
+	if err == nil || err.Error() != "用户取消了操作" {
+		t.Fatalf("interactive decline error = %v", err)
 	}
-	if ok {
-		t.Fatal("interactive decline must not proceed")
+	if called {
+		t.Fatal("interactive decline must not execute")
 	}
 }
 
-func TestConfirmRiskYesBypassesPrompt(t *testing.T) {
-	s := Shortcut{Service: "chat", Command: "+send", Risk: RiskHighWrite, Execute: noop}
-	root := &cobra.Command{Use: "dws"}
+func TestLiveMountYesBypassesPrompt(t *testing.T) {
+	called := false
+	s := Shortcut{
+		Service: "chat", Command: "+send", Risk: RiskHighWrite,
+		Execute: func(*RuntimeContext) error {
+			called = true
+			return nil
+		},
+	}
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	cmd := mount(s)
 	root.AddCommand(cmd)
-	if err := root.PersistentFlags().Set("yes", "true"); err != nil {
-		t.Fatal(err)
+	root.SetArgs([]string{s.Command, "--yes"})
+	root.SetIn(strings.NewReader("")) // would be unavailable without --yes
+	if err := root.Execute(); err != nil {
+		t.Fatalf("--yes must proceed: %v", err)
 	}
-	cmd.SetIn(strings.NewReader("")) // would be unavailable without --yes
-	rt := &RuntimeContext{cmd: cmd, shortcut: s}
+	if !called {
+		t.Fatal("--yes did not execute")
+	}
+}
 
-	ok, err := confirmRisk(rt, s)
-	if err != nil || !ok {
-		t.Fatalf("--yes must proceed, ok=%v err=%v", ok, err)
+func TestLiveMountDryRunBypassesPrompt(t *testing.T) {
+	called := false
+	s := Shortcut{
+		Service: "chat", Command: "+send", Risk: RiskWrite,
+		Execute: func(rt *RuntimeContext) error {
+			called = rt.DryRun()
+			return nil
+		},
+	}
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+	root.PersistentFlags().Bool("yes", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	root.AddCommand(mount(s))
+	root.SetArgs([]string{s.Command, "--dry-run"})
+	root.SetIn(strings.NewReader(""))
+	if err := root.Execute(); err != nil {
+		t.Fatalf("--dry-run must proceed without confirmation: %v", err)
+	}
+	if !called {
+		t.Fatal("--dry-run did not reach Execute with dry-run state")
 	}
 }
 
