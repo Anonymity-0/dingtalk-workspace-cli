@@ -899,6 +899,15 @@ func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.
 		RunE:   func(*cobra.Command, []string) error { return nil },
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	}, "got 2")
+
+	// ConfirmFirst without Risk orders a confirmation that does not exist — and
+	// for declared-Schema writes it would also publish the read safety tier.
+	mustPanic("confirmFirst without risk", CommandSpec{
+		Use:          "guarded",
+		Flags:        flags,
+		ConfirmFirst: true,
+		Invoke:       func(*Ctx, map[string]any) error { return nil },
+	}, "ConfirmFirst but declares no Risk")
 }
 
 func TestCrossPlatformCoverageNewCommandOrchestrateDispatch(t *testing.T) {

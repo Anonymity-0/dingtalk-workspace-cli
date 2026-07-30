@@ -131,7 +131,11 @@ func validateSchemaDecl(spec CommandSpec) {
 	// (no hints fallback). Safety needs no completeness check: the enum tier
 	// (CommandSpec.Safety, falling back to Risk.SafetyDefault()) fills every
 	// Safety field including Idempotency, so any declared Schema projects a
-	// complete safety block by construction.
+	// complete safety block by construction. The flip side of always-on
+	// inference: a WRITE command must declare Risk (which also drives runtime
+	// confirmation) — an empty Risk publishes the read tier. The detectable
+	// half of that mistake (ConfirmFirst without Risk) is caught by
+	// validateDispatchDecl.
 	if iface := spec.Schema.Interface; iface == nil ||
 		strings.TrimSpace(iface.Mode) == "" || strings.TrimSpace(iface.Availability) == "" {
 		missing = append(missing, "Schema.Interface (mode/availability)")

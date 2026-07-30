@@ -469,6 +469,15 @@ func validateDispatchDecl(spec CommandSpec) {
 			"command %q must declare exactly one of RunE/Invoke/Orchestrate, got %d",
 			spec.Use, declared))
 	}
+	// ConfirmFirst only makes sense on a Risk-driven confirmation flow. A
+	// command with ConfirmFirst but no Risk is always an authoring mistake —
+	// and for a declared-Schema write it would also silently publish the read
+	// safety tier (empty Risk infers SafetyRead).
+	if spec.ConfirmFirst && strings.TrimSpace(string(spec.Risk)) == "" {
+		panic(fmt.Sprintf(
+			"command %q sets ConfirmFirst but declares no Risk: ConfirmFirst orders the Risk-driven confirmation and is meaningless without one",
+			spec.Use))
+	}
 }
 
 // RegisterFlags registers every flag (plus hidden aliases and MarkFlagRequired)
@@ -1073,13 +1082,10 @@ func schemaSafetyFromDecl(risk Risk, safety Safety, decl SafetyDecl) *cli.Safety
 	}
 	// effect_source is assembly-derived for every Contract-declared safety,
 	// whether it came from the Risk shorthand or an explicit SchemaDecl; the
-	// declaration in code is the source of truth.
-	if out.Effect != "" && out.EffectSource == "" {
-		out.EffectSource = "cmdcore.contract"
-	}
-	if out.Effect == "" && out.Risk == "" && out.Confirmation == "" && out.Idempotency == "" {
-		return nil
-	}
+	// declaration in code is the source of truth. The tier fill above always
+	// produces a complete block (read tier by default), so the payload is
+	// never nil for a declared Schema.
+	out.EffectSource = "cmdcore.contract"
 	return &out
 }
 
