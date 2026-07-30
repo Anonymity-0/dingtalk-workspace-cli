@@ -144,7 +144,10 @@ if ! jq -e --arg registry_count "$registry_count" '
 	 elif .interface_mode == "composite" then
 	  .interface_ref == null and ((.interface_reason // "") | length) > 0
 	 else false end) and
-	(((.agent_source_refs // []) | map(test("schema_hints/selection/")) | any))
+	(
+	  ((.agent_source_refs // []) | map(test("schema_hints/selection/")) | any) or
+	  .field_provenance.agent_summary.source == "cmdcore.contract"
+	)
   )
 ' "$catalog" >/dev/null; then
 	printf '%s\n' 'schema tools must have complete Agent summary/effect/safety metadata' >&2

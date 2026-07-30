@@ -16,6 +16,7 @@ package helpers
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
 
@@ -23,7 +24,7 @@ import (
 //
 // 声明 vs 执行（框架规则，详见 RFC §5.0 / 同源文档 §1.2）：
 //
-//   - 声明 = LeafSpec 数据字段：Flags、Constraints、非空 Risk、ConstParams、
+//   - 声明 = LeafSpec 数据字段：Flags、Constraints、Safety、ConstParams、
 //     Use/Short/Long/Example。经 FromLeafSpec → cmdcore.NewCommand 注册并
 //     嵌入 dws.schema.*。
 //   - 执行 = Validate / Call / RunE / PostMount。钩子消费已装配参数，不得
@@ -34,7 +35,7 @@ import (
 // 装配与投影。默认派发走 MCP 直连；非 MCP 命令通过 Call 注入派发器。复杂
 // 命令可用 RunE 逃生舱。
 //
-// 收敛纪律（Phase 2）：flag 注册、有效值回退链、required/约束、Risk 写确认、
+// 收敛纪律（Phase 2）：flag 注册、有效值回退链、required/约束、Safety 确认、
 // toolArgs 装配、Schema 投影与帮助渲染均在 internal/cmdcore；本文件只做
 // LeafSpec→CommandSpec 映射与 dispatch 闭包。等价性由 catalog 漂移门禁与
 // leaf/risk/约束单测共同兜底。
@@ -62,34 +63,6 @@ const (
 // （cmdcore.FlagSpec 的别名，字段含义见 cmdcore 定义）。
 type LeafFlag = cmdcore.FlagSpec
 
-// LeafRisk 声明叶子命令的副作用等级（cmdcore.Risk 的别名）。取值与 shortcut
-// 框架的 Risk 逐字一致。
-type LeafRisk = cmdcore.Risk
-
-const (
-	// LeafRiskRead 只读操作，从不提示。空值即视为 LeafRiskRead。
-	LeafRiskRead = cmdcore.RiskRead
-	// LeafRiskWrite 变更状态；未加 --yes 时提示确认。
-	LeafRiskWrite = cmdcore.RiskWrite
-	// LeafRiskHighWrite 破坏性/不可逆操作；未加 --yes 时提示确认。
-	LeafRiskHighWrite = cmdcore.RiskHighWrite
-)
-
-// LeafSafety 声明 Schema 安全元数据等级（cmdcore.Safety 的别名）。独立于
-// Risk（运行时确认），描述操作对系统状态的影响程度；空值时框架从 Risk 推导。
-type LeafSafety = cmdcore.Safety
-
-const (
-	// LeafSafetyRead 只读操作：read/low/not_required/idempotent。
-	LeafSafetyRead = cmdcore.SafetyRead
-	// LeafSafetyWrite 可逆写操作：write/medium/user_required/unknown。
-	LeafSafetyWrite = cmdcore.SafetyWrite
-	// LeafSafetyHighWrite 难撤回写操作：write/high/user_required/unknown。
-	LeafSafetyHighWrite = cmdcore.SafetyHighWrite
-	// LeafSafetyDestructive 破坏性操作：destructive/high/user_required/unknown。
-	LeafSafetyDestructive = cmdcore.SafetyDestructive
-)
-
 // LeafConstraintKind 是跨 flag 关系约束的类型（cmdcore.ConstraintKind 的
 // 别名）。取值与 shortcut 框架的 ConstraintKind 逐字一致。
 type LeafConstraintKind = cmdcore.ConstraintKind
@@ -115,7 +88,6 @@ type LeafSchema = cmdcore.SchemaDecl
 // SchemaDecl 嵌套类型别名（与 LeafSchema 配套使用）。
 type (
 	LeafPositionalDecl = cmdcore.PositionalDecl
-	LeafSafetyDecl     = cmdcore.SafetyDecl
 	LeafDryRunDecl     = cmdcore.DryRunDecl
 	LeafInterfaceDecl  = cmdcore.InterfaceDecl
 	LeafSelectionDecl  = cmdcore.SelectionDecl
@@ -125,7 +97,7 @@ type (
 // LeafSpec 是命令框架的 Leaf 声明门面（映射为 cmdcore.CommandSpec）。
 //
 // 声明面 = Schema 最终数据源：Flags（含 parameter Schema 字段）、Constraints、
-// Risk、ConstParams、Use/Short/Long/Example、Schema（ToolSpec 各组）。
+// Safety、ConstParams、Use/Short/Long/Example、Schema（ToolSpec 各组）。
 // Schema 组装透传嵌入值，声明路径不再引入评审并行字段。
 //
 // 执行面（不算声明）：Validate、Call、RunE、PostMount；Server/Tool 仅路由。
@@ -145,14 +117,9 @@ type LeafSpec struct {
 	// 仍放 Validate 钩子（钩子本身不是约束声明）。
 	Constraints []LeafConstraint
 
-	// Risk 声明副作用等级，驱动 ConfirmRisk（对齐 shortcut）。非空时嵌入
-	// dws.schema.risk 并合成 Schema.Safety。
-	Risk LeafRisk
-
-	// Safety 声明 Schema 安全元数据等级，独立于运行时 Risk。为空时框架从
-	// Risk 推导（Risk.SafetyDefault）；显式设置时 Safety 驱动 Schema 元数据，
-	// Risk 仍驱动运行时确认行为。
-	Safety LeafSafety
+	// Safety 直接使用 Agent Runtime Schema 的安全模型。Confirmation 驱动
+	// 运行时确认，其余字段原样进入 Schema；字段之间不做机械推导。
+	Safety cli.SafetySpec
 
 	// ConfirmFirst 为 true 时确认门先于 required/约束/Validate 校验执行
 	//（devapp 旧版写守卫语义：写命令未带 --yes 时快速失败
@@ -185,7 +152,7 @@ type LeafSpec struct {
 
 // NewLeafCommand 按 LeafSpec 构建叶子命令：经 FromLeafSpec 归一为
 // cmdcore.CommandSpec 后交由统一构建器 cmdcore.NewCommand 编排（flag 注册、
-// 约束声明检查、Schema 投影、帮助渲染、required/约束校验、Risk 写确认、
+// 约束声明检查、Schema 投影、帮助渲染、required/约束校验、Safety 确认、
 // toolArgs 装配）。本函数只保留 LeafSpec→CommandSpec 的映射与 MCP dispatch
 // 闭包（callMCPTool/OnServer/Call）。所有 LeafSpec 命令（含 devapp 全部叶子）
 // 由此统一流经 cmdcore 单一 spec 路径。
@@ -194,7 +161,7 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 }
 
 // FromLeafSpec 把 LeafSpec 归一为统一的 cmdcore.CommandSpec。契约字段
-// （Flags/Constraints/Risk）与编排钩子（Validate/PostMount/RunE）直接透传；
+// （Flags/Constraints/Safety）与编排钩子（Validate/PostMount/RunE）直接透传；
 // dispatch 收敛为一个闭包：Call 优先，其次显式 Server 路由，最后按 product
 // 自动路由。RunE 逃生舱存在时不设 Dispatch（与旧行为一致）。
 func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
@@ -205,7 +172,6 @@ func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 		Example:      spec.Example,
 		Flags:        spec.Flags,
 		Constraints:  spec.Constraints,
-		Risk:         spec.Risk,
 		Safety:       spec.Safety,
 		ConfirmFirst: spec.ConfirmFirst,
 		ConstParams:  spec.ConstParams,

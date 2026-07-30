@@ -58,8 +58,9 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	if strings.Contains(cs.Long, "参数约束") {
 		t.Fatalf("Long must not pre-render 参数约束: %q", cs.Long)
 	}
-	if cs.Risk != cmdcore.RiskHighWrite {
-		t.Fatalf("risk = %q, want high-risk-write", cs.Risk)
+	if cs.Safety.Effect != "destructive" || cs.Safety.Risk != "high" ||
+		cs.Safety.Confirmation != "user_required" || cs.Safety.Idempotency != "unknown" {
+		t.Fatalf("adapter safety = %#v, want destructive/high/user_required/unknown", cs.Safety)
 	}
 	if cs.Orchestrate == nil {
 		t.Fatal("multi-step Execute must project into Orchestrate")
@@ -165,7 +166,8 @@ func TestCrossPlatformCoverageFromShortcutEmpty(t *testing.T) {
 	if cs.Constraints != nil {
 		t.Fatalf("empty constraints = %#v, want nil", cs.Constraints)
 	}
-	if cs.Risk != cmdcore.RiskRead {
-		t.Fatalf("default risk = %q, want read", cs.Risk)
+	if cs.Safety.Effect != "read" || cs.Safety.Risk != "low" ||
+		cs.Safety.Confirmation != "not_required" || cs.Safety.Idempotency != "idempotent" {
+		t.Fatalf("default safety = %#v, want read/low/not_required/idempotent", cs.Safety)
 	}
 }

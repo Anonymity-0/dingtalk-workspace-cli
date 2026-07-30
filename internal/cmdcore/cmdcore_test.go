@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +33,27 @@ func newTestCommand() *cobra.Command {
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	return cmd
+}
+
+func testReadSafety() cli.SafetySpec {
+	return cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	}
+}
+
+func testWriteSafety() cli.SafetySpec {
+	return cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	}
+}
+
+func testDestructiveSafety() cli.SafetySpec {
+	return cli.SafetySpec{
+		Effect: "destructive", Risk: "high",
+		Confirmation: "user_required", Idempotency: "unknown",
+	}
 }
 
 // ── flag registration ──────────────────────────────────────────────
@@ -538,19 +560,10 @@ func TestCrossPlatformCoverageValidateConstraints(t *testing.T) {
 	}
 }
 
-// ── risk confirmation ──────────────────────────────────────────────
+// ── safety confirmation ────────────────────────────────────────────
 
-func TestCrossPlatformCoverageRiskEffective(t *testing.T) {
-	if Risk("").Effective() != RiskRead {
-		t.Fatal("empty risk must default to read")
-	}
-	if RiskWrite.Effective() != RiskWrite || RiskHighWrite.Effective() != RiskHighWrite {
-		t.Fatal("explicit risk must be preserved")
-	}
-}
-
-func TestCrossPlatformCoverageConfirmRisk(t *testing.T) {
-	newRiskCmd := func(stdin string) *cobra.Command {
+func TestCrossPlatformCoverageConfirmSafety(t *testing.T) {
+	newSafetyCmd := func(stdin string) *cobra.Command {
 		cmd := newTestCommand()
 		cmd.PersistentFlags().Bool("yes", false, "")
 		cmd.PersistentFlags().Bool("dry-run", false, "")
@@ -559,45 +572,45 @@ func TestCrossPlatformCoverageConfirmRisk(t *testing.T) {
 		return cmd
 	}
 
-	// read-only never prompts
-	if err := ConfirmRisk(newRiskCmd(""), RiskRead); err != nil {
-		t.Fatal("read risk must pass")
+	// Confirmation is the only field that drives the gate.
+	if err := ConfirmSafety(newSafetyCmd(""), testReadSafety()); err != nil {
+		t.Fatal("not_required safety must pass")
 	}
-	if err := ConfirmRisk(newRiskCmd(""), ""); err != nil {
-		t.Fatal("empty risk must pass as read")
+	if err := ConfirmSafety(newSafetyCmd(""), cli.SafetySpec{Effect: "destructive", Risk: "high"}); err != nil {
+		t.Fatal("effect/risk must not imply confirmation")
 	}
 	// --yes and --dry-run bypass the prompt
-	yes := newRiskCmd("")
+	yes := newSafetyCmd("")
 	_ = yes.PersistentFlags().Set("yes", "true")
-	if err := ConfirmRisk(yes, RiskHighWrite); err != nil {
+	if err := ConfirmSafety(yes, testDestructiveSafety()); err != nil {
 		t.Fatal("--yes must bypass")
 	}
-	dry := newRiskCmd("")
+	dry := newSafetyCmd("")
 	_ = dry.PersistentFlags().Set("dry-run", "true")
-	if err := ConfirmRisk(dry, RiskWrite); err != nil {
+	if err := ConfirmSafety(dry, testWriteSafety()); err != nil {
 		t.Fatal("--dry-run must bypass")
 	}
 	// interactive accept / decline
 	for _, answer := range []string{"yes\n", "y\n", "YES\n"} {
-		if err := ConfirmRisk(newRiskCmd(answer), RiskWrite); err != nil {
+		if err := ConfirmSafety(newSafetyCmd(answer), testWriteSafety()); err != nil {
 			t.Fatalf("answer %q must confirm, got %v", answer, err)
 		}
 	}
 	for _, answer := range []string{"no\n", "\n", "maybe\n"} {
-		err := ConfirmRisk(newRiskCmd(answer), RiskHighWrite)
+		err := ConfirmSafety(newSafetyCmd(answer), testDestructiveSafety())
 		if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
 			t.Fatalf("answer %q must decline with cancel, got %v", answer, err)
 		}
 	}
 	// EOF / closed stdin is ConfirmUnavailable, not decline
-	err := ConfirmRisk(newRiskCmd(""), RiskWrite)
+	err := ConfirmSafety(newSafetyCmd(""), testWriteSafety())
 	var appErr *apperrors.Error
 	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
 		t.Fatalf("EOF must be confirmation_required, got %#v", err)
 	}
 }
 
-func TestCrossPlatformCoverageConfirmRiskSuppressesPromptOffTerminal(t *testing.T) {
+func TestCrossPlatformCoverageConfirmSafetySuppressesPromptOffTerminal(t *testing.T) {
 	// Non-terminal stdin (buffer/pipe/EOF): the interactive prompt line must
 	// not pollute stderr — the structured error carries the semantics. Piped
 	// answers still confirm.
@@ -607,7 +620,7 @@ func TestCrossPlatformCoverageConfirmRiskSuppressesPromptOffTerminal(t *testing.
 	cmd.PersistentFlags().Bool("dry-run", false, "")
 	cmd.SetIn(strings.NewReader(""))
 	cmd.SetErr(&stderr)
-	if err := ConfirmRisk(cmd, RiskWrite); err == nil {
+	if err := ConfirmSafety(cmd, testWriteSafety()); err == nil {
 		t.Fatal("EOF must fail closed")
 	}
 	if got := stderr.String(); got != "" {
@@ -619,7 +632,7 @@ func TestCrossPlatformCoverageConfirmRiskSuppressesPromptOffTerminal(t *testing.
 	piped.PersistentFlags().Bool("yes", false, "")
 	piped.SetIn(strings.NewReader("yes\n"))
 	piped.SetErr(&answered)
-	if err := ConfirmRisk(piped, RiskWrite); err != nil {
+	if err := ConfirmSafety(piped, testWriteSafety()); err != nil {
 		t.Fatalf("piped answer must confirm, got %v", err)
 	}
 	if got := answered.String(); got != "" {
@@ -872,9 +885,9 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
 	dispatched := false
 	cmd := NewCommand(CommandSpec{
-		Use:   "risky",
-		Risk:  RiskHighWrite,
-		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
+		Use:    "risky",
+		Safety: testDestructiveSafety(),
+		Flags:  []FlagSpec{{Name: "x", Usage: "X"}},
 		Invoke: func(*Ctx, map[string]any) error {
 			dispatched = true
 			return nil
@@ -913,7 +926,7 @@ func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.
 
 	// Zero dispatchers: a spec with no runnable body must never reach run time,
 	// where it would have prompted for confirmation and then exited 0 doing nothing.
-	mustPanic("no dispatcher", CommandSpec{Use: "bare", Risk: RiskHighWrite, Flags: flags},
+	mustPanic("no dispatcher", CommandSpec{Use: "bare", Safety: testDestructiveSafety(), Flags: flags},
 		"must declare exactly one of RunE/Invoke/Orchestrate, got 0")
 
 	// Two competing dispatchers are equally a programming error.
@@ -930,14 +943,14 @@ func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	}, "got 2")
 
-	// ConfirmFirst without Risk orders a confirmation that does not exist — and
-	// for declared-Schema writes it would also publish the read safety tier.
-	mustPanic("confirmFirst without risk", CommandSpec{
+	// ConfirmFirst without a user_required confirmation orders a gate that
+	// does not exist.
+	mustPanic("confirmFirst without confirmation", CommandSpec{
 		Use:          "guarded",
 		Flags:        flags,
 		ConfirmFirst: true,
 		Invoke:       func(*Ctx, map[string]any) error { return nil },
-	}, "ConfirmFirst but declares no Risk")
+	}, "Safety.Confirmation is not user_required")
 }
 
 func TestCrossPlatformCoverageNewCommandOrchestrateDispatch(t *testing.T) {
@@ -1021,7 +1034,7 @@ func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing
 	build := func() *cobra.Command {
 		cmd := NewCommand(CommandSpec{
 			Use:         "risky-orch",
-			Risk:        RiskHighWrite,
+			Safety:      testDestructiveSafety(),
 			Flags:       []FlagSpec{{Name: "x", Usage: "X"}},
 			Orchestrate: func(*Ctx) error { ran = true; return nil },
 		})
@@ -1053,18 +1066,18 @@ func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing
 	}
 }
 
-func TestNewCommandEmbedsContractRiskIntoSchema(t *testing.T) {
+func TestNewCommandEmbedsContractFlagsWithoutLegacyRiskAnnotation(t *testing.T) {
 	cmd := NewCommand(CommandSpec{
-		Use:  "wipe",
-		Risk: RiskHighWrite,
+		Use:    "wipe",
+		Safety: testDestructiveSafety(),
 		Flags: []FlagSpec{
 			{Name: "id", Usage: "ID", Required: true, Bind: "versionId", Kind: KindString},
 			{Name: "count", Usage: "N", Kind: KindInt, Default: "1"},
 		},
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
-	if cmd.Annotations["dws.schema.risk"] != string(RiskHighWrite) {
-		t.Fatalf("risk annotation = %q", cmd.Annotations["dws.schema.risk"])
+	if _, ok := cmd.Annotations["dws.schema.risk"]; ok {
+		t.Fatal("cmdcore must not emit the legacy dws.schema.risk annotation")
 	}
 	id := cmd.Flags().Lookup("id")
 	if id.Annotations["dws.schema.required"][0] != "true" {
@@ -1076,16 +1089,16 @@ func TestNewCommandEmbedsContractRiskIntoSchema(t *testing.T) {
 	if cmd.Flags().Lookup("count").Annotations["dws.schema.type"][0] != "integer" {
 		t.Fatalf("count type = %#v", cmd.Flags().Lookup("count").Annotations["dws.schema.type"])
 	}
-	// Empty Risk must not stamp a read default that would clobber write-guard leaves.
+	// Empty Safety must not stamp the removed Risk annotation.
 	plain := NewCommand(CommandSpec{
 		Use:    "list",
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
 	if _, ok := plain.Annotations["dws.schema.risk"]; ok {
-		t.Fatal("empty Risk must not embed dws.schema.risk")
+		t.Fatal("empty Safety must not embed dws.schema.risk")
 	}
 	if plain.Annotations["dws.schema.contract"] != "cmdcore" {
-		t.Fatal("contract marker still required when Risk empty")
+		t.Fatal("contract marker still required when Safety empty")
 	}
 }
 

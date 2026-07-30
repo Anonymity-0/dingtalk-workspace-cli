@@ -59,7 +59,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 13. 每一次受管的后端/输出副作用都必须由调用级许可（permit）把关；不要把裸输入流或裸后端 helper 暴露给受管 Handler。
 14. 保持遗留行为 bug-for-bug 兼容，**除非**该行为本身是正确性缺陷。§3.4 的非交互确认要在差分门禁能够要求它之前修好，因为兼容门禁会保护它所度量的一切。
 15. 把「没有可用的交互输入」当作一种独立的确认结果，与接受和拒绝都不同。
-16. **flag / help / schema 参数面同源取路径 A，且 Contract 必须嵌入 Schema**：Contract（LeafSpec 门面）经 `cmdcore.NewCommand` 写入 cobra Schema 注解，供 catalog/agent metadata 组装消费；MCP meta 不得创建 CLI flag；1:1 MCP 透传仅作可选子集。**硬规则**：每份 help/Schema 事实须 **声明 OR 人工标注**，禁止纯推断。**声明** = `LeafSpec`/`CommandSpec` 数据字段（`Flags`/`Constraints`/非空 `Risk`/…），钩子不算声明；未设 `Risk` 的写命令须 `runtime_gate` 标注。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.1–§1.3。
+16. **flag / help / schema 参数面同源取路径 A，且 Contract 必须嵌入 Schema**：Contract（LeafSpec 门面）经 `cmdcore.NewCommand` 写入 cobra Schema 注解并注册类型化 Final，供 catalog/agent metadata 组装消费；MCP meta 不得创建 CLI flag；1:1 MCP 透传仅作可选子集。**硬规则**：每份 help/Schema 事实须 **声明 OR 人工标注**，禁止纯推断。**声明** = `LeafSpec`/`CommandSpec` 数据字段（`Flags`/`Constraints`/`Safety`/…），钩子不算声明；未设完整 SafetySpec 的旧写命令须 `runtime_gate` 标注。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.1–§1.3。
 16. 让 dry-run 输出与 `@file`/stdin 输入成为声明式的契约能力，而不是逐 handler 的代码，这样覆盖率就是框架的属性，而不依赖作者自觉。
 17. 从 M1 起要求新命令使用新核心，使框架在 Shortcut 分批迁移之前就已改善代码库。
 18. 把 LeafSpec 已上线的 `Bind → Call → callMCPTool` 路径视为「声明可以完成执行」的存在性证明：27 个源声明 / 28 条上线命令，生产环境 `RunE` 用量为零。Shortcut 应当获得同样的绑定词汇，而不是把每个 `Execute` 都包成 Handler。
@@ -156,7 +156,7 @@ return answer == "yes" || answer == "y"
 影响范围与归类：
 
 - 全部 168 个 write/high-risk Shortcut 受影响；read 命令从不提示。
-- `cmdcore.ConfirmRisk` 已经读取 `cmd.InOrStdin()` 而非进程 stdin，因此它是可测试的；但它套用同一条「EOF 等于拒绝」的规则，所以一旦非交互父进程关闭输入，它受影响的程度完全相同。
+- `cmdcore.ConfirmSafety` 读取 `cmd.InOrStdin()` 而非进程 stdin，因此它是可测试的；EOF 会显式返回 `confirmation_required`，不会把未执行误报为成功。
 - 这**不是** §5.9 的拒绝策略问题。那个问题是「真实拒绝应当产生哪个退出码」。这里没有任何人拒绝过：拒绝分支在 CLI 最常被使用的那种环境里默认就可达。
 - 由于这是用户可见的行为变更，它走 §9 的 approved delta 流程。该流程不依赖 Contract、解析器或 mcpbind，因此这项修复不受新核心的进度约束。
 - **因此它作为独立 hotfix（§8 中的 H0）先于本 RFC 的实现序列发布，而不是排在架构工作的第四个 PR。** 这是一个已上线的数据完整性级缺陷：168 条写命令在 agent/CI 环境下静默丢弃写操作并报告成功。把它排在一套架构改造之后，等于让缺陷的存续时间取决于一个与它无关的项目的进度。本 RFC 记录它、给出修复形态与门禁，但**不持有它的排期**；即使本 RFC 被否决或推迟，H0 也应照发。
@@ -304,13 +304,13 @@ Definition（仅声明；不可编译）
 
 1. 业务 flag 只出现在 `Flags`（或领域工具注入 + 同源允许的 annotate），不在 `PostMount`/`Validate` 里 `Flags().String`；
 2. 业务参数只由 `Flags`/`ConstParams` 装配，不在 `Call`/`Execute` 里 `params[k]=…`；
-3. 写副作用：要么非空 `Risk`（框架 `ConfirmRisk` + Schema overlay），要么显式 `runtime_gate` 标注（今日 write-guard）；二者皆无则不合格；
+3. 写副作用：新 Leaf 声明完整 `SafetySpec`（框架 `ConfirmSafety` + Schema Final）；未迁移旧路径显式标注 `runtime_gate`；二者皆无则不合格；
 4. Schema `ToolSpec` 全字段组均落在 §5.0.4 表中某一权威格，禁止无主字段。
 
 #### 5.0.3 与目标 `Contract` 的对应
 
 ```text
-今日 LeafSpec / CommandSpec.Flags|Constraints|Risk|…
+今日 LeafSpec / CommandSpec.Flags|Constraints|Safety|…
         ≈  目标 Definition.Contract
 今日 Call / Invoke / Orchestrate / RunE
         ≈  目标 mcpbind 派发 或 Handler（形态 1/2/3）
@@ -335,7 +335,7 @@ Definition（仅声明；不可编译）
 | | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
 | **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
 | **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
-| **Safety** | `effect`, `risk`, `confirmation` | **声明**（非空 `Risk`）**或标注**（`runtime_gate`）或迁移期 reviewed Safety | `Risk` / `AnnotateRuntimeGate` / `schema_hints/metadata` safety | 写路径必须 declare 或 annotate；空 Risk 不嵌入 |
+| **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `cli.SafetySpec`）**或标注**（`runtime_gate`）或迁移期 reviewed Safety | `Safety` / `AnnotateRuntimeGate` / `schema_hints/metadata` safety | 四字段独立；confirmation 单独驱动运行时 |
 | | `idempotency` | 评审源（或未来 Contract） | reviewed metadata | 今日非框架声明；不得推断 |
 | | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
 | **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |
@@ -350,7 +350,7 @@ Definition（仅声明；不可编译）
 冲突规则（路径 A）：
 
 - parameters 的 type / required / default / name 集合：**Contract/cobra 胜** hints 与 MCP；
-- Safety 的 confirmation/effect：**`Schema.Safety`（Final 声明）胜**；否则非空 Contract `Risk` 胜；再否则 `runtime_gate` 胜「假装 not_required」；最末迁移期 reviewed Safety。声明 Safety 存在时 gate 标注被忽略（声明 > 标注，§5.10）；
+- Safety 的 effect/risk/confirmation/idempotency：完整 Contract `Safety`（Final 声明）胜；否则 `runtime_gate` 可把旧路径的 confirmation 升为 user_required；最末迁移期 reviewed Safety。Safety 各字段之间不得互推（声明 > 标注，§5.10）；
 - Identity：**绑定 entry 胜**——Contract 声明必须与之一致，不一致组装报错，不得改写 canonical path；Selection 已声明则声明胜；Interface 不得发明 RPC。
 
 ### 5.1 Definition、Contract 与 Handler
@@ -980,7 +980,7 @@ func WithProjector(ResponseProjector) BindOption
 - 编码通过 `Param[T]` 捕获的类型键经 `cmdcore.Get[T]` 读取；它从不接收原始字符串或公开 `any` 值。
 - 包含/省略通过 `IncludeMode` 显式表达，并与编码正交。flag kind 从不静默决定是否发送 `0`、`false` 或空值。Shortcut 模式 `if rt.Changed(name) { params[…] = … }` 映射为 `WhenExplicit` / `WhenSupplied`；它不得继续以手写形式留在形态 1 候选内。
 - 仅载荷默认值留在绑定中，且从不满足 CLI required 规则。
-- `Bind` 拒绝 nil/typed-nil 的 Caller 或 ResultSink、未知键、重复后端键、类型不匹配、非法 include/effect 模式、Contract Risk/后端 effect 冲突以及不兼容的默认值。
+- `Bind` 拒绝 nil/typed-nil 的 Caller 或 ResultSink、未知键、重复后端键、类型不匹配、非法 include/effect 模式、Contract Safety.Effect/后端 effect 冲突以及不兼容的默认值。
 - 绑定选项有不透明内部，且对内置全函数编码器与类型化载荷默认值仅有封闭、具名的构造函数。没有公开的 `func(string) (any, error)` 转换钩子。可失败的用户输入转换属于 Resolve 或 Validator，因此在 Risk 之前完成。
 - 「全函数」指编码器对任意 T 值都不返回用户错误、也不 panic；内置编码器对其输入域有穷尽测试。
 - 在成功的 Bind、cmdcore Compile 与 Resolve 之后，在派发器内物化载荷不能产生用户校验错误。它仍可能浮现内部不变量失败、后端失败或输出错误。
@@ -1146,7 +1146,7 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 | 非 Shortcut 受管定义的 Cobra 命令 Hidden | 可执行 Contract | 挂载的命令可见性与声明匹配 |
 | Shortcut 列表成员资格与语义 disposition | 经评审的 Shortcut 可见性解析器 | public/all 列表成员资格与经评审决策匹配 |
 | Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
-| 运行时 Risk 与确认 | 可执行 Contract（非空 `Risk`）或显式 annotate（如 `runtime_gate`）；见 §5.0 | 不得靠推断；空 Risk 不嵌入 schema risk；写命令须 Risk 或 gate；Safety 组装优先级 **`Schema.Safety`（Final 显式字段）> `CommandSpec.Safety` 枚举 tier > `Risk.SafetyDefault()` > `runtime_gate`**，高优先命中即忽略低优先；tier 填充含 idempotency（读 idempotent / 写 unknown），故仅声明 Risk/Safety 枚举即自足。**边界**：tier 恒可推导意味着写命令忘声明 `Risk` 会静默发布 read tier（且失去运行时确认）——写命令必须声明 `Risk`；`ConfirmFirst` 无 `Risk` 属 authoring 错误，构造期 panic |
+| Safety 与运行时确认 | 可执行 Contract 的完整 `cli.SafetySpec`，或迁移期显式 annotate（如 `runtime_gate`）；见 §5.0 | `confirmation` 单独驱动运行时门，`effect` / `risk` / `idempotency` 原样发布，禁止跨字段机械推导；任一 Safety 字段非空时四字段必须齐全，否则构造期 panic；`ConfirmFirst` 只在 `confirmation=user_required` 时合法 |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
 | Agent 选择文案（`use_when`、`avoid_when`、摘要） | 经评审的 hints/catalog | 身份解析到活契约 |
 

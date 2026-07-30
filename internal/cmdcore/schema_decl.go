@@ -31,7 +31,6 @@ type SchemaDecl struct {
 	Title       string
 	Description string
 	Positionals []PositionalDecl
-	Safety      SafetyDecl
 	DryRun      *DryRunDecl
 	Interface   *InterfaceDecl
 	Selection   SelectionDecl
@@ -46,16 +45,6 @@ type PositionalDecl struct {
 	Required    bool
 	Variadic    bool
 	Index       int
-}
-
-// SafetyDecl is the final Schema Safety payload. Any field left empty is
-// filled from the CommandSpec.Safety tier (or Risk.SafetyDefault() when
-// Safety is unset) at embed time, including Idempotency.
-type SafetyDecl struct {
-	Effect       string
-	Risk         string
-	Confirmation string
-	Idempotency  string
 }
 
 // DryRunDecl is a positive --dry-run capability declaration for Schema.
@@ -128,14 +117,8 @@ func validateSchemaDecl(spec CommandSpec) {
 		missing = append(missing, "Schema.Selection.Examples")
 	}
 	// Interface is an unconditional catalog required key for declared tools
-	// (no hints fallback). Safety needs no completeness check: the enum tier
-	// (CommandSpec.Safety, falling back to Risk.SafetyDefault()) fills every
-	// Safety field including Idempotency, so any declared Schema projects a
-	// complete safety block by construction. The flip side of always-on
-	// inference: a WRITE command must declare Risk (which also drives runtime
-	// confirmation) — an empty Risk publishes the read tier. The detectable
-	// half of that mistake (ConfirmFirst without Risk) is caught by
-	// validateDispatchDecl.
+	// (no hints fallback). CommandSpec.Safety is validated separately and is
+	// the single source for both runtime confirmation and the Schema block.
 	if iface := spec.Schema.Interface; iface == nil ||
 		strings.TrimSpace(iface.Mode) == "" || strings.TrimSpace(iface.Availability) == "" {
 		missing = append(missing, "Schema.Interface (mode/availability)")
@@ -156,10 +139,6 @@ func (s SchemaDecl) empty() bool {
 		return false
 	}
 	if len(s.Positionals) > 0 {
-		return false
-	}
-	if strings.TrimSpace(s.Safety.Effect) != "" || strings.TrimSpace(s.Safety.Risk) != "" ||
-		strings.TrimSpace(s.Safety.Confirmation) != "" || strings.TrimSpace(s.Safety.Idempotency) != "" {
 		return false
 	}
 	if s.DryRun != nil && strings.TrimSpace(s.DryRun.PreviewKind) != "" {

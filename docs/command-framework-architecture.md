@@ -10,10 +10,10 @@
 
 命令框架将 CLI 命令的**声明**与**执行**分离：
 
-- **声明面** — 数据字段描述命令是什么（flag、约束、风险等级、Schema 元数据）
+- **声明面** — 数据字段描述命令是什么（flag、约束、SafetySpec、Schema 元数据）
 - **执行面** — 钩子函数描述命令做什么（校验、派发、编排）
 
-框架负责：flag 注册、有效值回退链、required/约束校验、Risk 写确认、toolArgs 装配、Agent Runtime Schema 投影。
+框架负责：flag 注册、有效值回退链、required/约束校验、SafetySpec 确认、toolArgs 装配、Agent Runtime Schema 投影。
 
 ## 核心类型
 
@@ -30,8 +30,7 @@ type CommandSpec struct {
     Example     string
     Flags       []FlagSpec
     Constraints []Constraint
-    Risk        Risk          // 运行时确认行为
-    Safety      Safety        // Schema 元数据等级
+    Safety      cli.SafetySpec // 运行时与 Schema 的单一安全来源
     ConfirmFirst bool         // 确认门先于参数校验
     ConstParams map[string]any
     Schema      SchemaDecl    // 完整 ToolSpec 载荷
@@ -47,32 +46,29 @@ type CommandSpec struct {
 }
 ```
 
-### Risk 与 Safety（独立枚举）
+### SafetySpec（单一安全来源）
 
-两个正交维度，组合使用：
+`CommandSpec.Safety` 直接使用现有 Agent Runtime Schema 的 `cli.SafetySpec`：
 
-| 枚举 | 职责 | 取值 |
-|------|------|------|
-| **Risk** | 运行时确认行为（是否弹 yes/no） | `read` / `write` / `high-risk-write` |
-| **Safety** | Schema 元数据等级（Agent 看到的影响描述） | `read` / `write` / `high-write` / `destructive` |
+| 字段 | 职责 |
+|------|------|
+| `Effect` | 操作影响：read / write / destructive |
+| `Risk` | 风险等级：low / medium / high |
+| `Confirmation` | 是否需要用户确认：not_required / user_required |
+| `Idempotency` | 幂等性：idempotent / retryable / non_idempotent / unknown |
 
-Safety 为空时，通过 `Risk.SafetyDefault()` 方法推导：
-
-| Risk | → Safety 默认 | Schema 展开 |
-|------|--------------|-------------|
-| (空) / `read` | `read` | effect:read, risk:low, confirmation:not_required, idempotency:idempotent |
-| `write` | `write` | effect:write, risk:medium, confirmation:user_required, idempotency:unknown |
-| `high-risk-write` | `destructive` | effect:destructive, risk:high, confirmation:user_required, idempotency:unknown |
-
-显式设置 Safety 可以覆盖默认推导：
+四个字段彼此独立。框架只读取 `Confirmation` 决定运行时确认，其余字段原样发布到 Schema，不从一个字段机械推导另一个。非空 SafetySpec 必须一次声明完整：
 
 ```go
-// create：运行时 high-risk 确认，但 Schema 标记为 high-write（不可逆但非破坏性）
-Risk:   LeafRiskHighWrite,
-Safety: LeafSafetyHighWrite,   // write/high 而非 destructive/high
+Safety: cli.SafetySpec{
+    Effect:       "write",
+    Risk:         "high",
+    Confirmation: "user_required",
+    Idempotency:  "unknown",
+},
 ```
 
-优先级链：`explicit SafetyDecl fields > Safety enum > Risk.SafetyDefault()`
+完全空值保留历史只读默认 `read/low/not_required/idempotent`；不存在 Risk/Safety 枚举或覆盖优先级链。
 
 ### FlagSpec
 
@@ -123,19 +119,20 @@ flag 解析按以下顺序取值（先命中先生效）：
 `cmdcore.NewCommand(spec)` 执行以下构建时检查（失败则 panic）：
 
 1. **validateDispatchDecl** — 恰好一个执行体（Invoke/Orchestrate/RunE）
-2. **validateSchemaDecl** — Schema 声明完整性（Description、AgentSummary、UseWhen、AvoidWhen、Examples、Safety、Interface）
-3. **RegisterFlags** — flag + alias 注册到 cobra
-4. **ValidateConstraintDecls** — 约束引用的 flag 必须存在
-5. **embedContractIntoSchema** — 投影到 dws.schema.* annotations
-6. **AnnotateConstraints** — 约束渲染到 --help
-7. **PostMount** — 调用方的挂载收尾钩子
+2. **validateSafetySpec** — 非空 SafetySpec 的四个独立字段必须完整
+3. **validateSchemaDecl** — Schema 声明完整性（Description、AgentSummary、UseWhen、AvoidWhen、Examples、Interface）
+4. **RegisterFlags** — flag + alias 注册到 cobra
+5. **ValidateConstraintDecls** — 约束引用的 flag 必须存在
+6. **embedContractIntoSchema** — 投影到 dws.schema.* annotations
+7. **AnnotateConstraints** — 约束渲染到 --help
+8. **PostMount** — 调用方的挂载收尾钩子
 
 ## 运行时流程
 
 生成的 `RunE` 按以下顺序执行：
 
 ```
-[ConfirmFirst? → ConfirmRisk]        ← devapp 遗留语义：先确认后校验
+[ConfirmFirst? → ConfirmSafety]      ← 可选：先确认后校验
   │
   ▼
 ValidateRequired                     ← 有效值回退链校验
@@ -153,7 +150,7 @@ BuildArgs                            ← flag → toolArgs 装配
 ConstParams 合并
   │
   ▼
-[!ConfirmFirst? → ConfirmRisk]       ← 默认顺序：校验后确认
+[!ConfirmFirst? → ConfirmSafety]     ← 默认顺序：校验后确认
   │
   ▼
 Invoke(ctx, toolArgs)                ← 单步派发
@@ -170,8 +167,10 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
         Use:     "create",
         Short:   "创建开放平台企业内部应用",
         Tool:    devAppCreateTool,
-        Risk:    LeafRiskHighWrite,
-        Safety:  LeafSafetyHighWrite,
+        Safety: cli.SafetySpec{
+            Effect: "write", Risk: "high",
+            Confirmation: "user_required", Idempotency: "unknown",
+        },
         ConfirmFirst: true,
         Flags: []LeafFlag{
             {Name: "name", Usage: "应用名称 (必填)", Bind: "name",
@@ -208,6 +207,8 @@ spec := FromShortcut(Shortcut{
 })
 ```
 
+Shortcut 本次仍保留自身的 `Risk`。未接入 live mount 的 adapter 只在边界将它展开成完整 `cli.SafetySpec`；cmdcore/Leaf 不再保留该枚举。
+
 ## 文件结构
 
 | 文件 | 职责 |
@@ -230,8 +231,8 @@ spec := FromShortcut(Shortcut{
 
 ## 设计原则
 
-1. **声明 vs 执行分离** — Flags/Constraints/Risk/Safety/Schema 是声明；Invoke/Validate/PostMount 是执行
+1. **声明 vs 执行分离** — Flags/Constraints/Safety/Schema 是声明；Invoke/Validate/PostMount 是执行
 2. **单一数据源** — 一份声明驱动 --help、Schema、catalog、runtime 校验
-3. **框架推导 > 手写** — Safety 从 Risk 推导、Example 从 Schema.Selection.Examples 继承
+3. **安全字段不互推** — Confirmation 单独驱动确认，Effect/Risk/Idempotency 原样发布
 4. **构建时拦截 > 运行时报错** — 声明不完整在命令注册时 panic，不等到用户触发
-5. **向后兼容** — type alias 让现有 LeafSpec 调用方零改动
+5. **边界兼容** — Shortcut 暂由 adapter 转换，Leaf 直接声明 SafetySpec

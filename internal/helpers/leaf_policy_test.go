@@ -97,13 +97,12 @@ func TestLeafSpecCallDoesNotAssembleBusinessParams(t *testing.T) {
 }
 
 // TestLeafSpecNoLegacyWriteGuard pins the migration end-state: devapp leaves
-// declare Contract Risk (ConfirmRisk by the framework, or a manual call inside
-// a RunE escape hatch); the legacy devAppRequireWriteGuard helper is gone and
-// must not be reintroduced in LeafSpec Validate hooks.
+// declare SafetySpec.Confirmation and the framework applies it even around a
+// RunE escape hatch; the legacy devAppRequireWriteGuard helper is gone.
 func TestLeafSpecNoLegacyWriteGuard(t *testing.T) {
 	for _, call := range leafSpecCompositeLits(t) {
 		if validate := fieldExpr(call, "Validate"); validate != nil && astCallsIdent(validate, "devAppRequireWriteGuard") {
-			t.Errorf("%s: LeafSpec must not call devAppRequireWriteGuard; declare Risk instead", call.pos)
+			t.Errorf("%s: LeafSpec must not call devAppRequireWriteGuard; declare Safety.Confirmation instead", call.pos)
 		}
 	}
 }

@@ -17,15 +17,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
 
 // adapter.go bridges the Shortcut framework toward the unified cmdcore typed
-// spec. FromShortcut maps a Shortcut's SHARED BASE (flags, constraints, risk,
+// spec. FromShortcut maps a Shortcut's SHARED BASE (flags, constraints, safety,
 // help identity) into a cmdcore.CommandSpec so both frameworks can eventually
-// share one flag + constraint + risk base.
+// share one flag + constraint + safety base.
 //
 // Scope (Phase 2): this is the typed seam only — it is NOT wired into the live
 // mount() path. The Shortcut runtime keeps its own mount/RuntimeContext/Execute
@@ -67,7 +68,7 @@ func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 		Long:        shortcutIntentProse(s),
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
-		Risk:        cmdcore.Risk(s.risk()),
+		Safety:      shortcutSafetySpec(s.risk()),
 		// Multi-step body: cmdcore stays backend-agnostic, so the shortcut's own
 		// RuntimeContext — which owns CallMCPData/CallMCPWriteData/Output — is
 		// built here from the Ctx's command.
@@ -78,6 +79,29 @@ func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 			}
 			return s.Execute(&RuntimeContext{cmd: c.Command(), shortcut: s})
 		},
+	}
+}
+
+// shortcutSafetySpec is the temporary compatibility boundary while the live
+// Shortcut framework still owns its legacy Risk enum. cmdcore and Leaf do not
+// retain that enum: the adapter expands it once into the existing Schema model.
+func shortcutSafetySpec(risk Risk) cli.SafetySpec {
+	switch risk {
+	case RiskWrite:
+		return cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		}
+	case RiskHighWrite:
+		return cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		}
+	default:
+		return cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		}
 	}
 }
 

@@ -343,7 +343,7 @@ func TestDevAppRobotAndVersionWritesRequireGuard(t *testing.T) {
 			if err == nil {
 				t.Fatal("Execute() error = nil, want write guard")
 			}
-			if !strings.Contains(err.Error(), "写操作") {
+			if !strings.Contains(err.Error(), "需要用户确认") {
 				t.Fatalf("error = %q, want write guard", err.Error())
 			}
 			if runner.last.Tool != "" {
@@ -1010,7 +1010,7 @@ func TestDevAppMemberAndSecurityRequireWriteGuard(t *testing.T) {
 			if err == nil {
 				t.Fatal("Execute() error = nil, want write guard")
 			}
-			if !strings.Contains(err.Error(), "写操作") {
+			if !strings.Contains(err.Error(), "需要用户确认") {
 				t.Fatalf("error = %q, want write guard", err.Error())
 			}
 			if runner.last.Tool != "" {
@@ -1064,7 +1064,7 @@ func TestEveryDevAppWriteCommandRequiresGuard(t *testing.T) {
 			if appErr.Reason != "confirmation_required" {
 				t.Fatalf("error reason = %q, want confirmation_required", appErr.Reason)
 			}
-			for _, marker := range []string{"写操作", "--dry-run", "--yes"} {
+			for _, marker := range []string{"需要用户确认", "--dry-run", "--yes"} {
 				if !strings.Contains(err.Error(), marker) {
 					t.Fatalf("error = %q, want %q write-guard marker", err.Error(), marker)
 				}

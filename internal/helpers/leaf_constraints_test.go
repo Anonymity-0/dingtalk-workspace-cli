@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
 
@@ -479,13 +480,34 @@ func TestCrossPlatformCoverageLeafSpecCorePaths(t *testing.T) {
 
 var errTransformTest = errors.New("transform failed")
 
-func leafRiskSpec(risk LeafRisk, called *bool) LeafSpec {
+func leafTestReadSafety() cli.SafetySpec {
+	return cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	}
+}
+
+func leafTestWriteSafety() cli.SafetySpec {
+	return cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	}
+}
+
+func leafTestDestructiveSafety() cli.SafetySpec {
+	return cli.SafetySpec{
+		Effect: "destructive", Risk: "high",
+		Confirmation: "user_required", Idempotency: "unknown",
+	}
+}
+
+func leafSafetySpec(safety cli.SafetySpec, called *bool) LeafSpec {
 	return LeafSpec{
-		Use:   "danger",
-		Short: "危险",
-		Tool:  "danger_thing",
-		Risk:  risk,
-		Flags: []LeafFlag{{Name: "id", Usage: "ID"}},
+		Use:    "danger",
+		Short:  "危险",
+		Tool:   "danger_thing",
+		Safety: safety,
+		Flags:  []LeafFlag{{Name: "id", Usage: "ID"}},
 		Call: func(*cobra.Command, string, map[string]any) error {
 			*called = true
 			return nil
@@ -493,10 +515,10 @@ func leafRiskSpec(risk LeafRisk, called *bool) LeafSpec {
 	}
 }
 
-func leafRiskRun(t *testing.T, risk LeafRisk, stdin string, args ...string) (bool, error) {
+func leafSafetyRun(t *testing.T, safety cli.SafetySpec, stdin string, args ...string) (bool, error) {
 	t.Helper()
 	called := false
-	cmd := NewLeafCommand(leafRiskSpec(risk, &called))
+	cmd := NewLeafCommand(leafSafetySpec(safety, &called))
 	// 注入根级 --yes/--dry-run 持久 flag，模拟真实根命令。
 	cmd.PersistentFlags().Bool("yes", false, "")
 	cmd.PersistentFlags().Bool("dry-run", false, "")
@@ -509,15 +531,15 @@ func leafRiskRun(t *testing.T, risk LeafRisk, stdin string, args ...string) (boo
 	return called, cmd.Execute()
 }
 
-// TestCrossPlatformCoverageLeafRiskUnderRootGlobalFlags mirrors the production
+// TestCrossPlatformCoverageLeafSafetyUnderRootGlobalFlags mirrors the production
 // shape: the ROOT command owns the global --yes/--dry-run persistent flags and
 // the leaf is a child, so the inherited / root-persistent lookup path is what
-// resolves them (leafRiskRun registers them on the leaf itself, where
+// resolves them (leafSafetyRun registers them on the leaf itself, where
 // cmd.Root() == cmd).
-func TestCrossPlatformCoverageLeafRiskUnderRootGlobalFlags(t *testing.T) {
+func TestCrossPlatformCoverageLeafSafetyUnderRootGlobalFlags(t *testing.T) {
 	run := func(globalFlag string, stdin string) (bool, error) {
 		called := false
-		leaf := NewLeafCommand(leafRiskSpec(LeafRiskHighWrite, &called))
+		leaf := NewLeafCommand(leafSafetySpec(leafTestDestructiveSafety(), &called))
 		root := &cobra.Command{Use: "dws"}
 		root.PersistentFlags().Bool("yes", false, "")
 		root.PersistentFlags().Bool("dry-run", false, "")
@@ -553,20 +575,20 @@ func TestCrossPlatformCoverageLeafRiskUnderRootGlobalFlags(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageLeafRiskReadNeverPrompts(t *testing.T) {
+func TestCrossPlatformCoverageLeafSafetyReadNeverPrompts(t *testing.T) {
 	// 只读：无 stdin 也直接派发。
-	if called, err := leafRiskRun(t, LeafRiskRead, "", "--id", "x"); err != nil || !called {
-		t.Fatalf("read risk err = %v called = %v", err, called)
+	if called, err := leafSafetyRun(t, leafTestReadSafety(), "", "--id", "x"); err != nil || !called {
+		t.Fatalf("read safety err = %v called = %v", err, called)
 	}
-	// 空 Risk 等价只读。
-	if called, err := leafRiskRun(t, "", "", "--id", "x"); err != nil || !called {
-		t.Fatalf("empty risk err = %v called = %v", err, called)
+	// 空 Safety 保留只读默认。
+	if called, err := leafSafetyRun(t, cli.SafetySpec{}, "", "--id", "x"); err != nil || !called {
+		t.Fatalf("empty safety err = %v called = %v", err, called)
 	}
 }
 
-func TestCrossPlatformCoverageLeafRiskWriteConfirmation(t *testing.T) {
+func TestCrossPlatformCoverageLeafSafetyWriteConfirmation(t *testing.T) {
 	// 拒绝：不派发，返回取消错误。
-	called, err := leafRiskRun(t, LeafRiskWrite, "no\n", "--id", "x")
+	called, err := leafSafetyRun(t, leafTestWriteSafety(), "no\n", "--id", "x")
 	if called {
 		t.Fatal("declined write should not dispatch")
 	}
@@ -574,22 +596,22 @@ func TestCrossPlatformCoverageLeafRiskWriteConfirmation(t *testing.T) {
 		t.Fatalf("declined write err = %v", err)
 	}
 	// 同意：派发。
-	if called, err := leafRiskRun(t, LeafRiskWrite, "yes\n", "--id", "x"); err != nil || !called {
+	if called, err := leafSafetyRun(t, leafTestWriteSafety(), "yes\n", "--id", "x"); err != nil || !called {
 		t.Fatalf("confirmed write err = %v called = %v", err, called)
 	}
 	// 高危同样走确认链。
-	if called, err := leafRiskRun(t, LeafRiskHighWrite, "y\n", "--id", "x"); err != nil || !called {
+	if called, err := leafSafetyRun(t, leafTestDestructiveSafety(), "y\n", "--id", "x"); err != nil || !called {
 		t.Fatalf("confirmed high-write err = %v called = %v", err, called)
 	}
 }
 
-func TestCrossPlatformCoverageLeafRiskYesAndDryRunBypass(t *testing.T) {
+func TestCrossPlatformCoverageLeafSafetyYesAndDryRunBypass(t *testing.T) {
 	// --yes 跳过提示直接派发（无 stdin）。
-	if called, err := leafRiskRun(t, LeafRiskHighWrite, "", "--id", "x", "--yes"); err != nil || !called {
+	if called, err := leafSafetyRun(t, leafTestDestructiveSafety(), "", "--id", "x", "--yes"); err != nil || !called {
 		t.Fatalf("--yes bypass err = %v called = %v", err, called)
 	}
 	// --dry-run 跳过提示直接派发（无 stdin）。
-	if called, err := leafRiskRun(t, LeafRiskWrite, "", "--id", "x", "--dry-run"); err != nil || !called {
+	if called, err := leafSafetyRun(t, leafTestWriteSafety(), "", "--id", "x", "--dry-run"); err != nil || !called {
 		t.Fatalf("--dry-run bypass err = %v called = %v", err, called)
 	}
 }
@@ -618,7 +640,7 @@ func TestCrossPlatformCoverageLeafYesFlagAndIntEdges(t *testing.T) {
 	// 写风险但全局无 --yes flag 注册：leafYesFlag 各 getter 均报错走兜底 false，
 	// 于是进入提示；stdin "no" 取消。
 	called := false
-	noYes := NewLeafCommand(leafRiskSpec(LeafRiskWrite, &called))
+	noYes := NewLeafCommand(leafSafetySpec(leafTestWriteSafety(), &called))
 	noYes.SilenceErrors = true
 	noYes.SilenceUsage = true
 	noYes.SetIn(strings.NewReader("no\n"))

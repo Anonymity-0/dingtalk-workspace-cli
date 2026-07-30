@@ -14,12 +14,12 @@
 // Package cmdcore is the shared, dispatch-agnostic base for building leaf
 // commands. It concentrates flag registration, the alias/env/default effective
 // value fallback chain, required validation, cross-flag constraint declaration
-// checks + runtime enforcement, Risk-driven write confirmation, toolArgs
+// checks + runtime enforcement, SafetySpec-driven confirmation, toolArgs
 // assembly, and Agent Runtime Schema projection.
 //
 // Declaration vs execution (framework rule):
 //
-//   - Declare = CommandSpec data fields (Flags, Constraints, non-empty Risk,
+//   - Declare = CommandSpec data fields (Flags, Constraints, Safety,
 //     ConstParams, Use/Short/Long/Example). NewCommand registers, validates,
 //     confirms, and embeds those facts into dws.schema.*.
 //   - Execute = Validate / Invoke / Orchestrate / RunE / PostMount. Hooks
@@ -36,12 +36,12 @@
 // LeafSpec framework (internal/helpers) and, later, the Shortcut framework wrap
 // these primitives and supply their own dispatch (single-step MCP / multi-step
 // orchestration / escape hatch). Extracting the primitives here lets both
-// frameworks share one flag + constraint + risk + schema base, differing only
+// frameworks share one flag + constraint + safety + schema base, differing only
 // in how they dispatch — the first step toward a single typed command registry.
 //
 // Behavioral contract: this package is a pure extraction of the logic that
 // previously lived in internal/helpers/leaf.go, so flag registration, value
-// fallback, required/constraint semantics, risk wording, and schema projection
+// fallback, required/constraint semantics, confirmation behavior, and schema projection
 // stay semantically identical. The evidence is split: check-generated-drift
 // (catalog unchanged) proves only the build-time projection — identity, flags,
 // help and annotations — while the runtime pipeline (required validation,
@@ -135,65 +135,6 @@ type FlagSpec struct {
 	SchemaDescription string   // Schema description; empty uses Usage
 }
 
-// Risk declares a leaf command's side-effect level, driving pre-dispatch write
-// confirmation. Values match the shortcut framework's Risk verbatim.
-type Risk string
-
-const (
-	// RiskRead is a read-only operation; never prompts. Empty value == RiskRead.
-	RiskRead Risk = "read"
-	// RiskWrite mutates state; prompts unless --yes.
-	RiskWrite Risk = "write"
-	// RiskHighWrite is a destructive/irreversible operation; prompts unless --yes.
-	RiskHighWrite Risk = "high-risk-write"
-)
-
-// Effective returns the effective risk, defaulting an empty value to read-only.
-func (r Risk) Effective() Risk {
-	if r == "" {
-		return RiskRead
-	}
-	return r
-}
-
-// SafetyDefault returns the Safety tier this Risk level implies when no
-// explicit Safety is declared. It is the composition seam: Risk drives
-// runtime confirmation, Safety drives Schema metadata, and SafetyDefault
-// bridges the two when only Risk is declared.
-func (r Risk) SafetyDefault() Safety {
-	switch r.Effective() {
-	case RiskWrite:
-		return SafetyWrite
-	case RiskHighWrite:
-		return SafetyDestructive
-	default:
-		return SafetyRead
-	}
-}
-
-// Safety declares the Schema safety metadata tier, projected into
-// agent-facing Schema independently of the runtime Risk. Empty == SafetyRead.
-type Safety string
-
-const (
-	// SafetyRead is a read-only operation: read/low/not_required/idempotent.
-	SafetyRead Safety = "read"
-	// SafetyWrite is a reversible mutation: write/medium/user_required/unknown.
-	SafetyWrite Safety = "write"
-	// SafetyHighWrite is a hard-to-reverse mutation: write/high/user_required/unknown.
-	SafetyHighWrite Safety = "high-write"
-	// SafetyDestructive is a destructive operation: destructive/high/user_required/unknown.
-	SafetyDestructive Safety = "destructive"
-)
-
-// Effective returns the effective safety tier, defaulting empty to read.
-func (s Safety) Effective() Safety {
-	if s == "" {
-		return SafetyRead
-	}
-	return s
-}
-
 // ConstraintKind is the type of a cross-flag relationship constraint. Values
 // match the shortcut framework's ConstraintKind verbatim.
 type ConstraintKind string
@@ -226,20 +167,20 @@ type Constraint struct {
 //
 // Declaration surface is the final Schema data source for managed leaves:
 //
-//	Flags (+ parameter Schema fields), Constraints, Risk, ConstParams,
+//	Flags (+ parameter Schema fields), Constraints, Safety, ConstParams,
 //	Use/Short/Long/Example, Schema (ToolSpec groups)
 //
 // Schema assembly pass-throughs embedded dws.schema.* — no reviewed/hints
-// parallel authority for declared fields. Empty Risk means runtime read
-// confirmation (no prompt) and does NOT embed dws.schema.risk unless
-// Schema.Safety supplies risk/confirmation.
+// parallel authority for declared fields. Safety uses cli.SafetySpec directly:
+// confirmation drives the runtime gate, while effect/risk/idempotency are
+// published unchanged. No safety field is inferred from another.
 //
 // Execution surface (hooks — not declaration):
 //
 //   - RunE — full escape hatch: the framework only registers flags/constraints/
 //     help and hands control over.
 //   - Invoke — single-step: runs after required/constraint/Validate checks, args
-//     assembly and the Risk write-confirmation, receiving the assembled toolArgs.
+//     assembly and the Safety confirmation gate, receiving the assembled toolArgs.
 //   - Orchestrate — multi-step: runs after the same checks and confirmation but
 //     receives only the Ctx, so it can chain several backend calls itself.
 //   - Validate / PostMount — orchestration only; must not register business flags
@@ -256,12 +197,12 @@ type CommandSpec struct {
 
 	Flags       []FlagSpec
 	Constraints []Constraint
-	Risk        Risk
-	// Safety declares the Schema safety tier independently of the runtime
-	// Risk. Empty falls back to Risk.SafetyDefault(); explicit SafetyDecl
-	// string fields always win over the tier fill.
-	Safety Safety
-	// ConfirmFirst runs the Risk write-confirmation before required/constraint/
+	// Safety is the command's single safety source. The same cli.SafetySpec is
+	// used for runtime confirmation and the published Schema. A completely
+	// empty value keeps the historical read-only default; a non-empty value
+	// must declare effect/risk/confirmation/idempotency together.
+	Safety cli.SafetySpec
+	// ConfirmFirst runs the Safety confirmation before required/constraint/
 	// Validate checks instead of after them. Use it where the legacy semantics
 	// were guard-first (a write without --yes fails fast with
 	// confirmation_required regardless of parameter completeness). The default
@@ -368,8 +309,8 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 // NewCommand builds a cobra command from a CommandSpec. It is the single
 // orchestration path: dispatch declaration check → flag registration →
 // constraint declaration checks → Runtime Schema projection → constraint help →
-// PostMount → (RunE escape) → generated RunE{ [ConfirmFirst: ConfirmRisk →]
-// required → constraints → Validate → BuildArgs → ConfirmRisk →
+// PostMount → generated RunE{ [ConfirmFirst: ConfirmSafety →]
+// required → constraints → Validate → BuildArgs → ConfirmSafety →
 // Invoke/Orchestrate }.
 //
 // Behavior matches the former helpers.NewLeafCommand, which always dispatched
@@ -379,6 +320,7 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 // included — and then silently exit 0 having done nothing.
 func NewCommand(spec CommandSpec) *cobra.Command {
 	validateDispatchDecl(spec)
+	validateSafetySpec(spec)
 	validateSchemaDecl(spec)
 	// Help prose inherits the declaration when not authored separately:
 	// Selection.Examples (already contract-validated against the real flags)
@@ -404,12 +346,17 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		spec.PostMount(cmd)
 	}
 	if spec.RunE != nil {
-		cmd.RunE = spec.RunE
+		cmd.RunE = func(cmd *cobra.Command, args []string) error {
+			if err := ConfirmSafety(cmd, spec.Safety); err != nil {
+				return err
+			}
+			return spec.RunE(cmd, args)
+		}
 		return cmd
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if spec.ConfirmFirst {
-			if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+			if err := ConfirmSafety(cmd, spec.Safety); err != nil {
 				return err
 			}
 		}
@@ -427,7 +374,7 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		ctx := newCtx(cmd, args, spec.Flags)
 		if spec.Orchestrate != nil {
 			if !spec.ConfirmFirst {
-				if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+				if err := ConfirmSafety(cmd, spec.Safety); err != nil {
 					return err
 				}
 			}
@@ -441,7 +388,7 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 			toolArgs[key] = value
 		}
 		if !spec.ConfirmFirst {
-			if err := ConfirmRisk(cmd, spec.Risk); err != nil {
+			if err := ConfirmSafety(cmd, spec.Safety); err != nil {
 				return err
 			}
 		}
@@ -470,14 +417,48 @@ func validateDispatchDecl(spec CommandSpec) {
 			"command %q must declare exactly one of RunE/Invoke/Orchestrate, got %d",
 			spec.Use, declared))
 	}
-	// ConfirmFirst only makes sense on a Risk-driven confirmation flow. A
-	// command with ConfirmFirst but no Risk is always an authoring mistake —
-	// and for a declared-Schema write it would also silently publish the read
-	// safety tier (empty Risk infers SafetyRead).
-	if spec.ConfirmFirst && strings.TrimSpace(string(spec.Risk)) == "" {
+	// ConfirmFirst only changes the ordering of a declared confirmation gate.
+	if spec.ConfirmFirst && strings.TrimSpace(spec.Safety.Confirmation) != "user_required" {
 		panic(fmt.Sprintf(
-			"command %q sets ConfirmFirst but declares no Risk: ConfirmFirst orders the Risk-driven confirmation and is meaningless without one",
+			"command %q sets ConfirmFirst but Safety.Confirmation is not user_required",
 			spec.Use))
+	}
+}
+
+// validateSafetySpec rejects partial safety declarations. A zero value remains
+// the historical read-only default, but once any field is authored all four
+// independent Schema dimensions must be explicit.
+func validateSafetySpec(spec CommandSpec) {
+	safety := spec.Safety
+	fields := []struct {
+		name  string
+		value string
+	}{
+		{"Safety.Effect", safety.Effect},
+		{"Safety.Risk", safety.Risk},
+		{"Safety.Confirmation", safety.Confirmation},
+		{"Safety.Idempotency", safety.Idempotency},
+	}
+	declared := false
+	for _, field := range fields {
+		if strings.TrimSpace(field.value) != "" {
+			declared = true
+			break
+		}
+	}
+	if !declared {
+		return
+	}
+	missing := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if strings.TrimSpace(field.value) == "" {
+			missing = append(missing, field.name)
+		}
+	}
+	if len(missing) > 0 {
+		panic(fmt.Sprintf(
+			"command %q declares partial SafetySpec; missing %s: safety fields are independent and are never inferred from one another",
+			spec.Use, strings.Join(missing, ", ")))
 	}
 }
 
@@ -835,8 +816,9 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 	return nil
 }
 
-// ConfirmRisk reproduces the shortcut framework's confirmRisk write-confirmation
-// prompt wording (command path substitutes Service+Command). Semantics:
+// ConfirmSafety enforces the command's declared confirmation requirement.
+// Effect, risk and idempotency are metadata only and never imply confirmation.
+// Semantics:
 //
 //   - read-only, --dry-run, or --yes → nil (proceed);
 //   - interactive yes/y → nil;
@@ -844,8 +826,9 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 //   - no interactive answer (EOF / closed stdin) → confirmation_required.
 //
 // EOF must not be treated as decline: that silently drops writes in agent/CI.
-func ConfirmRisk(cmd *cobra.Command, risk Risk) error {
-	if risk.Effective() == RiskRead || BoolFlag(cmd, "dry-run") || BoolFlag(cmd, "yes") {
+func ConfirmSafety(cmd *cobra.Command, safety cli.SafetySpec) error {
+	if strings.TrimSpace(safety.Confirmation) != "user_required" ||
+		BoolFlag(cmd, "dry-run") || BoolFlag(cmd, "yes") {
 		return nil
 	}
 	// Only print the interactive prompt on a real terminal. In non-interactive
@@ -855,7 +838,11 @@ func ConfirmRisk(cmd *cobra.Command, risk Risk) error {
 	// answer (printf 'yes\n' | cmd) is still honored: the read happens either
 	// way, only the prompt print is terminal-gated.
 	if stdinIsTerminal(cmd.InOrStdin()) {
-		fmt.Fprintf(cmd.ErrOrStderr(), "即将执行 %s（%s），确认继续？(yes/no): ", cmd.CommandPath(), risk.Effective())
+		fmt.Fprintf(
+			cmd.ErrOrStderr(),
+			"即将执行 %s（effect=%s, risk=%s），确认继续？(yes/no): ",
+			cmd.CommandPath(), strings.TrimSpace(safety.Effect), strings.TrimSpace(safety.Risk),
+		)
 	}
 	reader := bufio.NewReader(cmd.InOrStdin())
 	answer, err := reader.ReadString('\n')
@@ -887,7 +874,7 @@ func stdinIsTerminal(in io.Reader) bool {
 
 func confirmationRequiredError(operation string) error {
 	return apperrors.NewValidation(
-		fmt.Sprintf("%s 是写操作，当前环境无法交互确认；加 --dry-run 预览，或确认后加 --yes 执行", operation),
+		fmt.Sprintf("%s 需要用户确认，当前环境无法交互；加 --dry-run 预览，或确认后加 --yes 执行", operation),
 		apperrors.WithReason("confirmation_required"),
 		apperrors.WithHint("非交互环境（agent/CI）必须显式传入 --yes，不能依赖 stdin 提示"),
 		apperrors.WithActions("确认目标与变更影响", "以相同参数追加 --yes 执行"),
@@ -921,9 +908,6 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 // annotations; declared fields do not compete with reviewed hints.
 func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
 	cli.AnnotateRuntimeContract(cmd)
-	if strings.TrimSpace(string(spec.Risk)) != "" {
-		cli.AnnotateRuntimeRisk(cmd, string(spec.Risk.Effective()))
-	}
 	required := make([]string, 0, len(spec.Flags))
 	for _, flag := range spec.Flags {
 		name := strings.TrimSpace(flag.Name)
@@ -960,8 +944,7 @@ func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
 }
 
 // embedSchemaDecl does a light runtime write: only when SchemaDecl is authored,
-// convert once and RegisterRuntimeContractFinal. Risk-only leaves keep
-// dws.schema.risk from embedContractIntoSchema — no Final registration.
+// convert once and RegisterRuntimeContractFinal.
 func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
 	schema := spec.Schema
 	if schema.empty() {
@@ -970,7 +953,7 @@ func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
 	payload := cli.ContractFinalPayload{
 		Title:       firstNonEmpty(schema.Title, spec.Short),
 		Description: firstNonEmpty(schema.Description, spec.Long),
-		Safety:      schemaSafetyFromDecl(spec.Risk, spec.Safety, schema.Safety),
+		Safety:      schemaSafetyFromDecl(spec.Safety),
 	}
 	if n := len(schema.Positionals); n > 0 {
 		payload.Positionals = make([]cli.RuntimeSchemaPositional, n)
@@ -1031,83 +1014,28 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-// schemaSafetyFromDecl composes the Schema safety metadata from three
-// sources, in precedence order: explicit SafetyDecl string fields (highest)
-// > the declared Safety tier enum > Risk.SafetyDefault() (lowest). The tier
-// fill also covers Idempotency (idempotent for reads, unknown for writes),
-// so a plain Risk/Safety enum declaration is self-sufficient.
-func schemaSafetyFromDecl(risk Risk, safety Safety, decl SafetyDecl) *cli.SafetySpec {
-	out := cli.SafetySpec{
-		Effect:       strings.TrimSpace(decl.Effect),
-		Risk:         strings.TrimSpace(decl.Risk),
-		Confirmation: strings.TrimSpace(decl.Confirmation),
-		Idempotency:  strings.TrimSpace(decl.Idempotency),
-	}
-	tier := safety
-	if tier == "" {
-		tier = risk.SafetyDefault()
-	}
-	switch tier.Effective() {
-	case SafetyWrite:
-		if out.Effect == "" {
-			out.Effect = "write"
-		}
-		if out.Risk == "" {
-			out.Risk = "medium"
-		}
-		if out.Confirmation == "" {
-			out.Confirmation = "user_required"
-		}
-		if out.Idempotency == "" {
-			out.Idempotency = "unknown"
-		}
-	case SafetyHighWrite:
-		if out.Effect == "" {
-			out.Effect = "write"
-		}
-		if out.Risk == "" {
-			out.Risk = "high"
-		}
-		if out.Confirmation == "" {
-			out.Confirmation = "user_required"
-		}
-		if out.Idempotency == "" {
-			out.Idempotency = "unknown"
-		}
-	case SafetyDestructive:
-		if out.Effect == "" {
-			out.Effect = "destructive"
-		}
-		if out.Risk == "" {
-			out.Risk = "high"
-		}
-		if out.Confirmation == "" {
-			out.Confirmation = "user_required"
-		}
-		if out.Idempotency == "" {
-			out.Idempotency = "unknown"
-		}
-	default: // SafetyRead
-		if out.Effect == "" {
-			out.Effect = "read"
-		}
-		if out.Risk == "" {
-			out.Risk = "low"
-		}
-		if out.Confirmation == "" {
-			out.Confirmation = "not_required"
-		}
-		if out.Idempotency == "" {
-			out.Idempotency = "idempotent"
-		}
-	}
-	// effect_source is assembly-derived for every Contract-declared safety,
-	// whether it came from the Risk shorthand or an explicit SchemaDecl; the
-	// declaration in code is the source of truth. The tier fill above always
-	// produces a complete block (read tier by default), so the payload is
-	// never nil for a declared Schema.
+// schemaSafetyFromDecl copies the single command SafetySpec into the final
+// Schema payload. The zero value keeps the historical read-only default.
+func schemaSafetyFromDecl(safety cli.SafetySpec) *cli.SafetySpec {
+	out := effectiveSafetySpec(safety)
 	out.EffectSource = "cmdcore.contract"
 	return &out
+}
+
+func effectiveSafetySpec(safety cli.SafetySpec) cli.SafetySpec {
+	out := cli.SafetySpec{
+		Effect:       strings.TrimSpace(safety.Effect),
+		Risk:         strings.TrimSpace(safety.Risk),
+		Confirmation: strings.TrimSpace(safety.Confirmation),
+		Idempotency:  strings.TrimSpace(safety.Idempotency),
+	}
+	if out.Effect == "" && out.Risk == "" && out.Confirmation == "" && out.Idempotency == "" {
+		out.Effect = "read"
+		out.Risk = "low"
+		out.Confirmation = "not_required"
+		out.Idempotency = "idempotent"
+	}
+	return out
 }
 
 func flagKindSchemaType(kind FlagKind) string {

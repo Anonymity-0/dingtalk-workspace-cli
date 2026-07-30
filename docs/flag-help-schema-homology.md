@@ -12,7 +12,7 @@
 
 1. cobra 实际注册的 flags / required / defaults；
 2. `--help` 的 Flags 与「参数约束」段；
-3. **嵌入后的** `dws schema` / Catalog（`schema_catalog` / agent metadata 生成物）中的 parameters、关系约束，以及显式 `Risk` 时的 confirmation/effect。
+3. **嵌入后的** `dws schema` / Catalog（`schema_catalog` / agent metadata 生成物）中的 parameters、关系约束和 SafetySpec。
 
 嵌入机制（已落地）：
 
@@ -23,12 +23,12 @@ CommandSpec
        dws.schema.contract=cmdcore
        dws.schema.property / type / required  (per flag)
        dws.schema.constraints
-       dws.schema.risk          (仅当 Risk 字段非空)
-  → Schema 组装读取 native_annotation + Contract Risk overlay
+  → RegisterRuntimeContractFinal(SafetySpec + SchemaDecl)
+  → Schema 组装透传 Contract Final
   → go:embed schema_catalog / schema_agent_metadata
 ```
 
-空 `Risk` **不**写入 `dws.schema.risk`，避免把默读盖掉今日 write-guard 叶子的 reviewed Safety。
+cmdcore/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷，不使用字符串枚举注解。
 
 ### 1.1 硬规则：声明 = 最终数据源（Schema 透传）
 
@@ -38,7 +38,7 @@ CommandSpec
 - 在声明体系里再挂「评审字段」并行权威；
 - 用 hints/registry 盖写已声明字段。
 
-迁移期未迁完的叶子可暂走旧组装路径；**新声明面不含 review_reason / reviewed 字段**。写命令未设 `Risk`/`Schema.Safety` 时，过渡期仍可用 `runtime_gate` annotate（`HOM-S2`）。
+迁移期未迁完的叶子可暂走旧组装路径；**新声明面不含 review_reason / reviewed 字段**。写命令未设 `Safety` 时，过渡期仍可用 `runtime_gate` annotate（`HOM-S2`）。
 
 **不采用**路径 B（以 `schema_mcp_metadata` 生成全部 CLI flag/help/schema）作为主权威。钉钉 MCP meta 不是飞书 OAPI：粒度与 CLI 特有语义（二选一、OmitEmpty、ConstParams、write guard）无法从裸 meta 推出；强行生成会违反「Schema 描述 CLI，不制造 CLI」。
 
@@ -68,7 +68,7 @@ CommandSpec
 |---|---|---|---|
 | `Flags[]`（`FlagSpec` / `LeafFlag`） | 用户可见参数面：名、类型、默认、必填、usage | 注册 cobra flag；装配 toolArgs | `dws.schema.property` / `type` / `required`；`--help` Flags |
 | `Constraints[]` | 跨 flag 关系：`at_least_one` / `exactly_one` / `mutually_exclusive` | `ValidateConstraints` | `dws.schema.constraints`；`--help`「参数约束」 |
-| `Risk`（**非空**） | 副作用与确认：`write` / `high-risk-write`（或显式 `read`） | `ConfirmRisk`（`--yes` / `--dry-run` 跳过） | `dws.schema.risk` → Safety overlay（`HOM-S1`） |
+| `Safety`（`cli.SafetySpec`） | effect/risk/confirmation/idempotency 四个独立事实 | `confirmation=user_required` 时 `ConfirmSafety`；`--yes` / `--dry-run` 跳过 | 同一个 SafetySpec 原样进入 Contract Final（`HOM-S1`） |
 | `ConstParams` | 固定载荷（不上 flag 表） | 并入 toolArgs；不满足 Required | **不**投影为用户 parameter |
 | `Use` / `Short` / `Long` / `Example` | 命令身份文案与示例 | cobra 自身 | help；identity 仍以 registry 为准 |
 
@@ -88,30 +88,37 @@ CommandSpec
 | `Validate` | 条件式/领域校验钩子 | 不得在此 `Flags().String(...)` 注册业务 flag；不得只靠钩子表达「必填/互斥」而不写 `Flags`/`Constraints` |
 | `Call` / `Invoke` / `Orchestrate` | 执行体 | 不得 `params[k]=…` 装配业务参数（应在 `Flags`/`ConstParams`） |
 | `PostMount` | 挂载后收尾（annotate、领域工具注入） | 不得注册业务 flag；分页等横切由领域工具注入并可走 annotate |
-| `RunE` | 逃生舱（整段手写） | 表面事实仍须 Flags 声明，或对确认语义做 §1.3 标注 |
+| `RunE` | 逃生舱（整段手写） | 表面事实仍须 Flags 声明；框架仍按 Safety 执行确认 |
 | `Server` / `Tool` | MCP 路由 | 不构成 CLI parameter 声明 |
 
 #### 1.2.3 最小声明示例
 
 ```go
-// 读：无确认语义 → Risk 可空（不写 dws.schema.risk）
+// 读：Safety 四字段显式对齐 Schema
 NewLeafCommand(LeafSpec{
     Use: "get", Short: "…", Tool: "…",
+    Safety: cli.SafetySpec{
+        Effect: "read", Risk: "low",
+        Confirmation: "not_required", Idempotency: "idempotent",
+    },
     Flags: []LeafFlag{
         {Name: "unified-app-id", Usage: "…", Bind: "unifiedAppId", Trim: true, Required: true},
     },
     Call: devAppCall(runner), PostMount: devAppMeta(tool),
 })
 
-// 写（升格 Risk = 声明确认）：ConfirmRisk + Schema Safety 同源
+// 写：同一个 SafetySpec 同时驱动确认与 Schema
 NewLeafCommand(LeafSpec{
     Use: "publish", Short: "…", Tool: "…",
     Flags: []LeafFlag{ /* … */ },
-    Risk: LeafRiskWrite, // 声明：非空 → dws.schema.risk=write
+    Safety: cli.SafetySpec{
+        Effect: "write", Risk: "medium",
+        Confirmation: "user_required", Idempotency: "unknown",
+    },
     Call: devAppCall(runner), PostMount: devAppMeta(tool),
 })
 
-// 写（今日未升格 Risk）：确认走 annotate，见 §1.3 —— 不是「声明了写」
+// 迁移期旧写命令：确认走 annotate，见 §1.3 —— 不是新声明面
 NewLeafCommand(LeafSpec{
     Use: "create", /* Flags… */,
     Validate: func(cmd *cobra.Command, _ []string) error {
@@ -122,7 +129,7 @@ NewLeafCommand(LeafSpec{
 })
 ```
 
-**空 `Risk` 的含义**：运行时等同只读确认（不提示），且 **不**嵌入 `dws.schema.risk`。因此「会改状态却留空 Risk」**不是**合法声明；必须要么写非空 `Risk`，要么按 §1.3 标注 gate。
+**空 `Safety` 的含义**：cmdcore 为兼容旧只读叶保留 `read/low/not_required/idempotent` 默认。因此「会改状态却留空 Safety」**不是**合法声明；新 Leaf 必须写完整 SafetySpec，未迁移旧路径则按 §1.3 标注 gate。
 
 ### 1.3 人工标注（annotate）：声明的补充通道
 
@@ -130,10 +137,10 @@ NewLeafCommand(LeafSpec{
 
 | 标注手段 | 典型值 | 何时用 |
 |---|---|---|
-| `cli.AnnotateRuntimeGate` / `devAppMetaWrite` | `dws.schema.runtime_gate=devAppRequireWriteGuard` | 写命令走 write-guard、尚未 `Risk` 升格（`HOM-S2`） |
-| `cli.AnnotateRuntimeRisk` | `dws.schema.risk=…` | 非 Leaf 构建路径需手写嵌入 Risk（Leaf 应优先字段声明） |
+| `cli.AnnotateRuntimeGate` / `devAppMetaWrite` | `dws.schema.runtime_gate=devAppRequireWriteGuard` | 尚未迁移到 SafetySpec 的旧写命令（`HOM-S2`） |
+| `cli.AnnotateRuntimeRisk` | `dws.schema.risk=…` | Shortcut 暂存的旧兼容路径；cmdcore/Leaf 禁止新增 |
 | `cli.AnnotateRuntimeFlag` / Constraints | 与 embed 同形 | 手写 cobra 叶补齐表面（长期应迁入 Contract） |
-| reviewed `schema_hints/metadata` Safety | effect/risk/confirmation | 迁移期遗留；受管命令收敛后让位于 Risk/gate |
+| reviewed `schema_hints/metadata` Safety | effect/risk/confirmation | 迁移期遗留；受管命令收敛后让位于 Safety/gate |
 
 标注与声明冲突时：**Contract 声明胜**（路径 A）。标注不得发明未注册的 CLI flag。
 
@@ -149,8 +156,7 @@ NewLeafCommand(LeafSpec{
 | Parameters.`interface_*` | 评审源 | MCP meta / bindings；**不造 flag** |
 | Constraints | **声明** | `Constraints` |
 | Positionals | **声明** 或显式 annotate | 目标 `Args`；禁止推断 |
-| Safety.`effect/risk/confirmation` | **声明**非空 `Risk` **或** `runtime_gate` 标注（或迁移期 reviewed Safety） | 空 Risk 不嵌入 |
-| Safety.`idempotency` | 评审源 | hints metadata |
+| Safety.`effect/risk/confirmation/idempotency` | **声明**完整 `Safety`，或迁移期 `runtime_gate` / reviewed Safety | 四字段独立；不得互相推导 |
 | DryRun | 评审源 | dry-run capabilities registry |
 | Interface | 评审源 | MCP + agent metadata |
 | Selection | 评审源 | `schema_hints/selection` |
@@ -169,7 +175,7 @@ NewLeafCommand(LeafSpec{
 | use_when / avoid_when / examples / agent_summary 文案 | `schema_hints/selection` | Schema selection |
 | RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + `schema_parameter_bindings` | Schema `interface_*` 字段；**不得创建 flag** |
 | 参数描述 overlay（可选） | `schema_hints/metadata` 仅补充 usage 文案 | 与 Contract/cobra 冲突时 **Contract/cobra 胜** |
-| 遗留 Safety 文案（迁移期） | 今日仍可读 `schema_hints/metadata` safety | 受管命令收敛后以 Contract.Risk / runtime_gate 为准（见 §4） |
+| 遗留 Safety 文案（迁移期） | 今日仍可读 `schema_hints/metadata` safety | 受管命令收敛后以 Contract.Safety / runtime_gate 为准（见 §4） |
 | dry-run 正能力 | reviewed dry-run registry | Schema `dry_run` |
 | positionals | Contract Args / 显式 annotate | Schema `positionals` |
 | FieldProvenance | 组装派生 | Schema provenance（与值一致） |
@@ -180,9 +186,9 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 已具备：
 
-- Flags / ConstParams / Constraints → 注册、校验、`ConstraintHelp`、运行时 `ConfirmRisk`（cmdcore）；
+- Flags / ConstParams / Constraints → 注册、校验与 `ConstraintHelp`；SafetySpec → 运行时 `ConfirmSafety`（cmdcore）；
 - Call / Execute 作为执行体；业务参数不得在 Call 内装配（helpers 门禁）；
-- **Contract → Schema 注解嵌入**（`embedContractIntoSchema`）：`dws.schema.contract` / property / type / required / constraints；显式 Risk → `dws.schema.risk` 并在 Schema 组装时 overlay Safety。
+- **Contract → Schema 嵌入**：参数/约束写原生 annotation，SafetySpec 与 SchemaDecl 注册为类型化 Contract Final 并由 Schema 组装透传。
 
 仍缺：
 
@@ -192,8 +198,8 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 已落地（写命令确认语义，`HOM-S2` 起点）：
 
 - `AnnotateRuntimeGate` / `dws.schema.runtime_gate`；Leaf `PostMount: devAppMetaWrite`；手写 delete/robot 等同路径显式标注；
-- Schema 组装在无 Contract Risk 但有 gate 时 overlay `confirmation=user_required`（`applyContractGateToSafety`）；
-- AST/mount 测试：Validate 含 `devAppRequireWriteGuard` ⇒ PostMount 必须 `devAppMetaWrite`；挂载叶须 Risk 或 runtime_gate。
+- Schema 组装在无 Contract Safety 但有 gate 时 overlay `confirmation=user_required`（`applyContractGateToSafety`）；
+- AST/mount 测试：新 Leaf 须声明完整 SafetySpec；尚未迁移的旧路径须有 runtime_gate。
 
 ## 4. Schema 投影与 Safety 门禁规划
 

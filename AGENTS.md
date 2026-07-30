@@ -25,10 +25,10 @@ changes must not rewrite it mechanically.
 
 - Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
 - Today: `helpers.LeafSpec` → `cmdcore.CommandSpec` (+ `Schema`) → `cmdcore.NewCommand`
-- **Declare = final Schema source**: `Flags` / `Constraints` / `Risk` / `ConstParams` / `Schema` (ToolSpec groups)
-- Light runtime write: only when `Schema` is set → convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); `Risk` alone stays `dws.schema.risk`. Assembly **pass-throughs** Final.
+- **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Schema` (ToolSpec groups)
+- `Safety` uses the existing `cli.SafetySpec` directly. Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); assembly **pass-throughs** Final.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
-- Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until Safety/`Risk` is declared
+- Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
 
 ## flag / help / schema homology
 

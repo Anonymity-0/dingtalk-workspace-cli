@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
 
-# Ensure catalog confirmation=user_required exactly matches metadata
-# runtime_gate != none across schema_hints/metadata/*.json.
+# Ensure catalog confirmation=user_required exactly matches executable truth:
+# typed cmdcore Contract SafetySpec declarations plus migration-only metadata
+# runtime_gate != none entries.
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -27,7 +28,17 @@ jq -r '
   | to_entries[]
   | select((.value.runtime_gate // "none") != "none")
   | .key
-' "$metadata_dir"/*.json | sort -u >"$tmp/truth_gated"
+' "$metadata_dir"/*.json >"$tmp/metadata_gated"
+
+jq -r '
+  .tools
+  | to_entries[]
+  | select(.value.confirmation == "user_required")
+  | select(.value.field_provenance.confirmation.source == "cmdcore.contract")
+  | .key
+' "$catalog" >"$tmp/contract_gated"
+
+cat "$tmp/metadata_gated" "$tmp/contract_gated" | sort -u >"$tmp/truth_gated"
 
 jq -r '
   .tools
@@ -37,8 +48,8 @@ jq -r '
 ' "$catalog" | sort >"$tmp/catalog_required"
 
 if ! cmp -s "$tmp/truth_gated" "$tmp/catalog_required"; then
-	printf '%s\n' 'catalog confirmation=user_required differs from schema_hints/metadata runtime_gate!=none set' >&2
-	printf '%s\n' 'update internal/cli/schema_hints/metadata/<product>.json runtime_gate/confirmation, then regenerate schema' >&2
+	printf '%s\n' 'catalog confirmation=user_required differs from Contract SafetySpec + metadata runtime_gate truth' >&2
+	printf '%s\n' 'declare cmdcore Safety.Confirmation or update migration-only metadata runtime_gate, then regenerate schema' >&2
 	diff -u "$tmp/truth_gated" "$tmp/catalog_required" || true
 	exit 1
 fi
@@ -63,6 +74,7 @@ jq -r --slurpfile catalog "$catalog" '
   | .value as $gate
   | $tools[$canonical] as $tool
   | select($tool != null)
+  | select($tool.field_provenance.confirmation.source != "cmdcore.contract")
   | select(
       if $gate == "none" then
         $tool.confirmation != "not_required" or $tool.risk == "high" or $tool.effect == "destructive"

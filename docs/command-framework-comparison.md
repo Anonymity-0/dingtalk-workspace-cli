@@ -20,18 +20,17 @@
 ```
 CommandSpec (声明) → NewCommand() → cobra.Command
      │
-     ├── Risk enum (运行时确认)
-     ├── Safety enum (Schema 元数据)
+     ├── cli.SafetySpec (运行时 + Schema 单一安全来源)
      ├── FlagSpec[] (参数 + 回退链 + 绑定)
      ├── Constraint[] (互斥/至少一个)
-     ├── SchemaDecl (Agent Selection/Safety/DryRun/Interface)
+     ├── SchemaDecl (Agent Selection/DryRun/Interface)
      │
      └── Invoke / Orchestrate / RunE (执行)
 ```
 
 **核心特点**：
 - 声明与执行严格分离
-- Risk（运行时）和 Safety（Schema）独立枚举
+- SafetySpec 四个独立字段直接对齐 Agent Runtime Schema
 - 有效值回退链：flag → alias → env → default
 - 框架统一校验、装配、确认、投影
 - Schema 从代码声明直接投影，无外部 hint 文件
@@ -82,7 +81,7 @@ API Discovery → 代码生成 → surface command
 |------|-------------|----------|-----|
 | 参数别名 + 环境变量回退 | ✅ FlagSpec.Aliases + EnvVar | ❌ 无 | ❌ 无 |
 | 声明式约束 (互斥/至少一个) | ✅ Constraint[] | ❌ 只有 Validate hook | ✅ argparse group |
-| Risk/Safety 分离 | ✅ 两个独立枚举 | ❌ 只有 Risk | ❌ 无 |
+| 安全契约 | ✅ SafetySpec（effect/risk/confirmation/idempotency） | Risk | 无 |
 | Schema 投影 (Agent metadata) | ✅ SchemaDecl 内建 | ⚠️ 运行时 introspection | ❌ 外挂 |
 | 参数绑定 (flag name → API key) | ✅ FlagSpec.Bind | ❌ 手写 | ✅ 自动映射 |
 | ConstParams (固定载荷) | ✅ | ❌ 手写在 Execute | ✅ 隐式 |
@@ -104,7 +103,7 @@ API Discovery → 代码生成 → surface command
 |------|-------------|----------|-----|
 | 工具发现 | `dws schema --all` (静态 catalog) | `--print-schema` (运行时) | API Discovery |
 | 选择指引 | SelectionDecl (UseWhen/AvoidWhen) | Description + Tips | 无 |
-| 安全声明 | Safety enum + SafetyDecl | Risk string | 无 |
+| 安全声明 | cli.SafetySpec 直接声明 | Risk string | 无 |
 | dry-run 能力声明 | DryRunDecl (reviewed) | DryRun hook 存在性 | 无 |
 | 接口模式 | InterfaceDecl (local/pinned/composite) | 隐式 (全部 REST) | 隐式 (全部 REST) |
 
@@ -128,7 +127,7 @@ GWS:      API Discovery JSON → 代码生成 → surface command
 | 选择 | 理由 | 对比 |
 |------|------|------|
 | 框架装配参数 | 消除 N 个命令各写一份 toolArgs 装配 | lark-cli 每个 Execute 手动取 flag 值 |
-| Risk + Safety 分离 | 运行时行为与 Schema 元数据独立演进 | lark-cli 只有 Risk 一个维度 |
+| SafetySpec 单一来源 | confirmation 驱动运行时，其余字段原样发布且互不推导 | lark-cli 只有 Risk 一个维度 |
 | 声明式约束 | 构建时校验合法性 + 投影到 Schema + 渲染帮助 | lark-cli 约束隐藏在 Validate 逻辑里 |
 | Schema 构建时投影 | 离线 catalog 支持 Agent 批量发现 | lark-cli 需要逐个命令 introspection |
 | 有效值回退链 | flag → alias → env 统一语义 | lark-cli 别名是独立 Flag 手动关联 |
@@ -170,8 +169,10 @@ NewLeafCommand(LeafSpec{
     Use:    "create",
     Short:  "创建应用",
     Tool:   "create_dev_app",
-    Risk:   LeafRiskHighWrite,
-    Safety: LeafSafetyHighWrite,
+    Safety: cli.SafetySpec{
+        Effect: "write", Risk: "high",
+        Confirmation: "user_required", Idempotency: "unknown",
+    },
     ConfirmFirst: true,
     Flags: []LeafFlag{
         {Name: "name", Usage: "应用名称", Bind: "name",
@@ -228,7 +229,7 @@ var CalendarCreate = common.Shortcut{
 
 | 场景 | 最适合 | 原因 |
 |------|--------|------|
-| MCP 后端 + Agent Schema 投影 | **DWS cmdcore** | 内建 Schema 声明、Safety 分级、离线 catalog |
+| MCP 后端 + Agent Schema 投影 | **DWS cmdcore** | 内建 Schema 声明、SafetySpec 契约、离线 catalog |
 | REST API 直连 + OAuth scope 管理 | **lark-cli** | CallAPITyped + scope 预检 + DryRun API 计划 |
 | API-first 大规模 surface 生成 | **GWS gcloud** | Discovery 驱动，一份 Schema 生成一切 |
 | 多步编排 (跨服务链式调用) | **lark-cli** / DWS Orchestrate | lark 的 CallAPITyped 链式 + DWS 的 Orchestrate |

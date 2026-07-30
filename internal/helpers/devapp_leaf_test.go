@@ -79,7 +79,7 @@ func TestDevAppLifecycleLeafWriteGuardAndArgs(t *testing.T) {
 	if err := cmd.Flags().Set("unified-app-id", "APP-9"); err != nil {
 		t.Fatal(err)
 	}
-	// 无 --yes / --dry-run：LeafRiskWrite 声明的 ConfirmRisk 必须拦下。
+	// 无 --yes / --dry-run：SafetySpec 的 user_required 确认必须拦下。
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("RunE() without --yes: want write-guard error, got nil")
 	}

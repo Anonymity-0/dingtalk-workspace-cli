@@ -388,8 +388,13 @@ func RuntimeContractGate(cmd *cobra.Command) (string, bool) {
 }
 
 // HasDeclaredOrAnnotatedConfirmation reports whether confirmation semantics are
-// covered by Contract Risk or an explicit runtime_gate annotation.
+// covered by a typed Contract SafetySpec, the legacy Shortcut Risk bridge, or
+// an explicit runtime_gate annotation.
 func HasDeclaredOrAnnotatedConfirmation(cmd *cobra.Command) bool {
+	if final, ok := RuntimeContractFinal(cmd); ok && final.Safety != nil &&
+		strings.TrimSpace(final.Safety.Confirmation) != "" {
+		return true
+	}
 	if _, ok := RuntimeContractRisk(cmd); ok {
 		return true
 	}

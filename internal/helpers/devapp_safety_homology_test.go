@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Homology §1.1: confirmation facts are Contract-declared (Risk) or explicitly
-// annotated (runtime_gate). Write-guard leaves must not rely on inference alone.
+// Homology §1.1: confirmation facts are Contract-declared SafetySpec values or
+// explicitly annotated runtime gates. Write leaves must not rely on inference.
 func TestDevAppWriteLeavesDeclareOrAnnotateConfirmation(t *testing.T) {
 	root := newDevAppCommand(&captureRunner{})
 	want := map[string]struct{}{
@@ -58,16 +58,16 @@ func TestDevAppWriteLeavesDeclareOrAnnotateConfirmation(t *testing.T) {
 				walk(child, path)
 				continue
 			}
-			// devapp 全树已声明化：确认事实只能来自 Contract Risk，
+			// devapp 全树已声明化：确认事实只能来自 Contract SafetySpec，
 			// 任何 runtime_gate 标注都是回归（声明 > 标注，旧路径专用）。
 			if gate, hasGate := cli.RuntimeContractGate(child); hasGate {
-				t.Errorf("%s: unexpected runtime_gate %q; devapp leaves declare Contract Risk", path, gate)
+				t.Errorf("%s: unexpected runtime_gate %q; devapp leaves declare Contract SafetySpec", path, gate)
 			}
 			if _, ok := want[path]; !ok {
 				continue
 			}
 			if !cli.HasDeclaredOrAnnotatedConfirmation(child) {
-				t.Errorf("%s: missing Contract Risk or runtime_gate annotation", path)
+				t.Errorf("%s: missing Contract SafetySpec or runtime_gate annotation", path)
 			}
 			delete(want, path)
 		}
