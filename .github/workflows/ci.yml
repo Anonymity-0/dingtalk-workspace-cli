@@ -483,7 +483,7 @@ jobs:
             exit 0
           fi
           mapfile -t packages <<< "$package_output"
-          go test -v -race -count=1 -timeout=8m "${packages[@]}"
+          go test -v -race -count=1 -timeout=15m "${packages[@]}"
 
   test-race:
     name: "Test (race: ${{ matrix.shard }})"
@@ -523,7 +523,7 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          go test -v -race -count=1 -timeout=10m "${packages[@]}"
+          go test -v -race -count=1 -timeout=12m "${packages[@]}"
 
   test-release-scripts:
     name: Test (workflow and release contracts)

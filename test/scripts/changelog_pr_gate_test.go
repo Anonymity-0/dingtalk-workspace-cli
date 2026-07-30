@@ -523,6 +523,19 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	if !strings.Contains(focusedJob, "timeout-minutes: 20") {
 		t.Error("focused test job must allow the scoped race suite up to 20 minutes")
 	}
+	if !strings.Contains(focusedJob, `go test -v -race -count=1 -timeout=15m "${packages[@]}"`) {
+		t.Error("focused race tests must retain enough package-level time for internal/app")
+	}
+
+	raceStart := focusedEnd
+	raceEnd := strings.Index(admission, "\n  test-release-scripts:\n")
+	if raceEnd <= raceStart {
+		t.Fatal("Code Admission workflow missing race test job boundaries")
+	}
+	raceJob := admission[raceStart:raceEnd]
+	if !strings.Contains(raceJob, `go test -v -race -count=1 -timeout=12m "${packages[@]}"`) {
+		t.Error("full race shards must retain enough package-level time for internal/app")
+	}
 
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
 	coverageEnd := strings.Index(admission, "\n  policy:\n")
@@ -602,6 +615,17 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	if strings.Contains(integration, "pull_request:") {
 		t.Error("complete Multi-profile E2E must not run as a pull-request admission context")
+	}
+	if !strings.Contains(integration, "include-hidden-files: true") {
+		t.Error("main integration must upload diagnostics stored below the hidden .tmp-bin directory")
+	}
+
+	integrationScript := readWorkflow("scripts/dev/test-multi-profile-e2e.sh")
+	if !strings.Contains(integrationScript, `GO_TEST_TIMEOUT="${MULTI_PROFILE_GO_TEST_TIMEOUT:-10m}"`) {
+		t.Error("multi-profile E2E must allow enough time for the complete internal/app regression suite")
+	}
+	if strings.Contains(integrationScript, "go test -timeout 180s") {
+		t.Error("multi-profile E2E must not retain the obsolete three-minute Go test budget")
 	}
 }
 
