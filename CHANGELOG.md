@@ -22,6 +22,7 @@ loading without changing the public command or Runtime Schema surface.
 ### Fixed
 
 - **Stable PAT/routing identity** (#831) — restores the CLI-emitted open-source HTTP `claw-type` and PAT `hostControl.clawType` to the edition-fixed `openClaw` value. `DWS_AGENT_PRODUCT` no longer changes those wire values, and the client continues to derive PAT, authentication, routing, and Discovery behaviour from the existing independent signals.
+- **Portable generated Skill validation** (#835) — resolves the mono Skill name by scanning upward from the generated target, keeping `--check` independent of the repository checkout path and preventing false drift failures when an ancestor directory resembles a Skill name.
 
 ## [1.0.56-beta.1] - 2026-07-30
 
