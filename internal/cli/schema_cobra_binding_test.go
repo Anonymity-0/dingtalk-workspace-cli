@@ -11,6 +11,50 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TestBindEffectiveCommandRegistryIndexesDeclaredDryRun pins bind-time
+// capability indexing: any process resolving the command tree gets the
+// Contract-declared dry_run in the reviewed set, without running assembly.
+func TestBindEffectiveCommandRegistryIndexesDeclaredDryRun(t *testing.T) {
+	clearDeclaredDryRunCapabilitiesForTest()
+	t.Cleanup(clearDeclaredDryRunCapabilitiesForTest)
+
+	root := commandRegistryTestRoot("item get")
+	leaf := exactSchemaCommand(root, "item get")
+	RegisterRuntimeContractFinal(leaf, ContractFinalPayload{
+		DryRun: &DryRunSpec{PreviewKind: DryRunPreviewInvocation},
+	})
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(leaf) })
+
+	reviewed := mustCommandRegistry(t, []CommandSpec{{
+		CanonicalPath:  "item.get_item",
+		PrimaryCLIPath: "item get",
+	}})
+	manual := ManualSchemaHintSnapshot{
+		Version: manualSchemaHintVersion,
+		Commands: []ManualSchemaCommandHint{{
+			CLIPath:       "item get",
+			CanonicalPath: "item.get_item",
+			Reason:        "Confirms the reviewed primary identity",
+			Reviewed:      true,
+		}},
+	}
+	effective, err := buildEffectiveCommandRegistry(root, reviewed, manual)
+	if err != nil {
+		t.Fatalf("buildEffectiveCommandRegistry() error = %v", err)
+	}
+	if _, err := BindEffectiveCommandRegistry(root, effective); err != nil {
+		t.Fatalf("BindEffectiveCommandRegistry() error = %v", err)
+	}
+	capabilities, err := loadReviewedDryRunCapabilities()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, ok := capabilities["item.get_item"]
+	if !ok || spec.PreviewKind != DryRunPreviewInvocation {
+		t.Fatalf("declared dry-run capability after bind = %#v, ok=%v", spec, ok)
+	}
+}
+
 func TestBuildEffectiveCommandRegistryMergesReviewedManualCommands(t *testing.T) {
 	root := commandRegistryTestRoot("item get", "item legacy", "helper add")
 	annotateTestCompatibilityPair(exactSchemaCommand(root, "item get"), exactSchemaCommand(root, "item legacy"))

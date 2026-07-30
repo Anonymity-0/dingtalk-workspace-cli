@@ -14,6 +14,7 @@
 package agentmetadata
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -46,7 +47,10 @@ func applyContractFinalDeclarations(file *File, opts Options) error {
 		}
 		primary := normalizeCommandPath(opts.CanonicalToolPaths[canonical])
 		if primary == "" {
-			continue
+			// A declared command without a registry projection means the
+			// declaration would silently vanish from the artifact — surface
+			// the misconfiguration instead of skipping it.
+			return fmt.Errorf("declared tool %s has a Contract final overlay but no canonical CLI projection", canonical)
 		}
 		merged, err := mergeToolMetadata(file.Tools[primary], metadata, primary)
 		if err != nil {

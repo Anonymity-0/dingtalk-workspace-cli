@@ -59,9 +59,11 @@ var reviewedDryRunCapabilitiesLazy struct {
 }
 
 // declaredDryRunCapabilities indexes dry_run capabilities sourced from
-// Contract final declarations (canonical → spec). Populated by the Schema
-// pass-through at assembly time; a declaration in reviewed code is itself
-// the reviewed capability, so no manual allowlist entry is required.
+// Contract final declarations (canonical → spec). Populated by
+// BindEffectiveCommandRegistry at command-tree bind time — every process
+// that resolves the tree gets the reviewed set, not only processes that run
+// Schema assembly. A declaration in reviewed code is itself the reviewed
+// capability, so no manual allowlist entry is required.
 var declaredDryRunCapabilities sync.Map // string → DryRunSpec
 
 // recordDeclaredDryRunCapability registers one Contract-declared dry_run

@@ -309,12 +309,6 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 
 	provenance := contractFinalProvenance(identity, title, description, safety, interfaceSpec, selection, final.DryRun)
 
-	// A declared dry_run is a reviewed capability by construction; index it so
-	// the delivery gate needs no manual allowlist entry for declared tools.
-	if final.DryRun != nil {
-		recordDeclaredDryRunCapability(canonicalPath, *final.DryRun)
-	}
-
 	return ToolSpecFromRuntime(RuntimeToolSpecInput{
 		Identity:        identity,
 		Display:         entry.ProductName,

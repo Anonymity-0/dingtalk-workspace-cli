@@ -16,6 +16,8 @@ package cmdcore
 import (
 	"fmt"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
 // SchemaDecl is the final Schema leaf payload authored on the command
@@ -108,7 +110,7 @@ func validateSchemaDecl(spec CommandSpec) {
 	if spec.Schema.empty() {
 		return
 	}
-	missing := make([]string, 0, 4)
+	missing := make([]string, 0, 8)
 	if strings.TrimSpace(spec.Schema.Description) == "" {
 		missing = append(missing, "Schema.Description")
 	}
@@ -123,6 +125,25 @@ func validateSchemaDecl(spec CommandSpec) {
 	}
 	if len(spec.Schema.Selection.Examples) == 0 {
 		missing = append(missing, "Schema.Selection.Examples")
+	}
+	// Safety/interface are unconditional catalog required keys for declared
+	// tools (no hints fallback). effect/risk/confirmation may come from the
+	// Risk shorthand; Idempotency is declaration-only.
+	safety := spec.Schema.Safety
+	safetyCoreFilled := strings.TrimSpace(safety.Effect) != "" &&
+		strings.TrimSpace(safety.Risk) != "" && strings.TrimSpace(safety.Confirmation) != ""
+	if !safetyCoreFilled && strings.TrimSpace(string(spec.Risk)) == "" {
+		missing = append(missing, "Schema.Safety (effect/risk/confirmation, or CommandSpec.Risk)")
+	}
+	if strings.TrimSpace(safety.Idempotency) == "" {
+		missing = append(missing, "Schema.Safety.Idempotency")
+	}
+	if iface := spec.Schema.Interface; iface == nil ||
+		strings.TrimSpace(iface.Mode) == "" || strings.TrimSpace(iface.Availability) == "" {
+		missing = append(missing, "Schema.Interface (mode/availability)")
+	} else if (iface.Mode == cli.InterfaceModeComposite || iface.Availability == cli.InterfaceUnavailable) &&
+		strings.TrimSpace(iface.Reason) == "" {
+		missing = append(missing, "Schema.Interface.Reason")
 	}
 	if len(missing) > 0 {
 		panic(fmt.Sprintf(

@@ -120,8 +120,32 @@ func TestNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
 		}, "Schema.Selection.AgentSummary"},
 		{"missing examples", SchemaDecl{
 			Description: "d",
+			Safety:      SafetyDecl{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
+			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
 			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
 		}, "Schema.Selection.Examples"},
+		{"missing safety", SchemaDecl{
+			Description: "d",
+			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
+			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Schema.Safety"},
+		{"missing idempotency", SchemaDecl{
+			Description: "d",
+			Safety:      SafetyDecl{Effect: "read", Risk: "low", Confirmation: "not_required"},
+			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
+			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Schema.Safety.Idempotency"},
+		{"missing interface", SchemaDecl{
+			Description: "d",
+			Safety:      SafetyDecl{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
+			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Schema.Interface"},
+		{"composite without reason", SchemaDecl{
+			Description: "d",
+			Safety:      SafetyDecl{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
+			Interface:   &InterfaceDecl{Mode: "composite", Availability: "available"},
+			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Schema.Interface.Reason"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
@@ -144,18 +168,21 @@ func TestNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
 }
 
 func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
-	cmd := NewCommand(CommandSpec{
-		Use:   "create",
-		Short: "short",
-		Schema: SchemaDecl{
-			Description: "desc",
-			Selection: SelectionDecl{
-				AgentSummary: "summary",
-				UseWhen:      []string{"when"},
-				AvoidWhen:    []string{"avoid"},
-				Examples:     []string{"dws create --mode a", "dws create --mode b --dry-run"},
-			},
+	schema := SchemaDecl{
+		Description: "desc",
+		Safety:      SafetyDecl{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
+		Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "create_thing"},
+		Selection: SelectionDecl{
+			AgentSummary: "summary",
+			UseWhen:      []string{"when"},
+			AvoidWhen:    []string{"avoid"},
+			Examples:     []string{"dws create --mode a", "dws create --mode b --dry-run"},
 		},
+	}
+	cmd := NewCommand(CommandSpec{
+		Use:    "create",
+		Short:  "short",
+		Schema: schema,
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
 	want := "  dws create --mode a\n  dws create --mode b --dry-run"
@@ -163,20 +190,13 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 		t.Fatalf("derived Example = %q, want %q", cmd.Example, want)
 	}
 
+	schema.Selection.Examples = []string{"dws create --mode a"}
 	explicit := NewCommand(CommandSpec{
 		Use:     "create",
 		Short:   "short",
 		Example: "  dws create --custom",
-		Schema: SchemaDecl{
-			Description: "desc",
-			Selection: SelectionDecl{
-				AgentSummary: "summary",
-				UseWhen:      []string{"when"},
-				AvoidWhen:    []string{"avoid"},
-				Examples:     []string{"dws create --mode a"},
-			},
-		},
-		Invoke: func(*Ctx, map[string]any) error { return nil },
+		Schema:  schema,
+		Invoke:  func(*Ctx, map[string]any) error { return nil },
 	})
 	if explicit.Example != "  dws create --custom" {
 		t.Fatalf("authored Example must win over derivation, got %q", explicit.Example)

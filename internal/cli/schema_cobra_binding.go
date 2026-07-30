@@ -159,6 +159,12 @@ func BindEffectiveCommandRegistry(root *cobra.Command, effective EffectiveComman
 		for _, alias := range item.Aliases {
 			bound.ByCLIPath[alias] = item
 		}
+		// Index Contract-declared dry_run capabilities at bind time: every
+		// process that resolves the command tree gets the reviewed set, not
+		// only processes that also run Schema assembly.
+		if payload, ok := RuntimeContractFinal(item.PrimaryCommand); ok && payload.DryRun != nil {
+			recordDeclaredDryRunCapability(item.CanonicalPath, *payload.DryRun)
+		}
 	}
 	return bound, nil
 }
