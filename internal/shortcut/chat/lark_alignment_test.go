@@ -44,7 +44,24 @@ func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, 
 	case "contact/get_current_user_profile":
 		text = `{"result":[{"orgEmployeeModel":{"userId":"self-user"}}]}`
 	case "contact/get_user_info_by_user_ids":
-		text = `{"result":[{"userId":"user-id","openDingTalkId":"D-resolved"}]}`
+		text = `{"result":[{"orgEmployeeModel":{"orgUserId":"user-id","orgUserName":"Resolved User"}}]}`
+	case "contact/search_contact_by_key_word":
+		keyword, _ := args["keyword"].(string)
+		payload, _ := json.Marshal(map[string]any{
+			"result": []map[string]any{
+				{
+					"name":           "Fuzzy Neighbor",
+					"userId":         keyword + "-other",
+					"openDingTalkId": "D-other",
+				},
+				{
+					"name":           "Resolved User",
+					"userId":         keyword,
+					"openDingTalkId": "D-resolved",
+				},
+			},
+		})
+		text = string(payload)
 	case "im/create_group_conversation":
 		text = `{"result":{"cid":"internal-cid","openCid":"open-cid"}}`
 	case "im/list_messages_by_ids":
@@ -403,7 +420,7 @@ func TestMessagesMgetDryRunPublishesMultiResourceDownloadPlan(t *testing.T) {
 	}
 }
 
-func TestMessagesReplyResolvesUserIDBeforeExecution(t *testing.T) {
+func TestCrossPlatformCoverageMessagesReplyResolvesUserIDBeforeExecution(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -420,7 +437,7 @@ func TestMessagesReplyResolvesUserIDBeforeExecution(t *testing.T) {
 	}
 	if len(fake.calls) != 2 ||
 		fake.calls[0].product != "contact" ||
-		fake.calls[0].tool != "get_user_info_by_user_ids" ||
+		fake.calls[0].tool != "search_contact_by_key_word" ||
 		fake.calls[1].tool != "send_personal_message" {
 		t.Fatalf("calls = %#v", fake.calls)
 	}

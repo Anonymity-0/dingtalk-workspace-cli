@@ -1172,9 +1172,9 @@
       "idempotency": "unknown",
       "interface_mode": "composite",
       "availability": "available",
-      "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports userId resolution, mediaId images, and the native init/upload/commit local-file flow.",
+      "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
       "reviewed": true,
-      "review_reason": "Reviewed against every executable identity/content/target validation branch and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+      "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
       "cli_path": "chat +messages-send",
       "runtime_gate": "typed_yes"
     },
@@ -1198,7 +1198,7 @@
       "idempotency": "unknown",
       "interface_mode": "composite",
       "availability": "available",
-      "interface_reason": "Reviewed card lifecycle adapter: it can call create_and_send_card alone or compose it with update_streaming_card after extracting the returned bizId.",
+      "interface_reason": "Reviewed card lifecycle adapter: it can resolve a userId through contact search with exact matching, call create_and_send_card alone, or compose creation with update_streaming_card after extracting the returned bizId.",
       "parameters": {
         "receiver-open-dingtalk-id": {
           "property": "receiverOpenDingTalkId",
@@ -1206,7 +1206,7 @@
         }
       },
       "reviewed": true,
-      "review_reason": "Reviewed against create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
+      "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
       "cli_path": "chat +messages-send-card",
       "runtime_gate": "typed_yes"
     },

@@ -80,8 +80,11 @@ func TestCrossPlatformCoverageMessagesSendCurrentUserImageAndUserResolution(t *t
 	if len(fake.calls) != 2 {
 		t.Fatalf("calls = %#v, want contact resolution + send", fake.calls)
 	}
-	if fake.calls[0].product != "contact" || fake.calls[0].tool != "get_user_info_by_user_ids" {
+	if fake.calls[0].product != "contact" || fake.calls[0].tool != "search_contact_by_key_word" {
 		t.Fatalf("resolution call = %#v", fake.calls[0])
+	}
+	if got := fake.calls[0].args["keyword"]; got != "user-id" {
+		t.Fatalf("resolution keyword = %#v, want user-id", got)
 	}
 	send := fake.calls[1]
 	if send.product != "chat" || send.tool != "send_personal_message" {
@@ -284,9 +287,15 @@ func TestCrossPlatformCoverageMessagesSendUserResolutionFailures(t *testing.T) {
 		name string
 		fake *larkAlignmentCaller
 	}{
-		{"lookup error", &larkAlignmentCaller{failProductTool: "contact/get_user_info_by_user_ids"}},
+		{"lookup error", &larkAlignmentCaller{failProductTool: "contact/search_contact_by_key_word"}},
+		{"no exact user id", &larkAlignmentCaller{responses: map[string]string{
+			"contact/search_contact_by_key_word": `{"result":[{"userId":"other-user","openDingTalkId":"D-other"}]}`,
+		}}},
 		{"missing open id", &larkAlignmentCaller{responses: map[string]string{
-			"contact/get_user_info_by_user_ids": `{"result":[]}`,
+			"contact/search_contact_by_key_word": `{"result":[{"userId":"user-id","name":"Resolved User"}]}`,
+		}}},
+		{"ambiguous open id", &larkAlignmentCaller{responses: map[string]string{
+			"contact/search_contact_by_key_word": `{"result":[{"userId":"user-id","openDingTalkId":"D-one"},{"userId":"user-id","openDingTalkId":"D-two"}]}`,
 		}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -394,7 +403,7 @@ func TestCrossPlatformCoverageMessagesSendCardResolvesReceiverForLowerTool(t *te
 	}
 	if len(fake.calls) != 2 ||
 		fake.calls[0].product != "contact" ||
-		fake.calls[0].tool != "get_user_info_by_user_ids" ||
+		fake.calls[0].tool != "search_contact_by_key_word" ||
 		fake.calls[1].product != "im" ||
 		fake.calls[1].tool != "create_and_send_card" {
 		t.Fatalf("card receiver calls = %#v", fake.calls)
@@ -402,7 +411,7 @@ func TestCrossPlatformCoverageMessagesSendCardResolvesReceiverForLowerTool(t *te
 	if got := fake.calls[1].args["receiverOpenDingTalkId"]; got != "D-resolved" {
 		t.Fatalf("receiverOpenDingTalkId = %#v, want D-resolved", got)
 	}
-	if got := fake.calls[0].args["user_id_list"]; !reflect.DeepEqual(got, []string{"d-user-id"}) {
+	if got := fake.calls[0].args["keyword"]; got != "d-user-id" {
 		t.Fatalf("D/d-prefixed userId resolution args = %#v", fake.calls[0].args)
 	}
 	if _, exists := fake.calls[1].args["receiverUid"]; exists {
@@ -469,7 +478,7 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 		}
 		if len(fake.calls) != 1 ||
 			fake.calls[0].product != "contact" ||
-			fake.calls[0].tool != "get_user_info_by_user_ids" {
+			fake.calls[0].tool != "search_contact_by_key_word" {
 			t.Fatalf("card dry-run receiver resolution calls = %#v", fake.calls)
 		}
 		var payload map[string]any
@@ -486,7 +495,7 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 	})
 
 	t.Run("receiver resolution error", func(t *testing.T) {
-		fake := &larkAlignmentCaller{failProductTool: "contact/get_user_info_by_user_ids"}
+		fake := &larkAlignmentCaller{failProductTool: "contact/search_contact_by_key_word"}
 		helpers.InitDeps(fake)
 		root := newPlatformCoverageRoot()
 		root.SetArgs([]string{
@@ -498,7 +507,7 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 		if err == nil || !strings.Contains(err.Error(), "解析为 openDingTalkId 失败") {
 			t.Fatalf("receiver resolution error = %v", err)
 		}
-		if len(fake.calls) != 1 || fake.calls[0].tool != "get_user_info_by_user_ids" {
+		if len(fake.calls) != 1 || fake.calls[0].tool != "search_contact_by_key_word" {
 			t.Fatalf("receiver resolution calls = %#v", fake.calls)
 		}
 	})

@@ -120,17 +120,17 @@ func TestCrossPlatformCoverageChatCreateAndReplyFailures(t *testing.T) {
 		},
 		{
 			name:      "explicit sender lookup",
-			caller:    &larkAlignmentCaller{failProductTool: "contact/get_user_info_by_user_ids"},
+			caller:    &larkAlignmentCaller{failProductTool: "contact/search_contact_by_key_word"},
 			args:      []string{"chat", "+messages-reply", "--conversation-id", "cid", "--message-id", "msg", "--ref-sender", "user-id", "--text", "收到", "--yes"},
 			wantError: "解析为 openDingTalkId",
 		},
 		{
 			name: "explicit sender unresolved",
 			caller: &larkAlignmentCaller{responses: map[string]string{
-				"contact/get_user_info_by_user_ids": `{"result":[]}`,
+				"contact/search_contact_by_key_word": `{"result":[]}`,
 			}},
 			args:      []string{"chat", "+messages-reply", "--conversation-id", "cid", "--message-id", "msg", "--ref-sender", "user-id", "--text", "收到", "--yes"},
-			wantError: "无法把 --ref-sender",
+			wantError: "没有精确匹配",
 		},
 		{
 			name:      "referenced message lookup",
