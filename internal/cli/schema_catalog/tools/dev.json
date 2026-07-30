@@ -317,7 +317,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -325,7 +325,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -728,7 +728,7 @@
       "primary_cli_path": "dev app member add",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "添加开放平台应用成员",
       "use_when": [
@@ -1051,7 +1051,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -1059,7 +1059,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -1347,7 +1347,7 @@
       "primary_cli_path": "dev app permission add",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "申请开放平台应用权限点",
       "use_when": [
@@ -4843,7 +4843,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -4851,7 +4851,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -5024,7 +5024,7 @@
       "primary_cli_path": "dev app disable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "停用开放平台企业内部应用",
       "use_when": [
@@ -5347,7 +5347,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -5355,7 +5355,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -5528,7 +5528,7 @@
       "primary_cli_path": "dev app robot disable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "停用现有应用的机器人能力",
       "use_when": [
@@ -5851,7 +5851,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -5859,7 +5859,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -6032,7 +6032,7 @@
       "primary_cli_path": "dev app enable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "启用开放平台企业内部应用",
       "use_when": [
@@ -6355,7 +6355,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -6363,7 +6363,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -6536,7 +6536,7 @@
       "primary_cli_path": "dev app robot enable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "启用现有应用机器人能力（纯启用，无需配置字段）",
       "use_when": [
@@ -14747,7 +14747,7 @@
       "dry_run": {
         "preview_kind": "invocation"
       },
-      "effect": "write",
+      "effect": "destructive",
       "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app version publish --unified-app-id \u003cunifiedAppId\u003e --version-id \u003cversionId\u003e --dry-run --format json"
@@ -14897,7 +14897,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "write"
+              "value": "destructive"
             }
           ],
           "precedence": "contract_final",
@@ -14905,7 +14905,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "write"
+          "value": "destructive"
         },
         "examples": {
           "candidates": [
@@ -16386,7 +16386,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -16394,7 +16394,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -16797,7 +16797,7 @@
       "primary_cli_path": "dev app member remove",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "移除开放平台应用成员",
       "use_when": [
@@ -17120,7 +17120,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -17128,7 +17128,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -17416,7 +17416,7 @@
       "primary_cli_path": "dev app permission remove",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "取消开放平台应用权限点",
       "use_when": [
@@ -18442,7 +18442,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -18450,7 +18450,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -20040,7 +20040,7 @@
       "primary_cli_path": "dev app robot config",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "创建或更新现有应用的机器人配置（upsert）",
       "use_when": [
@@ -20373,7 +20373,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -20381,7 +20381,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -21014,7 +21014,7 @@
       "primary_cli_path": "dev app webapp config",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "配置网页应用能力",
       "use_when": [
@@ -22404,7 +22404,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -22412,7 +22412,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -22700,7 +22700,7 @@
       "primary_cli_path": "dev app event subscribe",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "订阅应用事件回调",
       "use_when": [
@@ -23023,7 +23023,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -23031,7 +23031,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -23319,7 +23319,7 @@
       "primary_cli_path": "dev app event unsubscribe",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "取消订阅应用事件",
       "use_when": [
@@ -23651,7 +23651,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -23659,7 +23659,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -24177,7 +24177,7 @@
       "primary_cli_path": "dev app update",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "修改开放平台企业内部应用基础信息",
       "use_when": [
@@ -24509,7 +24509,7 @@
               "selected": true,
               "source": "cmdcore.contract",
               "source_ref": "cmdcore.SchemaDecl",
-              "value": "high"
+              "value": "medium"
             }
           ],
           "precedence": "contract_final",
@@ -24517,7 +24517,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "cmdcore.contract",
           "source_ref": "cmdcore.SchemaDecl",
-          "value": "high"
+          "value": "medium"
         },
         "title": {
           "candidates": [
@@ -25035,7 +25035,7 @@
       "primary_cli_path": "dev app security config",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "high",
+      "risk": "medium",
       "source": "reviewed_command_registry",
       "title": "更新开放平台应用安全配置",
       "use_when": [

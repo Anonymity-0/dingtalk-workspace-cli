@@ -48,8 +48,9 @@ type PositionalDecl struct {
 	Index       int
 }
 
-// SafetyDecl is the final Schema Safety payload. Empty Effect/Risk/Confirmation
-// may be filled from CommandSpec.Risk at embed time; Idempotency is declaration-only.
+// SafetyDecl is the final Schema Safety payload. Any field left empty is
+// filled from the CommandSpec.Safety tier (or Risk.SafetyDefault() when
+// Safety is unset) at embed time, including Idempotency.
 type SafetyDecl struct {
 	Effect       string
 	Risk         string
@@ -126,18 +127,11 @@ func validateSchemaDecl(spec CommandSpec) {
 	if len(spec.Schema.Selection.Examples) == 0 {
 		missing = append(missing, "Schema.Selection.Examples")
 	}
-	// Safety/interface are unconditional catalog required keys for declared
-	// tools (no hints fallback). effect/risk/confirmation may come from the
-	// Risk shorthand; Idempotency is declaration-only.
-	safety := spec.Schema.Safety
-	safetyCoreFilled := strings.TrimSpace(safety.Effect) != "" &&
-		strings.TrimSpace(safety.Risk) != "" && strings.TrimSpace(safety.Confirmation) != ""
-	if !safetyCoreFilled && strings.TrimSpace(string(spec.Risk)) == "" {
-		missing = append(missing, "Schema.Safety (effect/risk/confirmation, or CommandSpec.Risk)")
-	}
-	if strings.TrimSpace(safety.Idempotency) == "" {
-		missing = append(missing, "Schema.Safety.Idempotency")
-	}
+	// Interface is an unconditional catalog required key for declared tools
+	// (no hints fallback). Safety needs no completeness check: the enum tier
+	// (CommandSpec.Safety, falling back to Risk.SafetyDefault()) fills every
+	// Safety field including Idempotency, so any declared Schema projects a
+	// complete safety block by construction.
 	if iface := spec.Schema.Interface; iface == nil ||
 		strings.TrimSpace(iface.Mode) == "" || strings.TrimSpace(iface.Availability) == "" {
 		missing = append(missing, "Schema.Interface (mode/availability)")

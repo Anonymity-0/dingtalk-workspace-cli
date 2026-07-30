@@ -75,6 +75,21 @@ const (
 	LeafRiskHighWrite = cmdcore.RiskHighWrite
 )
 
+// LeafSafety 声明 Schema 安全元数据等级（cmdcore.Safety 的别名）。独立于
+// Risk（运行时确认），描述操作对系统状态的影响程度；空值时框架从 Risk 推导。
+type LeafSafety = cmdcore.Safety
+
+const (
+	// LeafSafetyRead 只读操作：read/low/not_required/idempotent。
+	LeafSafetyRead = cmdcore.SafetyRead
+	// LeafSafetyWrite 可逆写操作：write/medium/user_required/unknown。
+	LeafSafetyWrite = cmdcore.SafetyWrite
+	// LeafSafetyHighWrite 难撤回写操作：write/high/user_required/unknown。
+	LeafSafetyHighWrite = cmdcore.SafetyHighWrite
+	// LeafSafetyDestructive 破坏性操作：destructive/high/user_required/unknown。
+	LeafSafetyDestructive = cmdcore.SafetyDestructive
+)
+
 // LeafConstraintKind 是跨 flag 关系约束的类型（cmdcore.ConstraintKind 的
 // 别名）。取值与 shortcut 框架的 ConstraintKind 逐字一致。
 type LeafConstraintKind = cmdcore.ConstraintKind
@@ -134,6 +149,11 @@ type LeafSpec struct {
 	// dws.schema.risk 并合成 Schema.Safety。
 	Risk LeafRisk
 
+	// Safety 声明 Schema 安全元数据等级，独立于运行时 Risk。为空时框架从
+	// Risk 推导（Risk.SafetyDefault）；显式设置时 Safety 驱动 Schema 元数据，
+	// Risk 仍驱动运行时确认行为。
+	Safety LeafSafety
+
 	// ConfirmFirst 为 true 时确认门先于 required/约束/Validate 校验执行
 	//（devapp 旧版写守卫语义：写命令未带 --yes 时快速失败
 	// confirmation_required，与参数完整性无关）。默认 false 保持 shortcut
@@ -186,6 +206,7 @@ func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 		Flags:        spec.Flags,
 		Constraints:  spec.Constraints,
 		Risk:         spec.Risk,
+		Safety:       spec.Safety,
 		ConfirmFirst: spec.ConfirmFirst,
 		ConstParams:  spec.ConstParams,
 		Schema:       spec.Schema,

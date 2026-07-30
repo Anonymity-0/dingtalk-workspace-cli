@@ -155,6 +155,44 @@ func (r Risk) Effective() Risk {
 	return r
 }
 
+// SafetyDefault returns the Safety tier this Risk level implies when no
+// explicit Safety is declared. It is the composition seam: Risk drives
+// runtime confirmation, Safety drives Schema metadata, and SafetyDefault
+// bridges the two when only Risk is declared.
+func (r Risk) SafetyDefault() Safety {
+	switch r.Effective() {
+	case RiskWrite:
+		return SafetyWrite
+	case RiskHighWrite:
+		return SafetyDestructive
+	default:
+		return SafetyRead
+	}
+}
+
+// Safety declares the Schema safety metadata tier, projected into
+// agent-facing Schema independently of the runtime Risk. Empty == SafetyRead.
+type Safety string
+
+const (
+	// SafetyRead is a read-only operation: read/low/not_required/idempotent.
+	SafetyRead Safety = "read"
+	// SafetyWrite is a reversible mutation: write/medium/user_required/unknown.
+	SafetyWrite Safety = "write"
+	// SafetyHighWrite is a hard-to-reverse mutation: write/high/user_required/unknown.
+	SafetyHighWrite Safety = "high-write"
+	// SafetyDestructive is a destructive operation: destructive/high/user_required/unknown.
+	SafetyDestructive Safety = "destructive"
+)
+
+// Effective returns the effective safety tier, defaulting empty to read.
+func (s Safety) Effective() Safety {
+	if s == "" {
+		return SafetyRead
+	}
+	return s
+}
+
 // ConstraintKind is the type of a cross-flag relationship constraint. Values
 // match the shortcut framework's ConstraintKind verbatim.
 type ConstraintKind string
@@ -218,6 +256,10 @@ type CommandSpec struct {
 	Flags       []FlagSpec
 	Constraints []Constraint
 	Risk        Risk
+	// Safety declares the Schema safety tier independently of the runtime
+	// Risk. Empty falls back to Risk.SafetyDefault(); explicit SafetyDecl
+	// string fields always win over the tier fill.
+	Safety Safety
 	// ConfirmFirst runs the Risk write-confirmation before required/constraint/
 	// Validate checks instead of after them. Use it where the legacy semantics
 	// were guard-first (a write without --yes fails fast with
@@ -898,7 +940,7 @@ func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
 	payload := cli.ContractFinalPayload{
 		Title:       firstNonEmpty(schema.Title, spec.Short),
 		Description: firstNonEmpty(schema.Description, spec.Long),
-		Safety:      schemaSafetyFromDecl(spec.Risk, schema.Safety),
+		Safety:      schemaSafetyFromDecl(spec.Risk, spec.Safety, schema.Safety),
 	}
 	if n := len(schema.Positionals); n > 0 {
 		payload.Positionals = make([]cli.RuntimeSchemaPositional, n)
@@ -959,45 +1001,74 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func schemaSafetyFromDecl(risk Risk, decl SafetyDecl) *cli.SafetySpec {
+// schemaSafetyFromDecl composes the Schema safety metadata from three
+// sources, in precedence order: explicit SafetyDecl string fields (highest)
+// > the declared Safety tier enum > Risk.SafetyDefault() (lowest). The tier
+// fill also covers Idempotency (idempotent for reads, unknown for writes),
+// so a plain Risk/Safety enum declaration is self-sufficient.
+func schemaSafetyFromDecl(risk Risk, safety Safety, decl SafetyDecl) *cli.SafetySpec {
 	out := cli.SafetySpec{
 		Effect:       strings.TrimSpace(decl.Effect),
 		Risk:         strings.TrimSpace(decl.Risk),
 		Confirmation: strings.TrimSpace(decl.Confirmation),
 		Idempotency:  strings.TrimSpace(decl.Idempotency),
 	}
-	if strings.TrimSpace(string(risk)) != "" {
-		switch risk.Effective() {
-		case RiskWrite:
-			if out.Effect == "" {
-				out.Effect = "write"
-			}
-			if out.Risk == "" {
-				out.Risk = "medium"
-			}
-			if out.Confirmation == "" {
-				out.Confirmation = "user_required"
-			}
-		case RiskHighWrite:
-			if out.Effect == "" {
-				out.Effect = "destructive"
-			}
-			if out.Risk == "" {
-				out.Risk = "high"
-			}
-			if out.Confirmation == "" {
-				out.Confirmation = "user_required"
-			}
-		case RiskRead:
-			if out.Effect == "" {
-				out.Effect = "read"
-			}
-			if out.Risk == "" {
-				out.Risk = "low"
-			}
-			if out.Confirmation == "" {
-				out.Confirmation = "not_required"
-			}
+	tier := safety
+	if tier == "" {
+		tier = risk.SafetyDefault()
+	}
+	switch tier.Effective() {
+	case SafetyWrite:
+		if out.Effect == "" {
+			out.Effect = "write"
+		}
+		if out.Risk == "" {
+			out.Risk = "medium"
+		}
+		if out.Confirmation == "" {
+			out.Confirmation = "user_required"
+		}
+		if out.Idempotency == "" {
+			out.Idempotency = "unknown"
+		}
+	case SafetyHighWrite:
+		if out.Effect == "" {
+			out.Effect = "write"
+		}
+		if out.Risk == "" {
+			out.Risk = "high"
+		}
+		if out.Confirmation == "" {
+			out.Confirmation = "user_required"
+		}
+		if out.Idempotency == "" {
+			out.Idempotency = "unknown"
+		}
+	case SafetyDestructive:
+		if out.Effect == "" {
+			out.Effect = "destructive"
+		}
+		if out.Risk == "" {
+			out.Risk = "high"
+		}
+		if out.Confirmation == "" {
+			out.Confirmation = "user_required"
+		}
+		if out.Idempotency == "" {
+			out.Idempotency = "unknown"
+		}
+	default: // SafetyRead
+		if out.Effect == "" {
+			out.Effect = "read"
+		}
+		if out.Risk == "" {
+			out.Risk = "low"
+		}
+		if out.Confirmation == "" {
+			out.Confirmation = "not_required"
+		}
+		if out.Idempotency == "" {
+			out.Idempotency = "idempotent"
 		}
 	}
 	// effect_source is assembly-derived for every Contract-declared safety,

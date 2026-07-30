@@ -1146,7 +1146,7 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 | 非 Shortcut 受管定义的 Cobra 命令 Hidden | 可执行 Contract | 挂载的命令可见性与声明匹配 |
 | Shortcut 列表成员资格与语义 disposition | 经评审的 Shortcut 可见性解析器 | public/all 列表成员资格与经评审决策匹配 |
 | Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
-| 运行时 Risk 与确认 | 可执行 Contract（非空 `Risk`）或显式 annotate（如 `runtime_gate`）；见 §5.0 | 不得靠推断；空 Risk 不嵌入 schema risk；写命令须 Risk 或 gate；Safety 组装优先级 **`Schema.Safety`（Final）> `Risk` > `runtime_gate`**，高优先命中即忽略低优先 |
+| 运行时 Risk 与确认 | 可执行 Contract（非空 `Risk`）或显式 annotate（如 `runtime_gate`）；见 §5.0 | 不得靠推断；空 Risk 不嵌入 schema risk；写命令须 Risk 或 gate；Safety 组装优先级 **`Schema.Safety`（Final 显式字段）> `CommandSpec.Safety` 枚举 tier > `Risk.SafetyDefault()` > `runtime_gate`**，高优先命中即忽略低优先；tier 填充含 idempotency（读 idempotent / 写 unknown），故仅声明 Risk/Safety 枚举即自足 |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
 | Agent 选择文案（`use_when`、`avoid_when`、摘要） | 经评审的 hints/catalog | 身份解析到活契约 |
 

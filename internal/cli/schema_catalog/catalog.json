@@ -1,7 +1,7 @@
 {
   "version": 1,
   "surface_hash": "sha256:29d4f5f43688cc01bc2277a4528b597de4fbab89a7b2f13fe2e56df85d1c66c4",
-  "source_hash": "sha256:26c7461cde3019fd9ec7378606e59a5725ca78a3d465ac8a865f9f70ecc28c3a",
+  "source_hash": "sha256:3ab6ab1717cdfaa6f115487c838ecd422f9a931bab28725e7af1cedd3d31a366",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
@@ -12441,7 +12441,7 @@
             "name": "add_dev_app_members",
             "primary_cli_path": "dev app member add",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "添加开放平台应用成员",
             "use_when": [
               "需要授予指定用户应用协作角色时"
@@ -12472,7 +12472,7 @@
             "name": "apply_dev_app_permissions",
             "primary_cli_path": "dev app permission add",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "申请开放平台应用权限点",
             "use_when": [
               "已确认 scopeValue 并需要新增权限时"
@@ -12652,7 +12652,7 @@
             "name": "disable_dev_app",
             "primary_cli_path": "dev app disable",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "停用开放平台企业内部应用",
             "use_when": [
               "需要让应用暂时不可用但保留配置时"
@@ -12683,7 +12683,7 @@
             "name": "disable_dev_app_robot",
             "primary_cli_path": "dev app robot disable",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "停用现有应用的机器人能力",
             "use_when": [
               "需要暂时让应用机器人离线时"
@@ -12714,7 +12714,7 @@
             "name": "enable_dev_app",
             "primary_cli_path": "dev app enable",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "启用开放平台企业内部应用",
             "use_when": [
               "需要恢复一个已停用应用时"
@@ -12745,7 +12745,7 @@
             "name": "enable_dev_app_robot",
             "primary_cli_path": "dev app robot enable",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "启用现有应用机器人能力（纯启用，无需配置字段）",
             "use_when": [
               "机器人配置存在但处于 OFFLINE 时"
@@ -13109,7 +13109,7 @@
             "dry_run": {
               "preview_kind": "invocation"
             },
-            "effect": "write",
+            "effect": "destructive",
             "group": "app.version",
             "idempotency": "unknown",
             "interface_mode": "composite",
@@ -13180,7 +13180,7 @@
             "name": "remove_dev_app_members",
             "primary_cli_path": "dev app member remove",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "移除开放平台应用成员",
             "use_when": [
               "需要撤销指定用户的应用协作角色时"
@@ -13211,7 +13211,7 @@
             "name": "remove_dev_app_permissions",
             "primary_cli_path": "dev app permission remove",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "取消开放平台应用权限点",
             "use_when": [
               "需要撤销已知 scopeValue 的权限时"
@@ -13273,7 +13273,7 @@
             "name": "set_extension_robot_config",
             "primary_cli_path": "dev app robot config",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "创建或更新现有应用的机器人配置（upsert）",
             "use_when": [
               "已有 unifiedAppId 并需要配置机器人名称、回调或技能时"
@@ -13304,7 +13304,7 @@
             "name": "set_extension_webapp_config",
             "primary_cli_path": "dev app webapp config",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "配置网页应用能力",
             "use_when": [
               "需要设置 H5、PC 首页或 OMP 地址时"
@@ -13366,7 +13366,7 @@
             "name": "subscribe_dev_app_events",
             "primary_cli_path": "dev app event subscribe",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "订阅应用事件回调",
             "use_when": [
               "已确认事件码并需要新增事件订阅时"
@@ -13397,7 +13397,7 @@
             "name": "unsubscribe_dev_app_events",
             "primary_cli_path": "dev app event unsubscribe",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "取消订阅应用事件",
             "use_when": [
               "需要停止接收一个或多个已订阅事件时"
@@ -13428,7 +13428,7 @@
             "name": "update_dev_app",
             "primary_cli_path": "dev app update",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "修改开放平台企业内部应用基础信息",
             "use_when": [
               "已有 unifiedAppId，需要修改应用基础信息"
@@ -13459,7 +13459,7 @@
             "name": "update_dev_app_security_config",
             "primary_cli_path": "dev app security config",
             "reviewed": true,
-            "risk": "high",
+            "risk": "medium",
             "title": "更新开放平台应用安全配置",
             "use_when": [
               "需要调整应用安全相关 URL 或白名单时"

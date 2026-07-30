@@ -266,7 +266,6 @@ func newDevAppEventListCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询应用已订阅的事件列表",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -288,6 +287,7 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app event subscribe --unified-app-id UNIFIED_APP_ID --event-codes bpms_task_change --dry-run --format json",
 		Tool:    devAppEventSubscribeTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -296,7 +296,6 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "订阅应用事件回调",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -318,6 +317,7 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app event unsubscribe --unified-app-id UNIFIED_APP_ID --event-codes bpms_task_change --dry-run --format json",
 		Tool:    devAppEventUnsubscribeTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -326,7 +326,6 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "取消订阅应用事件",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -360,7 +359,6 @@ func newDevAppListCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询开放平台企业内部应用列表",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -390,7 +388,6 @@ func newDevAppGetCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询开放平台企业内部应用详情",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -414,7 +411,8 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 		Short:   "创建开放平台企业内部应用",
 		Example: "  dws dev app create --name DemoApp --desc 内部应用 --dry-run --format json",
 		Tool:    devAppCreateTool,
-		Risk:    LeafRiskWrite,
+		Risk:    LeafRiskHighWrite,
+		Safety:  LeafSafetyHighWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -424,7 +422,6 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "创建开放平台企业内部应用",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -447,6 +444,7 @@ func newDevAppUpdateCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app update --unified-app-id UNIFIED_APP_ID --name DemoApp2 --dry-run --format json",
 		Tool:    devAppUpdateTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -460,7 +458,6 @@ func newDevAppUpdateCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "修改开放平台企业内部应用基础信息",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -486,7 +483,6 @@ func newDevAppCredentialsGetCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "读取开放平台应用凭证",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -503,10 +499,11 @@ func newDevAppCredentialsGetCommand(runner executor.Runner) *cobra.Command {
 
 func newDevAppLifecycleCommand(runner executor.Runner, use, short, tool string, selection LeafSelectionDecl) *cobra.Command {
 	return NewLeafCommand(LeafSpec{
-		Use:   use,
-		Short: short,
-		Tool:  tool,
-		Risk:  LeafRiskWrite,
+		Use:    use,
+		Short:  short,
+		Tool:   tool,
+		Risk:   LeafRiskWrite,
+		Safety: LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -514,7 +511,6 @@ func newDevAppLifecycleCommand(runner executor.Runner, use, short, tool string, 
 		},
 		Schema: LeafSchema{
 			Description: short,
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection:   selection,
@@ -542,13 +538,13 @@ func newDevAppDeleteCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app delete --unified-app-id UNIFIED_APP_ID --confirm-name 应用名 --yes --format json",
 		Tool:    devAppDeleteTool,
 		Risk:    LeafRiskHighWrite,
+		Safety:  LeafSafetyDestructive,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "confirm-name", Usage: "二次确认：必须与被删应用的名称一致（不可逆操作的防误删）", Bind: "confirmName", Trim: true, OmitEmpty: true},
 		},
 		Schema: LeafSchema{
 			Description: "删除开放平台企业内部应用（不可逆，需 --confirm-name 二次确认）",
-			Safety:      devAppDeleteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -645,7 +641,6 @@ func newDevAppWebappGetCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询网页应用配置",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -667,6 +662,7 @@ func newDevAppWebappConfigCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app webapp config --unified-app-id UNIFIED_APP_ID --homepage-url https://example.com --dry-run --format json",
 		Tool:    devAppWebappSetTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -681,7 +677,6 @@ func newDevAppWebappConfigCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "配置网页应用能力",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -713,7 +708,6 @@ func newDevAppPermissionListCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询开放平台应用权限列表",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -738,6 +732,7 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app permission add --unified-app-id UNIFIED_APP_ID --scope-values Contact.User.mobile --dry-run --format json",
 		Tool:    devAppPermissionAddTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -746,7 +741,6 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "申请开放平台应用权限点",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -768,6 +762,7 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app permission remove --unified-app-id UNIFIED_APP_ID --scope-values Contact.User.mobile,qyapi_robot_sendmsg --dry-run --format json",
 		Tool:    devAppPermissionRmTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -776,7 +771,6 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "取消开放平台应用权限点",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -802,7 +796,6 @@ func newDevAppMemberListCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询开放平台应用成员",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -824,6 +817,7 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app member add --unified-app-id <unifiedAppId> --user-ids userId1,userId2 --member-type DEVELOPER --dry-run",
 		Tool:    devAppMemberAddTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -841,7 +835,6 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "添加开放平台应用成员",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -863,6 +856,7 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app member remove --unified-app-id <unifiedAppId> --user-ids userId1,userId2 --member-type DEVELOPER --dry-run",
 		Tool:    devAppMemberRemoveTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -880,7 +874,6 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "移除开放平台应用成员",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -901,8 +894,9 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 		Short: "更新开放平台应用安全配置",
 		Example: "  dws dev app security config --unified-app-id <unifiedAppId> " +
 			"--ip-whitelist 192.0.2.10 --redirect-urls https://callback.example.invalid/callback --sso-urls https://sso.example.invalid/sso --dry-run",
-		Tool: devAppSecurityConfigTool,
-		Risk: LeafRiskWrite,
+		Tool:   devAppSecurityConfigTool,
+		Risk:   LeafRiskWrite,
+		Safety: LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -916,7 +910,6 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "更新开放平台应用安全配置",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -945,7 +938,8 @@ func newDevAppRobotSubmitCommand(runner executor.Runner) *cobra.Command {
 		Short:   "异步提交钉钉智能体机器人创建任务（支持失败重试）",
 		Example: "  dws dev app robot submit --name 我的智能体 --robot-name 小助手 --desc \"处理审批问答\" --dry-run --format json",
 		Tool:    devAppRobotSubmitTool,
-		Risk:    LeafRiskWrite,
+		Risk:    LeafRiskHighWrite,
+		Safety:  LeafSafetyHighWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -958,7 +952,6 @@ func newDevAppRobotSubmitCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "异步提交钉钉智能体机器人创建任务（支持失败重试）",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1002,7 +995,6 @@ func newDevAppRobotResultCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询机器人异步创建任务结果",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1028,7 +1020,6 @@ func newDevAppRobotConfigGetCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询现有应用的机器人配置",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1059,6 +1050,7 @@ func newDevAppRobotConfigCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app robot config --unified-app-id UNIFIED_APP_ID --name 小助手 --brief 审批助手 --dry-run --format json",
 		Tool:    devAppRobotConfigUpsertTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -1079,7 +1071,6 @@ func newDevAppRobotConfigCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "创建或更新现有应用的机器人配置（upsert）",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1119,6 +1110,7 @@ func newDevAppRobotEnableCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app robot enable --unified-app-id UNIFIED_APP_ID --dry-run --format json",
 		Tool:    devAppRobotEnableTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -1126,7 +1118,6 @@ func newDevAppRobotEnableCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "启用现有应用机器人能力（纯启用，无需配置字段）",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1148,6 +1139,7 @@ func newDevAppRobotOfflineCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app robot disable --unified-app-id UNIFIED_APP_ID --dry-run --format json",
 		Tool:    devAppRobotOfflineTool,
 		Risk:    LeafRiskWrite,
+		Safety:  LeafSafetyWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -1155,7 +1147,6 @@ func newDevAppRobotOfflineCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "停用现有应用的机器人能力",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1261,7 +1252,8 @@ func newDevAppVersionCreateCommand(runner executor.Runner) *cobra.Command {
 		Short:   "基于当前配置创建应用新版本",
 		Example: "  dws dev app version create --unified-app-id UNIFIED_APP_ID --desc \"新增机器人能力\" --dry-run --format json",
 		Tool:    devAppVersionCreateTool,
-		Risk:    LeafRiskWrite,
+		Risk:    LeafRiskHighWrite,
+		Safety:  LeafSafetyHighWrite,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -1271,7 +1263,6 @@ func newDevAppVersionCreateCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "基于当前配置创建应用新版本",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1297,7 +1288,6 @@ func newDevAppVersionListCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "分页查询应用版本列表",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1324,7 +1314,6 @@ func newDevAppVersionGetCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询指定版本详情",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1361,7 +1350,8 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 		Short:   "发布指定版本（含高敏权限需 --confirmed-sensitive）",
 		Example: "  dws dev app version publish --unified-app-id UNIFIED_APP_ID --version-id VERSION_ID --dry-run --format json",
 		Tool:    devAppVersionPublishTool,
-		Risk:    LeafRiskWrite,
+		Risk:    LeafRiskHighWrite,
+		Safety:  LeafSafetyDestructive,
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -1373,7 +1363,6 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 		ConstParams: map[string]any{"precheckOnly": false},
 		Schema: LeafSchema{
 			Description: "发布指定版本（含高敏权限需 --confirmed-sensitive）",
-			Safety:      devAppWriteSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1400,7 +1389,6 @@ func newDevAppVersionStatusCommand(runner executor.Runner) *cobra.Command {
 		},
 		Schema: LeafSchema{
 			Description: "查询版本发布/审批状态",
-			Safety:      devAppReadSafety,
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
 			Selection: LeafSelectionDecl{
@@ -1464,22 +1452,8 @@ func devAppMeta(tool string) func(*cobra.Command) {
 // InterfaceDecl.Reason 的最终发布值。
 const devAppCompositeInterfaceReason = "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
 
-// devAppWriteSafety 是 devapp 普通写叶的 Safety 最终声明：锁评审发布值
-// （write/high/user_required）；运行时确认由 LeafRiskWrite 驱动 ConfirmRisk。
-var devAppWriteSafety = LeafSafetyDecl{
-	Effect: "write", Risk: "high", Confirmation: "user_required", Idempotency: "unknown",
-}
-
-// devAppReadSafety 是 devapp 读叶的 Safety 最终声明（read/low/not_required/
-// idempotent），锁评审发布值；读叶无确认门。
-var devAppReadSafety = LeafSafetyDecl{
-	Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent",
-}
-
-// devAppDeleteSafety 是 delete 的 Safety 最终声明：不可逆删除发布 destructive。
-var devAppDeleteSafety = LeafSafetyDecl{
-	Effect: "destructive", Risk: "high", Confirmation: "user_required", Idempotency: "unknown",
-}
+// devapp 不写共享 Safety 常量：Safety 元数据由各叶的 LeafSafety 枚举驱动
+// （读叶留空由框架按 LeafRiskRead 推导），字段值全部来自 cmdcore 的 tier 填充。
 
 // devAppDryRun 是 devapp 全树共用的 dry_run 最终声明：本地拼装调用预览
 // （invocation preview），dry-run 不发起任何远端读。

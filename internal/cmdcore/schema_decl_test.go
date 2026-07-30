@@ -124,17 +124,6 @@ func TestNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
 			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
 			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
 		}, "Schema.Selection.Examples"},
-		{"missing safety", SchemaDecl{
-			Description: "d",
-			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
-			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
-		}, "Schema.Safety"},
-		{"missing idempotency", SchemaDecl{
-			Description: "d",
-			Safety:      SafetyDecl{Effect: "read", Risk: "low", Confirmation: "not_required"},
-			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
-			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
-		}, "Schema.Safety.Idempotency"},
 		{"missing interface", SchemaDecl{
 			Description: "d",
 			Safety:      SafetyDecl{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
@@ -200,6 +189,51 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 	})
 	if explicit.Example != "  dws create --custom" {
 		t.Fatalf("authored Example must win over derivation, got %q", explicit.Example)
+	}
+}
+
+func TestNewCommandSafetyTierComposition(t *testing.T) {
+	schema := func() SchemaDecl {
+		return SchemaDecl{
+			Description: "desc",
+			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "op"},
+			Selection: SelectionDecl{
+				AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"},
+			},
+		}
+	}
+	build := func(spec CommandSpec) *cli.SafetySpec {
+		cmd := NewCommand(spec)
+		final, ok := cli.RuntimeContractFinal(cmd)
+		if !ok || final.Safety == nil {
+			t.Fatalf("expected declared safety, final=%#v ok=%v", final, ok)
+		}
+		return final.Safety
+	}
+
+	// Risk-only: tier inferred from Risk.SafetyDefault(), including idempotency.
+	if got := build(CommandSpec{Use: "w", Short: "w", Risk: RiskWrite, Schema: schema(),
+		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "write" || got.Risk != "medium" ||
+		got.Confirmation != "user_required" || got.Idempotency != "unknown" {
+		t.Fatalf("RiskWrite default tier = %#v", got)
+	}
+	// Safety enum overrides the Risk default (high-write over destructive).
+	if got := build(CommandSpec{Use: "w", Short: "w", Risk: RiskHighWrite, Safety: SafetyHighWrite, Schema: schema(),
+		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "write" || got.Risk != "high" {
+		t.Fatalf("explicit Safety tier must win over Risk default, = %#v", got)
+	}
+	// Explicit SafetyDecl string fields win over the tier fill.
+	s := schema()
+	s.Safety = SafetyDecl{Effect: "destructive"}
+	if got := build(CommandSpec{Use: "w", Short: "w", Risk: RiskWrite, Schema: s,
+		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "destructive" || got.Risk != "medium" {
+		t.Fatalf("SafetyDecl field must win over tier fill, = %#v", got)
+	}
+	// Empty Risk + empty Safety infers the read tier.
+	if got := build(CommandSpec{Use: "r", Short: "r", Schema: schema(),
+		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "read" || got.Risk != "low" ||
+		got.Confirmation != "not_required" || got.Idempotency != "idempotent" {
+		t.Fatalf("empty Risk/Safety must infer read tier, = %#v", got)
 	}
 }
 
