@@ -6,6 +6,18 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.55-beta.8] - 2026-07-30
+
+This beta revalidates the `v1.0.55-beta.7` product baseline through a complete
+guarded release delivery. It carries no new product-facing command behavior;
+the new version is required because the published beta.7 artifacts succeeded
+on GitHub, npm, and Homebrew, but its enabled optional Gitee mirror failed and
+left that Release run ineligible for stable promotion.
+
+### Changed
+
+- **Complete promotion evidence** — republishes the validated v1.0.55 command, Runtime Schema, Skill, authentication, and projection changes with the optional Gitee upload fallback disabled, so the release can produce one successful auditable delivery proof before stable promotion.
+
 ## [1.0.55] - 2026-07-29
 
 This release promotes the validated `v1.0.55-beta.7` baseline to stable. It
