@@ -8,10 +8,12 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [1.0.56-beta.1] - 2026-07-30
 
-This beta starts the v1.0.56 line on top of v1.0.55 and packages PRs #817 and
-#806. It closes the remaining Agent-visible IM shortcut gaps and introduces
-reviewed command-scoped parameter normalization without guessing business
-identifiers or values.
+This beta starts the v1.0.56 line on top of v1.0.55 and packages PRs #817,
+#806, and #834, together with release-validation fixes #838 and #839. It closes
+the remaining Agent-visible IM shortcut gaps, introduces reviewed
+command-scoped parameter normalization without guessing business identifiers
+or values, and prevents deterministic personal-event subscription failures
+from becoming unbounded retry storms.
 
 ### Added
 
@@ -22,6 +24,8 @@ identifiers or values.
 
 - **Message delivery and resource handling** (#817) — resolves direct recipients through exact contact search, preserves rich and nested message resources, avoids same-name download overwrites, and prevents read shortcuts from silently returning empty results on non-interactive input.
 - **Parameter parsing safety** (#806) — rejects ambiguous, blocked, or conflicting aliases before dispatch, normalizes explicit boolean values such as `--dry-run false`, and keeps internal pre-parse handler details out of user-visible errors.
+- **Personal-event subscription retry safety** (#834) — adds cross-process attempt claims, deterministic backoff and jitter, `Retry-After` handling, terminal holds, compare-and-swap completion, and fail-closed state handling across all public personal-event subscriptions, preventing deterministic failures from causing unbounded callback retries.
+- **Scoped CI and release validation reliability** (#838, #839) — keeps scoped coverage aligned with intentionally skipped supporting profiles, gives focused race and Multi-profile E2E suites enough time for the current `internal/app` workload, and preserves hidden E2E diagnostics on failure.
 
 ## [1.0.55-beta.8] - 2026-07-30
 
