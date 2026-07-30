@@ -263,9 +263,9 @@ type SelectionSpec struct {
 	// Reviewed is a legacy-path (hints/registry) marker only. The Contract
 	// declaration path must not set it: declared selection is final by
 	// construction, and assembly rejects a declared payload carrying it.
-	Reviewed           *bool
-	SourceRefs         []string
-	MetadataSource     string
+	Reviewed       *bool
+	SourceRefs     []string
+	MetadataSource string
 }
 
 // FieldProvenance records how one final field was selected. Value is raw JSON

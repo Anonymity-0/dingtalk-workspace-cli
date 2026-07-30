@@ -26,25 +26,25 @@ import (
 func TestDevAppWriteLeavesDeclareOrAnnotateConfirmation(t *testing.T) {
 	root := newDevAppCommand(&captureRunner{})
 	want := map[string]struct{}{
-		"create":              {},
-		"update":              {},
-		"delete":              {},
-		"enable":              {},
-		"disable":             {},
-		"event subscribe":     {},
-		"event unsubscribe":   {},
-		"webapp config":       {},
-		"permission add":      {},
-		"permission remove":   {},
-		"member add":          {},
-		"member remove":       {},
-		"security config":     {},
-		"robot submit":        {},
-		"robot config":        {},
-		"robot enable":        {},
-		"robot disable":       {},
-		"version create":      {},
-		"version publish":     {},
+		"create":            {},
+		"update":            {},
+		"delete":            {},
+		"enable":            {},
+		"disable":           {},
+		"event subscribe":   {},
+		"event unsubscribe": {},
+		"webapp config":     {},
+		"permission add":    {},
+		"permission remove": {},
+		"member add":        {},
+		"member remove":     {},
+		"security config":   {},
+		"robot submit":      {},
+		"robot config":      {},
+		"robot enable":      {},
+		"robot disable":     {},
+		"version create":    {},
+		"version publish":   {},
 	}
 
 	var walk func(cmd *cobra.Command, rel string)
@@ -58,11 +58,11 @@ func TestDevAppWriteLeavesDeclareOrAnnotateConfirmation(t *testing.T) {
 				walk(child, path)
 				continue
 			}
-		// devapp 全树已声明化：确认事实只能来自 Contract Risk，
-		// 任何 runtime_gate 标注都是回归（声明 > 标注，旧路径专用）。
-		if gate, hasGate := cli.RuntimeContractGate(child); hasGate {
-			t.Errorf("%s: unexpected runtime_gate %q; devapp leaves declare Contract Risk", path, gate)
-		}
+			// devapp 全树已声明化：确认事实只能来自 Contract Risk，
+			// 任何 runtime_gate 标注都是回归（声明 > 标注，旧路径专用）。
+			if gate, hasGate := cli.RuntimeContractGate(child); hasGate {
+				t.Errorf("%s: unexpected runtime_gate %q; devapp leaves declare Contract Risk", path, gate)
+			}
 			if _, ok := want[path]; !ok {
 				continue
 			}

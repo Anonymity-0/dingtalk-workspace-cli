@@ -53,8 +53,8 @@ const (
 	// Contract surface (cmdcore / LeafSpec) embedded onto the live Cobra leaf so
 	// Schema generation can project parameters/constraints/Risk without a second
 	// source of truth. See docs/flag-help-schema-homology.md.
-	runtimeSchemaContractAnnotation   = "dws.schema.contract"
-	runtimeSchemaRiskAnnotation       = "dws.schema.risk"
+	runtimeSchemaContractAnnotation    = "dws.schema.contract"
+	runtimeSchemaRiskAnnotation        = "dws.schema.risk"
 	runtimeSchemaRuntimeGateAnnotation = "dws.schema.runtime_gate"
 )
 
