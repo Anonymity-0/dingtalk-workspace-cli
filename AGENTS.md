@@ -23,14 +23,12 @@ changes must not rewrite it mechanically.
 
 ## Command framework declaration
 
-- Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**（含 **§5.0.4 Schema/`ToolSpec` 全覆盖**）
-- Today: `helpers.LeafSpec` → `cmdcore.CommandSpec` → `cmdcore.NewCommand`
-- **Declare** = data fields (`Flags`, `Constraints`, non-empty `Risk`, `ConstParams`, Use/Short/…)
+- Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
+- Today: `helpers.LeafSpec` → `cmdcore.CommandSpec` (+ `Schema`) → `cmdcore.NewCommand`
+- **Declare = final Schema source**: `Flags` / `Constraints` / `Risk` / `ConstParams` / `Schema` (ToolSpec groups)
+- Light runtime write: only when `Schema` is set → convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); `Risk` alone stays `dws.schema.risk`. Assembly **pass-throughs** Final.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
-- **Annotate** = explicit `dws.schema.runtime_gate` / reviewed Safety when Risk is not set
-- **Reviewed** = identity / selection / interface / dry-run / idempotency（非 Contract，不造 CLI flag）
-- Empty `Risk` does not embed `dws.schema.risk`; write commands need non-empty `Risk` or gate annotate
-- Every `cli.ToolSpec` field group must have an authority in §5.0.4 — no ownerless Schema facts
+- Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until Safety/`Risk` is declared
 
 ## flag / help / schema homology
 

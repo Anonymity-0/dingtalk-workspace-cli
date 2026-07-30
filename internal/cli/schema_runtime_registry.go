@@ -183,6 +183,211 @@ func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtim
 }
 
 func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
+	if final, ok := RuntimeContractFinal(entry.Command); ok {
+		return runtimeToolSpecFromContractFinal(entry, final)
+	}
+	return runtimeToolSpecFromLegacyMetadata(entry, metadata)
+}
+
+// runtimeToolSpecFromContractFinal pass-throughs Contract-authored Schema fields.
+// Declared values are the final data source; hints/registry/MCP do not merge.
+func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFinalPayload) (ToolSpec, error) {
+	canonicalPath := entry.ProductID + "." + entry.ToolName
+	constraints := runtimeCommandConstraints(entry.Command)
+	// Parameters: cobra + native Contract annotations only (no hint/MCP merge).
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, nil, nil, constraints)
+	if err != nil {
+		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
+	}
+
+	identity := ToolIdentitySpec{
+		ProductID:       entry.ProductID,
+		SourceProductID: strings.TrimSpace(entry.SourceProductID),
+		Name:            entry.ToolName,
+		CLIName:         entry.CLIName,
+		CanonicalPath:   canonicalPath,
+		Path:            canonicalPath,
+		CLIPath:         entry.CLIPath,
+		PrimaryCLIPath:  entry.PrimaryCLIPath,
+		Group:           entry.Group,
+		Aliases:         append([]string(nil), entry.Aliases...),
+		IsAlias:         false,
+		Source:          entry.Source,
+	}
+	if final.Identity != nil {
+		if err := validateContractFinalIdentity(entry, *final.Identity, canonicalPath); err != nil {
+			return ToolSpec{}, err
+		}
+		id := *final.Identity
+		if id.ProductID != "" {
+			identity.ProductID = id.ProductID
+		}
+		if id.SourceProductID != "" {
+			identity.SourceProductID = id.SourceProductID
+		}
+		if id.Name != "" {
+			identity.Name = id.Name
+		}
+		if id.CLIName != "" {
+			identity.CLIName = id.CLIName
+		}
+		if id.CanonicalPath != "" {
+			identity.CanonicalPath = id.CanonicalPath
+			identity.Path = id.CanonicalPath
+		}
+		if id.CLIPath != "" {
+			identity.CLIPath = id.CLIPath
+		}
+		if id.PrimaryCLIPath != "" {
+			identity.PrimaryCLIPath = id.PrimaryCLIPath
+		}
+		if id.Group != "" {
+			identity.Group = id.Group
+		}
+		if len(id.Aliases) > 0 {
+			identity.Aliases = append([]string(nil), id.Aliases...)
+		}
+		if id.Source != "" {
+			identity.Source = id.Source
+		}
+	}
+	if identity.SourceProductID == identity.ProductID {
+		identity.SourceProductID = ""
+	}
+
+	title := strings.TrimSpace(final.Title)
+	description := strings.TrimSpace(final.Description)
+	if title == "" {
+		title = strings.TrimSpace(entry.Command.Short)
+	}
+	if description == "" {
+		description = strings.TrimSpace(entry.Command.Long)
+	}
+
+	safety := SafetySpec{}
+	if final.Safety != nil {
+		safety = *final.Safety
+	} else if risk, ok := RuntimeContractRisk(entry.Command); ok {
+		safety = applyContractRiskToSafety(safety, risk)
+	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
+		safety = applyContractGateToSafety(safety, gate)
+	}
+
+	positionals := final.Positionals
+	if len(positionals) == 0 {
+		positionals = runtimeCommandPositionals(entry.Command)
+	}
+
+	var interfaceSpec InterfaceSpec
+	if final.Interface != nil {
+		interfaceSpec = *final.Interface
+	}
+	var selection SelectionSpec
+	if final.Selection != nil {
+		if final.Selection.Reviewed != nil {
+			return ToolSpec{}, fmt.Errorf("contract final selection for %s must not carry reviewed field: declaration is the final source", canonicalPath)
+		}
+		selection = *final.Selection
+	}
+
+	provenance := map[string]FieldProvenance{
+		"canonical_path": resolvedFieldProvenance(
+			identity.CanonicalPath,
+			"cmdcore.contract",
+			"cmdcore.SchemaDecl",
+			"contract_final",
+			"contract_pass_through",
+			"Contract final Schema identity",
+		),
+	}
+	if final.Safety != nil || safety.Confirmation != "" {
+		provenance["confirmation"] = resolvedFieldProvenance(
+			safety.Confirmation,
+			"cmdcore.contract",
+			"cmdcore.SchemaDecl",
+			"contract_final",
+			"contract_pass_through",
+			"Contract final Schema safety",
+		)
+	}
+	if final.DryRun != nil {
+		provenance["dry_run"] = resolvedFieldProvenance(
+			*final.DryRun,
+			"cmdcore.contract",
+			"cmdcore.SchemaDecl",
+			"contract_final",
+			"contract_pass_through",
+			"Contract final Schema dry_run",
+		)
+	}
+
+	return ToolSpecFromRuntime(RuntimeToolSpecInput{
+		Identity:        identity,
+		Display:         entry.ProductName,
+		Title:           title,
+		Description:     description,
+		MetadataSource:  "cmdcore.contract",
+		Parameters:      parameters,
+		Constraints:     constraints,
+		Positionals:     positionals,
+		DryRun:          final.DryRun,
+		Safety:          safety,
+		Interface:       interfaceSpec,
+		Selection:       selection,
+		FieldProvenance: provenance,
+	})
+}
+
+// validateContractFinalIdentity guards the pass-through contract: on a bound
+// (managed) leaf, a declared identity must agree with the bound tree entry.
+// Otherwise the Schema catalog would publish an identity the registry never
+// indexed. Non-empty declared fields that differ from the entry fail assembly.
+func validateContractFinalIdentity(entry runtimeSchemaEntry, id ToolIdentitySpec, canonicalPath string) error {
+	mismatches := make([]string, 0, 10)
+	check := func(field, declared, bound string) {
+		declared = strings.TrimSpace(declared)
+		if declared != "" && declared != strings.TrimSpace(bound) {
+			mismatches = append(mismatches, fmt.Sprintf("%s: declared %q, bound %q", field, declared, bound))
+		}
+	}
+	check("product_id", id.ProductID, entry.ProductID)
+	check("source_product_id", id.SourceProductID, entry.SourceProductID)
+	check("name", id.Name, entry.ToolName)
+	check("cli_name", id.CLIName, entry.CLIName)
+	check("canonical_path", id.CanonicalPath, canonicalPath)
+	check("cli_path", id.CLIPath, entry.CLIPath)
+	check("primary_cli_path", id.PrimaryCLIPath, entry.PrimaryCLIPath)
+	check("group", id.Group, entry.Group)
+	check("source", id.Source, entry.Source)
+	if len(id.Aliases) > 0 && !stringSetsEqual(id.Aliases, entry.Aliases) {
+		mismatches = append(mismatches, fmt.Sprintf("aliases: declared %v, bound %v", id.Aliases, entry.Aliases))
+	}
+	if len(mismatches) > 0 {
+		sort.Strings(mismatches)
+		return fmt.Errorf("contract final identity mismatch for %s: %s", canonicalPath, strings.Join(mismatches, "; "))
+	}
+	return nil
+}
+
+func stringSetsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	counts := make(map[string]int, len(a))
+	for _, v := range a {
+		counts[strings.TrimSpace(v)]++
+	}
+	for _, v := range b {
+		k := strings.TrimSpace(v)
+		counts[k]--
+		if counts[k] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	dryRun, err := resolveReviewedDryRun(canonicalPath)
 	if err != nil {

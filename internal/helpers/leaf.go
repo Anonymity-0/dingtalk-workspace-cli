@@ -94,11 +94,14 @@ const (
 // 同时投影到 Agent Runtime Schema 并渲染进 --help 的「参数约束」段。
 type LeafConstraint = cmdcore.Constraint
 
+// LeafSchema 是 Schema 最终载荷声明（cmdcore.SchemaDecl 别名）。
+type LeafSchema = cmdcore.SchemaDecl
+
 // LeafSpec 是命令框架的 Leaf 声明门面（映射为 cmdcore.CommandSpec）。
 //
-// 声明面（数据字段）：Flags、Constraints、非空 Risk、ConstParams、
-// Use/Short/Long/Example。空 Risk 不嵌入 dws.schema.risk；写副作用须非空
-// Risk 或 PostMount/手写路径上的显式 runtime_gate 标注。
+// 声明面 = Schema 最终数据源：Flags（含 parameter Schema 字段）、Constraints、
+// Risk、ConstParams、Use/Short/Long/Example、Schema（ToolSpec 各组）。
+// Schema 组装透传嵌入值，声明路径不再引入评审并行字段。
 //
 // 执行面（不算声明）：Validate、Call、RunE、PostMount；Server/Tool 仅路由。
 type LeafSpec struct {
@@ -118,12 +121,15 @@ type LeafSpec struct {
 	Constraints []LeafConstraint
 
 	// Risk 声明副作用等级，驱动 ConfirmRisk（对齐 shortcut）。非空时嵌入
-	// dws.schema.risk。空值运行时当只读且不嵌入 schema risk。
+	// dws.schema.risk 并合成 Schema.Safety。
 	Risk LeafRisk
 
 	// ConstParams 是与 flag 无关的固定载荷（如 precheckOnly），在 flag 装配
 	// 之后并入 toolArgs。载荷声明，不上用户 flag 表；从不满足 Required。
 	ConstParams map[string]any
+
+	// Schema 是 ToolSpec 最终载荷（identity/selection/safety/dry_run/…）。
+	Schema LeafSchema
 
 	// Call 是执行体：非空时替代默认 MCP 派发。toolArgs 已由 Flags/ConstParams
 	// 装配完成；Call 不应再写业务参数。分页等横切由领域工具处理，不进声明。
@@ -133,10 +139,10 @@ type LeafSpec struct {
 	// LeafFlag.Transform；可声明的互斥/至少一个应写 Constraints。
 	Validate func(cmd *cobra.Command, args []string) error
 
-	// RunE 非空时完全自定义执行体（逃生舱）；表面事实仍须 Flags 声明或 annotate。
+	// RunE 非空时完全自定义执行体（逃生舱）；表面事实仍须 Flags/Schema 声明。
 	RunE func(cmd *cobra.Command, args []string) error
 
-	// PostMount 是挂载收尾钩子（annotate/领域工具等），不是声明面。
+	// PostMount 是挂载收尾钩子（领域工具等），不是声明面。
 	// 业务 flag 必须写在 Flags；分页由领域工具注入。
 	PostMount func(cmd *cobra.Command)
 }
@@ -165,6 +171,7 @@ func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 		Constraints: spec.Constraints,
 		Risk:        spec.Risk,
 		ConstParams: spec.ConstParams,
+		Schema:      spec.Schema,
 		Validate:    spec.Validate,
 		PostMount:   spec.PostMount,
 		RunE:        spec.RunE,

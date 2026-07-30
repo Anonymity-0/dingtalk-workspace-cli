@@ -269,6 +269,16 @@ func AnnotateRuntimeRequiredFlags(cmd *cobra.Command, flagNames ...string) {
 	}
 }
 
+// AnnotateRuntimeFlagDescription records the Schema parameter description.
+func AnnotateRuntimeFlagDescription(cmd *cobra.Command, flagName, description string) {
+	if cmd == nil {
+		return
+	}
+	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+		setFlagAnnotation(flag, runtimeSchemaFlagDescriptionAnnotation, strings.TrimSpace(description))
+	}
+}
+
 // AnnotateRuntimeFlagRequiredWhen records a conditional CLI requirement. The
 // expression is descriptive metadata and does not alter Cobra validation.
 func AnnotateRuntimeFlagRequiredWhen(cmd *cobra.Command, flagName, expression string) {

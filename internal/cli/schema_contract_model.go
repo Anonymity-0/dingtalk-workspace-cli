@@ -260,6 +260,9 @@ type SelectionSpec struct {
 	Tips               []string
 	WorkflowRefs       []string
 	Examples           []string
+	// Reviewed is a legacy-path (hints/registry) marker only. The Contract
+	// declaration path must not set it: declared selection is final by
+	// construction, and assembly rejects a declared payload carrying it.
 	Reviewed           *bool
 	SourceRefs         []string
 	MetadataSource     string

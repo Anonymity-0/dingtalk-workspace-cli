@@ -125,6 +125,13 @@ type FlagSpec struct {
 	// Trim, when true, TrimSpace's the effective value (main flag/alias/env
 	// alike) and makes a whitespace-only value count as empty in required checks.
 	Trim bool
+
+	// Schema parameter final facts (embedded to dws.schema.*; assembly pass-through).
+	Enum              []string // accepted values
+	Format            string   // machine-readable format (e.g. uri)
+	Example           string   // representative CLI value
+	RequiredWhen      string   // conditional required expression (descriptive)
+	SchemaDescription string   // Schema description; empty uses Usage
 }
 
 // Risk declares a leaf command's side-effect level, driving pre-dispatch write
@@ -178,13 +185,15 @@ type Constraint struct {
 // CommandSpec is the single typed definition of a leaf command, shared by the
 // LeafSpec and (via FromShortcut) Shortcut frameworks.
 //
-// Declaration surface (data fields — the only place CLI/help/schema facts are
-// authored for managed leaves):
+// Declaration surface is the final Schema data source for managed leaves:
 //
-//	Flags, Constraints, non-empty Risk, ConstParams, Use/Short/Long/Example
+//	Flags (+ parameter Schema fields), Constraints, Risk, ConstParams,
+//	Use/Short/Long/Example, Schema (ToolSpec groups)
 //
-// Empty Risk means runtime read confirmation (no prompt) and does NOT embed
-// dws.schema.risk; write side-effects then require an explicit annotate path.
+// Schema assembly pass-throughs embedded dws.schema.* — no reviewed/hints
+// parallel authority for declared fields. Empty Risk means runtime read
+// confirmation (no prompt) and does NOT embed dws.schema.risk unless
+// Schema.Safety supplies risk/confirmation.
 //
 // Execution surface (hooks — not declaration):
 //
@@ -212,6 +221,9 @@ type CommandSpec struct {
 	// ConstParams are fixed toolArgs merged after flag assembly (e.g. precheckOnly).
 	// They are payload declaration, not user flags, and never satisfy Required.
 	ConstParams map[string]any
+	// Schema is the final ToolSpec payload (identity/selection/safety/…).
+	// When non-empty, embed marks the leaf for Schema pass-through.
+	Schema SchemaDecl
 
 	// Validate is the cross-flag validation hook, run after required/constraint
 	// checks and before args assembly; nil skips it. Not a declaration surface.
@@ -807,10 +819,9 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 	return false
 }
 
-// embedContractIntoSchema projects CommandSpec flag/Risk facts onto the live
-// Cobra leaf as native Schema annotations. Catalog generation reads those
-// annotations (native_annotation / dws.schema.risk), so flag/help/schema stay
-// Contract-homologous without MCP meta creating flags.
+// embedContractIntoSchema projects CommandSpec declaration onto the live Cobra
+// leaf as the final Schema payload (dws.schema.*). Assembly pass-throughs these
+// annotations; declared fields do not compete with reviewed hints.
 func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
 	cli.AnnotateRuntimeContract(cmd)
 	if strings.TrimSpace(string(spec.Risk)) != "" {
@@ -824,11 +835,151 @@ func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
 		}
 		requiredFlag := flag.Required || flag.MarkRequired
 		cli.AnnotateRuntimeFlag(cmd, name, strings.TrimSpace(flag.Bind), flagKindSchemaType(flag.Kind), requiredFlag, "")
+		desc := strings.TrimSpace(flag.SchemaDescription)
+		if desc == "" {
+			desc = strings.TrimSpace(flag.Usage)
+		}
+		if desc != "" {
+			cli.AnnotateRuntimeFlagDescription(cmd, name, desc)
+		}
+		if flag.RequiredWhen != "" {
+			cli.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
+		}
+		if flag.Format != "" {
+			cli.AnnotateRuntimeFlagFormat(cmd, name, flag.Format)
+		}
+		if flag.Example != "" {
+			cli.AnnotateRuntimeFlagExample(cmd, name, flag.Example)
+		}
+		if len(flag.Enum) > 0 {
+			cli.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
+		}
 		if requiredFlag {
 			required = append(required, name)
 		}
 	}
 	cli.AnnotateRuntimeRequiredFlags(cmd, required...)
+	embedSchemaDecl(cmd, spec)
+}
+
+// embedSchemaDecl does a light runtime write: only when SchemaDecl is authored,
+// convert once and RegisterRuntimeContractFinal. Risk-only leaves keep
+// dws.schema.risk from embedContractIntoSchema — no Final registration.
+func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
+	schema := spec.Schema
+	if schema.empty() {
+		return
+	}
+	payload := cli.ContractFinalPayload{
+		Title:       firstNonEmpty(schema.Title, spec.Short),
+		Description: firstNonEmpty(schema.Description, spec.Long),
+		Safety:      schemaSafetyFromDecl(spec.Risk, schema.Safety),
+	}
+	if n := len(schema.Positionals); n > 0 {
+		payload.Positionals = make([]cli.RuntimeSchemaPositional, n)
+		for i, p := range schema.Positionals {
+			payload.Positionals[i] = cli.RuntimeSchemaPositional{
+				Name: p.Name, Type: p.Type, Description: p.Description,
+				Required: p.Required, Variadic: p.Variadic, Index: p.Index,
+			}
+		}
+	}
+	if schema.DryRun != nil && strings.TrimSpace(schema.DryRun.PreviewKind) != "" {
+		payload.DryRun = &cli.DryRunSpec{
+			PreviewKind: strings.TrimSpace(schema.DryRun.PreviewKind),
+			RemoteReads: schema.DryRun.RemoteReads,
+		}
+	}
+	if schema.Interface != nil {
+		iface := &cli.InterfaceSpec{
+			Mode: strings.TrimSpace(schema.Interface.Mode),
+			Availability: strings.TrimSpace(schema.Interface.Availability),
+			Reason: strings.TrimSpace(schema.Interface.Reason),
+		}
+		if pid := strings.TrimSpace(schema.Interface.ProductID); pid != "" {
+			iface.Ref = &cli.InterfaceRefSpec{ProductID: pid, RPCName: strings.TrimSpace(schema.Interface.RPCName)}
+		}
+		if iface.Mode != "" || iface.Ref != nil || iface.Availability != "" || iface.Reason != "" {
+			payload.Interface = iface
+		}
+	}
+	if sel := schema.Selection; strings.TrimSpace(sel.AgentSummary) != "" || len(sel.UseWhen) > 0 ||
+		len(sel.AvoidWhen) > 0 || len(sel.Examples) > 0 || len(sel.Prerequisites) > 0 ||
+		len(sel.Tips) > 0 || len(sel.WorkflowRefs) > 0 {
+		payload.Selection = &cli.SelectionSpec{
+			AgentSummary: strings.TrimSpace(sel.AgentSummary),
+			UseWhen: sel.UseWhen, AvoidWhen: sel.AvoidWhen,
+			Prerequisites: sel.Prerequisites, Tips: sel.Tips,
+			WorkflowRefs: sel.WorkflowRefs, Examples: sel.Examples,
+		}
+	}
+	if id := schema.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" {
+		payload.Identity = &cli.ToolIdentitySpec{
+			ProductID: strings.TrimSpace(id.ProductID), SourceProductID: strings.TrimSpace(id.SourceProductID),
+			Name: strings.TrimSpace(id.Name), CLIName: strings.TrimSpace(id.CLIName),
+			CanonicalPath: strings.TrimSpace(id.CanonicalPath), CLIPath: strings.TrimSpace(id.CLIPath),
+			PrimaryCLIPath: strings.TrimSpace(id.PrimaryCLIPath), Group: strings.TrimSpace(id.Group),
+			Aliases: id.Aliases, Source: strings.TrimSpace(id.Source),
+		}
+	}
+	cli.RegisterRuntimeContractFinal(cmd, payload)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if s := strings.TrimSpace(v); s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func schemaSafetyFromDecl(risk Risk, decl SafetyDecl) *cli.SafetySpec {
+	out := cli.SafetySpec{
+		Effect:       strings.TrimSpace(decl.Effect),
+		Risk:         strings.TrimSpace(decl.Risk),
+		Confirmation: strings.TrimSpace(decl.Confirmation),
+		Idempotency:  strings.TrimSpace(decl.Idempotency),
+	}
+	if strings.TrimSpace(string(risk)) != "" {
+		switch risk.Effective() {
+		case RiskWrite:
+			if out.Effect == "" {
+				out.Effect = "write"
+			}
+			if out.Risk == "" {
+				out.Risk = "medium"
+			}
+			if out.Confirmation == "" {
+				out.Confirmation = "user_required"
+			}
+		case RiskHighWrite:
+			if out.Effect == "" {
+				out.Effect = "destructive"
+			}
+			if out.Risk == "" {
+				out.Risk = "high"
+			}
+			if out.Confirmation == "" {
+				out.Confirmation = "user_required"
+			}
+		case RiskRead:
+			if out.Effect == "" {
+				out.Effect = "read"
+			}
+			if out.Risk == "" {
+				out.Risk = "low"
+			}
+			if out.Confirmation == "" {
+				out.Confirmation = "not_required"
+			}
+		}
+		out.EffectSource = "cmdcore.contract"
+	}
+	if out.Effect == "" && out.Risk == "" && out.Confirmation == "" && out.Idempotency == "" {
+		return nil
+	}
+	return &out
 }
 
 func flagKindSchemaType(kind FlagKind) string {

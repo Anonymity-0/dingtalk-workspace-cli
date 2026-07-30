@@ -30,14 +30,15 @@ CommandSpec
 
 空 `Risk` **不**写入 `dws.schema.risk`，避免把默读盖掉今日 write-guard 叶子的 reviewed Safety。
 
-### 1.1 硬规则：声明 OR 人工标注（禁止纯推断）
+### 1.1 硬规则：声明 = 最终数据源（Schema 透传）
 
-每一份进入 help / Schema 的**事实**（parameters 形状、约束、confirmation/effect 等）必须满足以下二者之一，**不得**仅靠生成器或组装期推断：
+受管命令进入 Schema 的叶子数据由 **Contract 声明**定义最终值；框架（`NewCommand`）做**类型转换**并注册，Schema 组装**透传**，不得：
 
-1. **声明（declare）**：写在 Contract 结构体字段里（见 §1.2），由 `cmdcore.NewCommand` 注册并嵌入；或
-2. **人工标注（annotate）**：显式写入 cobra annotation / reviewed hints（见 §1.3），并由 Schema 组装**按标注**投影。
+- 把声明序列化成 JSON 注解再解析；
+- 在声明体系里再挂「评审字段」并行权威；
+- 用 hints/registry 盖写已声明字段。
 
-今日写命令在未升格 `Risk` 前，走 annotate 路径（`HOM-S2`）。读命令无确认语义时，二者皆可缺省；一旦存在确认/写副作用语义，则必须 declare 或 annotate。
+迁移期未迁完的叶子可暂走旧组装路径；**新声明面不含 review_reason / reviewed 字段**。写命令未设 `Risk`/`Schema.Safety` 时，过渡期仍可用 `runtime_gate` annotate（`HOM-S2`）。
 
 **不采用**路径 B（以 `schema_mcp_metadata` 生成全部 CLI flag/help/schema）作为主权威。钉钉 MCP meta 不是飞书 OAPI：粒度与 CLI 特有语义（二选一、OmitEmpty、ConstParams、write guard）无法从裸 meta 推出；强行生成会违反「Schema 描述 CLI，不制造 CLI」。
 

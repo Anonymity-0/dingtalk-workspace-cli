@@ -36,11 +36,12 @@ func TestRFCPinsFrameworkDeclareDefinition(t *testing.T) {
 	body := string(raw)
 	for _, needle := range []string{
 		"### 5.0 框架上的「声明」定义",
-		"三层分工（加评审源）",
+		"声明 = 最终源，Schema = 透传",
 		"**声明（declare）**",
-		"**执行（execute）**",
-		"**标注（annotate）**",
-		"**评审源（reviewed）**",
+		"**框架转换**",
+		"**Schema 透传**",
+		"禁止** JSON 注解桥",
+		"RegisterRuntimeContractFinal",
 		"今日契约字段（`CommandSpec` / `LeafSpec`）",
 		"Schema 全覆盖：`ToolSpec` 字段权威",
 		"**Identity**",
@@ -51,9 +52,7 @@ func TestRFCPinsFrameworkDeclareDefinition(t *testing.T) {
 		"**DryRun**",
 		"**Interface**",
 		"**Selection**",
-		"**FieldProvenance**",
 		"ConstParams",
-		"空值 = 运行时当只读确认，且**不**嵌入 `dws.schema.risk`",
 		"与目标 `Contract` 的对应",
 	} {
 		if !strings.Contains(body, needle) {

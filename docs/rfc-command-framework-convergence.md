@@ -269,19 +269,21 @@ Definition（仅声明；不可编译）
 
 本节把「声明」钉在**命令框架**上，而不仅在同源文档里。**Schema 叶子（`cli.ToolSpec`）的每一个字段组都必须在本节有权威归属**——声明、标注、评审源或组装派生物；不得出现「Schema 有、框架未定义谁写」的空洞。字段级细节见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.2–§1.4。
 
-#### 5.0.1 三层分工（加评审源）
+#### 5.0.1 分工：声明 = 最终源，Schema = 透传
 
-| 层 | 含义 | 今日落点 | 目标落点 |
-|---|---|---|---|
-| **声明（declare）** | 结构体**数据字段**写出的 CLI 表面事实；框架据此注册、校验、确认、投影 | `cmdcore.CommandSpec` 契约字段；门面 `helpers.LeafSpec` / Shortcut 映射 | `Definition.Contract`（§5.1） |
-| **执行（execute）** | 钩子 / Handler / 派发闭包；消费已装配参数，不发明表面 | `Validate` / `Call`·`Invoke`·`Orchestrate` / `RunE` / `PostMount` | `mcpbind` 派发器或 `Handler` |
-| **标注（annotate）** | 声明字段装不下时的显式补充；禁止推断 | `cli.AnnotateRuntime*` / `runtime_gate` / 手写 cobra 注解 | 同左；受管命令优先升格进 Contract |
-| **评审源（reviewed）** | 非 Contract、但经评审的 Schema 权威（identity / selection / interface / 部分 Safety） | `schema_command_registry`、`schema_hints/*`、`schema_mcp_metadata`、dry-run registry | 同左；不得创建 CLI flag |
+| 层 | 含义 | 今日落点 |
+|---|---|---|
+| **声明（declare）** | `CommandSpec` / `LeafSpec` / `SchemaDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Schema` |
+| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedSchemaDecl` → `RegisterRuntimeContractFinal` |
+| **Schema 透传** | 组装读取注册表，原样投影为 `ToolSpec` | `runtimeToolSpecFromContractFinal` |
+| **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
 
 硬规则：
 
-1. **CLI 表面事实**（parameters 形状、约束、confirmation/effect 中由执行路径决定的部分）：**声明 OR 标注**；钩子不算声明。
-2. **非 CLI 表面的 Schema 字段**（identity、selection、interface_*）：必须有**评审源**，不得从 MCP/执行体推断出 CLI flag，也不得用 Contract 偷换 registry 身份。
+1. 声明体系**不含评审并行字段**；hooks 不算声明。声明载荷携带 reviewed 字段（如 `Selection.Reviewed`）组装直接报错——`Reviewed` 是旧路径（hints/registry）专用标记。
+2. 不得把声明序列化成 JSON 再解析；框架自己做 `SchemaDecl` → `ContractFinalPayload` → `ToolSpec`。
+3. 已声明字段不得被 hints/registry 盖写。迁移期未声明叶可走旧路径。
+4. 受管（已绑定）叶上声明的 `Identity` 必须与绑定 entry 一致（`product_id`/`name`/`canonical_path`/`cli_path`/`aliases` 等）；不一致组装报错（`validateContractFinalIdentity`）。声明 identity 是钉扎与自描述，不是改写 registry 身份的通道。
 
 #### 5.0.2 今日契约字段（`CommandSpec` / `LeafSpec`）
 
@@ -324,7 +326,7 @@ Definition（仅声明；不可编译）
 
 | Schema 字段组 | 子字段 / 内容 | 权威类 | 今日写入面 | 框架声明？ |
 |---|---|---|---|---|
-| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 评审源 | `schema_command_registry`（+ reviewed manual additions） | 否（Contract 不取代 identity） |
+| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`SchemaDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
 | **Display / Title / Description** | 产品展示名；工具 title/description | 评审源为主；cobra Short/Long 可作候选 | registry 产品名；hints/metadata / cobra help 解析 | Short/Long 可声明，但 **canonical 文案不以 Contract 胜 identity** |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
 | | `description`（usage 文案） | 声明 usage；hints 可 overlay 文案 | `FlagSpec.Usage`；`schema_hints/metadata` 仅补 description | usage **是**；overlay 不得改 type/required/default |
@@ -338,7 +340,7 @@ Definition（仅声明；不可编译）
 | | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
 | **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |
 | **Interface** | `interface_mode`, `interface_ref`, `availability`, `reason` | 评审源 | MCP meta + agent metadata 解析 | 否；与 CLI Identity 分离 |
-| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 评审源 | `schema_hints/selection` | 否 |
+| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 声明（`SchemaDecl.Selection`）或评审源 | `SchemaDecl` / `schema_hints/selection` | 可声明；声明载荷**不得携带** `Reviewed`（旧路径专用），携带即组装报错 |
 | **FieldProvenance** | 各字段 winner / candidates | 组装派生物 | Schema 组装器 | 派生；须与 delivered value 一致 |
 | **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | hints / embedded MCP / resolver | 不构成 CLI 表面 |
 | **ConstParams**（框架有、Schema parameters 无） | 固定 toolArgs | **声明**（载荷） | `ConstParams` | **是**（故意不上 parameter 表） |
@@ -348,8 +350,8 @@ Definition（仅声明；不可编译）
 冲突规则（路径 A）：
 
 - parameters 的 type / required / default / name 集合：**Contract/cobra 胜** hints 与 MCP；
-- Safety 的 confirmation/effect：非空 Contract `Risk` 胜；否则 `runtime_gate` 胜「假装 not_required」；再否则 reviewed Safety；
-- Identity / Selection / Interface：**评审源胜**，Contract 不得改写 canonical path 或发明 RPC。
+- Safety 的 confirmation/effect：**`Schema.Safety`（Final 声明）胜**；否则非空 Contract `Risk` 胜；再否则 `runtime_gate` 胜「假装 not_required」；最末迁移期 reviewed Safety。声明 Safety 存在时 gate 标注被忽略（声明 > 标注，§5.10）；
+- Identity：**绑定 entry 胜**——Contract 声明必须与之一致，不一致组装报错，不得改写 canonical path；Selection 已声明则声明胜；Interface 不得发明 RPC。
 
 ### 5.1 Definition、Contract 与 Handler
 
@@ -1144,7 +1146,7 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 | 非 Shortcut 受管定义的 Cobra 命令 Hidden | 可执行 Contract | 挂载的命令可见性与声明匹配 |
 | Shortcut 列表成员资格与语义 disposition | 经评审的 Shortcut 可见性解析器 | public/all 列表成员资格与经评审决策匹配 |
 | Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
-| 运行时 Risk 与确认 | 可执行 Contract（非空 `Risk`）或显式 annotate（如 `runtime_gate`）；见 §5.0 | 不得靠推断；空 Risk 不嵌入 schema risk；写命令须 Risk 或 gate |
+| 运行时 Risk 与确认 | 可执行 Contract（非空 `Risk`）或显式 annotate（如 `runtime_gate`）；见 §5.0 | 不得靠推断；空 Risk 不嵌入 schema risk；写命令须 Risk 或 gate；Safety 组装优先级 **`Schema.Safety`（Final）> `Risk` > `runtime_gate`**，高优先命中即忽略低优先 |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
 | Agent 选择文案（`use_when`、`avoid_when`、摘要） | 经评审的 hints/catalog | 身份解析到活契约 |
 
