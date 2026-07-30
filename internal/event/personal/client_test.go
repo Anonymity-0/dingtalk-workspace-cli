@@ -297,7 +297,7 @@ func TestClientBusinessErrorHTTP200(t *testing.T) {
 	}
 }
 
-func TestClientBusinessErrorPreservesRetryContractAndClientHeaders(t *testing.T) {
+func TestCrossPlatformCoverageClientBusinessErrorPreservesRetryContractAndClientHeaders(t *testing.T) {
 	nextRetryAt := "2026-07-30T04:05:06Z"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("X-Cli-Version"); got != "1.2.3" {
@@ -347,7 +347,7 @@ func TestClientBusinessErrorPreservesRetryContractAndClientHeaders(t *testing.T)
 	}
 }
 
-func TestClientErrorDiagnosticIdentityPrecedence(t *testing.T) {
+func TestCrossPlatformCoverageClientErrorDiagnosticIdentityPrecedence(t *testing.T) {
 	tests := []struct {
 		name          string
 		body          map[string]any
@@ -451,7 +451,7 @@ func TestClientErrorDiagnosticIdentityPrecedence(t *testing.T) {
 	}
 }
 
-func TestClientHTTPErrorPreservesRetryAfterAndHeaderTrace(t *testing.T) {
+func TestCrossPlatformCoverageClientHTTPErrorPreservesRetryAfterAndHeaderTrace(t *testing.T) {
 	tests := []struct {
 		name            string
 		retryAfter      string
@@ -507,7 +507,7 @@ func TestClientHTTPErrorPreservesRetryAfterAndHeaderTrace(t *testing.T) {
 	}
 }
 
-func TestClientErrorDiagnosticHelpersHandleNilAndMalformedInputs(t *testing.T) {
+func TestCrossPlatformCoverageClientErrorDiagnosticHelpersHandleNilAndMalformedInputs(t *testing.T) {
 	if got := withHTTPResponseDetails(nil, http.MethodPost, "/subscription/user", nil, "request-1", "trace-1"); got != nil {
 		t.Fatalf("withHTTPResponseDetails(nil) = %#v, want nil", got)
 	}
@@ -529,31 +529,43 @@ func TestClientErrorDiagnosticHelpersHandleNilAndMalformedInputs(t *testing.T) {
 	}
 }
 
-func TestClientCreateSubscriptionDoesNotTreatArbitraryErrorSubscribeIDAsSuccess(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"error": map[string]any{
-				"code":    "SYSTEM_ERROR",
-				"message": "registration failed",
-				"details": map[string]any{"subscribe_id": "pending-sub"},
-			},
-		})
-	}))
-	defer srv.Close()
+func TestCrossPlatformCoverageClientCreateSubscriptionRejectsErrorsWithSubscribeID(t *testing.T) {
+	for _, code := range []string{
+		"SYSTEM_ERROR",
+		"DUP",
+		"DUPLICATE_SUBSCRIPTION",
+		"SUBSCRIPTION_ALREADY_EXISTS",
+		"SUBSCRIPTION_ALREADY_EXIST",
+		"ALREADY_SUBSCRIBED",
+		"DUPLICATE",
+	} {
+		t.Run(code, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"error": map[string]any{
+						"code":    code,
+						"message": "registration failed",
+						"details": map[string]any{"subscribe_id": "pending-sub"},
+					},
+				})
+			}))
+			defer srv.Close()
 
-	c := NewClient(srv.URL, Identity{AccessToken: "token", ClientID: "client", SourceID: "open"})
-	sub, err := c.CreateSubscription(t.Context(), CreateSubscriptionRequest{
-		EventKey:  EventMention,
-		RuleType:  "at",
-		RuleParam: map[string]any{},
-	})
-	if err == nil || sub != nil {
-		t.Fatalf("subscription = %#v, error = %v; arbitrary errors must stay failures", sub, err)
-	}
-	var apiErr *APIError
-	if !errors.As(err, &apiErr) || apiErr.Code != "SYSTEM_ERROR" {
-		t.Fatalf("error = %#v", err)
+			c := NewClient(srv.URL, Identity{AccessToken: "token", ClientID: "client", SourceID: "open"})
+			sub, err := c.CreateSubscription(t.Context(), CreateSubscriptionRequest{
+				EventKey:  EventMention,
+				RuleType:  "at",
+				RuleParam: map[string]any{},
+			})
+			if err == nil || sub != nil {
+				t.Fatalf("subscription = %#v, error = %v; API errors must stay failures", sub, err)
+			}
+			var apiErr *APIError
+			if !errors.As(err, &apiErr) || apiErr.Code != code {
+				t.Fatalf("error = %#v", err)
+			}
+		})
 	}
 }
 

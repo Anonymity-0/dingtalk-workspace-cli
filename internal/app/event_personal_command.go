@@ -393,7 +393,7 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 			if personalSubscriptionCanceled(ctx, wrapped) {
 				cleanupCtx = ctx
 			}
-			classification := personalSubscriptionLocalFailure(wrapped)
+			classification := personalSubscriptionLocalFailure()
 			wrapped = attempt.completeFailure(ctx, 0, 0, wrapped, &classification)
 			cleanup(cleanupCtx)
 		}
@@ -595,7 +595,7 @@ func runPersonalEventConsumeMany(c *cobra.Command, opts personalConsumeOptions) 
 			IdentityHash: identityHash,
 		}); err != nil {
 			cause := fmt.Errorf("save run state for %s: %w", eventKey, err)
-			classification := personalSubscriptionLocalFailure(cause)
+			classification := personalSubscriptionLocalFailure()
 			cause = failAndCleanup(i, len(created)-1, cause, &classification)
 			return fmt.Errorf("event consume --as user: %w", cause)
 		}

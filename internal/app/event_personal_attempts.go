@@ -194,6 +194,12 @@ func (r *personalSubscriptionAttemptReservation) completeFailure(
 	if r == nil {
 		return cause
 	}
+	if r.store == nil || r.claim == nil {
+		return personalSubscriptionGuardError(errors.Join(
+			cause,
+			errors.New("personal event: subscription attempt reservation is incomplete"),
+		))
+	}
 	if failedIndex < 0 || failedIndex >= len(r.items) ||
 		succeededCount < 0 || succeededCount > failedIndex {
 		return personalSubscriptionGuardError(errors.Join(
@@ -262,9 +268,18 @@ func classifyPersonalSubscriptionFailure(err error, now time.Time) personalSubsc
 			apiErr.HTTPStatus >= http.StatusInternalServerError:
 			classification.retryability = personal.RetryabilityRetryable
 			classification.reason = "personal_subscription_transient_http"
+		case apiErr.HTTPStatus == http.StatusUnauthorized ||
+			apiErr.HTTPStatus == http.StatusForbidden:
+			classification.retryability = personal.RetryabilityNonRetryable
+			classification.reason = "personal_subscription_auth"
 		case personalSubscriptionTerminalBusinessCode(apiErr.Code):
 			classification.retryability = personal.RetryabilityNonRetryable
 			classification.reason = "personal_subscription_business_rejected"
+		case personalSubscriptionErrorHasSubscribeID(apiErr):
+			// A few legacy/proxy error shapes include an existing subscription
+			// ID without a stable server contract. Keep the response as an
+			// error, but do not turn that unverified shape into a one-hour hold.
+			classification.reason = "personal_subscription_unverified_existing_id"
 		case apiErr.HTTPStatus >= http.StatusBadRequest:
 			classification.retryability = personal.RetryabilityNonRetryable
 			classification.reason = "personal_subscription_http_rejected"
@@ -306,6 +321,14 @@ func classifyPersonalSubscriptionFailure(err error, now time.Time) personalSubsc
 		classification.auth = true
 	}
 	return classification
+}
+
+func personalSubscriptionErrorHasSubscribeID(apiErr *personal.APIError) bool {
+	if apiErr == nil {
+		return false
+	}
+	subscribeID, ok := apiErr.Details["subscribe_id"].(string)
+	return ok && strings.TrimSpace(subscribeID) != ""
 }
 
 func personalAPIRetryDelay(apiErr *personal.APIError, now time.Time) time.Duration {
@@ -521,9 +544,9 @@ func personalSubscriptionValidationError(cause error) error {
 	)
 }
 
-func personalSubscriptionLocalFailure(cause error) personalSubscriptionFailureClass {
+func personalSubscriptionLocalFailure() personalSubscriptionFailureClass {
 	return personalSubscriptionFailureClass{
-		retryability: personal.RetryabilityNonRetryable,
+		retryability: personal.RetryabilityUnknown,
 		reason:       "personal_subscription_local_failure",
 	}
 }

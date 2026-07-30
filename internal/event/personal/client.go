@@ -185,18 +185,6 @@ func (c *Client) CreateSubscription(ctx context.Context, req CreateSubscriptionR
 	}
 	var sub Subscription
 	if err := c.do(ctx, http.MethodPost, "/subscription/user", nil, c.buildCreateRequest(req), &sub); err != nil {
-		var apiErr *APIError
-		if errors.As(err, &apiErr) && isDuplicateSubscriptionCode(apiErr.Code) {
-			if subID, ok := apiErr.Details["subscribe_id"].(string); ok && subID != "" {
-				return &Subscription{
-					SubscribeID: subID,
-					EventKey:    req.EventKey,
-					RuleType:    req.RuleType,
-					Status:      "active",
-					SourceID:    c.Identity.SourceID,
-				}, nil
-			}
-		}
 		return nil, err
 	}
 	if sub.EventKey == "" {
@@ -807,15 +795,6 @@ func truncateLogPayload(s string) string {
 func isNotFound(err error) bool {
 	var apiErr *APIError
 	return errors.As(err, &apiErr) && (apiErr.Code == "PERSONAL_EVENT_NOT_FOUND" || apiErr.Code == "NOT_FOUND")
-}
-
-func isDuplicateSubscriptionCode(code string) bool {
-	switch strings.ToUpper(strings.TrimSpace(code)) {
-	case "DUP", "DUPLICATE_SUBSCRIPTION", "SUBSCRIPTION_ALREADY_EXISTS":
-		return true
-	default:
-		return false
-	}
 }
 
 func dwsStatusString(raw json.RawMessage) string {

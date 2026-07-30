@@ -662,7 +662,7 @@ func (r *devAppFailingCountRunner) Run(_ context.Context, invocation executor.In
 	return executor.Result{Invocation: invocation}, r.err
 }
 
-func TestDevAppEventSubscribeRunnerFailureIsNotRetried(t *testing.T) {
+func TestCrossPlatformCoverageDevAppEventSubscribeRunnerFailureIsNotRetried(t *testing.T) {
 	wantErr := stderrors.New("event subscription failed")
 	runner := &devAppFailingCountRunner{err: wantErr}
 	root := newDevAppTestRoot(runner)

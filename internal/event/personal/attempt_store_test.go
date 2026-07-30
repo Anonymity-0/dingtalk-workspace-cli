@@ -67,7 +67,7 @@ func newAttemptTestStore(t *testing.T, clock *attemptTestClock) *AttemptStore {
 	)
 }
 
-func TestAttemptFingerprintIsCanonicalScopedAndOpaque(t *testing.T) {
+func TestCrossPlatformCoverageAttemptFingerprintIsCanonicalScopedAndOpaque(t *testing.T) {
 	base := Fingerprint(" HTTPS://MCP.Example.Test/dws/ ", " idem-1 ")
 	if base == "" || len(base) != 64 {
 		t.Fatalf("Fingerprint() = %q", base)
@@ -90,7 +90,7 @@ func TestAttemptFingerprintIsCanonicalScopedAndOpaque(t *testing.T) {
 	}
 }
 
-func TestRetryabilityValuePreservesUnknown(t *testing.T) {
+func TestCrossPlatformCoverageRetryabilityValuePreservesUnknown(t *testing.T) {
 	if value, known := RetryabilityRetryable.Value(); !known || !value {
 		t.Fatalf("retryable Value() = %v, %v", value, known)
 	}
@@ -117,7 +117,7 @@ func TestRetryabilityValuePreservesUnknown(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreClaimFailureBackoffAndRetryAfter(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreClaimFailureBackoffAndRetryAfter(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("one")
@@ -183,7 +183,7 @@ func TestAttemptStoreClaimFailureBackoffAndRetryAfter(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreBackoffSequenceAndTwentyFourHourReset(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreBackoffSequenceAndTwentyFourHourReset(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("backoff")
@@ -235,7 +235,7 @@ func TestAttemptStoreBackoffSequenceAndTwentyFourHourReset(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreLongRetryAfterSurvivesFailureCountResetWindow(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreLongRetryAfterSurvivesFailureCountResetWindow(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("long-retry-after")
@@ -284,7 +284,7 @@ func TestAttemptStoreLongRetryAfterSurvivesFailureCountResetWindow(t *testing.T)
 	}
 }
 
-func TestAttemptStoreExpiredInFlightResetsOldFailureHistory(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreExpiredInFlightResetsOldFailureHistory(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("expired-inflight-reset")
@@ -328,7 +328,7 @@ func TestAttemptStoreExpiredInFlightResetsOldFailureHistory(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreTerminalHoldAndSuccessClear(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreTerminalHoldAndSuccessClear(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("terminal")
@@ -378,7 +378,7 @@ func TestAttemptStoreTerminalHoldAndSuccessClear(t *testing.T) {
 	}
 }
 
-func TestAttemptStorePartialFailureClearsSuccessAndReleasesUnexecuted(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStorePartialFailureClearsSuccessAndReleasesUnexecuted(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprintA := attemptTestFingerprint("batch-a")
@@ -433,7 +433,7 @@ func TestAttemptStorePartialFailureClearsSuccessAndReleasesUnexecuted(t *testing
 	}
 }
 
-func TestAttemptStoreReleaseRestoresPreviousState(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreReleaseRestoresPreviousState(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprintA := attemptTestFingerprint("release-a")
@@ -475,7 +475,7 @@ func TestAttemptStoreReleaseRestoresPreviousState(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreCASRejectsOldCompletion(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreCASRejectsOldCompletion(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("cas")
@@ -497,7 +497,7 @@ func TestAttemptStoreCASRejectsOldCompletion(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreConcurrentClaimsOnlyOneWins(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreConcurrentClaimsOnlyOneWins(t *testing.T) {
 	workDir := t.TempDir()
 	fingerprint := attemptTestFingerprint("concurrent")
 	spec := AttemptSpec{Fingerprint: fingerprint, EventKey: EventMention}
@@ -539,7 +539,7 @@ func TestAttemptStoreConcurrentClaimsOnlyOneWins(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreBatchClaimIsAtomicWhenOneItemBlocked(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreBatchClaimIsAtomicWhenOneItemBlocked(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprintA := attemptTestFingerprint("atomic-a")
@@ -568,7 +568,7 @@ func TestAttemptStoreBatchClaimIsAtomicWhenOneItemBlocked(t *testing.T) {
 	}
 }
 
-func TestAttemptStorePersistsNoRawFingerprintInputs(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStorePersistsNoRawFingerprintInputs(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	const (
@@ -598,7 +598,7 @@ func TestAttemptStorePersistsNoRawFingerprintInputs(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreFailsClosedOnCorruptStateAndWriteFailure(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreFailsClosedOnCorruptStateAndWriteFailure(t *testing.T) {
 	t.Run("corrupt state", func(t *testing.T) {
 		clock := newAttemptTestClock()
 		store := newAttemptTestStore(t, clock)
@@ -680,7 +680,7 @@ func TestAttemptStoreFailsClosedOnCorruptStateAndWriteFailure(t *testing.T) {
 	})
 }
 
-func TestAttemptStoreFailsClosedOnInjectedIOErrors(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreFailsClosedOnInjectedIOErrors(t *testing.T) {
 	testClaim := func(store *AttemptStore, label string) error {
 		_, err := store.Claim([]AttemptSpec{{
 			Fingerprint: attemptTestFingerprint(label),
@@ -773,7 +773,7 @@ func TestAttemptStoreFailsClosedOnInjectedIOErrors(t *testing.T) {
 	})
 }
 
-func TestAttemptStoreTightensStateAndLockPermissions(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreTightensStateAndLockPermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows does not expose Unix permission bits")
 	}
@@ -811,7 +811,7 @@ func TestAttemptStoreTightensStateAndLockPermissions(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreRejectsInvalidPersistedRecords(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreRejectsInvalidPersistedRecords(t *testing.T) {
 	fingerprint := attemptTestFingerprint("invalid-record")
 	longValue := strings.Repeat("x", attemptMaxFieldLength+1)
 	tests := []struct {
@@ -882,7 +882,7 @@ func TestAttemptStoreRejectsInvalidPersistedRecords(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreLockTimeoutAndIDFailureAreFailClosed(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreLockTimeoutAndIDFailureAreFailClosed(t *testing.T) {
 	t.Run("lock timeout", func(t *testing.T) {
 		var tick atomic.Int64
 		base := time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC)
@@ -921,7 +921,7 @@ func TestAttemptStoreLockTimeoutAndIDFailureAreFailClosed(t *testing.T) {
 	})
 }
 
-func TestAttemptStoreValidationAndFailureCAS(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreValidationAndFailureCAS(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("validation")
@@ -987,7 +987,7 @@ func TestAttemptStoreValidationAndFailureCAS(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreBoundsPersistedDiagnostics(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreBoundsPersistedDiagnostics(t *testing.T) {
 	clock := newAttemptTestClock()
 	store := newAttemptTestStore(t, clock)
 	fingerprint := attemptTestFingerprint("bounded")
@@ -1018,7 +1018,7 @@ func TestAttemptStoreBoundsPersistedDiagnostics(t *testing.T) {
 	}
 }
 
-func TestAttemptStoreChangedCoverageEdges(t *testing.T) {
+func TestCrossPlatformCoverageAttemptStoreChangedCoverageEdges(t *testing.T) {
 	t.Run("endpoint fallback", func(t *testing.T) {
 		const raw = "https://example.test/%zz"
 		if got := normalizeAttemptEndpoint(raw); got != raw {

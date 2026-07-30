@@ -78,7 +78,7 @@ func TestPrintJSON(t *testing.T) {
 	}
 }
 
-func TestRetryabilityTriStateAndRetryTiming(t *testing.T) {
+func TestCrossPlatformCoverageRetryabilityTriStateAndRetryTiming(t *testing.T) {
 	t.Parallel()
 
 	next := time.Date(2026, time.July, 30, 4, 5, 6, 0, time.FixedZone("CST", 8*60*60))
@@ -158,7 +158,7 @@ func TestRetryabilityTriStateAndRetryTiming(t *testing.T) {
 	}
 }
 
-func TestRetryTimingOptionsIgnoreInvalidValues(t *testing.T) {
+func TestCrossPlatformCoverageRetryTimingOptionsIgnoreInvalidValues(t *testing.T) {
 	t.Parallel()
 
 	err := NewAPI(

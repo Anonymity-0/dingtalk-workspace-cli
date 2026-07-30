@@ -292,7 +292,7 @@ func TestCallToolUsesJSONRPCMethod(t *testing.T) {
 	}
 }
 
-func TestCallToolDevAppEventSubscribeRetriesAreBounded(t *testing.T) {
+func TestCrossPlatformCoverageCallToolDevAppEventSubscribeRetriesAreBounded(t *testing.T) {
 	attempts := 0
 	httpClient := &http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {

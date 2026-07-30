@@ -96,7 +96,7 @@ func (s *personalRecordingAttemptStore) Release(*personal.AttemptClaim) error {
 	return nil
 }
 
-func TestPersonalSubscriptionProtectionCoversAllPublicEvents(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionProtectionCoversAllPublicEvents(t *testing.T) {
 	oldFactory := personalNewSubscriptionAttemptStore
 	t.Cleanup(func() { personalNewSubscriptionAttemptStore = oldFactory })
 
@@ -162,7 +162,7 @@ func TestPersonalSubscriptionProtectionCoversAllPublicEvents(t *testing.T) {
 	}
 }
 
-func TestPersonalSubscriptionFingerprintChangesWithLogicalInputs(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionFingerprintChangesWithLogicalInputs(t *testing.T) {
 	identity := personal.Identity{
 		CorpID: "corp", UserID: "self", ClientID: "client", SourceID: "source",
 	}
@@ -209,7 +209,7 @@ func TestPersonalSubscriptionFingerprintChangesWithLogicalInputs(t *testing.T) {
 	}
 }
 
-func TestPersonalSubscriptionRejectsMalformedEndpointBeforeClaim(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionRejectsMalformedEndpointBeforeClaim(t *testing.T) {
 	oldFactory := personalNewSubscriptionAttemptStore
 	t.Cleanup(func() { personalNewSubscriptionAttemptStore = oldFactory })
 	factoryCalls := 0
@@ -247,7 +247,7 @@ func (fn personalRoundTripFunc) RoundTrip(request *http.Request) (*http.Response
 	return fn(request)
 }
 
-func TestPersonalSubscriptionProtectionConcurrentHundredAllowsOneHTTPRequest(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionProtectionConcurrentHundredAllowsOneHTTPRequest(t *testing.T) {
 	oldFactory := personalNewSubscriptionAttemptStore
 	t.Cleanup(func() { personalNewSubscriptionAttemptStore = oldFactory })
 	personalNewSubscriptionAttemptStore = func(workDir string) personalSubscriptionAttemptStore {
@@ -347,7 +347,7 @@ func TestPersonalSubscriptionProtectionConcurrentHundredAllowsOneHTTPRequest(t *
 	}
 }
 
-func TestPersonalSubscriptionFailureClassification(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionFailureClassification(t *testing.T) {
 	retryable, nonRetryable := true, false
 	now := time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC)
 	networkErr := &url.Error{
@@ -366,7 +366,9 @@ func TestPersonalSubscriptionFailureClassification(t *testing.T) {
 		{
 			name: "explicit false",
 			err: &personal.APIError{
-				Code: "GROUP_NOT_BELONG_TO_ORG", Retryable: &nonRetryable,
+				Code:      "GROUP_NOT_BELONG_TO_ORG",
+				Retryable: &nonRetryable,
+				Details:   map[string]any{"subscribe_id": "sub-existing"},
 			},
 			want:       personal.RetryabilityNonRetryable,
 			wantReason: "personal_subscription_server_non_retryable",
@@ -382,7 +384,9 @@ func TestPersonalSubscriptionFailureClassification(t *testing.T) {
 		{
 			name: "terminal business code",
 			err: &personal.APIError{
-				Code: "USER_NOT_FOUND", HTTPStatus: http.StatusOK,
+				Code:       "USER_NOT_FOUND",
+				HTTPStatus: http.StatusOK,
+				Details:    map[string]any{"subscribe_id": "sub-existing"},
 			},
 			want:       personal.RetryabilityNonRetryable,
 			wantReason: "personal_subscription_business_rejected",
@@ -394,6 +398,17 @@ func TestPersonalSubscriptionFailureClassification(t *testing.T) {
 			},
 			want:       personal.RetryabilityNonRetryable,
 			wantReason: "personal_subscription_business_rejected",
+			wantAuth:   true,
+		},
+		{
+			name: "403 with existing id remains an auth rejection",
+			err: &personal.APIError{
+				Code:       "PROXY_AUTH_FAILURE",
+				HTTPStatus: http.StatusForbidden,
+				Details:    map[string]any{"subscribe_id": "sub-existing"},
+			},
+			want:       personal.RetryabilityNonRetryable,
+			wantReason: "personal_subscription_auth",
 			wantAuth:   true,
 		},
 		{
@@ -453,6 +468,46 @@ func TestPersonalSubscriptionFailureClassification(t *testing.T) {
 			wantReason: "personal_subscription_unknown",
 		},
 		{
+			name: "legacy DUP with existing id remains an unknown error",
+			err: &personal.APIError{
+				Code:       "DUP",
+				HTTPStatus: http.StatusBadRequest,
+				Details:    map[string]any{"subscribe_id": "sub-existing"},
+			},
+			want:       personal.RetryabilityUnknown,
+			wantReason: "personal_subscription_unverified_existing_id",
+		},
+		{
+			name: "legacy SUBSCRIPTION_ALREADY_EXIST with existing id remains an unknown error",
+			err: &personal.APIError{
+				Code:       "SUBSCRIPTION_ALREADY_EXIST",
+				HTTPStatus: http.StatusBadRequest,
+				Details:    map[string]any{"subscribe_id": "sub-existing"},
+			},
+			want:       personal.RetryabilityUnknown,
+			wantReason: "personal_subscription_unverified_existing_id",
+		},
+		{
+			name: "legacy ALREADY_SUBSCRIBED with existing id remains an unknown error",
+			err: &personal.APIError{
+				Code:       "ALREADY_SUBSCRIBED",
+				HTTPStatus: http.StatusBadRequest,
+				Details:    map[string]any{"subscribe_id": "sub-existing"},
+			},
+			want:       personal.RetryabilityUnknown,
+			wantReason: "personal_subscription_unverified_existing_id",
+		},
+		{
+			name: "legacy DUPLICATE with existing id remains an unknown error",
+			err: &personal.APIError{
+				Code:       "DUPLICATE",
+				HTTPStatus: http.StatusBadRequest,
+				Details:    map[string]any{"subscribe_id": "sub-existing"},
+			},
+			want:       personal.RetryabilityUnknown,
+			wantReason: "personal_subscription_unverified_existing_id",
+		},
+		{
 			name:       "network",
 			err:        networkErr,
 			want:       personal.RetryabilityRetryable,
@@ -503,7 +558,7 @@ func TestPersonalSubscriptionFailureClassification(t *testing.T) {
 	}
 }
 
-func TestPersonalSubscriptionFailureErrorPreservesTriStateAndDiagnostics(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionFailureErrorPreservesTriStateAndDiagnostics(t *testing.T) {
 	now := time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC)
 	hold := personal.AttemptHold{
 		State:         personal.AttemptStateTerminalHold,
@@ -552,7 +607,7 @@ func TestPersonalSubscriptionFailureErrorPreservesTriStateAndDiagnostics(t *test
 	}
 }
 
-func TestPersonalSubscriptionBatchClaimFailureMakesZeroCreateCalls(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionBatchClaimFailureMakesZeroCreateCalls(t *testing.T) {
 	restore := installPersonalManySeams(t)
 	defer restore()
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -607,7 +662,7 @@ func TestPersonalSubscriptionBatchClaimFailureMakesZeroCreateCalls(t *testing.T)
 	}
 }
 
-func TestPersonalSubscriptionAttemptGuardBypassesNonCreatePaths(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionAttemptGuardBypassesNonCreatePaths(t *testing.T) {
 	oldFactory := personalNewSubscriptionAttemptStore
 	oldIdentity := personalResolveEventIdentity
 	oldEnsure := personalEnsureSubscription
@@ -756,7 +811,7 @@ func TestPersonalSubscriptionAttemptGuardBypassesNonCreatePaths(t *testing.T) {
 	assertNoAttemptClaim("stop")
 }
 
-func TestPersonalSubscriptionLocalValidationRunsBeforeClaimAndCreate(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionLocalValidationRunsBeforeClaimAndCreate(t *testing.T) {
 	restore := installPersonalManySeams(t)
 	defer restore()
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -794,9 +849,52 @@ func TestPersonalSubscriptionLocalValidationRunsBeforeClaimAndCreate(t *testing.
 	if recording.claimCalls != 0 || createCalls != 0 {
 		t.Fatalf("claim calls = %d, create calls = %d", recording.claimCalls, createCalls)
 	}
+
+	err = runPersonalEventConsumeSingle(
+		newPersonalCoverageCommand(),
+		personalConsumeOptions{
+			EventKey:       personal.EventMention,
+			Flatten:        true,
+			DebugRawEvents: true,
+		},
+	)
+	if err == nil {
+		t.Fatal("conflicting output modes succeeded")
+	}
+	if recording.claimCalls != 0 || createCalls != 0 {
+		t.Fatalf("output validation reached claim/create: %d/%d", recording.claimCalls, createCalls)
+	}
+
+	err = runPersonalEventConsumeSingle(
+		newPersonalCoverageCommand(),
+		personalConsumeOptions{
+			EventKey: personal.EventInChat,
+			Common:   commonConsumeOptions{DryRun: true},
+		},
+	)
+	if err == nil {
+		t.Fatal("invalid dry-run subscription options succeeded")
+	}
+	if recording.claimCalls != 0 || createCalls != 0 {
+		t.Fatalf("dry-run validation reached claim/create: %d/%d", recording.claimCalls, createCalls)
+	}
+
+	claimErr := errors.New("claim failed")
+	recording.claimErr = claimErr
+	personalValidateConsumeConfig = func(consume.Config) error { return nil }
+	err = runPersonalEventConsumeSingle(
+		newPersonalCoverageCommand(),
+		personalConsumeOptions{EventKey: personal.EventMention},
+	)
+	if !errors.Is(err, claimErr) {
+		t.Fatalf("claim error = %v, want %v", err, claimErr)
+	}
+	if recording.claimCalls != 1 || createCalls != 0 {
+		t.Fatalf("failed claim calls = %d, create calls = %d", recording.claimCalls, createCalls)
+	}
 }
 
-func TestPersonalSubscriptionSingleAttemptCompletionErrors(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionSingleAttemptCompletionErrors(t *testing.T) {
 	tests := []struct {
 		name           string
 		cancelContext  bool
@@ -808,6 +906,7 @@ func TestPersonalSubscriptionSingleAttemptCompletionErrors(t *testing.T) {
 		wantComplete   int
 		wantDelete     int
 		wantCanceledGC bool
+		wantUnknown    bool
 	}{
 		{
 			name:        "nil subscription records failure",
@@ -819,6 +918,13 @@ func TestPersonalSubscriptionSingleAttemptCompletionErrors(t *testing.T) {
 			completeErr:  errors.New("complete success failed"),
 			wantComplete: 1,
 			wantDelete:   1,
+		},
+		{
+			name:        "local state failure records unknown cooldown",
+			upsertErr:   errors.New("save state failed"),
+			wantFailure: 1,
+			wantDelete:  1,
+			wantUnknown: true,
 		},
 		{
 			name:           "canceled local failure releases and uses canceled cleanup context",
@@ -905,11 +1011,20 @@ func TestPersonalSubscriptionSingleAttemptCompletionErrors(t *testing.T) {
 					deleteCalls,
 				)
 			}
+			if test.wantUnknown {
+				if recording.lastFailure.Retryability != personal.RetryabilityUnknown {
+					t.Fatalf("local failure retryability = %q", recording.lastFailure.Retryability)
+				}
+				var typed *apperrors.Error
+				if !errors.As(err, &typed) || typed.RetryableSet {
+					t.Fatalf("local failure error = %#v, %v", typed, err)
+				}
+			}
 		})
 	}
 }
 
-func TestPersonalSubscriptionManyCompletionFailureCleansBatch(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionManyCompletionFailureCleansBatch(t *testing.T) {
 	restore := installPersonalManySeams(t)
 	defer restore()
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -971,7 +1086,7 @@ func TestPersonalSubscriptionManyCompletionFailureCleansBatch(t *testing.T) {
 	}
 }
 
-func TestPersonalSubscriptionRejectsNonPublicEventsOnChangedPaths(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionRejectsNonPublicEventsOnChangedPaths(t *testing.T) {
 	const nonPublicEvent = personal.EventMention
 	oldLookup := personalLookupDefinition
 	oldGet := personalGetSubscription
@@ -1024,7 +1139,7 @@ func TestPersonalSubscriptionRejectsNonPublicEventsOnChangedPaths(t *testing.T) 
 	}
 }
 
-func TestPersonalSubscriptionAttemptLeaseBounds(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionAttemptLeaseBounds(t *testing.T) {
 	client := personal.NewClient("https://mcp.example.test/dws", personal.Identity{})
 	tests := []struct {
 		timeout time.Duration
@@ -1045,7 +1160,7 @@ func TestPersonalSubscriptionAttemptLeaseBounds(t *testing.T) {
 	}
 }
 
-func TestPersonalSubscriptionAttemptGuardHelperEdges(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionAttemptGuardHelperEdges(t *testing.T) {
 	oldFactory := personalNewSubscriptionAttemptStore
 	t.Cleanup(func() { personalNewSubscriptionAttemptStore = oldFactory })
 
@@ -1132,6 +1247,18 @@ func TestPersonalSubscriptionAttemptGuardHelperEdges(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid prepared subscription", func(t *testing.T) {
+		if _, err := reservePersonalSubscriptionAttempts(
+			t.TempDir(),
+			validClient,
+			identity,
+			"profile-a",
+			[]personalConsumeOptions{{EventKey: personal.EventInChat}},
+		); err == nil {
+			t.Fatal("invalid prepared subscription was accepted")
+		}
+	})
+
 	t.Run("incomplete success reservation", func(t *testing.T) {
 		if err := (&personalSubscriptionAttemptReservation{}).completeSuccess(); err == nil {
 			t.Fatal("incomplete reservation succeeded")
@@ -1166,6 +1293,8 @@ func TestPersonalSubscriptionAttemptGuardHelperEdges(t *testing.T) {
 	t.Run("invalid failure indexes", func(t *testing.T) {
 		wantErr := errors.New("create failed")
 		reservation := &personalSubscriptionAttemptReservation{
+			store: &personalRecordingAttemptStore{},
+			claim: &personal.AttemptClaim{AttemptID: "attempt"},
 			items: []personalSubscriptionAttemptItem{{fingerprint: "fingerprint"}},
 		}
 		if err := reservation.completeFailure(
@@ -1176,6 +1305,24 @@ func TestPersonalSubscriptionAttemptGuardHelperEdges(t *testing.T) {
 			nil,
 		); !errors.Is(err, wantErr) {
 			t.Fatalf("invalid-index error = %v, want joined cause %v", err, wantErr)
+		}
+	})
+
+	t.Run("incomplete cancellation reservation", func(t *testing.T) {
+		wantErr := context.Canceled
+		err := (&personalSubscriptionAttemptReservation{}).completeFailure(
+			context.Background(),
+			0,
+			0,
+			wantErr,
+			nil,
+		)
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("incomplete-cancellation error = %v, want joined cause %v", err, wantErr)
+		}
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "personal_subscription_guard_failed" {
+			t.Fatalf("incomplete-cancellation guard error = %#v, %v", typed, err)
 		}
 	})
 
@@ -1203,7 +1350,7 @@ func TestPersonalSubscriptionAttemptGuardHelperEdges(t *testing.T) {
 	})
 }
 
-func TestPersonalSubscriptionFailureClassificationEdges(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionFailureClassificationEdges(t *testing.T) {
 	now := time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -1248,6 +1395,14 @@ func TestPersonalSubscriptionFailureClassificationEdges(t *testing.T) {
 	if delay := personalAPIRetryDelay(nil, now); delay != 0 {
 		t.Fatalf("nil API retry delay = %s", delay)
 	}
+	if personalSubscriptionErrorHasSubscribeID(nil) {
+		t.Fatal("nil API error reported a subscription ID")
+	}
+	if personalSubscriptionErrorHasSubscribeID(&personal.APIError{
+		Details: map[string]any{"subscribe_id": 42},
+	}) {
+		t.Fatal("non-string subscription ID was accepted")
+	}
 	httpDate := now.Add(75 * time.Second).Format(http.TimeFormat)
 	if delay := personalAPIRetryDelay(&personal.APIError{
 		Details: map[string]any{"retry_after": httpDate},
@@ -1269,7 +1424,7 @@ func TestPersonalSubscriptionFailureClassificationEdges(t *testing.T) {
 	}
 }
 
-func TestPersonalSubscriptionErrorConstructionEdges(t *testing.T) {
+func TestCrossPlatformCoveragePersonalSubscriptionErrorConstructionEdges(t *testing.T) {
 	nonRetryable := personalSubscriptionFailureClass{
 		retryability: personal.RetryabilityNonRetryable,
 		reason:       "personal_subscription_auth",
@@ -1320,7 +1475,7 @@ func TestPersonalSubscriptionErrorConstructionEdges(t *testing.T) {
 	}
 }
 
-func TestNewPersonalEventControlClientSetsVersionHeaders(t *testing.T) {
+func TestCrossPlatformCoverageNewPersonalEventControlClientSetsVersionHeaders(t *testing.T) {
 	oldVersion := version
 	t.Cleanup(func() { version = oldVersion })
 	version = "1.2.3-test"

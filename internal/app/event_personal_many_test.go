@@ -252,7 +252,7 @@ func TestPreparePersonalMultiOptionsRejectsSingleOnlyFlags(t *testing.T) {
 	}
 }
 
-func TestEventConsumeMultiRejectsExplicitSingleOnlyFlagsEvenWhenEmpty(t *testing.T) {
+func TestCrossPlatformCoverageEventConsumeMultiRejectsExplicitSingleOnlyFlagsEvenWhenEmpty(t *testing.T) {
 	oldRun := eventRunPersonalConsume
 	defer func() { eventRunPersonalConsume = oldRun }()
 	eventRunPersonalConsume = func(*cobra.Command, personalConsumeOptions) error {
@@ -380,7 +380,7 @@ func TestRunPersonalEventConsumeManyRollsBackPartialCreation(t *testing.T) {
 	}
 }
 
-func TestRunPersonalEventConsumeManyPersistsFailureBeforeRollback(t *testing.T) {
+func TestCrossPlatformCoverageRunPersonalEventConsumeManyPersistsFailureBeforeRollback(t *testing.T) {
 	restore := installPersonalManySeams(t)
 	defer restore()
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -429,7 +429,7 @@ func TestRunPersonalEventConsumeManyPersistsFailureBeforeRollback(t *testing.T) 
 	}
 }
 
-func TestRunPersonalEventConsumeSinglePersistsLocalFailureBeforeRollback(t *testing.T) {
+func TestCrossPlatformCoverageRunPersonalEventConsumeSinglePersistsLocalFailureBeforeRollback(t *testing.T) {
 	restore := installPersonalManySeams(t)
 	defer restore()
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -475,7 +475,7 @@ func TestRunPersonalEventConsumeSinglePersistsLocalFailureBeforeRollback(t *test
 	}
 }
 
-func TestRunPersonalEventConsumeManyCancellationReleasesBeforeCanceledCleanup(t *testing.T) {
+func TestCrossPlatformCoverageRunPersonalEventConsumeManyCancellationReleasesBeforeCanceledCleanup(t *testing.T) {
 	restore := installPersonalManySeams(t)
 	defer restore()
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -531,7 +531,7 @@ func TestRunPersonalEventConsumeManyCancellationReleasesBeforeCanceledCleanup(t 
 	}
 }
 
-func TestRunPersonalEventConsumeManyRejectsInvalidSubscriptionResults(t *testing.T) {
+func TestCrossPlatformCoverageRunPersonalEventConsumeManyRejectsInvalidSubscriptionResults(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		ensure    func(int, personalConsumeOptions) *personal.Subscription
