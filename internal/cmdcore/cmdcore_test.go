@@ -14,50 +14,856 @@
 package cmdcore
 
 import (
+	"errors"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
 
-// TestCrossPlatformCoverageNewCommandNilDispatch exercises the generated RunE
-// path when a CommandSpec declares neither RunE nor Dispatch: after the shared
-// validation/confirm pipeline it must no-op (return nil). FromLeafSpec always
-// supplies a Dispatch or RunE, so this branch is only reachable by a bare
-// CommandSpec built directly on the unified base.
-func TestCrossPlatformCoverageNewCommandNilDispatch(t *testing.T) {
+// cmdcore is a shared base package: it must be fully covered by its own direct
+// tests rather than relying on cross-package coverpkg from its consumers, so the
+// per-package coverage CI job (which runs without -coverpkg) sees it covered.
+
+func newTestCommand() *cobra.Command {
+	cmd := &cobra.Command{Use: "t"}
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	return cmd
+}
+
+// ── flag registration ──────────────────────────────────────────────
+
+func TestCrossPlatformCoverageRegisterFlagsAllKinds(t *testing.T) {
+	cmd := newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{
+		{Name: "s", Usage: "S", Default: "d"},
+		{Name: "i", Usage: "I", Kind: KindInt, Aliases: []string{"i-alias"}},
+		{Name: "b", Usage: "B", Kind: KindBool},
+		{Name: "sl", Usage: "SL", Kind: KindStringSlice, Aliases: []string{"sl-alias"}},
+		{Name: "req", Usage: "R", MarkRequired: true},
+	})
+
+	if f := cmd.Flags().Lookup("s"); f == nil || f.DefValue != "d" || f.Usage != "S" {
+		t.Fatalf("string flag = %#v", f)
+	}
+	for name, wantType := range map[string]string{"i": "int", "b": "bool", "sl": "stringSlice"} {
+		f := cmd.Flags().Lookup(name)
+		if f == nil || f.Value.Type() != wantType {
+			t.Fatalf("flag %q type = %v, want %s", name, f, wantType)
+		}
+	}
+	// Aliases are registered with the main kind and hidden.
+	for _, alias := range []string{"i-alias", "sl-alias"} {
+		f := cmd.Flags().Lookup(alias)
+		if f == nil || !f.Hidden {
+			t.Fatalf("alias %q = %#v, want registered+hidden", alias, f)
+		}
+	}
+	if cmd.Flags().Lookup("i-alias").Value.Type() != "int" {
+		t.Fatal("int alias must be registered as int")
+	}
+	if ann := cmd.Flags().Lookup("req").Annotations[cobra.BashCompOneRequiredFlag]; len(ann) == 0 {
+		t.Fatal("MarkRequired did not reach cobra")
+	}
+}
+
+// ── effective value fallback chain ─────────────────────────────────
+
+func TestCrossPlatformCoverageEffectiveValueFallbackChain(t *testing.T) {
+	spec := FlagSpec{Name: "v", Usage: "V", Default: "reg-default", Aliases: []string{"v-alias"}, EnvVar: "DWS_CMDCORE_V"}
+
+	// registration default is the chain tail
+	cmd := newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{spec})
+	if got := EffectiveValue(cmd, spec); got != "reg-default" {
+		t.Fatalf("default tail = %q", got)
+	}
+
+	// env beats the registration default
+	t.Setenv("DWS_CMDCORE_V", "from-env")
+	if got := EffectiveValue(cmd, spec); got != "from-env" {
+		t.Fatalf("env = %q", got)
+	}
+
+	// explicit alias beats env
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{spec})
+	_ = cmd.Flags().Set("v-alias", "from-alias")
+	if got := EffectiveValue(cmd, spec); got != "from-alias" {
+		t.Fatalf("alias = %q", got)
+	}
+
+	// explicit main flag wins
+	_ = cmd.Flags().Set("v", "explicit")
+	if got := EffectiveValue(cmd, spec); got != "explicit" {
+		t.Fatalf("explicit = %q", got)
+	}
+}
+
+func TestCrossPlatformCoverageEffectiveValueTrimAndEmptySkips(t *testing.T) {
+	// Trim makes whitespace-only fall through to the next fallback level.
+	trimmed := FlagSpec{Name: "v", Usage: "V", Trim: true, Aliases: []string{"v-alias"}, Default: "tail"}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{trimmed})
+	_ = cmd.Flags().Set("v", "   ")
+	_ = cmd.Flags().Set("v-alias", "  kept  ")
+	if got := EffectiveValue(cmd, trimmed); got != "kept" {
+		t.Fatalf("trim fallthrough = %q, want trimmed alias", got)
+	}
+
+	// Empty explicit value also falls through (usable() rejects "").
+	plain := FlagSpec{Name: "p", Usage: "P", Default: "tail"}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{plain})
+	_ = cmd.Flags().Set("p", "")
+	if got := EffectiveValue(cmd, plain); got != "tail" {
+		t.Fatalf("empty explicit = %q, want tail", got)
+	}
+
+	// Empty alias is skipped too.
+	aliased := FlagSpec{Name: "a", Usage: "A", Aliases: []string{"a-alias"}, Default: "tail"}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{aliased})
+	_ = cmd.Flags().Set("a-alias", "")
+	if got := EffectiveValue(cmd, aliased); got != "tail" {
+		t.Fatalf("empty alias = %q, want tail", got)
+	}
+
+	// Empty env is skipped.
+	env := FlagSpec{Name: "e", Usage: "E", EnvVar: "DWS_CMDCORE_EMPTY", Default: "tail"}
+	t.Setenv("DWS_CMDCORE_EMPTY", "")
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{env})
+	if got := EffectiveValue(cmd, env); got != "tail" {
+		t.Fatalf("empty env = %q, want tail", got)
+	}
+}
+
+func TestCrossPlatformCoverageIntegerValue(t *testing.T) {
+	spec := FlagSpec{Name: "n", Usage: "N", Kind: KindInt, EnvVar: "DWS_CMDCORE_N"}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{spec})
+
+	// unset int formats to "0" → treated as empty → 0, no error
+	if v, err := integerValue(cmd, spec); v != 0 || err != nil {
+		t.Fatalf("unset int = %d, %v", v, err)
+	}
+	_ = cmd.Flags().Set("n", "7")
+	if v, err := integerValue(cmd, spec); v != 7 || err != nil {
+		t.Fatalf("explicit int = %d, %v", v, err)
+	}
+
+	// unparseable env value must error rather than silently drop
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{spec})
+	t.Setenv("DWS_CMDCORE_N", "abc")
+	if _, err := integerValue(cmd, spec); err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+		t.Fatalf("unparseable env err = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageSliceValue(t *testing.T) {
+	spec := FlagSpec{Name: "ids", Usage: "IDS", Kind: KindStringSlice, Aliases: []string{"ids-alias"}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{spec})
+
+	if got := sliceValue(cmd, spec); got != nil {
+		t.Fatalf("unset slice = %#v, want nil", got)
+	}
+	_ = cmd.Flags().Set("ids", " a , , b ")
+	if got := sliceValue(cmd, spec); !reflect.DeepEqual(got, []string{"a", "b"}) {
+		t.Fatalf("trimmed slice = %#v", got)
+	}
+
+	// all-empty elements count as not provided
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{spec})
+	_ = cmd.Flags().Set("ids", " , ")
+	if got := sliceValue(cmd, spec); got != nil {
+		t.Fatalf("blank slice = %#v, want nil", got)
+	}
+	// alias supplies the value when the main flag is blank
+	_ = cmd.Flags().Set("ids-alias", "x")
+	if got := sliceValue(cmd, spec); !reflect.DeepEqual(got, []string{"x"}) {
+		t.Fatalf("alias slice = %#v", got)
+	}
+}
+
+func TestCrossPlatformCoverageHasEffectiveValueAllKinds(t *testing.T) {
+	cmd := newTestCommand()
+	flags := []FlagSpec{
+		{Name: "s", Usage: "S"},
+		{Name: "i", Usage: "I", Kind: KindInt},
+		{Name: "b", Usage: "B", Kind: KindBool},
+		{Name: "sl", Usage: "SL", Kind: KindStringSlice},
+		{Name: "bad", Usage: "BAD", Kind: KindInt, EnvVar: "DWS_CMDCORE_BAD"},
+	}
+	RegisterFlags(cmd, flags)
+
+	for _, f := range flags[:4] {
+		if hasEffectiveValue(cmd, f) {
+			t.Fatalf("unset %q reported as provided", f.Name)
+		}
+	}
+	_ = cmd.Flags().Set("s", "v")
+	_ = cmd.Flags().Set("i", "3")
+	_ = cmd.Flags().Set("b", "false") // bool: Changed counts even for false
+	_ = cmd.Flags().Set("sl", "a")
+	for _, f := range flags[:4] {
+		if !hasEffectiveValue(cmd, f) {
+			t.Fatalf("set %q reported as missing", f.Name)
+		}
+	}
+	// explicit int 0 is NOT provided (non-zero only)
+	zero := newTestCommand()
+	RegisterFlags(zero, flags)
+	_ = zero.Flags().Set("i", "0")
+	if hasEffectiveValue(zero, flags[1]) {
+		t.Fatal("explicit int 0 must count as missing")
+	}
+	// unparseable int counts as provided so BuildArgs reports the precise error
+	t.Setenv("DWS_CMDCORE_BAD", "nope")
+	if !hasEffectiveValue(cmd, flags[4]) {
+		t.Fatal("unparseable int must count as provided")
+	}
+}
+
+// ── required validation ────────────────────────────────────────────
+
+func TestCrossPlatformCoverageValidateRequired(t *testing.T) {
+	plain := []FlagSpec{{Name: "content", Usage: "C", Required: true}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, plain)
+	if err := ValidateRequired(cmd, plain); err == nil || !strings.Contains(err.Error(), "content") {
+		t.Fatalf("missing plain required err = %v", err)
+	}
+	_ = cmd.Flags().Set("content", "x")
+	if err := ValidateRequired(cmd, plain); err != nil {
+		t.Fatalf("satisfied plain required err = %v", err)
+	}
+
+	// alias satisfies required
+	aliased := []FlagSpec{{Name: "node", Usage: "N", Required: true, Aliases: []string{"id"}}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, aliased)
+	_ = cmd.Flags().Set("id", "n1")
+	if err := ValidateRequired(cmd, aliased); err != nil {
+		t.Fatalf("alias-satisfied required err = %v", err)
+	}
+
+	// env-backed required with explicit hint
+	hinted := []FlagSpec{{Name: "token", Usage: "T", Required: true, EnvVar: "DWS_CMDCORE_TOKEN", RequiredHint: "flag --token is required (or set DWS_CMDCORE_TOKEN)"}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, hinted)
+	if err := ValidateRequired(cmd, hinted); err == nil || !strings.Contains(err.Error(), "DWS_CMDCORE_TOKEN") {
+		t.Fatalf("hint err = %v", err)
+	}
+	t.Setenv("DWS_CMDCORE_TOKEN", "t")
+	if err := ValidateRequired(cmd, hinted); err != nil {
+		t.Fatalf("env-satisfied required err = %v", err)
+	}
+
+	// env-backed required WITHOUT hint falls back to the default wording
+	noHint := []FlagSpec{{Name: "key", Usage: "K", Required: true, EnvVar: "DWS_CMDCORE_ABSENT"}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, noHint)
+	if err := ValidateRequired(cmd, noHint); err == nil || !strings.Contains(err.Error(), "flag --key is required") {
+		t.Fatalf("default hint err = %v", err)
+	}
+
+	// non-required flags are ignored
+	optional := []FlagSpec{{Name: "opt", Usage: "O"}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, optional)
+	if err := ValidateRequired(cmd, optional); err != nil {
+		t.Fatalf("optional err = %v", err)
+	}
+}
+
+// ── toolArgs assembly ──────────────────────────────────────────────
+
+func TestCrossPlatformCoverageBuildArgsAllKinds(t *testing.T) {
+	flags := []FlagSpec{
+		{Name: "name", Usage: "N", Bind: "userName"},
+		{Name: "plain", Usage: "P"},
+		{Name: "n", Usage: "NUM", Kind: KindInt, Bind: "count"},
+		{Name: "b", Usage: "B", Kind: KindBool, Bind: "flagOn"},
+		{Name: "ids", Usage: "IDS", Kind: KindStringSlice, Bind: "idList"},
+		{Name: "scope", Usage: "S", ArgDefault: "ALL"},
+		{Name: "note", Usage: "NOTE", OmitEmpty: true},
+	}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("name", "alice")
+	_ = cmd.Flags().Set("n", "5")
+	_ = cmd.Flags().Set("b", "false")
+	_ = cmd.Flags().Set("ids", " a , b ")
+
+	args, err := BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args["userName"] != "alice" || args["count"] != 5 || args["flagOn"] != false {
+		t.Fatalf("args = %#v", args)
+	}
+	if !reflect.DeepEqual(args["idList"], []string{"a", "b"}) {
+		t.Fatalf("idList = %#v", args["idList"])
+	}
+	if args["scope"] != "ALL" {
+		t.Fatalf("ArgDefault not applied: %#v", args["scope"])
+	}
+	if _, ok := args["note"]; ok {
+		t.Fatalf("OmitEmpty flag leaked: %#v", args)
+	}
+	// bind defaults to the flag name; empty non-OmitEmpty string still enters
+	if v, ok := args["plain"]; !ok || v != "" {
+		t.Fatalf("plain = %#v (want present empty string)", args["plain"])
+	}
+	// unset int / unset bool / unset slice stay out
+	for _, key := range []string{"count2", "flagOff", "idNone"} {
+		if _, ok := args[key]; ok {
+			t.Fatalf("unexpected key %q", key)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageBuildArgsIntZeroBoolUnsetSliceEmpty(t *testing.T) {
+	flags := []FlagSpec{
+		{Name: "n", Usage: "N", Kind: KindInt},
+		{Name: "b", Usage: "B", Kind: KindBool},
+		{Name: "sl", Usage: "SL", Kind: KindStringSlice},
+	}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("n", "0")  // non-zero only → skipped
+	_ = cmd.Flags().Set("sl", " ") // blank elements → skipped
+	args, err := BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(args) != 0 {
+		t.Fatalf("args = %#v, want empty", args)
+	}
+}
+
+func TestCrossPlatformCoverageBuildArgsTransformAndErrors(t *testing.T) {
+	// Transform result is bound
+	ok := []FlagSpec{{Name: "csv", Usage: "C", Bind: "list", Transform: func(raw string) (any, error) {
+		return strings.Split(raw, ","), nil
+	}}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, ok)
+	_ = cmd.Flags().Set("csv", "a,b")
+	args, err := BuildArgs(cmd, ok)
+	if err != nil || !reflect.DeepEqual(args["list"], []string{"a", "b"}) {
+		t.Fatalf("transform args = %#v err = %v", args, err)
+	}
+
+	// Transform returning (nil, nil) skips the key
+	skip := []FlagSpec{{Name: "x", Usage: "X", Transform: func(string) (any, error) { return nil, nil }}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, skip)
+	_ = cmd.Flags().Set("x", "v")
+	args, err = BuildArgs(cmd, skip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, present := args["x"]; present {
+		t.Fatalf("nil transform should skip key: %#v", args)
+	}
+
+	// Transform error propagates
+	boom := errors.New("transform boom")
+	bad := []FlagSpec{{Name: "y", Usage: "Y", Transform: func(string) (any, error) { return nil, boom }}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, bad)
+	_ = cmd.Flags().Set("y", "v")
+	if _, err := BuildArgs(cmd, bad); !errors.Is(err, boom) {
+		t.Fatalf("transform error = %v", err)
+	}
+
+	// integer parse error propagates from BuildArgs
+	badInt := []FlagSpec{{Name: "n", Usage: "N", Kind: KindInt, EnvVar: "DWS_CMDCORE_BADINT"}}
+	t.Setenv("DWS_CMDCORE_BADINT", "zzz")
+	cmd = newTestCommand()
+	RegisterFlags(cmd, badInt)
+	if _, err := BuildArgs(cmd, badInt); err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+		t.Fatalf("bad int err = %v", err)
+	}
+}
+
+// ── constraints ────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageValidateConstraintDeclsPanics(t *testing.T) {
+	flags := []FlagSpec{{Name: "a", Usage: "A"}, {Name: "b", Usage: "B"}}
+	// valid declaration does not panic
+	ValidateConstraintDecls("ok", flags, []Constraint{{Kind: ExactlyOne, Flags: []string{"a", "b"}}})
+
+	mustPanic := func(name string, constraints []Constraint, needle string) {
+		t.Helper()
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("%s: expected panic", name)
+			}
+			if msg, _ := r.(string); !strings.Contains(msg, needle) {
+				t.Fatalf("%s: panic = %v, want %q", name, r, needle)
+			}
+		}()
+		ValidateConstraintDecls("leafX", flags, constraints)
+	}
+	mustPanic("unknown kind", []Constraint{{Kind: "bogus", Flags: []string{"a", "b"}}}, "unknown constraint kind")
+	mustPanic("too few flags", []Constraint{{Kind: AtLeastOne, Flags: []string{"a"}}}, "needs at least two flags")
+	mustPanic("undeclared", []Constraint{{Kind: AtLeastOne, Flags: []string{"a", "zzz"}}}, "references undeclared flag")
+}
+
+func TestCrossPlatformCoverageConstraintProvided(t *testing.T) {
+	flags := []FlagSpec{
+		{Name: "s", Usage: "S", Default: "reg", Aliases: []string{"s-alias"}, EnvVar: "DWS_CMDCORE_CP"},
+		{Name: "b", Usage: "B", Kind: KindBool},
+		{Name: "sl", Usage: "SL", Kind: KindStringSlice, Aliases: []string{"sl-alias"}},
+	}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+
+	// registration default must NOT count as provided
+	if constraintProvided(cmd, flags[0]) {
+		t.Fatal("registration default must not count as provided")
+	}
+	if constraintProvided(cmd, flags[1]) || constraintProvided(cmd, flags[2]) {
+		t.Fatal("unset bool/slice must not count as provided")
+	}
+
+	// explicit main flag / alias / env each count
+	_ = cmd.Flags().Set("s", "v")
+	if !constraintProvided(cmd, flags[0]) {
+		t.Fatal("explicit main flag must count")
+	}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("s-alias", "v")
+	if !constraintProvided(cmd, flags[0]) {
+		t.Fatal("explicit alias must count")
+	}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	t.Setenv("DWS_CMDCORE_CP", "v")
+	if !constraintProvided(cmd, flags[0]) {
+		t.Fatal("env must count")
+	}
+
+	// whitespace-only explicit values do not count
+	blank := FlagSpec{Name: "w", Usage: "W", Aliases: []string{"w-alias"}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, []FlagSpec{blank})
+	_ = cmd.Flags().Set("w", "  ")
+	_ = cmd.Flags().Set("w-alias", "  ")
+	if constraintProvided(cmd, blank) {
+		t.Fatal("whitespace-only must not count")
+	}
+
+	// bool counts on Changed, slice counts on non-empty element (main or alias)
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("b", "false")
+	if !constraintProvided(cmd, flags[1]) {
+		t.Fatal("explicit bool false must count")
+	}
+	_ = cmd.Flags().Set("sl", " ")
+	if constraintProvided(cmd, flags[2]) {
+		t.Fatal("blank slice must not count")
+	}
+	_ = cmd.Flags().Set("sl-alias", "x")
+	if !constraintProvided(cmd, flags[2]) {
+		t.Fatal("alias slice must count")
+	}
+	// a non-blank main slice flag counts on its own (no alias involved)
+	mainSlice := newTestCommand()
+	RegisterFlags(mainSlice, flags)
+	_ = mainSlice.Flags().Set("sl", "kept")
+	if !constraintProvided(mainSlice, flags[2]) {
+		t.Fatal("non-blank main slice must count")
+	}
+}
+
+func TestCrossPlatformCoverageValidateConstraints(t *testing.T) {
+	flags := []FlagSpec{{Name: "a", Usage: "A"}, {Name: "b", Usage: "B"}}
+	build := func(set ...string) *cobra.Command {
+		cmd := newTestCommand()
+		RegisterFlags(cmd, flags)
+		for _, name := range set {
+			_ = cmd.Flags().Set(name, "v")
+		}
+		return cmd
+	}
+
+	atLeast := []Constraint{{Kind: AtLeastOne, Flags: []string{"a", "b"}}}
+	if err := ValidateConstraints(build(), flags, atLeast); err == nil || !strings.Contains(err.Error(), "请至少指定 --a、--b 之一") {
+		t.Fatalf("at_least_one(0) err = %v", err)
+	}
+	if err := ValidateConstraints(build("a"), flags, atLeast); err != nil {
+		t.Fatalf("at_least_one(1) err = %v", err)
+	}
+
+	exactly := []Constraint{{Kind: ExactlyOne, Flags: []string{"a", "b"}}}
+	if err := ValidateConstraints(build(), flags, exactly); err == nil || !strings.Contains(err.Error(), "请指定 --a、--b 之一") {
+		t.Fatalf("exactly_one(0) err = %v", err)
+	}
+	if err := ValidateConstraints(build("a"), flags, exactly); err != nil {
+		t.Fatalf("exactly_one(1) err = %v", err)
+	}
+	if err := ValidateConstraints(build("a", "b"), flags, exactly); err == nil ||
+		!strings.Contains(err.Error(), "参数 --a、--b 只能指定其一（当前指定了 --a、--b）") {
+		t.Fatalf("exactly_one(2) err = %v", err)
+	}
+
+	exclusive := []Constraint{{Kind: MutuallyExclusive, Flags: []string{"a", "b"}}}
+	if err := ValidateConstraints(build(), flags, exclusive); err != nil {
+		t.Fatalf("mutually_exclusive(0) err = %v", err)
+	}
+	if err := ValidateConstraints(build("a"), flags, exclusive); err != nil {
+		t.Fatalf("mutually_exclusive(1) err = %v", err)
+	}
+	if err := ValidateConstraints(build("a", "b"), flags, exclusive); err == nil ||
+		!strings.Contains(err.Error(), "参数 --a、--b 互斥，只能指定其一（当前指定了 --a、--b）") {
+		t.Fatalf("mutually_exclusive(2) err = %v", err)
+	}
+
+	// no constraints → nil
+	if err := ValidateConstraints(build(), flags, nil); err != nil {
+		t.Fatalf("no constraints err = %v", err)
+	}
+}
+
+// ── risk confirmation ──────────────────────────────────────────────
+
+func TestCrossPlatformCoverageRiskEffective(t *testing.T) {
+	if Risk("").Effective() != RiskRead {
+		t.Fatal("empty risk must default to read")
+	}
+	if RiskWrite.Effective() != RiskWrite || RiskHighWrite.Effective() != RiskHighWrite {
+		t.Fatal("explicit risk must be preserved")
+	}
+}
+
+func TestCrossPlatformCoverageConfirmRisk(t *testing.T) {
+	newRiskCmd := func(stdin string) *cobra.Command {
+		cmd := newTestCommand()
+		cmd.PersistentFlags().Bool("yes", false, "")
+		cmd.PersistentFlags().Bool("dry-run", false, "")
+		if stdin != "" {
+			cmd.SetIn(strings.NewReader(stdin))
+		}
+		cmd.SetErr(&strings.Builder{})
+		return cmd
+	}
+
+	// read-only never prompts
+	if !ConfirmRisk(newRiskCmd(""), RiskRead) {
+		t.Fatal("read risk must pass")
+	}
+	if !ConfirmRisk(newRiskCmd(""), "") {
+		t.Fatal("empty risk must pass as read")
+	}
+	// --yes and --dry-run bypass the prompt
+	yes := newRiskCmd("")
+	_ = yes.PersistentFlags().Set("yes", "true")
+	if !ConfirmRisk(yes, RiskHighWrite) {
+		t.Fatal("--yes must bypass")
+	}
+	dry := newRiskCmd("")
+	_ = dry.PersistentFlags().Set("dry-run", "true")
+	if !ConfirmRisk(dry, RiskWrite) {
+		t.Fatal("--dry-run must bypass")
+	}
+	// interactive accept / decline
+	for _, answer := range []string{"yes\n", "y\n", "YES\n"} {
+		if !ConfirmRisk(newRiskCmd(answer), RiskWrite) {
+			t.Fatalf("answer %q must confirm", answer)
+		}
+	}
+	for _, answer := range []string{"no\n", "\n", "maybe\n"} {
+		if ConfirmRisk(newRiskCmd(answer), RiskHighWrite) {
+			t.Fatalf("answer %q must decline", answer)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageBoolFlag(t *testing.T) {
+	if BoolFlag(nil, "yes") {
+		t.Fatal("nil command must report false")
+	}
+	// missing flag → false
+	if BoolFlag(newTestCommand(), "yes") {
+		t.Fatal("missing flag must report false")
+	}
+	// local flag
+	local := newTestCommand()
+	local.Flags().Bool("yes", true, "")
+	if !BoolFlag(local, "yes") {
+		t.Fatal("local flag must be read")
+	}
+	// root persistent flag read from a child (inherited path)
+	root := &cobra.Command{Use: "root"}
+	root.PersistentFlags().Bool("yes", true, "")
+	child := &cobra.Command{Use: "child"}
+	root.AddCommand(child)
+	if !BoolFlag(child, "yes") {
+		t.Fatal("root persistent flag must be visible to the child")
+	}
+}
+
+// ── schema projection + help ───────────────────────────────────────
+
+func TestCrossPlatformCoverageAnnotateConstraints(t *testing.T) {
+	cmd := newTestCommand()
+	AnnotateConstraints(cmd, []Constraint{
+		{Kind: AtLeastOne, Flags: []string{"a", "b"}},
+		{Kind: ExactlyOne, Flags: []string{"c", "d"}},
+		{Kind: MutuallyExclusive, Flags: []string{"e", "f"}},
+	})
+	encoded := cmd.Annotations["dws.schema.constraints"]
+	if !strings.Contains(encoded, `"require_one_of"`) || !strings.Contains(encoded, `"mutually_exclusive"`) {
+		t.Fatalf("annotation = %s", encoded)
+	}
+	// exactly_one projects into BOTH require_one_of and mutually_exclusive
+	for _, want := range []string{`["a","b"]`, `["c","d"]`, `["e","f"]`} {
+		if !strings.Contains(encoded, want) {
+			t.Fatalf("annotation missing %s: %s", want, encoded)
+		}
+	}
+
+	// no constraints → no annotation written
+	bare := newTestCommand()
+	AnnotateConstraints(bare, nil)
+	if bare.Annotations["dws.schema.constraints"] != "" {
+		t.Fatalf("unexpected annotation %q", bare.Annotations["dws.schema.constraints"])
+	}
+}
+
+func TestCrossPlatformCoverageConstraintHelp(t *testing.T) {
+	if got := ConstraintHelp(nil); got != "" {
+		t.Fatalf("empty constraints help = %q", got)
+	}
+	help := ConstraintHelp([]Constraint{
+		{Kind: AtLeastOne, Flags: []string{"a", "b"}},
+		{Kind: ExactlyOne, Flags: []string{"c", "d"}},
+		{Kind: MutuallyExclusive, Flags: []string{"e", "f"}},
+		{Kind: AtLeastOne, Flags: []string{"g", "h"}, Description: "自定义文案"},
+	})
+	for _, want := range []string{
+		"参数约束：",
+		"--a、--b 至少指定一个",
+		"--c、--d 必须且只能指定一个",
+		"--e、--f 互斥，最多指定一个",
+		"  - 自定义文案",
+	} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("help missing %q:\n%s", want, help)
+		}
+	}
+}
+
+// ── unified builder ────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
+	var order []string
+	var gotArgs map[string]any
+	postMounted := false
+
+	cmd := NewCommand(CommandSpec{
+		Use:     "route",
+		Short:   "S",
+		Long:    "L",
+		Example: "E",
+		Flags: []FlagSpec{
+			{Name: "a", Usage: "A", Bind: "aKey"},
+			{Name: "b", Usage: "B"},
+		},
+		Constraints: []Constraint{{Kind: MutuallyExclusive, Flags: []string{"a", "b"}}},
+		Validate: func(*cobra.Command, []string) error {
+			order = append(order, "validate")
+			return nil
+		},
+		PostMount: func(c *cobra.Command) {
+			postMounted = true
+			if c.RunE != nil {
+				t.Error("PostMount must run before RunE is assigned")
+			}
+		},
+		Dispatch: func(_ *cobra.Command, _ []string, toolArgs map[string]any) error {
+			order = append(order, "dispatch")
+			gotArgs = toolArgs
+			return nil
+		},
+	})
+
+	if !postMounted {
+		t.Fatal("PostMount not invoked")
+	}
+	if cmd.Use != "route" || cmd.Short != "S" || cmd.Example != "E" {
+		t.Fatalf("identity = %#v", cmd)
+	}
+	// constraint help appended to Long, schema annotation projected
+	if !strings.Contains(cmd.Long, "参数约束：") || !strings.HasPrefix(cmd.Long, "L") {
+		t.Fatalf("Long = %q", cmd.Long)
+	}
+	if cmd.Annotations["dws.schema.constraints"] == "" {
+		t.Fatal("schema constraints not projected")
+	}
+
+	cmd.SetArgs([]string{"--a", "v"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(order, []string{"validate", "dispatch"}) {
+		t.Fatalf("order = %v, want validate before dispatch", order)
+	}
+	if gotArgs["aKey"] != "v" {
+		t.Fatalf("dispatch args = %#v", gotArgs)
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandRunEEscapeHatch(t *testing.T) {
+	ran := false
+	dispatched := false
+	cmd := NewCommand(CommandSpec{
+		Use:   "escape",
+		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
+		RunE: func(*cobra.Command, []string) error {
+			ran = true
+			return nil
+		},
+		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+			dispatched = true
+			return nil
+		},
+	})
+	cmd.SetArgs(nil)
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !ran || dispatched {
+		t.Fatalf("RunE escape hatch must win: ran=%v dispatched=%v", ran, dispatched)
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
+	// required failure stops before Validate/Dispatch
+	validated := false
+	dispatched := false
+	spec := CommandSpec{
+		Use:   "gate",
+		Flags: []FlagSpec{{Name: "need", Usage: "N", Required: true}, {Name: "other", Usage: "O"}},
+		Constraints: []Constraint{
+			{Kind: MutuallyExclusive, Flags: []string{"need", "other"}},
+		},
+		Validate: func(*cobra.Command, []string) error {
+			validated = true
+			return nil
+		},
+		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+			dispatched = true
+			return nil
+		},
+	}
+	cmd := NewCommand(spec)
+	cmd.SetArgs(nil)
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "need") {
+		t.Fatalf("required err = %v", err)
+	}
+	if validated || dispatched {
+		t.Fatal("required failure must stop the pipeline")
+	}
+
+	// constraint failure stops before Validate/Dispatch
+	validated, dispatched = false, false
+	cmd = NewCommand(spec)
+	cmd.SetArgs([]string{"--need", "a", "--other", "b"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "互斥") {
+		t.Fatalf("constraint err = %v", err)
+	}
+	if validated || dispatched {
+		t.Fatal("constraint failure must stop before Validate")
+	}
+
+	// Validate hook failure stops before Dispatch
+	boom := errors.New("validate boom")
+	dispatched = false
+	cmd = NewCommand(CommandSpec{
+		Use:      "hook",
+		Flags:    []FlagSpec{{Name: "x", Usage: "X"}},
+		Validate: func(*cobra.Command, []string) error { return boom },
+		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+			dispatched = true
+			return nil
+		},
+	})
+	cmd.SetArgs([]string{"--x", "v"})
+	if err := cmd.Execute(); !errors.Is(err, boom) {
+		t.Fatalf("validate hook err = %v", err)
+	}
+	if dispatched {
+		t.Fatal("Validate failure must stop before Dispatch")
+	}
+
+	// BuildArgs failure stops before Dispatch
+	dispatched = false
+	cmd = NewCommand(CommandSpec{
+		Use:   "args",
+		Flags: []FlagSpec{{Name: "y", Usage: "Y", Transform: func(string) (any, error) { return nil, boom }}},
+		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+			dispatched = true
+			return nil
+		},
+	})
+	cmd.SetArgs([]string{"--y", "v"})
+	if err := cmd.Execute(); !errors.Is(err, boom) {
+		t.Fatalf("BuildArgs err = %v", err)
+	}
+	if dispatched {
+		t.Fatal("BuildArgs failure must stop before Dispatch")
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
+	dispatched := false
+	cmd := NewCommand(CommandSpec{
+		Use:   "risky",
+		Risk:  RiskHighWrite,
+		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
+		Dispatch: func(*cobra.Command, []string, map[string]any) error {
+			dispatched = true
+			return nil
+		},
+	})
+	cmd.PersistentFlags().Bool("yes", false, "")
+	cmd.PersistentFlags().Bool("dry-run", false, "")
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetIn(strings.NewReader("no\n"))
+	cmd.SetErr(&strings.Builder{})
+	cmd.SetArgs([]string{"--x", "v"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+		t.Fatalf("decline err = %v", err)
+	}
+	if dispatched {
+		t.Fatal("declined command must not dispatch")
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandNilDispatchNoOps(t *testing.T) {
+	// Neither RunE nor Dispatch: the pipeline runs and then no-ops.
 	cmd := NewCommand(CommandSpec{
 		Use:   "bare",
-		Short: "no dispatch",
 		Flags: []FlagSpec{{Name: "x", Usage: "X"}},
-		// Risk defaults to read → ConfirmRisk passes without prompting.
 	})
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.SetArgs([]string{"--x", "v"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("nil-dispatch command should no-op, got %v", err)
-	}
-}
-
-// TestCrossPlatformCoverageNewCommandDispatch confirms the assembled toolArgs
-// reach Dispatch and that Dispatch's result is returned.
-func TestCrossPlatformCoverageNewCommandDispatch(t *testing.T) {
-	var got map[string]any
-	cmd := NewCommand(CommandSpec{
-		Use:   "route",
-		Flags: []FlagSpec{{Name: "name", Usage: "N", Bind: "userName"}},
-		Dispatch: func(_ *cobra.Command, _ []string, toolArgs map[string]any) error {
-			got = toolArgs
-			return nil
-		},
-	})
-	cmd.SilenceErrors = true
-	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"--name", "alice"})
-	if err := cmd.Execute(); err != nil {
-		t.Fatal(err)
-	}
-	if got["userName"] != "alice" {
-		t.Fatalf("dispatch toolArgs = %#v", got)
 	}
 }
