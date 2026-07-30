@@ -6,6 +6,15 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Changed
+
+- **Agent Product identity separation** — sends `DWS_AGENT_PRODUCT` through the new `x-dws-agent-product` observability Header and uses a valid non-empty value for the IM `clawType` display label whenever `--ai-tag` is enabled. Because `--ai-tag` defaults to `true`, callers that set `DWS_AGENT_PRODUCT` change the displayed label by default; `--ai-tag=false` continues to omit the IM `clawType` argument. Unset or empty Product values omit the Header and preserve the active edition's IM display default.
+- **Agent Host dimension convention** — new integrations should send the runtime form (`cloud` or `desktop`) through `DWS_AGENT_HOST` and report the product separately through `DWS_AGENT_PRODUCT`. Legacy combined labels such as `qwenwork_cloud` remain syntactically valid for compatibility.
+
+### Fixed
+
+- **Stable PAT/routing identity** — restores the CLI-emitted open-source HTTP `claw-type` and PAT `hostControl.clawType` to the edition-fixed `openClaw` value. `DWS_AGENT_PRODUCT` no longer changes those wire values, and the client continues to derive PAT, authentication, routing, and Discovery behaviour from the existing independent signals.
+
 ## [1.0.55-beta.8] - 2026-07-30
 
 This beta revalidates the `v1.0.55-beta.7` product baseline through a complete
