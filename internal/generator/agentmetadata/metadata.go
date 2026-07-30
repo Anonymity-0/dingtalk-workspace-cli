@@ -245,6 +245,10 @@ const (
 	selectionRankExplicit           = 300
 	selectionRankReviewedExplicit   = 400
 	selectionRankReviewedManual     = 500
+	// Contract final declarations (cmdcore.SchemaDecl, registered in-process)
+	// outrank every file/manual source: the declaration in reviewed code is
+	// the final data source for declared tools.
+	selectionRankContractFinal = 600
 
 	selectionPrecedenceDefault            = "inference_or_default"
 	selectionPrecedenceMCPFallback        = "mcp_fallback"
@@ -254,7 +258,13 @@ const (
 	selectionPrecedenceExplicit           = "explicit"
 	selectionPrecedenceReviewedExplicit   = "reviewed_explicit"
 	selectionPrecedenceReviewedManual     = "reviewed_manual"
+	selectionPrecedenceContractFinal      = "contract_final"
 )
+
+// contractFinalOrigin labels every candidate sourced from an in-process
+// Contract final declaration. It is not a file path; the declaration lives in
+// reviewed command source code (cmdcore.SchemaDecl).
+const contractFinalOrigin = "cmdcore.contract"
 
 type Options struct {
 	Root                     string
@@ -466,6 +476,9 @@ func generateFromSources(opts Options) (File, Stats, error) {
 		}
 	}
 	if err := reconcileSurface(&out, opts, &stats, origins); err != nil {
+		return File{}, Stats{}, err
+	}
+	if err := applyContractFinalDeclarations(&out, opts); err != nil {
 		return File{}, Stats{}, err
 	}
 	seedEffectiveToolProjection(&out, opts.ToolPaths)
@@ -1209,6 +1222,8 @@ func scalarIncomingWon(previousValue string, previousPresent bool, previousRank 
 
 func selectionPrecedence(rank int) string {
 	switch rank {
+	case selectionRankContractFinal:
+		return selectionPrecedenceContractFinal
 	case selectionRankReviewedManual:
 		return selectionPrecedenceReviewedManual
 	case selectionRankReviewedExplicit:
@@ -1648,6 +1663,8 @@ func syncProductFieldProvenance(metadata *ProductMetadata) {
 
 func precedenceRank(precedence string) int {
 	switch strings.TrimSpace(precedence) {
+	case selectionPrecedenceContractFinal:
+		return selectionRankContractFinal
 	case selectionPrecedenceReviewedManual:
 		return selectionRankReviewedManual
 	case selectionPrecedenceReviewedExplicit:

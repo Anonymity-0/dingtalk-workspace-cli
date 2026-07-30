@@ -6572,6 +6572,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app get --unified-app-id \u003cunifiedAppId\u003e --format json",
         "dws dev app get --app-key \u003cappKey\u003e --format json"
@@ -7193,6 +7194,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app credentials get --unified-app-id \u003cunifiedAppId\u003e --format json"
       ],
@@ -7696,6 +7698,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app version get --unified-app-id \u003cunifiedAppId\u003e --version-id \u003cversionId\u003e"
       ],
@@ -8314,6 +8317,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app version status --unified-app-id \u003cunifiedAppId\u003e --version-id \u003cversionId\u003e"
       ],
@@ -8932,6 +8936,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app robot get --unified-app-id \u003cunifiedAppId\u003e --format json"
       ],
@@ -9435,6 +9440,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app webapp get --unified-app-id \u003cunifiedAppId\u003e --format json"
       ],
@@ -9938,6 +9944,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app list --name \"DemoApp\" --page-size 20 --format json"
       ],
@@ -11496,6 +11503,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app event list --unified-app-id \u003cunifiedAppId\u003e --keyword \"审批\" --page-size 20"
       ],
@@ -12297,6 +12305,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app member list --unified-app-id \u003cunifiedAppId\u003e"
       ],
@@ -12800,6 +12809,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app permission list --unified-app-id \u003cunifiedAppId\u003e --keyword \"通讯录\" --page-size 20"
       ],
@@ -14044,6 +14054,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app version list --unified-app-id \u003cunifiedAppId\u003e --page-size 20"
       ],
@@ -15576,6 +15587,7 @@
         "preview_kind": "invocation"
       },
       "effect": "read",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev app robot result --task-id \u003ctaskId\u003e --format json"
       ],

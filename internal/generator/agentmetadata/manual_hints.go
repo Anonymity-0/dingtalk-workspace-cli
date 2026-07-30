@@ -24,9 +24,11 @@ var reviewedSelectionFields = map[string]bool{
 	"examples":      true,
 }
 
-// retainReviewedSelectionCandidates keeps only reviewed_explicit candidates for
-// Agent selection fields so metadata/skill/MCP prose cannot win after selection
-// files have been applied.
+// retainReviewedSelectionCandidates keeps only reviewed candidates
+// (reviewed_explicit or contract_final) for Agent selection fields so
+// metadata/skill/MCP prose cannot win after selection files have been
+// applied. contract_final candidates come from in-code Contract declarations
+// and outrank file sources for declared tools.
 func retainReviewedSelectionCandidates(file *File) {
 	if file == nil {
 		return
@@ -54,11 +56,29 @@ func retainReviewedSelectionCandidates(file *File) {
 func onlyReviewedExplicitCandidates(candidates []FieldCandidateProvenance) []FieldCandidateProvenance {
 	selected := make([]FieldCandidateProvenance, 0, len(candidates))
 	for _, candidate := range candidates {
-		if precedenceRank(candidate.Precedence) == selectionRankReviewedExplicit {
+		if isReviewedSelectionRank(precedenceRank(candidate.Precedence)) {
 			selected = append(selected, candidate)
 		}
 	}
 	return selected
+}
+
+// isReviewedSelectionRank reports whether a rank is a reviewed Agent selection
+// source: the reviewed selection files (reviewed_explicit) or an in-code
+// Contract final declaration (contract_final, the stronger reviewed source).
+func isReviewedSelectionRank(rank int) bool {
+	return rank == selectionRankReviewedExplicit || rank == selectionRankContractFinal
+}
+
+// isReviewedSelectionPrecedence mirrors isReviewedSelectionRank for provenance
+// precedence labels.
+func isReviewedSelectionPrecedence(precedence string) bool {
+	switch strings.TrimSpace(precedence) {
+	case selectionPrecedenceReviewedExplicit, selectionPrecedenceContractFinal:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateReviewedSelectionDelivery(file File, opts Options) error {
@@ -107,23 +127,25 @@ func validateReviewedSelectionDelivery(file File, opts Options) error {
 			name  string
 			valid bool
 		}{
-			{"agent_summary", strings.TrimSpace(metadata.AgentSummary) != "" && metadata.agentSummaryRank == selectionRankReviewedExplicit},
-			{"use_when", len(metadata.UseWhen) > 0 && metadata.useWhenRank == selectionRankReviewedExplicit},
-			{"avoid_when", len(metadata.AvoidWhen) > 0 && metadata.avoidWhenRank == selectionRankReviewedExplicit},
-			{"examples", len(metadata.Examples) > 0 && metadata.examplesRank == selectionRankReviewedExplicit},
-			{"reviewed", metadata.Reviewed != nil && *metadata.Reviewed && metadata.reviewedRank == selectionRankReviewedExplicit},
+			{"agent_summary", strings.TrimSpace(metadata.AgentSummary) != "" && isReviewedSelectionRank(metadata.agentSummaryRank)},
+			{"use_when", len(metadata.UseWhen) > 0 && isReviewedSelectionRank(metadata.useWhenRank)},
+			{"avoid_when", len(metadata.AvoidWhen) > 0 && isReviewedSelectionRank(metadata.avoidWhenRank)},
+			{"examples", len(metadata.Examples) > 0 && isReviewedSelectionRank(metadata.examplesRank)},
+			{"reviewed", metadata.Reviewed != nil && *metadata.Reviewed && isReviewedSelectionRank(metadata.reviewedRank)},
 		}
 		for _, check := range checks {
 			if !check.valid {
-				problems = append(problems, canonical+" "+check.name+" is not reviewed_explicit")
+				problems = append(problems, canonical+" "+check.name+" is not reviewed_explicit/contract_final")
 			}
 		}
 		for _, field := range []string{"agent_summary", "use_when", "avoid_when", "examples"} {
 			provenance, ok := metadata.FieldProvenance[field]
-			if !ok || provenance.Precedence != selectionPrecedenceReviewedExplicit || selectedCandidateCount(provenance.Candidates) != 1 {
-				problems = append(problems, canonical+" "+field+" provenance is not one reviewed_explicit winner")
+			if !ok || !isReviewedSelectionPrecedence(provenance.Precedence) || selectedCandidateCount(provenance.Candidates) != 1 {
+				problems = append(problems, canonical+" "+field+" provenance is not one reviewed_explicit/contract_final winner")
 			}
-			if ok && !strings.Contains(provenance.Source, "/selection/") {
+			// File-based winners must come from a selection/ source file;
+			// contract_final winners are declared in code (no file path).
+			if ok && provenance.Precedence != selectionPrecedenceContractFinal && !strings.Contains(provenance.Source, "/selection/") {
 				problems = append(problems, canonical+" "+field+" source is not selection/: "+provenance.Source)
 			}
 		}
@@ -197,6 +219,16 @@ func validateSelectionAuthoringContracts(opts Options) error {
 		return fmt.Errorf("load selection Agent hints: %w", err)
 	}
 	expectedTools := expectedCanonicalToolSet(opts)
+	// Declared tools carry their selection fields in the Contract final
+	// overlay (cmdcore.SchemaDecl); they are exempt from hint-file coverage.
+	// Hint rows for them may still exist during migration, but are no longer
+	// required and never win over the declaration.
+	for canonical := range expectedTools {
+		bound, ok := opts.BoundCommands.ByCanonical[canonical]
+		if ok && cli.HasRuntimeContractFinal(bound.PrimaryCommand) {
+			delete(expectedTools, canonical)
+		}
+	}
 	if err := cli.ValidateManualAgentHintSet(hints, opts.ProductIDs, expectedTools); err != nil {
 		return fmt.Errorf("validate selection Agent hints: %w", err)
 	}

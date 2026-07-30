@@ -526,9 +526,24 @@ func buildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools
 	plan := ManualAgentExampleExecutionPlan{
 		ContractOnlyByReason: map[ManualAgentExampleReasonCode]int{},
 	}
-	canonicalPaths := make([]string, 0, len(hints.Tools))
+	// Declared tools (Contract final overlay) take part without a hint-file
+	// row: their examples come from the in-code declaration.
+	declaredTools := map[string]bool{}
+	for _, command := range bound.Commands {
+		if HasRuntimeContractFinal(command.PrimaryCommand) {
+			declaredTools[strings.TrimSpace(command.CanonicalPath)] = true
+		}
+	}
+	canonicalPaths := make([]string, 0, len(hints.Tools)+len(declaredTools))
+	seenCanonical := map[string]bool{}
 	for canonical := range hints.Tools {
 		canonicalPaths = append(canonicalPaths, canonical)
+		seenCanonical[canonical] = true
+	}
+	for canonical := range declaredTools {
+		if !seenCanonical[canonical] {
+			canonicalPaths = append(canonicalPaths, canonical)
+		}
 	}
 	sort.Strings(canonicalPaths)
 	for _, canonical := range canonicalPaths {
@@ -536,7 +551,10 @@ func buildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools
 		if !ok {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("agent_hints example references unknown canonical tool %q", canonical)
 		}
-		hint := hints.Tools[canonical]
+		hint, hintOK := hints.Tools[canonical]
+		if !hintOK {
+			hint = contractFinalSelectionHint(spec.PrimaryCommand)
+		}
 		var typedTool ToolSpec
 		if typedTools != nil {
 			var found bool
@@ -629,7 +647,7 @@ func buildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools
 		}
 	}
 	for canonical := range typedTools {
-		if _, ok := hints.Tools[canonical]; !ok {
+		if _, ok := hints.Tools[canonical]; !ok && !declaredTools[canonical] {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("final typed SchemaRegistry tool %q has no Manual Agent hint examples", canonical)
 		}
 	}

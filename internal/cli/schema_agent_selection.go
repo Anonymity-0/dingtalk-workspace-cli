@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 var marshalManualAgentSelectionFixture = json.Marshal
@@ -71,17 +73,27 @@ func BuildManualAgentSelectionEvalFixture(bound BoundCommandRegistry, hints Manu
 	fixture := ManualAgentSelectionFixture{Version: manualAgentSelectionFixtureVersion}
 	report := ManualAgentSelectionReport{}
 	expectedTools := make(map[string]bool, len(bound.Commands))
+	declaredTools := map[string]bool{}
 	candidatesByProduct := map[string][]string{}
 	for _, command := range bound.Commands {
 		canonical := strings.TrimSpace(command.CanonicalPath)
 		expectedTools[canonical] = true
+		// Declared tools source selection assertions from the Contract final
+		// overlay (cmdcore.SchemaDecl) instead of a hint-file row.
+		if HasRuntimeContractFinal(command.PrimaryCommand) {
+			declaredTools[canonical] = true
+		}
 		productID, _, ok := strings.Cut(canonical, ".")
 		if !ok || strings.TrimSpace(productID) == "" {
 			return fixture, report, fmt.Errorf("agent_hints selection has invalid bound canonical path %q", canonical)
 		}
 		candidatesByProduct[productID] = append(candidatesByProduct[productID], canonical)
 	}
-	if err := validateManualAgentHintExactSet("selection tools", expectedTools, mapKeysManualAgentTools(hints.Tools)); err != nil {
+	hintTools := mapKeysManualAgentTools(hints.Tools)
+	for canonical := range declaredTools {
+		hintTools[canonical] = true
+	}
+	if err := validateManualAgentHintExactSet("selection tools", expectedTools, hintTools); err != nil {
 		return fixture, report, err
 	}
 	for productID := range candidatesByProduct {
@@ -105,7 +117,10 @@ func BuildManualAgentSelectionEvalFixture(bound BoundCommandRegistry, hints Manu
 			return fixture, report, err
 		}
 
-		hint := hints.Tools[canonical]
+		hint, hintOK := hints.Tools[canonical]
+		if !hintOK && declaredTools[canonical] {
+			hint = contractFinalSelectionHint(command.PrimaryCommand)
+		}
 		if len(hint.UseWhen) == 0 {
 			return fixture, report, fmt.Errorf("agent_hints tool %s requires at least one positive use_when selection assertion", canonical)
 		}
@@ -167,6 +182,23 @@ func BuildManualAgentSelectionEvalFixture(bound BoundCommandRegistry, hints Manu
 func ValidateManualAgentSelectionContract(bound BoundCommandRegistry, hints ManualAgentHintSet) (ManualAgentSelectionReport, error) {
 	_, report, err := BuildManualAgentSelectionEvalFixture(bound, hints)
 	return report, err
+}
+
+// contractFinalSelectionHint synthesizes the selection assertions of a
+// declared tool from its Contract final overlay, so declared tools keep full
+// semantic-eval coverage without a hint-file row.
+func contractFinalSelectionHint(command *cobra.Command) ManualAgentToolHint {
+	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (cmdcore.SchemaDecl)"}
+	payload, ok := RuntimeContractFinal(command)
+	if !ok || payload.Selection == nil {
+		return hint
+	}
+	selection := payload.Selection
+	hint.AgentSummary = selection.AgentSummary
+	hint.UseWhen = selection.UseWhen
+	hint.AvoidWhen = selection.AvoidWhen
+	hint.Examples = selection.Examples
+	return hint
 }
 
 func validateManualAgentSelectionBinding(bound BoundCommandRegistry, canonical string, command BoundCommandSpec) error {

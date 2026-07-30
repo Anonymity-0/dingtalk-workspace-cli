@@ -456,6 +456,14 @@ func validateSelectionHintInput(rootPath, hintsDir string, registry commandRegis
 	for canonical := range registry.CanonicalToolPaths {
 		expectedTools[canonical] = true
 	}
+	// Declared tools carry selection fields in the Contract final overlay
+	// (cmdcore.SchemaDecl) and are exempt from hint-file coverage.
+	for canonical := range expectedTools {
+		bound, ok := registry.Bound.ByCanonical[canonical]
+		if ok && cli.HasRuntimeContractFinal(bound.PrimaryCommand) {
+			delete(expectedTools, canonical)
+		}
+	}
 	if err := validateSelectionMetadataSet(agentHints, registry.ProductIDs, expectedTools); err != nil {
 		return fmt.Errorf("validate selection Agent hints: %w", err)
 	}

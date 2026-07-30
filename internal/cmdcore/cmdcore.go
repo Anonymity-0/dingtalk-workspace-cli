@@ -991,6 +991,11 @@ func schemaSafetyFromDecl(risk Risk, decl SafetyDecl) *cli.SafetySpec {
 				out.Confirmation = "not_required"
 			}
 		}
+	}
+	// effect_source is assembly-derived for every Contract-declared safety,
+	// whether it came from the Risk shorthand or an explicit SchemaDecl; the
+	// declaration in code is the source of truth.
+	if out.Effect != "" && out.EffectSource == "" {
 		out.EffectSource = "cmdcore.contract"
 	}
 	if out.Effect == "" && out.Risk == "" && out.Confirmation == "" && out.Idempotency == "" {
