@@ -35,6 +35,17 @@ func (f *fakeDevAppRunner) Run(_ context.Context, inv executor.Invocation) (exec
 	return executor.Result{Invocation: inv, Response: map[string]any{}}, nil
 }
 
+// devAppTestSelection 满足声明完整性构造校验（Schema 声明即最终源，
+// 必须自带完整评审散文）；具体文案与单测断言无关。
+func devAppTestSelection(summary string) LeafSelectionDecl {
+	return LeafSelectionDecl{
+		AgentSummary: summary,
+		UseWhen:      []string{"测试场景"},
+		AvoidWhen:    []string{"非测试场景"},
+		Examples:     []string{"dws dev app get --unified-app-id APP-1"},
+	}
+}
+
 // TestDevAppCredentialsGetLeafDispatchesTrimmedArgs 验证迁移到 LeafSpec 后：
 // toolArgs 键/值/trim 与手写版等价，且 PostMount 设上了 schema 注解与 NoArgs。
 func TestDevAppCredentialsGetLeafDispatchesTrimmedArgs(t *testing.T) {
@@ -64,7 +75,7 @@ func TestDevAppCredentialsGetLeafDispatchesTrimmedArgs(t *testing.T) {
 // TestDevAppLifecycleLeafWriteGuardAndArgs 验证框架确认门拦截/放行 + toolArgs 装配。
 func TestDevAppLifecycleLeafWriteGuardAndArgs(t *testing.T) {
 	r := &fakeDevAppRunner{}
-	cmd := newDevAppLifecycleCommand(r, "enable", "启用应用", devAppEnableTool, LeafSelectionDecl{})
+	cmd := newDevAppLifecycleCommand(r, "enable", "启用应用", devAppEnableTool, devAppTestSelection("启用应用"))
 	if err := cmd.Flags().Set("unified-app-id", "APP-9"); err != nil {
 		t.Fatal(err)
 	}
@@ -489,7 +500,7 @@ func TestDevAppLeafToolArgsTable(t *testing.T) {
 		{"app create", newDevAppCreateCommand, map[string]string{"name": "DemoApp"}, true, devAppCreateTool, map[string]any{"name": "DemoApp"}, []string{"desc", "iconMediaId"}},
 		{"robot config get", newDevAppRobotConfigGetCommand, map[string]string{"unified-app-id": "APP-C"}, false, devAppRobotConfigGetTool, map[string]any{"unifiedAppId": "APP-C"}, nil},
 		{"lifecycle disable", func(r executor.Runner) *cobra.Command {
-			return newDevAppLifecycleCommand(r, "disable", "停用应用", devAppDisableTool, LeafSelectionDecl{})
+			return newDevAppLifecycleCommand(r, "disable", "停用应用", devAppDisableTool, devAppTestSelection("停用应用"))
 		}, map[string]string{"unified-app-id": "APP-D"}, true, devAppDisableTool, map[string]any{"unifiedAppId": "APP-D"}, nil},
 	}
 	for _, c := range cases {

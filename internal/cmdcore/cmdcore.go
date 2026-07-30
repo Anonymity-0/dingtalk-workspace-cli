@@ -336,11 +336,19 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 // included — and then silently exit 0 having done nothing.
 func NewCommand(spec CommandSpec) *cobra.Command {
 	validateDispatchDecl(spec)
+	validateSchemaDecl(spec)
+	// Help prose inherits the declaration when not authored separately:
+	// Selection.Examples (already contract-validated against the real flags)
+	// double as the --help Example block, keeping one authored source.
+	example := spec.Example
+	if strings.TrimSpace(example) == "" && len(spec.Schema.Selection.Examples) > 0 {
+		example = "  " + strings.Join(spec.Schema.Selection.Examples, "\n  ")
+	}
 	cmd := &cobra.Command{
 		Use:     spec.Use,
 		Short:   spec.Short,
 		Long:    spec.Long,
-		Example: spec.Example,
+		Example: example,
 	}
 	RegisterFlags(cmd, spec.Flags)
 	ValidateConstraintDecls(spec.Use, spec.Flags, spec.Constraints)

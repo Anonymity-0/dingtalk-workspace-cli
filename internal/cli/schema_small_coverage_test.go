@@ -358,8 +358,14 @@ func TestCrossPlatformCoverageReviewedDryRunCapabilityRemainingEdges(t *testing.
 		t.Fatal(err)
 	}
 	delete(capabilities, "sample.get")
-	if second, err := ReviewedDryRunCapabilities(); err != nil || len(second) != 1 {
-		t.Fatalf("defensive dry-run copy = %#v, %v", second, err)
+	second, err := ReviewedDryRunCapabilities()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Defensive-copy semantics (not exact size): declared capabilities from
+	// other in-process assemblies may legitimately share the index.
+	if _, ok := second["sample.get"]; !ok {
+		t.Fatalf("deleting from the returned copy mutated the registry: %#v", second)
 	}
 	if spec, err := reviewedDryRunCapability("missing"); err != nil || spec != nil {
 		t.Fatalf("missing dry-run capability = %#v, %v", spec, err)
@@ -380,6 +386,42 @@ func resetReviewedDryRunCapabilitiesForTest() {
 	reviewedDryRunCapabilitiesLazy.once = sync.Once{}
 	reviewedDryRunCapabilitiesLazy.byCanonical = nil
 	reviewedDryRunCapabilitiesLazy.err = nil
+}
+
+// TestDeclaredDryRunCapabilityAutoReviewed pins the single-source rule: a
+// Contract-declared dry_run needs no manual allowlist entry to pass the
+// delivery gate, and a conflicting manual entry is a hard error.
+func TestDeclaredDryRunCapabilityAutoReviewed(t *testing.T) {
+	clearDeclaredDryRunCapabilitiesForTest()
+	t.Cleanup(clearDeclaredDryRunCapabilitiesForTest)
+	originalGroups := reviewedDryRunCapabilityGroups
+	t.Cleanup(func() {
+		reviewedDryRunCapabilityGroups = originalGroups
+		resetReviewedDryRunCapabilitiesForTest()
+	})
+	reviewedDryRunCapabilityGroups = nil
+	resetReviewedDryRunCapabilitiesForTest()
+
+	registry := SchemaRegistry{Products: []ProductSpec{{ID: "sample", Tools: []ToolSpec{
+		{Identity: ToolIdentitySpec{CanonicalPath: "sample.declared"}, DryRun: &DryRunSpec{PreviewKind: DryRunPreviewInvocation}},
+	}}}}
+	// No manual entry: unreviewed before recording, reviewed after.
+	if err := ValidateReviewedDryRunCapabilityDelivery(registry); err == nil {
+		t.Fatal("unrecorded declared dry-run capability succeeded")
+	}
+	recordDeclaredDryRunCapability("sample.declared", DryRunSpec{PreviewKind: DryRunPreviewInvocation})
+	if err := ValidateReviewedDryRunCapabilityDelivery(registry); err != nil {
+		t.Fatalf("declared dry-run capability must be auto-reviewed: %v", err)
+	}
+
+	// A conflicting manual entry for the same canonical is a hard error.
+	reviewedDryRunCapabilityGroups = []dryRunCapabilityGroup{
+		{PreviewKind: DryRunPreviewPlan, CanonicalPaths: []string{"sample.declared"}},
+	}
+	resetReviewedDryRunCapabilitiesForTest()
+	if _, err := loadReviewedDryRunCapabilities(); err == nil {
+		t.Fatal("conflicting manual + declared dry-run capability succeeded")
+	}
 }
 
 func TestCrossPlatformCoverageSchemaSnapshotAdapterRemainingEdges(t *testing.T) {

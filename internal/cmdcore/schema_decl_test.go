@@ -14,6 +14,7 @@
 package cmdcore
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -102,6 +103,83 @@ func TestNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
 	}
 	if got := flag.Annotations["x-cli-enum"]; len(got) != 2 {
 		t.Fatalf("enum = %#v", flag.Annotations["x-cli-enum"])
+	}
+}
+
+func TestNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		schema  SchemaDecl
+		wantSub string
+	}{
+		{"missing description", SchemaDecl{
+			Selection: SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Schema.Description"},
+		{"missing selection", SchemaDecl{
+			Description: "d",
+		}, "Schema.Selection.AgentSummary"},
+		{"missing examples", SchemaDecl{
+			Description: "d",
+			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
+		}, "Schema.Selection.Examples"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				recovered := recover()
+				if recovered == nil {
+					t.Fatal("partial SchemaDecl must panic at construction")
+				}
+				if msg, _ := recovered.(string); !strings.Contains(msg, tc.wantSub) {
+					t.Fatalf("panic = %v, want mention %s", recovered, tc.wantSub)
+				}
+			}()
+			NewCommand(CommandSpec{
+				Use:    "x",
+				Short:  "x",
+				Schema: tc.schema,
+				Invoke: func(*Ctx, map[string]any) error { return nil },
+			})
+		})
+	}
+}
+
+func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
+	cmd := NewCommand(CommandSpec{
+		Use:   "create",
+		Short: "short",
+		Schema: SchemaDecl{
+			Description: "desc",
+			Selection: SelectionDecl{
+				AgentSummary: "summary",
+				UseWhen:      []string{"when"},
+				AvoidWhen:    []string{"avoid"},
+				Examples:     []string{"dws create --mode a", "dws create --mode b --dry-run"},
+			},
+		},
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	})
+	want := "  dws create --mode a\n  dws create --mode b --dry-run"
+	if cmd.Example != want {
+		t.Fatalf("derived Example = %q, want %q", cmd.Example, want)
+	}
+
+	explicit := NewCommand(CommandSpec{
+		Use:     "create",
+		Short:   "short",
+		Example: "  dws create --custom",
+		Schema: SchemaDecl{
+			Description: "desc",
+			Selection: SelectionDecl{
+				AgentSummary: "summary",
+				UseWhen:      []string{"when"},
+				AvoidWhen:    []string{"avoid"},
+				Examples:     []string{"dws create --mode a"},
+			},
+		},
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	})
+	if explicit.Example != "  dws create --custom" {
+		t.Fatalf("authored Example must win over derivation, got %q", explicit.Example)
 	}
 }
 

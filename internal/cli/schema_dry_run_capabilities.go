@@ -17,48 +17,15 @@ type dryRunCapabilityGroup struct {
 	CanonicalPaths []string
 }
 
-// reviewedDryRunCapabilityGroups contains only command-owned preview paths.
+// reviewedDryRunCapabilityGroups contains only command-owned preview paths
+// for tools WITHOUT a Contract final declaration. Declared tools publish
+// their dry_run capability from cmdcore.SchemaDecl (reviewed code) and are
+// merged into the reviewed set at assembly time — no manual list entry.
 // Inheriting the root --dry-run flag or reaching the generic EchoRunner is not
 // evidence of a stable capability and must never add a command to this list.
 // CI executes each selected example and compares the observed preview kind to
 // this reviewed declaration.
 var reviewedDryRunCapabilityGroups = []dryRunCapabilityGroup{
-	// devapp 全树：--dry-run 在 CLI 本地拼装调用预览（参数原样展示 +
-	// 远端 schema 对比），不发起任何远端读/写（delete 经网关 dry_run 干跑，
-	// 同样无远端读）。
-	{PreviewKind: DryRunPreviewInvocation, CanonicalPaths: []string{
-		"dev.add_dev_app_members",
-		"dev.apply_dev_app_permissions",
-		"dev.create_dev_app",
-		"dev.create_dev_app_version",
-		"dev.delete_dev_app",
-		"dev.disable_dev_app",
-		"dev.disable_dev_app_robot",
-		"dev.enable_dev_app",
-		"dev.enable_dev_app_robot",
-		"dev.get_dev_app",
-		"dev.get_dev_app_credentials",
-		"dev.get_dev_app_version_detail",
-		"dev.get_dev_app_version_status",
-		"dev.get_extension_robot_config",
-		"dev.get_extension_webapp_config",
-		"dev.list_dev_app",
-		"dev.list_dev_app_events",
-		"dev.list_dev_app_members",
-		"dev.list_dev_app_permissions",
-		"dev.list_dev_app_versions",
-		"dev.publish_dev_app_version",
-		"dev.query_robot_create_result",
-		"dev.remove_dev_app_members",
-		"dev.remove_dev_app_permissions",
-		"dev.set_extension_robot_config",
-		"dev.set_extension_webapp_config",
-		"dev.submit_robot_create_task",
-		"dev.subscribe_dev_app_events",
-		"dev.unsubscribe_dev_app_events",
-		"dev.update_dev_app",
-		"dev.update_dev_app_security_config",
-	}},
 	{PreviewKind: DryRunPreviewRequest, CanonicalPaths: []string{
 		"event.stop",
 	}},
@@ -91,7 +58,32 @@ var reviewedDryRunCapabilitiesLazy struct {
 	err         error
 }
 
-func loadReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
+// declaredDryRunCapabilities indexes dry_run capabilities sourced from
+// Contract final declarations (canonical → spec). Populated by the Schema
+// pass-through at assembly time; a declaration in reviewed code is itself
+// the reviewed capability, so no manual allowlist entry is required.
+var declaredDryRunCapabilities sync.Map // string → DryRunSpec
+
+// recordDeclaredDryRunCapability registers one Contract-declared dry_run
+// capability. Conflicting re-declaration of the same canonical is a
+// programming error surfaced at the next delivery gate read.
+func recordDeclaredDryRunCapability(canonical string, spec DryRunSpec) {
+	canonical = strings.TrimSpace(canonical)
+	if canonical == "" {
+		return
+	}
+	declaredDryRunCapabilities.Store(canonical, spec)
+}
+
+// clearDeclaredDryRunCapabilitiesForTest resets the declared index (tests only).
+func clearDeclaredDryRunCapabilitiesForTest() {
+	declaredDryRunCapabilities.Range(func(key, _ any) bool {
+		declaredDryRunCapabilities.Delete(key)
+		return true
+	})
+}
+
+func loadManualDryRunCapabilities() (map[string]DryRunSpec, error) {
 	reviewedDryRunCapabilitiesLazy.once.Do(func() {
 		byCanonical := make(map[string]DryRunSpec)
 		for _, group := range reviewedDryRunCapabilityGroups {
@@ -127,6 +119,36 @@ func loadReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
 	out := make(map[string]DryRunSpec, len(reviewedDryRunCapabilitiesLazy.byCanonical))
 	for canonical, spec := range reviewedDryRunCapabilitiesLazy.byCanonical {
 		out[canonical] = spec
+	}
+	return out, nil
+}
+
+func loadReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
+	out, err := loadManualDryRunCapabilities()
+	if err != nil {
+		return nil, err
+	}
+	var mergeErr error
+	declaredDryRunCapabilities.Range(func(key, value any) bool {
+		canonical, ok := key.(string)
+		if !ok {
+			mergeErr = fmt.Errorf("declared dry-run capability has non-string key %v", key)
+			return false
+		}
+		spec, ok := value.(DryRunSpec)
+		if !ok {
+			mergeErr = fmt.Errorf("declared dry-run capability %s has non-DryRunSpec value", canonical)
+			return false
+		}
+		if manual, exists := out[canonical]; exists && manual != spec {
+			mergeErr = fmt.Errorf("dry-run capability %s declared as %#v conflicts with manual reviewed entry %#v", canonical, spec, manual)
+			return false
+		}
+		out[canonical] = spec
+		return true
+	})
+	if mergeErr != nil {
+		return nil, mergeErr
 	}
 	return out, nil
 }

@@ -13,7 +13,10 @@
 
 package cmdcore
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // SchemaDecl is the final Schema leaf payload authored on the command
 // Contract. When non-empty fields are set, NewCommand embeds them onto the
@@ -91,6 +94,41 @@ type IdentityDecl struct {
 	Group           string
 	Aliases         []string
 	Source          string
+}
+
+// validateSchemaDecl enforces authoring-time homology for declared commands.
+// A declared Schema is the sole final source for its fields: downstream
+// catalog/Agent gates hard-require description and the reviewed selection
+// prose for every effective tool, and declared tools are exempt from
+// hint-file coverage — so a declaration missing any of these fields could
+// only fail later, opaquely, in generated artifacts. Failing at construction
+// keeps the error next to the authoring mistake and prevents silent drift
+// between cobra prose (Short/Long/Example) and the published Schema values.
+func validateSchemaDecl(spec CommandSpec) {
+	if spec.Schema.empty() {
+		return
+	}
+	missing := make([]string, 0, 4)
+	if strings.TrimSpace(spec.Schema.Description) == "" {
+		missing = append(missing, "Schema.Description")
+	}
+	if strings.TrimSpace(spec.Schema.Selection.AgentSummary) == "" {
+		missing = append(missing, "Schema.Selection.AgentSummary")
+	}
+	if len(spec.Schema.Selection.UseWhen) == 0 {
+		missing = append(missing, "Schema.Selection.UseWhen")
+	}
+	if len(spec.Schema.Selection.AvoidWhen) == 0 {
+		missing = append(missing, "Schema.Selection.AvoidWhen")
+	}
+	if len(spec.Schema.Selection.Examples) == 0 {
+		missing = append(missing, "Schema.Selection.Examples")
+	}
+	if len(missing) > 0 {
+		panic(fmt.Sprintf(
+			"command %q declares Schema but is missing %s: a declared Schema is the final source and must carry the full reviewed prose (no hints fallback)",
+			spec.Use, strings.Join(missing, ", ")))
+	}
 }
 
 // empty reports whether no SchemaDecl field was authored.
