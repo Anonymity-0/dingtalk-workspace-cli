@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +44,7 @@ func docVersionExists(ctx context.Context, nodeID string, version int) (bool, er
 		if cursor != "" {
 			toolArgs["nextCursor"] = cursor
 		}
-		text, err := callMCPToolReturnTextOnServer(ctx, "doc", "list_doc_versions", toolArgs)
+		text, err := callMCPReadToolReturnTextOnServer(ctx, "doc", "list_doc_versions", toolArgs)
 		if err != nil {
 			return false, err
 		}
@@ -2707,17 +2709,28 @@ CLI 内部自动完成全部流程:
 				return fmt.Errorf("flag --version is required")
 			}
 			version, _ := cmd.Flags().GetInt("version")
-			if !commandDryRun(cmd) {
-				exists, err := docVersionExists(cmd.Context(), nodeID, version)
-				if err != nil {
-					return err
-				}
-				if !exists {
-					return fmt.Errorf("文档版本 %d 不存在，已停止回滚；请先执行 dws doc version list --node %s --format json 获取可回滚版本", version, nodeID)
-				}
-				if !confirmDangerousAction(cmd, fmt.Sprintf("revert document to version %d", version), nodeID) {
-					return nil
-				}
+			exists, err := docVersionExists(cmd.Context(), nodeID, version)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return apperrors.NewValidation(
+					fmt.Sprintf("文档版本 %d 不存在，已停止回滚", version),
+					apperrors.WithReason("version_not_found"),
+					apperrors.WithHint(fmt.Sprintf(
+						"请先执行 dws doc version list --node %s --format json 获取可回滚版本",
+						nodeID,
+					)),
+					apperrors.WithActions("查询可用文档版本", "选择存在的版本号后重新预览"),
+				)
+			}
+			if err := cmdcore.ConfirmSafety(cmd, cli.SafetySpec{
+				Effect:       "destructive",
+				Risk:         "high",
+				Confirmation: "user_required",
+				Idempotency:  "unknown",
+			}); err != nil {
+				return err
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,

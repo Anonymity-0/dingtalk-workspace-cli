@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -960,8 +963,13 @@ func newDriveCommand() *cobra.Command {
 			if fileID == "" {
 				return fmt.Errorf("flag --node is required")
 			}
-			if !confirmDelete("钉盘节点", fileID) {
-				return nil
+			if err := cmdcore.ConfirmSafety(cmd, cli.SafetySpec{
+				Effect:       "destructive",
+				Risk:         "high",
+				Confirmation: "user_required",
+				Idempotency:  "unknown",
+			}); err != nil {
+				return err
 			}
 			// 同 dws doc delete：delete_document 工具仅注册在 doc MCP server 上，
 			// 钉盘节点（fileId）与文档节点共用同一套 dentryUuid 体系，因此显式

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -19,12 +20,26 @@ import (
 type contractDefectCaller struct {
 	dryRun    bool
 	calls     []guardedMutationCall
+	readCalls []guardedMutationCall
 	responses map[string]string
 	errors    map[string]error
 }
 
 func (c *contractDefectCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, guardedMutationCall{productID: productID, toolName: toolName, args: args})
+	key := productID + "/" + toolName
+	if err := c.errors[key]; err != nil {
+		return nil, err
+	}
+	text := c.responses[key]
+	if text == "" {
+		text = `{}`
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
+}
+
+func (c *contractDefectCaller) CallReadTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	c.readCalls = append(c.readCalls, guardedMutationCall{productID: productID, toolName: toolName, args: args})
 	key := productID + "/" + toolName
 	if err := c.errors[key]; err != nil {
 		return nil, err
@@ -60,6 +75,7 @@ func executeContractDefectCommand(t *testing.T, caller *contractDefectCaller, bu
 	}
 	root.SilenceErrors = true
 	root.SilenceUsage = true
+	root.SetIn(strings.NewReader(""))
 	root.SetArgs(args)
 	err := root.Execute()
 	return stdout.String(), err
@@ -81,19 +97,83 @@ func TestApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
 	}
 }
 
-func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T) {
-	caller := &contractDefectCaller{dryRun: true}
+func TestDocVersionRevertDryRunPreflightsVersionAndEmitsPreview(t *testing.T) {
+	caller := &contractDefectCaller{
+		dryRun: true,
+		responses: map[string]string{
+			"doc/list_doc_versions": `{"versions":[{"version":7}]}`,
+		},
+	}
 	output, err := executeContractDefectCommand(t, caller, newDocCommand,
 		"version", "revert", "--node", "node-dry-run", "--version", "7", "--dry-run")
 	if err != nil {
 		t.Fatalf("doc version revert dry-run returned error: %v", err)
 	}
 	if len(caller.calls) != 0 {
-		t.Fatalf("dry-run tool calls = %#v, want none", caller.calls)
+		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
+	}
+	if len(caller.readCalls) != 1 ||
+		caller.readCalls[0].productID != "doc" ||
+		caller.readCalls[0].toolName != "list_doc_versions" {
+		t.Fatalf("dry-run read calls = %#v, want doc/list_doc_versions", caller.readCalls)
 	}
 	if !strings.Contains(output, `"tool": "revert_doc_version"`) ||
 		!strings.Contains(output, `"version": 7`) {
 		t.Fatalf("dry-run output = %q, want version revert preview", output)
+	}
+}
+
+func TestDocVersionRevertDryRunRejectsMissingVersionBeforePreview(t *testing.T) {
+	caller := &contractDefectCaller{
+		dryRun: true,
+		responses: map[string]string{
+			"doc/list_doc_versions": `{"versions":[{"version":7}]}`,
+		},
+	}
+	output, err := executeContractDefectCommand(t, caller, newDocCommand,
+		"version", "revert", "--node", "node-dry-run", "--version", "999", "--dry-run")
+	if err == nil || !strings.Contains(err.Error(), "文档版本 999 不存在") {
+		t.Fatalf("missing version error = %v, want explicit rejection", err)
+	}
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "version_not_found" {
+		t.Fatalf("missing version error = %#v, want typed version_not_found", err)
+	}
+	if len(caller.readCalls) != 1 {
+		t.Fatalf("dry-run read calls = %#v, want one version lookup", caller.readCalls)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
+	}
+	if strings.Contains(output, `"tool": "revert_doc_version"`) {
+		t.Fatalf("missing version emitted a misleading mutation preview: %q", output)
+	}
+}
+
+func TestDriveDeleteDryRunSkipsConfirmationAndEOFIsObservable(t *testing.T) {
+	caller := &contractDefectCaller{dryRun: true}
+	output, err := executeContractDefectCommand(t, caller, newDriveCommand,
+		"delete", "--node", "node-dry-run", "--dry-run")
+	if err != nil {
+		t.Fatalf("drive delete dry-run returned error: %v", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
+	}
+	if !strings.Contains(output, `"tool": "delete_document"`) ||
+		!strings.Contains(output, `"nodeId": "node-dry-run"`) {
+		t.Fatalf("dry-run output = %q, want delete preview", output)
+	}
+
+	caller = &contractDefectCaller{}
+	_, err = executeContractDefectCommand(t, caller, newDriveCommand,
+		"delete", "--node", "node-eof")
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("closed-stdin error = %#v, want typed confirmation_required", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("closed-stdin mutation calls = %#v, want none", caller.calls)
 	}
 }
 
