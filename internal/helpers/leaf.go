@@ -117,10 +117,14 @@ type LeafSpec struct {
 	// 则中止且不派发。
 	Risk LeafRisk
 
-	// Call 是可插拔派发函数，非空时替代默认的 callMCPTool/callMCPToolOnServer。
-	// 供非 MCP 直连命令（如 devapp 走 executor.Runner）复用本框架：调用方用
-	// 闭包捕获自己的 runner/派发器即可。签名与默认路径一致——收到框架装配好
-	// 的 toolArgs，自行派发。
+	// ConstParams 是与 flag 无关的固定载荷（如 precheckOnly），在 flag 装配
+	// 之后并入 toolArgs。它们从不满足 Required。
+	ConstParams map[string]any
+
+	// Call 是执行体切面：非空时替代默认的 callMCPTool/callMCPToolOnServer。
+	// 供非 MCP 直连命令（如 devapp 走 executor.Runner）注入派发与响应处理。
+	// 收到的 toolArgs 已由 Flags/ConstParams 装配完成；Call 不应再写业务参数。
+	// 分页等横切能力由领域工具（如 devAppCallCursor）在执行侧处理，不进声明。
 	Call func(cmd *cobra.Command, tool string, args map[string]any) error
 
 	// Validate 是跨 flag 校验钩子（如时间区间、互斥关系），在 required
@@ -133,7 +137,8 @@ type LeafSpec struct {
 
 	// PostMount 在 flag 注册完成之后、RunE 设定之前对构建好的 cmd 做最终
 	// 调整（设置 Args/DisableAutoGenTag、调用 annotate/preferLegacy 等）。
-	// 无论是否使用 RunE 逃生舱都会执行。对标 lark shortcut 的 PostMount。
+	// 业务 flag 必须写在 Flags 里；分页 flag 由领域工具在 PostMount 注入，
+	// 不作为 LeafSpec 声明字段。
 	PostMount func(cmd *cobra.Command)
 }
 
@@ -160,6 +165,7 @@ func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 		Flags:       spec.Flags,
 		Constraints: spec.Constraints,
 		Risk:        spec.Risk,
+		ConstParams: spec.ConstParams,
 		Validate:    spec.Validate,
 		PostMount:   spec.PostMount,
 		RunE:        spec.RunE,

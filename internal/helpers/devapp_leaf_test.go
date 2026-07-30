@@ -283,7 +283,7 @@ func TestDevAppListLeaf(t *testing.T) {
 	}
 }
 
-// TestDevAppEventListLeaf 验证 cursor/pageSize 经 devAppApplyCursorParams 注入。
+// TestDevAppEventListLeaf 验证 cursor/pageSize 经 devAppCallCursor 工具注入。
 func TestDevAppEventListLeaf(t *testing.T) {
 	r := &fakeDevAppRunner{}
 	cmd := newDevAppEventListCommand(r)
@@ -294,9 +294,9 @@ func TestDevAppEventListLeaf(t *testing.T) {
 	if v, _ := r.got.Params["unifiedAppId"].(string); v != "APP-E" {
 		t.Fatalf("unifiedAppId = %q, want APP-E", v)
 	}
-	// page-size 默认 20，经 devAppApplyCursorParams 注入为 float64(20)。
-	if _, present := r.got.Params["pageSize"]; !present {
-		t.Fatal("pageSize missing, want injected by devAppApplyCursorParams")
+	// page-size 默认 20，由 registerDevAppCursorFlags + CallCursor 注入。
+	if v, present := r.got.Params["pageSize"]; !present || v != 20 {
+		t.Fatalf("pageSize = %v, want 20 from cursor tool", v)
 	}
 	// cursor 默认空：不入参。
 	if _, present := r.got.Params["cursor"]; present {

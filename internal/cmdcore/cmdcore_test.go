@@ -1001,3 +1001,67 @@ func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing
 		t.Fatal("confirmed orchestrate did not run")
 	}
 }
+
+func TestRegisterFlagTypedDefaults(t *testing.T) {
+	cmd := newTestCommand()
+	RegisterFlag(cmd, KindInt, "page-size", "20", "page")
+	RegisterFlag(cmd, KindBool, "flag", "true", "bool")
+	if def, _ := cmd.Flags().GetInt("page-size"); def != 20 {
+		t.Fatalf("int default = %d, want 20", def)
+	}
+	if def, _ := cmd.Flags().GetBool("flag"); !def {
+		t.Fatal("bool default = false, want true")
+	}
+	if got := cmd.Flags().Lookup("page-size").DefValue; got != "20" {
+		t.Fatalf("page-size DefValue = %q, want 20", got)
+	}
+}
+
+func TestBuildArgsIntArgDefaultFloor(t *testing.T) {
+	flags := []FlagSpec{{
+		Name: "page-size", Usage: "P", Kind: KindInt,
+		Default: "20", ArgDefault: "20", Bind: "pageSize",
+	}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+
+	args, err := BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args["pageSize"] != 20 {
+		t.Fatalf("unset pageSize = %#v, want 20", args["pageSize"])
+	}
+
+	_ = cmd.Flags().Set("page-size", "0")
+	args, err = BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args["pageSize"] != 20 {
+		t.Fatalf("zero pageSize = %#v, want floor 20", args["pageSize"])
+	}
+}
+
+func TestNewCommandMergesConstParams(t *testing.T) {
+	var got map[string]any
+	cmd := NewCommand(CommandSpec{
+		Use:         "pub",
+		Flags:       []FlagSpec{{Name: "id", Usage: "ID", Bind: "versionId", Trim: true}},
+		ConstParams: map[string]any{"precheckOnly": false},
+		Invoke: func(_ *Ctx, toolArgs map[string]any) error {
+			got = toolArgs
+			return nil
+		},
+	})
+	_ = cmd.Flags().Set("id", "V1")
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got["versionId"] != "V1" {
+		t.Fatalf("versionId = %#v", got["versionId"])
+	}
+	if got["precheckOnly"] != false {
+		t.Fatalf("precheckOnly = %#v, want false", got["precheckOnly"])
+	}
+}

@@ -249,7 +249,7 @@ func newDevAppEventListCommand(runner executor.Runner) *cobra.Command {
 		Use:     "list",
 		Short:   "查询应用已订阅的事件列表",
 		Example: "  dws dev app event list --unified-app-id UNIFIED_APP_ID --page-size 20 --format json",
-		Tool:    devAppEventListTool,
+		Tool: devAppEventListTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
 			{Name: "keyword", Usage: "事件搜索关键词，支持按事件码或事件名称模糊匹配", Bind: "keyword", Trim: true, OmitEmpty: true},
@@ -258,12 +258,8 @@ func newDevAppEventListCommand(runner executor.Runner) *cobra.Command {
 			_, err := requiredDevAppUnifiedID(cmd)
 			return err
 		},
-		// cursor/pageSize 由 devAppApplyCursorParams 注入（page-size 默认 20、floor 20）。
-		Call: devAppCallCursor(runner),
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppEventListTool)
-			registerDevAppCursorFlags(cmd)
-		},
+		Call:      devAppCallCursor(runner),
+		PostMount: devAppMetaCursor(devAppEventListTool),
 	})
 }
 
@@ -275,6 +271,7 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 		Tool:    devAppEventSubscribeTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
+			{Name: "event-codes", Usage: "事件码，多个用逗号或分号分隔", Bind: "eventCodes", Trim: true, Transform: transformDevAppListParam},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, "event subscribe"); err != nil {
@@ -288,15 +285,8 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		// eventCodes 数组由 Call 解析注入（与手写 params["eventCodes"] 等价）。
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			params["eventCodes"] = parseDevAppListFlag(cmd, "event-codes")
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppEventSubscribeTool)
-			cmd.Flags().String("event-codes", "", "事件码，多个用逗号或分号分隔")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppEventSubscribeTool),
 	})
 }
 
@@ -308,6 +298,7 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 		Tool:    devAppEventUnsubscribeTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
+			{Name: "event-codes", Usage: "事件码，多个用逗号或分号分隔", Bind: "eventCodes", Trim: true, Transform: transformDevAppListParam},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, "event unsubscribe"); err != nil {
@@ -321,14 +312,8 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			params["eventCodes"] = parseDevAppListFlag(cmd, "event-codes")
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppEventUnsubscribeTool)
-			cmd.Flags().String("event-codes", "", "事件码，多个用逗号或分号分隔")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppEventUnsubscribeTool),
 	})
 }
 
@@ -337,7 +322,7 @@ func newDevAppListCommand(runner executor.Runner) *cobra.Command {
 		Use:     "list",
 		Short:   "查询开放平台企业内部应用列表",
 		Example: "  dws dev app list --name DemoApp --page-size 20 --format json",
-		Tool:    devAppListTool,
+		Tool: devAppListTool,
 		Flags: []LeafFlag{
 			{Name: "name", Usage: "应用名称关键词", Bind: "name", Trim: true, OmitEmpty: true, Aliases: []string{"keyword"}},
 			{Name: "app-key", Usage: "按 appKey/clientId 过滤", Bind: "appKey", Trim: true, OmitEmpty: true},
@@ -349,13 +334,8 @@ func newDevAppListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "sort-type", Usage: "排序字段，如 gmt_modified", Bind: "sortType", Trim: true, OmitEmpty: true},
 			{Name: "sort-order", Usage: "排序方向 asc 或 desc", Bind: "sortOrder", Trim: true, OmitEmpty: true},
 		},
-		// cursor/pageSize 由 devAppApplyCursorParams 注入（退役 devAppApplyCursorParams 之外，
-		// 本命令同时退役 devAppPutString/devAppPutInt/devAppFlagOrFallback 全套手搓 helper）。
-		Call: devAppCallCursor(runner),
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppListTool)
-			registerDevAppCursorFlags(cmd)
-		},
+		Call:      devAppCallCursor(runner),
+		PostMount: devAppMetaCursor(devAppListTool),
 	})
 }
 
@@ -629,7 +609,7 @@ func newDevAppPermissionListCommand(runner executor.Runner) *cobra.Command {
 		Use:     "list",
 		Short:   "查询开放平台应用权限列表",
 		Example: "  dws dev app permission list --unified-app-id UNIFIED_APP_ID --keyword 通讯录 --page-size 20 --format json",
-		Tool:    devAppPermissionListTool,
+		Tool: devAppPermissionListTool,
 		// 命令级别名 "search" 由 PostMount 设回（LeafSpec 无 Command Aliases 字段）。
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
@@ -646,8 +626,7 @@ func newDevAppPermissionListCommand(runner executor.Runner) *cobra.Command {
 		Call: devAppCallCursor(runner),
 		PostMount: func(cmd *cobra.Command) {
 			cmd.Aliases = []string{"search"}
-			devAppLeafMeta(cmd, devAppPermissionListTool)
-			registerDevAppCursorFlags(cmd)
+			devAppMetaCursor(devAppPermissionListTool)(cmd)
 		},
 	})
 }
@@ -660,6 +639,7 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 		Tool:    devAppPermissionAddTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
+			{Name: "scope-values", Usage: "权限点 scopeValue，多个用逗号或分号分隔", Bind: "scopeValues", Trim: true, Transform: transformDevAppScopeValues},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, "permission add"); err != nil {
@@ -673,15 +653,8 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		// scope-values 经 devAppPermissionScopes 解析为 []string，由 Call 注入。
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			params["scopeValues"] = devAppPermissionScopes(cmd)
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppPermissionAddTool)
-			cmd.Flags().String("scope-values", "", "权限点 scopeValue，多个用逗号或分号分隔")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppPermissionAddTool),
 	})
 }
 
@@ -693,6 +666,7 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 		Tool:    devAppPermissionRmTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
+			{Name: "scope-values", Usage: "待取消权限点 scopeValue，多个用逗号或分号分隔", Bind: "scopeValues", Trim: true, Transform: transformDevAppScopeValues},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, "permission remove"); err != nil {
@@ -706,14 +680,8 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			params["scopeValues"] = devAppPermissionScopes(cmd)
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppPermissionRmTool)
-			cmd.Flags().String("scope-values", "", "待取消权限点 scopeValue，多个用逗号或分号分隔")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppPermissionRmTool),
 	})
 }
 
@@ -745,6 +713,7 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
 			{Name: "member-type", Usage: "成员类型，如 DEVELOPER (必填)", Bind: "memberType", Trim: true},
+			{Name: "user-ids", Usage: "成员 userId 列表，多个用逗号分隔 (必填)", Bind: "userIds", Trim: true, Aliases: []string{"member-user-ids"}, Transform: transformDevAppListParam},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, op); err != nil {
@@ -761,18 +730,8 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		// userIds 由 Call 解析注入（user-ids / member-user-ids 别名回退）。
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			users, _ := requiredDevAppUsers(cmd)
-			params["userIds"] = users
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppMemberAddTool)
-			cmd.Flags().String("user-ids", "", "成员 userId 列表，多个用逗号分隔 (必填)")
-			cmd.Flags().String("member-user-ids", "", "成员 userId 列表，多个用逗号分隔 (兼容旧参数)")
-			_ = cmd.Flags().MarkHidden("member-user-ids")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppMemberAddTool),
 	})
 }
 
@@ -786,6 +745,7 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
 			{Name: "member-type", Usage: "成员类型，如 DEVELOPER (必填)", Bind: "memberType", Trim: true},
+			{Name: "user-ids", Usage: "成员 userId 列表，多个用逗号分隔 (必填)", Bind: "userIds", Trim: true, Aliases: []string{"member-user-ids"}, Transform: transformDevAppListParam},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, op); err != nil {
@@ -802,17 +762,8 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			users, _ := requiredDevAppUsers(cmd)
-			params["userIds"] = users
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppMemberRemoveTool)
-			cmd.Flags().String("user-ids", "", "成员 userId 列表，多个用逗号分隔 (必填)")
-			cmd.Flags().String("member-user-ids", "", "成员 userId 列表，多个用逗号分隔 (兼容旧参数)")
-			_ = cmd.Flags().MarkHidden("member-user-ids")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppMemberRemoveTool),
 	})
 }
 
@@ -826,6 +777,9 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 		Tool: devAppSecurityConfigTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
+			{Name: "ip-whitelist", Usage: "出口 IP 白名单，多个用逗号或分号分隔（整组覆盖，非追加）", Bind: "ipWhitelist", Trim: true, Transform: transformDevAppListParam},
+			{Name: "redirect-urls", Usage: "登录重定向 URL，多个用逗号或分号分隔（整组覆盖，非追加）", Bind: "redirectUrls", Trim: true, Transform: transformDevAppListParam},
+			{Name: "sso-urls", Usage: "端内免登地址，多个用逗号或分号分隔（整组覆盖，非追加）", Bind: "ssoUrls", Trim: true, Transform: transformDevAppListParam},
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, op); err != nil {
@@ -842,25 +796,8 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		// 三个列表 flag 经 parseDevAppListFlag 解析，非空才入参（与手写一致）。
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			if v := parseDevAppListFlag(cmd, "ip-whitelist"); len(v) > 0 {
-				params["ipWhitelist"] = v
-			}
-			if v := parseDevAppListFlag(cmd, "redirect-urls"); len(v) > 0 {
-				params["redirectUrls"] = v
-			}
-			if v := parseDevAppListFlag(cmd, "sso-urls"); len(v) > 0 {
-				params["ssoUrls"] = v
-			}
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppSecurityConfigTool)
-			cmd.Flags().String("ip-whitelist", "", "出口 IP 白名单，多个用逗号或分号分隔（整组覆盖，非追加）")
-			cmd.Flags().String("redirect-urls", "", "登录重定向 URL，多个用逗号或分号分隔（整组覆盖，非追加）")
-			cmd.Flags().String("sso-urls", "", "端内免登地址，多个用逗号或分号分隔（整组覆盖，非追加）")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppSecurityConfigTool),
 	})
 }
 
@@ -1173,7 +1110,7 @@ func newDevAppVersionListCommand(runner executor.Runner) *cobra.Command {
 		Use:     "list",
 		Short:   "分页查询应用版本列表",
 		Example: "  dws dev app version list --unified-app-id UNIFIED_APP_ID --page-size 20 --format json",
-		Tool:    devAppVersionListTool,
+		Tool: devAppVersionListTool,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
 		},
@@ -1181,11 +1118,8 @@ func newDevAppVersionListCommand(runner executor.Runner) *cobra.Command {
 			_, err := requiredDevAppUnifiedID(cmd)
 			return err
 		},
-		Call: devAppCallCursor(runner),
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppVersionListTool)
-			registerDevAppCursorFlags(cmd)
-		},
+		Call:      devAppCallCursor(runner),
+		PostMount: devAppMetaCursor(devAppVersionListTool),
 	})
 }
 
@@ -1218,15 +1152,12 @@ func newDevAppVersionCheckApprovalCommand(runner executor.Runner) *cobra.Command
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
 			{Name: "version-id", Usage: "版本 ID (必填)", Bind: "versionId", Trim: true},
 		},
+		ConstParams: map[string]any{"precheckOnly": true},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			_, err := devAppVersionLocator(cmd)
 			return err
 		},
-		// 复用 publish 工具的服务端预检模式：precheckOnly=true 只返回审批要求，不发布。
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			params["precheckOnly"] = true
-			return runDevAppTool(runner, cmd, tool, params)
-		},
+		Call:      devAppCall(runner),
 		PostMount: devAppMeta(devAppVersionPublishTool),
 	})
 }
@@ -1241,7 +1172,9 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true},
 			{Name: "version-id", Usage: "版本 ID (必填)", Bind: "versionId", Trim: true},
 			{Name: "approver-user-id", Usage: "灰度选人模式下指定审批人 userId", Bind: "approverUserId", Trim: true, OmitEmpty: true},
+			{Name: "confirmed-sensitive", Usage: "确认发布包含高敏权限的版本", Kind: LeafBool, Bind: "confirmedSensitive"},
 		},
+		ConstParams: map[string]any{"precheckOnly": false},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			if err := devAppRequireWriteGuard(cmd, "version publish"); err != nil {
 				return err
@@ -1251,20 +1184,8 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		// precheckOnly=false（真发布）+ confirmed-sensitive 的 Changed() 语义由 Call 处理
-		//（框架无 LeafBool/Changed 语义，Bool flag 在 PostMount 注册）。
-		Call: func(cmd *cobra.Command, tool string, params map[string]any) error {
-			params["precheckOnly"] = false
-			if cmd.Flags().Changed("confirmed-sensitive") {
-				value, _ := cmd.Flags().GetBool("confirmed-sensitive")
-				params["confirmedSensitive"] = value
-			}
-			return runDevAppTool(runner, cmd, tool, params)
-		},
-		PostMount: func(cmd *cobra.Command) {
-			devAppLeafMeta(cmd, devAppVersionPublishTool)
-			cmd.Flags().Bool("confirmed-sensitive", false, "确认发布包含高敏权限的版本")
-		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppVersionPublishTool),
 	})
 }
 
@@ -1338,16 +1259,9 @@ func devAppLeafMeta(cmd *cobra.Command, tool string) {
 }
 
 // devAppCall 返回统一派发闭包（替代各命令重复的 Call: runDevAppTool 透传）。
+// 参数装配由 Flags/ConstParams 完成；本闭包只负责执行与响应处理。
 func devAppCall(runner executor.Runner) func(*cobra.Command, string, map[string]any) error {
 	return func(cmd *cobra.Command, tool string, params map[string]any) error {
-		return runDevAppTool(runner, cmd, tool, params)
-	}
-}
-
-// devAppCallCursor 同上，但先经 devAppApplyCursorParams 注入 cursor/pageSize。
-func devAppCallCursor(runner executor.Runner) func(*cobra.Command, string, map[string]any) error {
-	return func(cmd *cobra.Command, tool string, params map[string]any) error {
-		devAppApplyCursorParams(cmd, params)
 		return runDevAppTool(runner, cmd, tool, params)
 	}
 }
@@ -1864,6 +1778,34 @@ func splitDevAppList(raw string) []string {
 		}
 	}
 	return values
+}
+
+// transformDevAppListParam splits a comma/semicolon list for LeafFlag.Transform.
+// Empty input returns nil so the key is omitted from toolArgs.
+func transformDevAppListParam(raw string) (any, error) {
+	values := splitDevAppList(raw)
+	if len(values) == 0 {
+		return nil, nil
+	}
+	return values, nil
+}
+
+// transformDevAppScopeValues preserves the double-split used by
+// devAppPermissionScopes (each comma-separated token may itself be a list).
+func transformDevAppScopeValues(raw string) (any, error) {
+	values := splitDevAppList(raw)
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		for _, part := range splitDevAppList(value) {
+			if part != "" {
+				out = append(out, part)
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out, nil
 }
 
 // 应用定位：写操作统一只用 --unified-app-id；dev app get 额外支持只读 --app-key。

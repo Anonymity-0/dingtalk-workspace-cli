@@ -76,7 +76,7 @@ type FlagSpec struct {
 	Name    string   // flag name (kebab-case)
 	Usage   string   // registration usage text
 	Kind    FlagKind // value type, defaults to KindString
-	Default string   // registration default (only KindString uses it at registration; as a fallback-chain tail it applies to all kinds without shadowing aliases/env)
+	Default string // registration default for every Kind; also the fallback-chain tail when aliases/env are empty
 
 	// Required, when true, validates a non-empty effective value in RunE. Plain
 	// Required flags aggregate into a cmdutil.ValidateRequiredFlags-compatible
@@ -91,8 +91,10 @@ type FlagSpec struct {
 	Aliases []string // hidden aliases, registered with the main flag's Kind; used in order when the main flag is not explicitly provided
 	EnvVar  string   // environment variable consulted when the effective value is empty (an integer flag's env value must be parseable)
 	// ArgDefault covers the case where the registration default is empty but
-	// toolArgs still needs a fallback; used as the arg value when the effective
-	// value is empty.
+	// toolArgs still needs a fallback. For KindString it is used when the
+	// effective value is empty. For KindInt it is also the floor: when the
+	// resolved integer is < 1, ArgDefault is emitted instead (cursor page-size
+	// semantics).
 	ArgDefault string
 	// Bind is the toolArgs key; empty uses Name.
 	Bind string
@@ -181,12 +183,16 @@ type CommandSpec struct {
 	Flags       []FlagSpec
 	Constraints []Constraint
 	Risk        Risk
+	// ConstParams are fixed toolArgs merged after flag assembly (e.g. precheckOnly).
+	// They are not flags and never satisfy Required.
+	ConstParams map[string]any
 
 	// Validate is the cross-flag validation hook, run after required/constraint
 	// checks and before args assembly; nil skips it.
 	Validate func(cmd *cobra.Command, args []string) error
 	// PostMount adjusts the built command after flag registration and before
-	// RunE is set (Args/DisableAutoGenTag/annotate/…); always runs.
+	// RunE is set (Args/DisableAutoGenTag/annotate/…); always runs. Business
+	// flags belong in Flags, not here.
 	PostMount func(cmd *cobra.Command)
 	// RunE fully replaces the generated body (escape hatch).
 	RunE func(cmd *cobra.Command, args []string) error
@@ -326,6 +332,9 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		for key, value := range spec.ConstParams {
+			toolArgs[key] = value
+		}
 		if !ConfirmRisk(cmd, spec.Risk) {
 			return apperrors.NewValidation("用户取消了操作")
 		}
@@ -373,15 +382,20 @@ func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {
 	}
 }
 
-// RegisterFlag registers one flag by Kind; the registration default is only used
-// by KindString (other kinds treat Default purely as a fallback-chain tail,
-// matching the existing KindInt behavior).
+// RegisterFlag registers one flag by Kind. Default is applied at registration
+// for every kind so --help DefValue matches the declared fallback.
 func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 	switch kind {
 	case KindInt:
-		cmd.Flags().Int(name, 0, usage)
+		defInt := 0
+		if def != "" {
+			if v, err := strconv.Atoi(def); err == nil {
+				defInt = v
+			}
+		}
+		cmd.Flags().Int(name, defInt, usage)
 	case KindBool:
-		cmd.Flags().Bool(name, false, usage)
+		cmd.Flags().Bool(name, def == "true", usage)
 	case KindStringSlice:
 		cmd.Flags().StringSlice(name, nil, usage)
 	default:
@@ -477,6 +491,14 @@ func BuildArgs(cmd *cobra.Command, flags []FlagSpec) (map[string]any, error) {
 			v, err := integerValue(cmd, flag)
 			if err != nil {
 				return nil, err
+			}
+			// ArgDefault floors values < 1 (cursor page-size: 0/-1 → default).
+			if v < 1 && flag.ArgDefault != "" {
+				parsed, err := strconv.ParseInt(flag.ArgDefault, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("flag --%s: invalid ArgDefault %q", flag.Name, flag.ArgDefault)
+				}
+				v = parsed
 			}
 			// Keep "non-zero only" (putInt semantics).
 			if v != 0 {
