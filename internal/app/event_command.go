@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"io"
 	"log/slog"
 	"os"
@@ -360,6 +361,38 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 		Required:    false,
 		Variadic:    true,
 		Index:       0,
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+				UseWhen: []string{
+					"需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
+					"用户明确要求监听当前身份的所有单聊或所有群消息",
+					"需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
+					"需要监听指定群的标题变更、成员进退群或群解散事件",
+					"监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
+					"同一目标、同一过滤条件需要同时监听多个兼容事件",
+				},
+				AvoidWhen: []string{
+					"只查历史聊天记录时用 chat 查询命令",
+					"只看事件目录/字段时用 event list / event schema",
+				},
+				Examples: []string{
+					"dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
+					"dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson",
+				},
+			},
+		},
 	})
 	return cmd
 }
@@ -728,6 +761,28 @@ func newEventListCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&enabledOnly, "enabled-only", false, "个人事件目录只显示 enabled")
 	cmd.Flags().BoolVar(&includePending, "include-pending", false, "个人事件目录包含 pending 项")
 	hideEventInternalFlags(cmd, "as", "all", "all-editions", "client-id")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "列出支持的个人事件目录与状态说明",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "local", Availability: "available",
+				Reason: "命令读取 CLI 内置的个人事件目录，不绑定 pinned MCP RPC",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "列出支持的个人事件目录与状态说明",
+				UseWhen:      []string{"尚不知道可用 event_key，需要先盘点个人事件目录"},
+				AvoidWhen: []string{
+					"已知 event_key 要看 payload 字段时用 event schema",
+					"要开始监听时用 event consume",
+				},
+				Examples: []string{"dws event list --format json"},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -796,6 +851,25 @@ func newEventStatusCommand() *cobra.Command {
 	cmd.Flags().StringVar(&personalOpts.StreamSourceID, "stream-source-id", strings.TrimSpace(os.Getenv("DWS_STREAM_SOURCE_ID")),
 		"个人事件 sourceId；开源版默认 open，可由 edition 覆盖")
 	hideEventInternalFlags(cmd, "as", "all", "all-editions", "client-id", "fail-on-orphan")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "查看个人事件订阅、本地 bus 与消费进程状态",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "查看个人事件订阅、本地 bus 与消费进程状态",
+				UseWhen:      []string{"需要确认订阅是否活跃、bus/consume 是否仍在运行"},
+				AvoidWhen:    []string{"取消订阅用 event stop；列事件目录用 event list"},
+				Examples:     []string{"dws event status --format json"},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -1101,6 +1175,29 @@ func newEventStopCommand() *cobra.Command {
 		Description: "要取消的个人事件订阅 ID；与 --all 二选一",
 		Required:    false,
 		Index:       0,
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "取消个人事件订阅并停止对应本地消费",
+			DryRun:      &helpers.LeafDryRunDecl{PreviewKind: "request", RemoteReads: false},
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "取消个人事件订阅并停止对应本地消费",
+				UseWhen:      []string{"用户明确要求取消已知 subscribe_id（或清理全部）并停止消费"},
+				AvoidWhen: []string{
+					"只需检查状态时用 event status",
+					"目标订阅不明确或用户未确认时不要停止",
+				},
+				Examples: []string{"dws event stop SUBSCRIBE_ID --dry-run"},
+			},
+		},
 	})
 	return cmd
 }

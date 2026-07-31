@@ -3,27 +3,27 @@
   "tools": {
     "hrbrain profile career": {
       "agent_summary": "查询员工在公司内的职业历程",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要查看绩效记录时改用 dws hrbrain profile performance"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain profile career --work-no WORK_NO"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询员工在公司内的职业历程",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询员工在公司内的职业历程",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -31,13 +31,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -47,7 +47,7 @@
           "value": [
             "要查看绩效记录时改用 dws hrbrain profile performance"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -55,7 +55,7 @@
               "value": [
                 "要查看绩效记录时改用 dws hrbrain profile performance"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -63,13 +63,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -77,13 +77,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -93,7 +93,7 @@
           "value": [
             "dws hrbrain profile career --work-no WORK_NO"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -101,7 +101,7 @@
               "value": [
                 "dws hrbrain profile career --work-no WORK_NO"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -109,13 +109,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -123,13 +123,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -137,13 +137,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_employee_career, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_employee_career, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -151,14 +151,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -167,13 +167,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -188,13 +188,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -204,7 +204,7 @@
           "value": [
             "需要查看某员工在公司内的岗位/职级变动历史时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -212,7 +212,7 @@
               "value": [
                 "需要查看某员工在公司内的岗位/职级变动历史时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -225,7 +225,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -235,27 +235,27 @@
     },
     "hrbrain profile labels": {
       "agent_summary": "根据员工工号列表获取员工标签",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要查看职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain profile labels --staff-ids WORK_NO1,WORK_NO2"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "根据员工工号列表获取员工标签",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "根据员工工号列表获取员工标签",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -263,13 +263,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -279,7 +279,7 @@
           "value": [
             "要查看职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -287,7 +287,7 @@
               "value": [
                 "要查看职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -295,13 +295,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -309,13 +309,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -325,7 +325,7 @@
           "value": [
             "dws hrbrain profile labels --staff-ids WORK_NO1,WORK_NO2"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -333,7 +333,7 @@
               "value": [
                 "dws hrbrain profile labels --staff-ids WORK_NO1,WORK_NO2"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -341,13 +341,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -355,13 +355,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -369,13 +369,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_profile_label, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_profile_label, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -383,14 +383,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -399,13 +399,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -420,13 +420,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -436,7 +436,7 @@
           "value": [
             "需要按一个或多个工号批量查看员工标签时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -444,7 +444,7 @@
               "value": [
                 "需要按一个或多个工号批量查看员工标签时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -457,7 +457,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -467,27 +467,27 @@
     },
     "hrbrain profile metadata": {
       "agent_summary": "查询员工档案元数据结构，用于构造档案数据查询参数",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "已知模块与字段编码，直接查询档案数据时改用 dws hrbrain profile query"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain profile metadata --work-no WORK_NO"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询员工档案元数据结构，用于构造档案数据查询参数",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询员工档案元数据结构，用于构造档案数据查询参数",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -495,13 +495,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -511,7 +511,7 @@
           "value": [
             "已知模块与字段编码，直接查询档案数据时改用 dws hrbrain profile query"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -519,7 +519,7 @@
               "value": [
                 "已知模块与字段编码，直接查询档案数据时改用 dws hrbrain profile query"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -527,13 +527,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -541,13 +541,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -557,7 +557,7 @@
           "value": [
             "dws hrbrain profile metadata --work-no WORK_NO"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -565,7 +565,7 @@
               "value": [
                 "dws hrbrain profile metadata --work-no WORK_NO"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -573,13 +573,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -587,13 +587,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -601,13 +601,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_profile_metadata, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_profile_metadata, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -615,14 +615,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -631,13 +631,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -652,13 +652,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -668,7 +668,7 @@
           "value": [
             "需要先了解某员工档案有哪些模块/字段，以构造 hrbrain profile query 的 --data-queries 参数时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -676,7 +676,7 @@
               "value": [
                 "需要先了解某员工档案有哪些模块/字段，以构造 hrbrain profile query 的 --data-queries 参数时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -689,7 +689,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -699,27 +699,27 @@
     },
     "hrbrain profile performance": {
       "agent_summary": "查询员工绩效记录",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要查看职业历程时改用 dws hrbrain profile career"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain profile performance --work-no WORK_NO"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询员工绩效记录",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询员工绩效记录",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -727,13 +727,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -743,7 +743,7 @@
           "value": [
             "要查看职业历程时改用 dws hrbrain profile career"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -751,7 +751,7 @@
               "value": [
                 "要查看职业历程时改用 dws hrbrain profile career"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -759,13 +759,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -773,13 +773,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -789,7 +789,7 @@
           "value": [
             "dws hrbrain profile performance --work-no WORK_NO"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -797,7 +797,7 @@
               "value": [
                 "dws hrbrain profile performance --work-no WORK_NO"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -805,13 +805,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -819,13 +819,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -833,13 +833,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_employee_performance, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_employee_performance, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -847,14 +847,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -863,13 +863,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -884,13 +884,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -900,7 +900,7 @@
           "value": [
             "需要查看某员工的历史绩效评级/记录时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -908,7 +908,7 @@
               "value": [
                 "需要查看某员工的历史绩效评级/记录时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -921,7 +921,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -931,7 +931,7 @@
     },
     "hrbrain profile query": {
       "agent_summary": "按模块批量查询员工档案数据",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "尚不清楚可查询的模块/字段时先用 dws hrbrain profile metadata",
@@ -939,20 +939,20 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain profile query --work-no WORK_NO --data-queries '[{\"modelCode\":\"basic\",\"fields\":[\"name\",\"dept\"]}]'"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "按模块批量查询员工档案数据",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "按模块批量查询员工档案数据",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -960,13 +960,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -977,7 +977,7 @@
             "尚不清楚可查询的模块/字段时先用 dws hrbrain profile metadata",
             "只需要职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -986,7 +986,7 @@
                 "尚不清楚可查询的模块/字段时先用 dws hrbrain profile metadata",
                 "只需要职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -994,13 +994,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1014,13 +1014,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1036,7 +1036,7 @@
           "value": [
             "dws hrbrain profile query --work-no WORK_NO --data-queries '[{\"modelCode\":\"basic\",\"fields\":[\"name\",\"dept\"]}]'"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1044,7 +1044,7 @@
               "value": [
                 "dws hrbrain profile query --work-no WORK_NO --data-queries '[{\"modelCode\":\"basic\",\"fields\":[\"name\",\"dept\"]}]'"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1052,13 +1052,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1072,13 +1072,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1086,13 +1086,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool query_profile_data, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool query_profile_data, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1100,14 +1100,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -1116,13 +1116,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1137,13 +1137,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1159,7 +1159,7 @@
           "value": [
             "已知模块与字段编码（通常先用 hrbrain profile metadata 获取），需要批量查询员工档案数据时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1167,7 +1167,7 @@
               "value": [
                 "已知模块与字段编码（通常先用 hrbrain profile metadata 获取），需要批量查询员工档案数据时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1180,7 +1180,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -1190,7 +1190,7 @@
     },
     "hrbrain search employees": {
       "agent_summary": "按关键词、部门、职务、职级、人才池等条件搜索员工",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要复杂组合条件（表达式）搜索时改用 dws hrbrain search employees-structured",
@@ -1198,7 +1198,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain search employees --keyword \"张三\" --page 1 --page-size 20",
         "dws hrbrain search employees --dept-name \"技术部\" --job-level P7"
@@ -1206,13 +1206,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "按关键词、部门、职务、职级、人才池等条件搜索员工",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "按关键词、部门、职务、职级、人才池等条件搜索员工",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1220,13 +1220,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1237,7 +1237,7 @@
             "需要复杂组合条件（表达式）搜索时改用 dws hrbrain search employees-structured",
             "已限定某个人才池要看全部人员时改用 dws hrbrain talent-pool employees"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1246,7 +1246,7 @@
                 "需要复杂组合条件（表达式）搜索时改用 dws hrbrain search employees-structured",
                 "已限定某个人才池要看全部人员时改用 dws hrbrain talent-pool employees"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1254,13 +1254,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1274,13 +1274,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1297,7 +1297,7 @@
             "dws hrbrain search employees --keyword \"张三\" --page 1 --page-size 20",
             "dws hrbrain search employees --dept-name \"技术部\" --job-level P7"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1306,7 +1306,7 @@
                 "dws hrbrain search employees --keyword \"张三\" --page 1 --page-size 20",
                 "dws hrbrain search employees --dept-name \"技术部\" --job-level P7"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1314,13 +1314,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1334,13 +1334,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1348,13 +1348,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool search_employees, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool search_employees, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1362,14 +1362,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -1378,13 +1378,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1399,13 +1399,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1421,7 +1421,7 @@
           "value": [
             "需要按姓名/工号/部门/职务/职级等基础条件模糊找人时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1429,7 +1429,7 @@
               "value": [
                 "需要按姓名/工号/部门/职务/职级等基础条件模糊找人时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1442,7 +1442,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -1452,7 +1452,7 @@
     },
     "hrbrain search employees-structured": {
       "agent_summary": "使用高级条件表达式（originJson）搜索员工",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只是简单关键词/部门/职级搜索时改用 dws hrbrain search employees",
@@ -1460,20 +1460,20 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain search employees-structured --origin-json '{\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}' --fields '[{\"label\":\"姓名\",\"value\":\"name\"}]'"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "使用高级条件表达式（originJson）搜索员工",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "使用高级条件表达式（originJson）搜索员工",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1481,13 +1481,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1498,7 +1498,7 @@
             "只是简单关键词/部门/职级搜索时改用 dws hrbrain search employees",
             "尚未获取可用字段与操作符时先用 dws hrbrain search fields"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1507,7 +1507,7 @@
                 "只是简单关键词/部门/职级搜索时改用 dws hrbrain search employees",
                 "尚未获取可用字段与操作符时先用 dws hrbrain search fields"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1515,13 +1515,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1535,13 +1535,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1557,7 +1557,7 @@
           "value": [
             "dws hrbrain search employees-structured --origin-json '{\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}' --fields '[{\"label\":\"姓名\",\"value\":\"name\"}]'"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1565,7 +1565,7 @@
               "value": [
                 "dws hrbrain search employees-structured --origin-json '{\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}' --fields '[{\"label\":\"姓名\",\"value\":\"name\"}]'"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1573,13 +1573,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1593,13 +1593,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1607,13 +1607,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool search_employees_structured, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool search_employees_structured, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1621,14 +1621,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -1637,13 +1637,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1658,13 +1658,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1680,7 +1680,7 @@
           "value": [
             "需要使用组合过滤条件表达式搜索员工，且已通过 dws hrbrain search fields 获取有权限的字段/操作符时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1688,7 +1688,7 @@
               "value": [
                 "需要使用组合过滤条件表达式搜索员工，且已通过 dws hrbrain search fields 获取有权限的字段/操作符时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1701,7 +1701,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -1711,27 +1711,27 @@
     },
     "hrbrain search fields": {
       "agent_summary": "获取当前操作人有权限使用的高级搜索字段与操作符列表",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只是简单关键词搜索时改用 dws hrbrain search employees"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain search fields"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "获取当前操作人有权限使用的高级搜索字段与操作符列表",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "获取当前操作人有权限使用的高级搜索字段与操作符列表",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1739,13 +1739,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1755,7 +1755,7 @@
           "value": [
             "只是简单关键词搜索时改用 dws hrbrain search employees"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1763,7 +1763,7 @@
               "value": [
                 "只是简单关键词搜索时改用 dws hrbrain search employees"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1771,13 +1771,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1791,13 +1791,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1813,7 +1813,7 @@
           "value": [
             "dws hrbrain search fields"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1821,7 +1821,7 @@
               "value": [
                 "dws hrbrain search fields"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1829,13 +1829,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1849,13 +1849,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1863,13 +1863,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_search_fields, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_search_fields, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1877,14 +1877,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -1893,13 +1893,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1907,13 +1907,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1929,7 +1929,7 @@
           "value": [
             "在调用 dws hrbrain search employees-structured 之前，需要确认可用字段与操作符时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1937,7 +1937,7 @@
               "value": [
                 "在调用 dws hrbrain search employees-structured 之前，需要确认可用字段与操作符时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1950,7 +1950,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -1959,27 +1959,27 @@
     },
     "hrbrain talent-pool detail": {
       "agent_summary": "根据人才池编码获取人才池详细信息",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain talent-pool detail --pool-code POOL_CODE"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "根据人才池编码获取人才池详细信息",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "根据人才池编码获取人才池详细信息",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1987,13 +1987,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2003,7 +2003,7 @@
           "value": [
             "尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2011,7 +2011,7 @@
               "value": [
                 "尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2019,13 +2019,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2039,13 +2039,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2061,7 +2061,7 @@
           "value": [
             "dws hrbrain talent-pool detail --pool-code POOL_CODE"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2069,7 +2069,7 @@
               "value": [
                 "dws hrbrain talent-pool detail --pool-code POOL_CODE"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2077,13 +2077,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2097,13 +2097,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2111,13 +2111,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_talent_pool_detail, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_talent_pool_detail, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2125,14 +2125,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -2141,13 +2141,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2162,13 +2162,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2184,7 +2184,7 @@
           "value": [
             "已知 poolCode，需要查看某个人才池的详细信息时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2192,7 +2192,7 @@
               "value": [
                 "已知 poolCode，需要查看某个人才池的详细信息时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2205,7 +2205,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -2215,7 +2215,7 @@
     },
     "hrbrain talent-pool employees": {
       "agent_summary": "查询指定人才池内的人员列表",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找",
@@ -2223,20 +2223,20 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain talent-pool employees --pool-code POOL_CODE --page 1 --page-size 20"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询指定人才池内的人员列表",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询指定人才池内的人员列表",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2244,13 +2244,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2261,7 +2261,7 @@
             "尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找",
             "不限定人才池的人员搜索请改用 dws hrbrain search employees"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2270,7 +2270,7 @@
                 "尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找",
                 "不限定人才池的人员搜索请改用 dws hrbrain search employees"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2278,13 +2278,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2292,13 +2292,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2308,7 +2308,7 @@
           "value": [
             "dws hrbrain talent-pool employees --pool-code POOL_CODE --page 1 --page-size 20"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2316,7 +2316,7 @@
               "value": [
                 "dws hrbrain talent-pool employees --pool-code POOL_CODE --page 1 --page-size 20"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2324,13 +2324,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2338,13 +2338,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2352,13 +2352,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool list_pool_employees, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool list_pool_employees, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2366,14 +2366,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -2382,13 +2382,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2403,13 +2403,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2419,7 +2419,7 @@
           "value": [
             "已知 poolCode，需要查看该人才池内的人员名单时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2427,7 +2427,7 @@
               "value": [
                 "已知 poolCode，需要查看该人才池内的人员名单时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2440,7 +2440,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
@@ -2450,7 +2450,7 @@
     },
     "hrbrain talent-pool list": {
       "agent_summary": "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "已知 poolCode 只需要单个人才池详情时改用 dws hrbrain talent-pool detail",
@@ -2458,7 +2458,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws hrbrain talent-pool list --page 1 --page-size 20",
         "dws hrbrain talent-pool list --keyword \"储备干部\""
@@ -2466,13 +2466,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2480,13 +2480,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2497,7 +2497,7 @@
             "已知 poolCode 只需要单个人才池详情时改用 dws hrbrain talent-pool detail",
             "要查看人才池内人员名单时改用 dws hrbrain talent-pool employees"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2506,7 +2506,7 @@
                 "已知 poolCode 只需要单个人才池详情时改用 dws hrbrain talent-pool detail",
                 "要查看人才池内人员名单时改用 dws hrbrain talent-pool employees"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2514,13 +2514,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2534,13 +2534,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2557,7 +2557,7 @@
             "dws hrbrain talent-pool list --page 1 --page-size 20",
             "dws hrbrain talent-pool list --keyword \"储备干部\""
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2566,7 +2566,7 @@
                 "dws hrbrain talent-pool list --page 1 --page-size 20",
                 "dws hrbrain talent-pool list --keyword \"储备干部\""
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2574,13 +2574,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2594,13 +2594,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2608,13 +2608,13 @@
         },
         "interface_reason": {
           "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool list_talent_pools, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool list_talent_pools, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2622,14 +2622,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -2638,13 +2638,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2659,13 +2659,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2681,7 +2681,7 @@
           "value": [
             "需要列出组织中的人才池，或按名称/类型/创建人/标签筛选人才池时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2689,7 +2689,7 @@
               "value": [
                 "需要列出组织中的人才池，或按名称/类型/创建人/标签筛选人才池时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2702,7 +2702,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],

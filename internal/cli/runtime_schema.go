@@ -50,7 +50,7 @@ const (
 	runtimeSchemaFlagRequiredWhenAnnotation = "dws.schema.required_when"
 	runtimeSchemaFlagExampleAnnotation      = "dws.schema.example"
 
-	// Contract surface (cmdcore / LeafSpec) embedded onto the live Cobra leaf so
+	// Contract surface (command / LeafSpec) embedded onto the live Cobra leaf so
 	// Schema generation can project parameters/constraints/Risk without a second
 	// source of truth. See docs/flag-help-schema-homology.md.
 	runtimeSchemaContractAnnotation    = "dws.schema.contract"
@@ -323,14 +323,14 @@ func AnnotateRuntimeFlagExample(cmd *cobra.Command, flagName, example string) {
 	}
 }
 
-// AnnotateRuntimeContract marks a command as carrying a cmdcore/LeafSpec
+// AnnotateRuntimeContract marks a command as carrying a command/LeafSpec
 // Contract surface. Schema assembly treats embedded flag annotations and, when
 // set, AnnotateRuntimeRisk as Contract-authored facts (path A homology).
 func AnnotateRuntimeContract(cmd *cobra.Command) {
 	if cmd == nil {
 		return
 	}
-	setRuntimeCommandAnnotation(cmd, runtimeSchemaContractAnnotation, "cmdcore")
+	setRuntimeCommandAnnotation(cmd, runtimeSchemaContractAnnotation, "command")
 }
 
 // AnnotateRuntimeRisk records the Contract Risk string (read|write|high-risk-write)
@@ -410,17 +410,17 @@ func applyContractRiskToSafety(base SafetySpec, contractRisk string) SafetySpec 
 	switch strings.TrimSpace(contractRisk) {
 	case "write":
 		out.Effect = "write"
-		out.EffectSource = "cmdcore.contract"
+		out.EffectSource = "corecmd.contract"
 		out.Risk = "medium"
 		out.Confirmation = "user_required"
 	case "high-risk-write":
 		out.Effect = "destructive"
-		out.EffectSource = "cmdcore.contract"
+		out.EffectSource = "corecmd.contract"
 		out.Risk = "high"
 		out.Confirmation = "user_required"
 	case "read":
 		out.Effect = "read"
-		out.EffectSource = "cmdcore.contract"
+		out.EffectSource = "corecmd.contract"
 		out.Risk = "low"
 		out.Confirmation = "not_required"
 	}
@@ -437,7 +437,7 @@ func applyContractGateToSafety(base SafetySpec, gate string) SafetySpec {
 	out.Confirmation = "user_required"
 	if out.Effect == "" || out.Effect == "read" {
 		out.Effect = "write"
-		out.EffectSource = "cmdcore.contract_gate"
+		out.EffectSource = "corecmd.contract_gate"
 	}
 	if out.Risk == "" || out.Risk == "low" {
 		out.Risk = "medium"

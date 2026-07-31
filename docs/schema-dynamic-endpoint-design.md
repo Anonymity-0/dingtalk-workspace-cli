@@ -125,7 +125,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 
 | 来源 | 负责内容 | 明确不负责 |
 |---|---|---|
-| Contract / LeafSpec / `cmdcore.CommandSpec` | **CLI 表面权威**：flags、defaults、required、enum、关系约束、运行时 Risk；编译为 cobra 与 help | canonical identity、selection 文案、虚构 RPC |
+| Contract / LeafSpec / `corecmd.Spec` | **CLI 表面权威**：flags、defaults、required、enum、关系约束、运行时 Risk；编译为 cobra 与 help | canonical identity、selection 文案、虚构 RPC |
 | `schema_command_registry.json` | reviewed `CommandRegistry`：稳定 canonical identity、primary CLI path、alias、exposure 和导航 | 创建 Cobra 命令/flag、参数、安全、endpoint/token |
 | reviewed manual command additions | 将一个精确存在的 runnable Cobra leaf 合并进 `EffectiveCommandRegistry`；必须 reviewed 且带 reason | 运行时 fallback、覆盖冲突 identity、创建命令 |
 | Go/Cobra | Contract 编译后的可执行投影：路径是否真实可执行、Cobra 接受的 flag、DefValue、help 文本 | 稳定 canonical identity、Agent 场景选择、虚构 RPC；**不得**成为与 Contract 平行的第二套 flag 权威 |
@@ -147,7 +147,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 摘要：
 
 - **同源面**：Contract → cobra flags ≡ `--help` Flags ≡ **嵌入注解后的** schema `parameters` / 关系约束；显式 `Risk` 经 `dws.schema.risk` overlay 进 Schema Safety。
-- **嵌入点**：`cmdcore.embedContractIntoSchema` 写入 `dws.schema.contract` / property / type / required；`AnnotateConstraints` 写入 constraints；Schema 组装（`runtimeToolSpecFromMetadata`）消费这些注解并进入 `go:embed` catalog。
+- **嵌入点**：`command.embedContractIntoSchema` 写入 `dws.schema.contract` / property / type / required；`AnnotateConstraints` 写入 constraints；Schema 组装（`runtimeToolSpecFromMetadata`）消费这些注解并进入 `go:embed` catalog。
 - **硬规则**：CLI 表面事实 = **声明（Contract 数据字段）OR 人工标注**；禁止纯推断。非 CLI 表面字段（identity / selection / interface）必须有**评审源**。声明写法见同源文档 §1.2；标注见 §1.3；**`ToolSpec` 全字段权威见 RFC §5.0.4 / 同源 §1.4**。
 - **非同源面（有意）**：identity（registry）、selection 文案（hints/selection）、RPC 形状（MCP meta 仅 `interface_*`）、dry-run 正能力 registry。
 - **禁止**：以 MCP meta 为主通道生成 Leaf/Shortcut 的 flag；hints overlay 改写 type/required/default；Schema 字段无权威归属。
@@ -175,7 +175,7 @@ CI 同时禁止重新加入 generated native contracts 或 materialization 入�
 
 `schema_command_registry.json` 是 reviewed source，不是生成快照。它必须保留
 `$schema: ./schema_command_registry.schema.json`。该 JSON Schema 对 root、product
-和 CommandSpec 全部使用 `additionalProperties: false`，并约束：
+和 corecmd.Spec 全部使用 `additionalProperties: false`，并约束：
 
 - canonical identity、`source_product_id` 和精确 CLI path 的格式；
 - `aliases` 唯一且不能复用 primary path；

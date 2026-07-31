@@ -294,13 +294,13 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 	// legacy-path tools. Reviewed is assembly-derived (declarations are
 	// code-reviewed by construction), never author-provided.
 	if strings.TrimSpace(selection.AgentSummarySource) == "" && strings.TrimSpace(selection.AgentSummary) != "" {
-		selection.AgentSummarySource = "cmdcore.SchemaDecl"
+		selection.AgentSummarySource = "corecmd.SchemaDecl"
 	}
 	if selection.SourceRefs == nil {
-		selection.SourceRefs = []string{"cmdcore.SchemaDecl"}
+		selection.SourceRefs = []string{"corecmd.SchemaDecl"}
 	}
 	if strings.TrimSpace(selection.MetadataSource) == "" {
-		selection.MetadataSource = "cmdcore.contract"
+		selection.MetadataSource = "corecmd.contract"
 	}
 	if selection.Reviewed == nil {
 		reviewed := true
@@ -314,7 +314,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 		Display:         entry.ProductName,
 		Title:           title,
 		Description:     description,
-		MetadataSource:  "cmdcore.contract",
+		MetadataSource:  "corecmd.contract",
 		Parameters:      parameters,
 		Constraints:     constraints,
 		Positionals:     positionals,
@@ -335,7 +335,7 @@ func contractFinalProvenance(identity ToolIdentitySpec, title, description strin
 	prov := func(value any, sourceRef string) FieldProvenance {
 		return resolvedFieldProvenance(
 			value,
-			"cmdcore.contract",
+			"corecmd.contract",
 			sourceRef,
 			"contract_final",
 			"contract_pass_through",
@@ -343,27 +343,27 @@ func contractFinalProvenance(identity ToolIdentitySpec, title, description strin
 		)
 	}
 	out := map[string]FieldProvenance{
-		"canonical_path":  prov(identity.CanonicalPath, "cmdcore.SchemaDecl"),
-		"title":           prov(title, "cmdcore.SchemaDecl"),
-		"description":     prov(description, "cmdcore.SchemaDecl"),
-		"metadata_source": prov("cmdcore.contract", "cmdcore.SchemaDecl"),
-		"effect":          prov(safety.Effect, "cmdcore.SchemaDecl"),
-		"risk":            prov(safety.Risk, "cmdcore.SchemaDecl"),
-		"confirmation":    prov(safety.Confirmation, "cmdcore.SchemaDecl"),
-		"idempotency":     prov(safety.Idempotency, "cmdcore.SchemaDecl"),
-		"interface_mode":  prov(iface.Mode, "cmdcore.SchemaDecl"),
-		"availability":    prov(iface.Availability, "cmdcore.SchemaDecl"),
-		"agent_summary":   prov(selection.AgentSummary, "cmdcore.SchemaDecl"),
+		"canonical_path":  prov(identity.CanonicalPath, "corecmd.SchemaDecl"),
+		"title":           prov(title, "corecmd.SchemaDecl"),
+		"description":     prov(description, "corecmd.SchemaDecl"),
+		"metadata_source": prov("corecmd.contract", "corecmd.SchemaDecl"),
+		"effect":          prov(safety.Effect, "corecmd.SchemaDecl"),
+		"risk":            prov(safety.Risk, "corecmd.SchemaDecl"),
+		"confirmation":    prov(safety.Confirmation, "corecmd.SchemaDecl"),
+		"idempotency":     prov(safety.Idempotency, "corecmd.SchemaDecl"),
+		"interface_mode":  prov(iface.Mode, "corecmd.SchemaDecl"),
+		"availability":    prov(iface.Availability, "corecmd.SchemaDecl"),
+		"agent_summary":   prov(selection.AgentSummary, "corecmd.SchemaDecl"),
 	}
 	var ref any
 	if iface.Ref != nil {
 		ref = *iface.Ref
 	}
-	out["interface_ref"] = prov(ref, "cmdcore.SchemaDecl")
+	out["interface_ref"] = prov(ref, "corecmd.SchemaDecl")
 	if strings.TrimSpace(iface.Reason) != "" ||
 		strings.TrimSpace(iface.Mode) == InterfaceModeComposite ||
 		strings.TrimSpace(iface.Availability) == InterfaceUnavailable {
-		out["interface_reason"] = prov(iface.Reason, "cmdcore.SchemaDecl")
+		out["interface_reason"] = prov(iface.Reason, "corecmd.SchemaDecl")
 	}
 	for field, values := range map[string][]string{
 		"use_when":      selection.UseWhen,
@@ -374,14 +374,14 @@ func contractFinalProvenance(identity ToolIdentitySpec, title, description strin
 		"examples":      selection.Examples,
 	} {
 		if values != nil {
-			out[field] = prov(values, "cmdcore.SchemaDecl")
+			out[field] = prov(values, "corecmd.SchemaDecl")
 		}
 	}
 	if selection.Reviewed != nil {
-		out["reviewed"] = prov(*selection.Reviewed, "cmdcore.SchemaDecl")
+		out["reviewed"] = prov(*selection.Reviewed, "corecmd.SchemaDecl")
 	}
 	if dryRun != nil {
-		out["dry_run"] = prov(*dryRun, "cmdcore.SchemaDecl")
+		out["dry_run"] = prov(*dryRun, "corecmd.SchemaDecl")
 	}
 	return out
 }
@@ -476,7 +476,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 	if contractRisk, ok := RuntimeContractRisk(entry.Command); ok {
 		provenance["risk"] = resolvedFieldProvenance(
 			safety.Risk,
-			"cmdcore.contract",
+			"corecmd.contract",
 			"dws.schema.risk",
 			"reviewed_explicit",
 			"contract_risk_annotation",
@@ -484,7 +484,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 		)
 		provenance["confirmation"] = resolvedFieldProvenance(
 			safety.Confirmation,
-			"cmdcore.contract",
+			"corecmd.contract",
 			"dws.schema.risk",
 			"reviewed_explicit",
 			"contract_risk_annotation",
@@ -492,7 +492,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 		)
 		provenance["effect"] = resolvedFieldProvenance(
 			safety.Effect,
-			"cmdcore.contract",
+			"corecmd.contract",
 			"dws.schema.risk",
 			"reviewed_explicit",
 			"contract_risk_annotation",
@@ -501,7 +501,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
 		provenance["runtime_gate"] = resolvedFieldProvenance(
 			gate,
-			"cmdcore.contract",
+			"corecmd.contract",
 			"dws.schema.runtime_gate",
 			"reviewed_explicit",
 			"contract_runtime_gate_annotation",
@@ -509,7 +509,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 		)
 		provenance["confirmation"] = resolvedFieldProvenance(
 			safety.Confirmation,
-			"cmdcore.contract",
+			"corecmd.contract",
 			"dws.schema.runtime_gate",
 			"reviewed_explicit",
 			"contract_runtime_gate_annotation",

@@ -2,12 +2,12 @@
   "product": "pat",
   "tools": {
     "pat.batch_grant": {
-      "agent_metadata_source": "cmdcore.contract",
+      "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "agent_summary": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "普通 OAuth 登录用 auth，不要用 pat",
@@ -33,7 +33,7 @@
       "description": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
       "display": "行为授权管理",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
       ],
@@ -44,16 +44,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
         },
         "availability": {
@@ -62,16 +62,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "available"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -80,8 +80,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "普通 OAuth 登录用 auth，不要用 pat",
                 "授权产品、grant-type 或 session-id 未明确时不要执行写入",
@@ -92,8 +92,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "普通 OAuth 登录用 auth，不要用 pat",
             "授权产品、grant-type 或 session-id 未明确时不要执行写入",
@@ -106,16 +106,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "pat.batch_grant"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "pat.batch_grant"
         },
         "confirmation": {
@@ -124,16 +124,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "user_required"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "user_required"
         },
         "description": {
@@ -142,16 +142,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
         },
         "effect": {
@@ -160,16 +160,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "write"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "write"
         },
         "examples": {
@@ -178,8 +178,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
               ]
@@ -188,8 +188,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
           ]
@@ -200,16 +200,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "unknown"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -218,16 +218,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "mcp"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -236,8 +236,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": {
                 "product_id": "pat",
                 "rpc_name": "pat.batch_grant"
@@ -247,8 +247,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": {
             "product_id": "pat",
             "rpc_name": "pat.batch_grant"
@@ -260,17 +260,17 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
-              "value": "cmdcore.contract"
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
+              "value": "corecmd.contract"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
-          "value": "cmdcore.contract"
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
+          "value": "corecmd.contract"
         },
         "reviewed": {
           "candidates": [
@@ -278,16 +278,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": true
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": true
         },
         "risk": {
@@ -296,16 +296,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "high"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "high"
         },
         "title": {
@@ -314,16 +314,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "授予指定权限"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "授予指定权限"
         },
         "use_when": {
@@ -332,8 +332,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "命令提示缺少行为授权，需要按产品或 scope 批量授权",
                 "先 --dry-run 查看 selected/skipped/pending，用户确认后再执行"
@@ -343,8 +343,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "命令提示缺少行为授权，需要按产品或 scope 批量授权",
             "先 --dry-run 查看 selected/skipped/pending，用户确认后再执行"
@@ -359,7 +359,7 @@
         "rpc_name": "pat.batch_grant"
       },
       "is_alias": false,
-      "metadata_source": "cmdcore.contract",
+      "metadata_source": "corecmd.contract",
       "name": "batch_grant",
       "parameter_count": 8,
       "parameters": {
@@ -1170,12 +1170,12 @@
       ]
     },
     "pat.browser_policy": {
-      "agent_metadata_source": "cmdcore.contract",
+      "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "agent_summary": "配置 PAT 授权流程是否允许打开本地浏览器",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
@@ -1187,7 +1187,7 @@
       "description": "配置 PAT 授权流程是否允许打开本地浏览器",
       "display": "行为授权管理",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws pat browser-policy --enabled --format json",
         "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
@@ -1199,16 +1199,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "配置 PAT 授权流程是否允许打开本地浏览器"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "配置 PAT 授权流程是否允许打开本地浏览器"
         },
         "availability": {
@@ -1217,16 +1217,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "available"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -1235,8 +1235,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
               ]
@@ -1245,8 +1245,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
           ]
@@ -1257,16 +1257,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "pat.browser_policy"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "pat.browser_policy"
         },
         "confirmation": {
@@ -1275,16 +1275,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "not_required"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "not_required"
         },
         "description": {
@@ -1293,16 +1293,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "配置 PAT 授权流程是否允许打开本地浏览器"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "配置 PAT 授权流程是否允许打开本地浏览器"
         },
         "effect": {
@@ -1311,16 +1311,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "write"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "write"
         },
         "examples": {
@@ -1329,8 +1329,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "dws pat browser-policy --enabled --format json",
                 "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
@@ -1340,8 +1340,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "dws pat browser-policy --enabled --format json",
             "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
@@ -1353,16 +1353,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "unknown"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -1371,16 +1371,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "local"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
@@ -1389,16 +1389,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
         },
         "interface_ref": {
@@ -1407,16 +1407,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": null
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": null
         },
         "metadata_source": {
@@ -1425,17 +1425,17 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
-              "value": "cmdcore.contract"
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
+              "value": "corecmd.contract"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
-          "value": "cmdcore.contract"
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
+          "value": "corecmd.contract"
         },
         "reviewed": {
           "candidates": [
@@ -1443,16 +1443,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": true
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": true
         },
         "risk": {
@@ -1461,16 +1461,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "medium"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "medium"
         },
         "title": {
@@ -1479,16 +1479,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "配置 PAT 授权时是否打开浏览器"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "配置 PAT 授权时是否打开浏览器"
         },
         "use_when": {
@@ -1497,8 +1497,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"
               ]
@@ -1507,8 +1507,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"
           ]
@@ -1519,7 +1519,7 @@
       "interface_mode": "local",
       "interface_reason": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
       "is_alias": false,
-      "metadata_source": "cmdcore.contract",
+      "metadata_source": "corecmd.contract",
       "name": "browser_policy",
       "parameter_count": 2,
       "parameters": {

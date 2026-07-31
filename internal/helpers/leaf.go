@@ -14,18 +14,42 @@
 package helpers
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
+// contractConfirmSafetyAnnotation marks leaves whose RunE was wrapped by
+// DeclareLeafMetadata with the same SafetySpec published to ContractFinal.
+const contractConfirmSafetyAnnotation = "dws.contract.confirm_safety"
+
 // leaf.go 是叶子命令的统一构建框架（命令框架的 Leaf 门面）。
+//
+// 两种正式模式（共用 LeafSpec 词汇，产出同一 ContractFinal）：
+//
+//   - 完全托管模式 NewLeafCommand：声明 + 执行都归 corecmd（flag 注册、
+//     参数投影、ConfirmSafety、派发）。新命令默认走此模式。
+//   - 声明元数据模式 DeclareLeafMetadata：声明 Safety + Schema（AttachSchema），
+//     不注册 flag、不接管参数投影；当 Safety.Confirmation=user_required 时用
+//     **同一份** SafetySpec 包一层 ConfirmSafety，保证执行门禁与 Catalog 同源。
+//     用于执行体必须冻结的既有命令补声明，是迁移态。
+//
+// 每个 API 各自声明：
+//
+//   - 禁止参数化命令工厂用 use/short/tool 拼出多个真 API 的
+//     *cobra.Command（含共享 Use/Short/Long/Example/RunE/DeclareLeafMetadata）。
+//   - 允许私有 RunE 执行 helper（不返回 *cobra.Command），以及 Safety /
+//     Interface 字面量缩写（声明调用点仍须写在每个命令旁）。
+//   - hint/proxy 重定向不是业务叶子，不要求 ContractFinal。
 //
 // 声明 vs 执行（框架规则，详见 RFC §5.0 / 同源文档 §1.2）：
 //
 //   - 声明 = LeafSpec 数据字段：Flags、Constraints、Safety、ConstParams、
-//     Use/Short/Long/Example。经 FromLeafSpec → cmdcore.NewCommand 注册并
+//     Use/Short/Long/Example。经 FromLeafSpec → corecmd.New 注册并
 //     嵌入 dws.schema.*。
 //   - 执行 = Validate / Call / RunE / PostMount。钩子消费已装配参数，不得
 //     发明 CLI 表面（业务 flag/params）。
@@ -36,65 +60,65 @@ import (
 // 命令可用 RunE 逃生舱。
 //
 // 收敛纪律（Phase 2）：flag 注册、有效值回退链、required/约束、Safety 确认、
-// toolArgs 装配、Schema 投影与帮助渲染均在 internal/cmdcore；本文件只做
+// toolArgs 装配、Schema 投影与帮助渲染均在 internal/corecmd；本文件只做
 // LeafSpec→CommandSpec 映射与 dispatch 闭包。等价性由 catalog 漂移门禁与
 // leaf/risk/约束单测共同兜底。
 //
 // 迁移纪律：迁入 LeafSpec 时 flag 名、默认值、usage、MarkFlagRequired、
 // required 错误格式、toolArgs 键与值必须逐字保持一致。
 
-// LeafFlagKind 是 flag 的值类型（cmdcore.FlagKind 的别名）。
-type LeafFlagKind = cmdcore.FlagKind
+// LeafFlagKind 是 flag 的值类型（corecmd.FlagKind 的别名）。
+type LeafFlagKind = corecmd.FlagKind
 
 const (
 	// LeafString 字符串 flag（默认）。
-	LeafString = cmdcore.KindString
+	LeafString = corecmd.KindString
 	// LeafInt 整型 flag；仅在值 != 0 时进入 toolArgs（putInt 语义）。
-	LeafInt = cmdcore.KindInt
+	LeafInt = corecmd.KindInt
 	// LeafBool 布尔 flag；仅在用户显式提供（Changed）时进入 toolArgs，显式
 	// false 也下发；不参与别名/env 回退链。
-	LeafBool = cmdcore.KindBool
+	LeafBool = corecmd.KindBool
 	// LeafStringSlice 字符串列表 flag；仅在存在非空元素时进入 toolArgs，元素
 	// 恒 TrimSpace 后过滤空串。
-	LeafStringSlice = cmdcore.KindStringSlice
+	LeafStringSlice = corecmd.KindStringSlice
 )
 
 // LeafFlag 声明一个 flag 的注册方式与到 MCP toolArgs 的绑定
-// （cmdcore.FlagSpec 的别名，字段含义见 cmdcore 定义）。
-type LeafFlag = cmdcore.FlagSpec
+// （corecmd.FlagSpec 的别名，字段含义见 command 定义）。
+type LeafFlag = corecmd.FlagSpec
 
-// LeafConstraintKind 是跨 flag 关系约束的类型（cmdcore.ConstraintKind 的
+// LeafConstraintKind 是跨 flag 关系约束的类型（corecmd.ConstraintKind 的
 // 别名）。取值与 shortcut 框架的 ConstraintKind 逐字一致。
-type LeafConstraintKind = cmdcore.ConstraintKind
+type LeafConstraintKind = corecmd.ConstraintKind
 
 const (
 	// LeafAtLeastOne 要求 Flags 至少提供一个。
-	LeafAtLeastOne = cmdcore.AtLeastOne
+	LeafAtLeastOne = corecmd.AtLeastOne
 	// LeafExactlyOne 要求 Flags 必须且只能提供一个。
-	LeafExactlyOne = cmdcore.ExactlyOne
+	LeafExactlyOne = corecmd.ExactlyOne
 	// LeafMutuallyExclusive 允许 Flags 中最多提供一个。
-	LeafMutuallyExclusive = cmdcore.MutuallyExclusive
+	LeafMutuallyExclusive = corecmd.MutuallyExclusive
 )
 
-// LeafConstraint 声明一组 flag 的关系约束（cmdcore.Constraint 的别名）。框架
+// LeafConstraint 声明一组 flag 的关系约束（corecmd.Constraint 的别名）。框架
 // 在 required 校验之后、Validate 钩子之前统一执行；「是否提供」的判定复用有效
 // 值回退链（显式主 flag → 别名 → env），即只传兼容别名同样视为已提供。约束
 // 同时投影到 Agent Runtime Schema 并渲染进 --help 的「参数约束」段。
-type LeafConstraint = cmdcore.Constraint
+type LeafConstraint = corecmd.Constraint
 
-// LeafSchema 是 Schema 最终载荷声明（cmdcore.SchemaDecl 别名）。
-type LeafSchema = cmdcore.SchemaDecl
+// LeafSchema 是 Schema 最终载荷声明（corecmd.SchemaDecl 别名）。
+type LeafSchema = corecmd.SchemaDecl
 
 // SchemaDecl 嵌套类型别名（与 LeafSchema 配套使用）。
 type (
-	LeafPositionalDecl = cmdcore.PositionalDecl
-	LeafDryRunDecl     = cmdcore.DryRunDecl
-	LeafInterfaceDecl  = cmdcore.InterfaceDecl
-	LeafSelectionDecl  = cmdcore.SelectionDecl
-	LeafIdentityDecl   = cmdcore.IdentityDecl
+	LeafPositionalDecl = corecmd.PositionalDecl
+	LeafDryRunDecl     = corecmd.DryRunDecl
+	LeafInterfaceDecl  = corecmd.InterfaceDecl
+	LeafSelectionDecl  = corecmd.SelectionDecl
+	LeafIdentityDecl   = corecmd.IdentityDecl
 )
 
-// LeafSpec 是命令框架的 Leaf 声明门面（映射为 cmdcore.CommandSpec）。
+// LeafSpec 是命令框架的 Leaf 声明门面（映射为 corecmd.Spec）。
 //
 // 声明面 = Schema 最终数据源：Flags（含 parameter Schema 字段）、Constraints、
 // Safety、ConstParams、Use/Short/Long/Example、Schema（ToolSpec 各组）。
@@ -113,7 +137,7 @@ type LeafSpec struct {
 	Tool   string
 	Flags  []LeafFlag
 	// Constraints 是跨 flag 的关系约束（至少一个 / 恰好一个 / 互斥），由
-	// cmdcore 统一校验并投影到 Runtime Schema 与 --help。复杂的条件式校验
+	// command 统一校验并投影到 Runtime Schema 与 --help。复杂的条件式校验
 	// 仍放 Validate 钩子（钩子本身不是约束声明）。
 	Constraints []LeafConstraint
 
@@ -150,22 +174,107 @@ type LeafSpec struct {
 	PostMount func(cmd *cobra.Command)
 }
 
-// NewLeafCommand 按 LeafSpec 构建叶子命令：经 FromLeafSpec 归一为
-// cmdcore.CommandSpec 后交由统一构建器 cmdcore.NewCommand 编排（flag 注册、
+// NewLeafCommand 是命令框架的「完全托管模式」：经 FromLeafSpec 归一为
+// corecmd.Spec 后交由统一构建器 corecmd.New 编排（flag 注册、
 // 约束声明检查、Schema 投影、帮助渲染、required/约束校验、Safety 确认、
 // toolArgs 装配）。本函数只保留 LeafSpec→CommandSpec 的映射与 MCP dispatch
 // 闭包（callMCPTool/OnServer/Call）。所有 LeafSpec 命令（含 devapp 全部叶子）
-// 由此统一流经 cmdcore 单一 spec 路径。
+// 由此统一流经 command 单一 spec 路径。
 func NewLeafCommand(spec LeafSpec) *cobra.Command {
-	return cmdcore.NewCommand(FromLeafSpec(spec))
+	return corecmd.New(FromLeafSpec(spec))
 }
 
-// FromLeafSpec 把 LeafSpec 归一为统一的 cmdcore.CommandSpec。契约字段
+// DeclareLeafMetadata 是命令框架的「声明元数据模式」：把 LeafSpec 的声明面
+// （Safety + Schema）挂到既有命令上——不注册 flag、不接管参数投影。当
+// Safety.Confirmation 为 user_required 时，用同一份 SafetySpec 包装 ConfirmSafety，
+// 使执行门禁与 Catalog 契约同源；其余执行逻辑保持原 RunE。
+//
+// 该模式是迁移态而非终态：命令具备条件时应升级为 NewLeafCommand。传入任何
+// 执行面字段（Flags/Constraints/ConstParams/Call/RunE/Validate/PostMount）
+// 或空 Schema 会 panic，防止误用成半接管。
+func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
+	if cmd == nil {
+		panic("DeclareLeafMetadata: cmd is nil")
+	}
+	name := cmd.Name()
+	if len(spec.Flags) > 0 {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Flags must be empty (metadata-only mode)", name))
+	}
+	if len(spec.Constraints) > 0 {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Constraints must be empty (metadata-only mode)", name))
+	}
+	if len(spec.ConstParams) > 0 {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): ConstParams must be empty (metadata-only mode)", name))
+	}
+	if spec.Call != nil {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Call must be nil (metadata-only mode)", name))
+	}
+	if spec.RunE != nil {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): RunE must be nil (metadata-only mode)", name))
+	}
+	if spec.Validate != nil {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Validate must be nil (metadata-only mode)", name))
+	}
+	if spec.PostMount != nil {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): PostMount must be nil (metadata-only mode)", name))
+	}
+	if spec.ConfirmFirst {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): ConfirmFirst must be false (metadata-only mode)", name))
+	}
+	if spec.Server != "" || spec.Tool != "" {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Server/Tool must be empty (metadata-only mode)", name))
+	}
+	if spec.Schema.Empty() {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Schema is required", name))
+	}
+	corecmd.AttachSchema(cmd, spec.Safety, spec.Schema, cmd.Short, cmd.Long)
+	if strings.TrimSpace(spec.Safety.Confirmation) == "user_required" {
+		installContractConfirmSafety(cmd, spec.Safety)
+	}
+	return cmd
+}
+
+// installContractConfirmSafety wraps cmd.RunE with ConfirmSafety using the
+// same SafetySpec already published via AttachSchema. Idempotent.
+func installContractConfirmSafety(cmd *cobra.Command, safety cli.SafetySpec) {
+	if cmd == nil {
+		panic("installContractConfirmSafety: cmd is nil")
+	}
+	if HasContractConfirmSafety(cmd) {
+		return
+	}
+	inner := cmd.RunE
+	if inner == nil {
+		panic(fmt.Sprintf("installContractConfirmSafety(%q): RunE is nil", cmd.Name()))
+	}
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.Annotations[contractConfirmSafetyAnnotation] = "true"
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		// Match helper dry-run boundaries: ToolCaller.DryRun is authoritative when
+		// tests/agents inject a dry-run caller without parsing --dry-run onto the leaf.
+		if !(deps != nil && deps.Caller != nil && deps.Caller.DryRun()) {
+			if err := corecmd.ConfirmSafety(c, safety); err != nil {
+				return err
+			}
+		}
+		return inner(c, args)
+	}
+}
+
+// HasContractConfirmSafety reports whether DeclareLeafMetadata installed the
+// ConfirmSafety wrapper for a user_required SafetySpec.
+func HasContractConfirmSafety(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Annotations != nil && cmd.Annotations[contractConfirmSafetyAnnotation] == "true"
+}
+
+// FromLeafSpec 把 LeafSpec 归一为统一的 corecmd.Spec。契约字段
 // （Flags/Constraints/Safety）与编排钩子（Validate/PostMount/RunE）直接透传；
 // dispatch 收敛为一个闭包：Call 优先，其次显式 Server 路由，最后按 product
 // 自动路由。RunE 逃生舱存在时不设 Dispatch（与旧行为一致）。
-func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
-	cs := cmdcore.CommandSpec{
+func FromLeafSpec(spec LeafSpec) corecmd.Spec {
+	cs := corecmd.Spec{
 		Use:          spec.Use,
 		Short:        spec.Short,
 		Long:         spec.Long,
@@ -181,7 +290,7 @@ func FromLeafSpec(spec LeafSpec) cmdcore.CommandSpec {
 		RunE:         spec.RunE,
 	}
 	if spec.RunE == nil {
-		cs.Invoke = func(c *cmdcore.Ctx, toolArgs map[string]any) error {
+		cs.Invoke = func(c *corecmd.Ctx, toolArgs map[string]any) error {
 			if spec.Call != nil {
 				return spec.Call(c.Command(), spec.Tool, toolArgs)
 			}

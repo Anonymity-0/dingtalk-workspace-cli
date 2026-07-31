@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
@@ -356,6 +357,25 @@ func newRangeSetStyleCmd() *cobra.Command {
 	cmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	cmd.Flags().String("range", "", "目标单元格区域地址，如 A1:B3 (必填)")
 	bindStyleFlags(cmd)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "为指定范围统一设置背景、字体、对齐、换行或数字格式。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "update_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "为指定范围统一设置背景、字体、对齐、换行或数字格式。",
+				UseWhen:      []string{"需要批量刷样式或数字格式（百分比/货币/日期）时"},
+				AvoidWhen:    []string{"写单元格值/公式用 range update；多区域不同样式配置用 range batch-set-style"},
+				Examples:     []string{"dws sheet range set-style --node <NODE_ID> --sheet-id <SHEET_ID> --range \"B2:B10\" --number-format \"¥#,##0.00\""},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -543,5 +563,24 @@ func newRangeBatchSetStyleCmd() *cobra.Command {
 	cmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	cmd.Flags().String("batch", "", "批次配置 JSON 文件路径 (必填)")
 	cmd.Flags().Bool("continue-on-error", false, "遇到失败时继续执行后续条目（默认遇错即停）")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "按 JSON 配置文件顺序批量设置多个区域样式。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "The CLI reads a local batch file and performs multiple sheet/update_range calls with local continue-on-error control; the workflow has no single direct MCP interface.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按 JSON 配置文件顺序批量设置多个区域样式。",
+				UseWhen:      []string{"多个区域样式不同、希望用配置文件一次提交时"},
+				AvoidWhen:    []string{"单一区域统一样式用 range set-style"},
+				Examples:     []string{"dws sheet range batch-set-style --node <NODE_ID> --batch ./styles.json"},
+			},
+		},
+	})
 	return cmd
 }

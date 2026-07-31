@@ -144,8 +144,8 @@ func TestCrossPlatformCoverageContactUpdateCommandsRequireConfirmation(t *testin
 	for _, args := range tests {
 		t.Run(strings.Join(args[:2], "-"), func(t *testing.T) {
 			caller, err := runContactUpdateCommand(t, "no\n", args...)
-			if err != nil {
-				t.Fatalf("declined confirmation returned error: %v", err)
+			if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+				t.Fatalf("declined confirmation error = %v, want 用户取消了操作", err)
 			}
 			if len(caller.calls) != 0 {
 				t.Fatalf("declined confirmation made %d remote call(s)", len(caller.calls))

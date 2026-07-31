@@ -26,7 +26,7 @@ import (
 
 // TestCmdcoreMountPreservesEveryBuiltInShortcutSurface is the differential
 // guard for the live mount migration. It derives the historical Cobra surface
-// directly from each Shortcut declaration and checks the cmdcore-built tree.
+// directly from each Shortcut declaration and checks the command-built tree.
 func TestCmdcoreMountPreservesEveryBuiltInShortcutSurface(t *testing.T) {
 	mounted := map[string]*cobra.Command{}
 	for _, service := range builtin.BaseCommands() {

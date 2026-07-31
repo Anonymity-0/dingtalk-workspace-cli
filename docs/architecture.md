@@ -30,11 +30,11 @@
 - `internal/security`: endpoint allowlist and domain trust
 - `internal/safety`: runtime safety checks (confirm prompts, dry-run guards)
 - `internal/cobracmd`: shared Cobra command builders
-- `internal/cmdcore`: dispatch-agnostic leaf-command base — flag registration,
+- `internal/corecmd`: dispatch-agnostic leaf-command base — flag registration,
   alias/env/default value resolution, required and cross-flag constraint
   validation, Risk write confirmation, toolArgs assembly, Runtime Schema
   projection. Distinct from `internal/cobracmd` (generic tree helpers): it owns
-  the declarative leaf contract (`CommandSpec`) that the LeafSpec framework is
+  the declarative leaf contract (`corecmd.Spec`) that the LeafSpec framework is
   built on and that the Shortcut adapter projects into.
 - `internal/pat`: PAT (Personal Access Token) authorization flow
 - `internal/output`: response formatting (json, table, raw, pretty)

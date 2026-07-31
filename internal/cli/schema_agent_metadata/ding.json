@@ -3,27 +3,27 @@
   "tools": {
     "ding +list": {
       "agent_summary": "查询 DING 消息列表",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws ding +list"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询 DING 消息列表",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询 DING 消息列表",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -31,13 +31,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -47,7 +47,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -55,7 +55,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -63,13 +63,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -77,13 +77,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -93,7 +93,7 @@
           "value": [
             "dws ding +list"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -101,7 +101,7 @@
               "value": [
                 "dws ding +list"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -109,13 +109,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -123,13 +123,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -137,13 +137,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -151,14 +151,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -167,13 +167,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -181,13 +181,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -197,7 +197,7 @@
           "value": [
             "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -205,7 +205,7 @@
               "value": [
                 "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -218,7 +218,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
@@ -226,27 +226,27 @@
     },
     "ding +recall-personal": {
       "agent_summary": "撤回本人发起的 DING",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "user_required",
       "effect": "destructive",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws ding +recall-personal --id \u003cID\u003e"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "撤回本人发起的 DING",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "撤回本人发起的 DING",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -254,13 +254,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -270,7 +270,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -278,7 +278,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -286,13 +286,13 @@
         },
         "confirmation": {
           "value": "user_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "user_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -300,13 +300,13 @@
         },
         "effect": {
           "value": "destructive",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "destructive",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -316,7 +316,7 @@
           "value": [
             "dws ding +recall-personal --id \u003cID\u003e"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -324,7 +324,7 @@
               "value": [
                 "dws ding +recall-personal --id \u003cID\u003e"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -332,13 +332,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -346,13 +346,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -360,13 +360,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -374,14 +374,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -390,13 +390,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -404,13 +404,13 @@
         },
         "risk": {
           "value": "high",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "high",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -420,7 +420,7 @@
           "value": [
             "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -428,7 +428,7 @@
               "value": [
                 "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -441,7 +441,7 @@
       "reviewed": true,
       "risk": "high",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
@@ -449,27 +449,27 @@
     },
     "ding +receiver-status": {
       "agent_summary": "查询 DING 消息接收人已读状态",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws ding +receiver-status --ding-id \u003cDING_ID\u003e"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询 DING 消息接收人已读状态",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询 DING 消息接收人已读状态",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -477,13 +477,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -493,7 +493,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -501,7 +501,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -509,13 +509,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -523,13 +523,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -539,7 +539,7 @@
           "value": [
             "dws ding +receiver-status --ding-id \u003cDING_ID\u003e"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -547,7 +547,7 @@
               "value": [
                 "dws ding +receiver-status --ding-id \u003cDING_ID\u003e"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -555,13 +555,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -569,13 +569,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -583,13 +583,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -597,14 +597,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -613,13 +613,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -627,13 +627,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -643,7 +643,7 @@
           "value": [
             "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -651,7 +651,7 @@
               "value": [
                 "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -664,7 +664,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
@@ -672,27 +672,27 @@
     },
     "ding +send-personal": {
       "agent_summary": "以本人身份发送 DING 给指定人",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "user_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws ding +send-personal --users \u003cVALUES\u003e --content \u003cCONTENT\u003e"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "以本人身份发送 DING 给指定人",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "以本人身份发送 DING 给指定人",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -700,13 +700,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -716,7 +716,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -724,7 +724,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -732,13 +732,13 @@
         },
         "confirmation": {
           "value": "user_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "user_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -746,13 +746,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -762,7 +762,7 @@
           "value": [
             "dws ding +send-personal --users \u003cVALUES\u003e --content \u003cCONTENT\u003e"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -770,7 +770,7 @@
               "value": [
                 "dws ding +send-personal --users \u003cVALUES\u003e --content \u003cCONTENT\u003e"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -778,13 +778,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -792,13 +792,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -806,13 +806,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -820,14 +820,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -836,13 +836,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -850,13 +850,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -866,7 +866,7 @@
           "value": [
             "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -874,7 +874,7 @@
               "value": [
                 "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -887,7 +887,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
@@ -895,27 +895,27 @@
     },
     "ding message recall": {
       "agent_summary": "撤回已发送的机器人 DING",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要以用户身份撤回 DING 时不要使用本命令"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws ding message recall --robot-code \u003cROBOT_CODE\u003e --id \u003cOPEN_DING_ID\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "撤回已发送的机器人 DING",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "撤回已发送的机器人 DING",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -923,13 +923,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -945,7 +945,7 @@
           "value": [
             "需要以用户身份撤回 DING 时不要使用本命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -953,7 +953,7 @@
               "value": [
                 "需要以用户身份撤回 DING 时不要使用本命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -961,13 +961,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -988,13 +988,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1017,7 +1017,7 @@
           "value": [
             "dws ding message recall --robot-code \u003cROBOT_CODE\u003e --id \u003cOPEN_DING_ID\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1025,7 +1025,7 @@
               "value": [
                 "dws ding message recall --robot-code \u003cROBOT_CODE\u003e --id \u003cOPEN_DING_ID\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1033,13 +1033,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1053,13 +1053,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1073,13 +1073,13 @@
         },
         "interface_ref": {
           "value": "ding.recall_ding_message",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "ding.recall_ding_message",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1099,13 +1099,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1113,13 +1113,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1142,7 +1142,7 @@
           "value": [
             "已知 openDingId 与同一 robot-code，需要撤回机器人 DING"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1150,7 +1150,7 @@
               "value": [
                 "已知 openDingId 与同一 robot-code，需要撤回机器人 DING"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1166,7 +1166,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.ding.prod.json#ding.recall_ding_message",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.ding.recall_ding_message",
@@ -1180,7 +1180,7 @@
     },
     "ding message send": {
       "agent_summary": "以企业机器人发送应用内/短信/电话 DING",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "普通聊天消息用 chat message send / send-by-bot",
@@ -1189,7 +1189,7 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws ding message send --robot-code \u003cROBOT_CODE\u003e --users userId1,userId2 --content \"请查看\" --format json",
         "dws ding message send --robot-code \u003cROBOT_CODE\u003e --type call --users userId1 --content \"紧急告警\" --format json"
@@ -1197,13 +1197,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "以企业机器人发送应用内/短信/电话 DING",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "以企业机器人发送应用内/短信/电话 DING",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1211,13 +1211,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1235,7 +1235,7 @@
             "需要用户身份 DING 时不要用本命令（机器人身份）",
             "短信/电话有成本，用户未确认前不要发 call/sms"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1245,7 +1245,7 @@
                 "需要用户身份 DING 时不要用本命令（机器人身份）",
                 "短信/电话有成本，用户未确认前不要发 call/sms"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1253,13 +1253,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1273,13 +1273,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1296,7 +1296,7 @@
             "dws ding message send --robot-code \u003cROBOT_CODE\u003e --users userId1,userId2 --content \"请查看\" --format json",
             "dws ding message send --robot-code \u003cROBOT_CODE\u003e --type call --users userId1 --content \"紧急告警\" --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1305,7 +1305,7 @@
                 "dws ding message send --robot-code \u003cROBOT_CODE\u003e --users userId1,userId2 --content \"请查看\" --format json",
                 "dws ding message send --robot-code \u003cROBOT_CODE\u003e --type call --users userId1 --content \"紧急告警\" --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1313,13 +1313,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1333,13 +1333,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1353,13 +1353,13 @@
         },
         "interface_ref": {
           "value": "ding.send_ding_message",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "ding.send_ding_message",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1379,13 +1379,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1393,13 +1393,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1415,7 +1415,7 @@
           "value": [
             "需要用企业机器人向指定 userId 发送应用内、短信或电话 DING"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1423,7 +1423,7 @@
               "value": [
                 "需要用企业机器人向指定 userId 发送应用内、短信或电话 DING"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1439,7 +1439,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.ding.prod.json#ding.send_ding_message",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.ding.send_ding_message",

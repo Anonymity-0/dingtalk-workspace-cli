@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -111,13 +112,71 @@ func newSheetCommand() *cobra.Command {
 	floatImageCmds := newFloatImageCmds()
 	chartCmd := newChartCmd()
 	exportCmd := newExportCmd()
+	DeclareLeafMetadata(exportCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "submit_export_job",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
+				UseWhen:      []string{"需要把在线电子表格导出为 Excel 文件或拿到 downloadUrl 时"},
+				AvoidWhen:    []string{"禁止用 range read 拼 xlsx；本地已有 xlsx 节点用 doc download；Agent 不要外层再轮询"},
+				Examples:     []string{"dws sheet export --node <NODE_ID> --output ./report.xlsx"},
+			},
+		},
+	})
 	importCmd := newSheetImportCmd()
 	templateCmd := newSheetTemplateCmd()
 	tableCmds := newTableCmds()
 	pivotTableCmd := newPivotTableCmd()
 
 	batchUpdateCmd := newBatchUpdateCmd()
+	DeclareLeafMetadata(batchUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "批量打包多个写操作原子执行（可含清除/删除，需确认后加 --yes）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量打包多个写操作原子执行（可含清除/删除，需确认后加 --yes）。",
+				UseWhen:      []string{"用户明确要求把多个已审查写操作作为一批执行时"},
+				AvoidWhen:    []string{"单操作请用对应原子命令；仅预览用 --dry-run，不要在未确认时加 --yes"},
+				Examples:     []string{"dws sheet batch-update --node <NODE_ID> --operations '[{\"toolName\":\"range clear\",\"input\":{\"sheet-id\":\"Sheet1\",\"range\":\"A1:B3\",\"type\":\"content\"}}]'"},
+			},
+		},
+	})
 	rangeBatchClearCmd := newRangeBatchClearCmd()
+	DeclareLeafMetadata(rangeBatchClearCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "批量清除多个区域（原子事务，需确认后加 --yes）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量清除多个区域（原子事务，需确认后加 --yes）。",
+				UseWhen:      []string{"需要一次清除多个互不相关的区域，并希望同批提交时"},
+				AvoidWhen:    []string{"只清一个区域用 range clear；混有写入/合并等操作用 batch-update"},
+				Examples:     []string{"dws sheet range batch-clear --node NODE_ID --ranges '[\"Sheet1!A1:B3\",\"Sheet2!C1:D5\"]'"},
+			},
+		},
+	})
 	rangeCmd.AddCommand(newRangeSetStyleCmd(), newRangeBatchSetStyleCmd(), rangeBatchClearCmd)
 
 	// Flag registrations for batch commands

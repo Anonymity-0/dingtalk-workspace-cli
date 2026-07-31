@@ -551,9 +551,17 @@ func buildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools
 		if !ok {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("agent_hints example references unknown canonical tool %q", canonical)
 		}
-		hint, hintOK := hints.Tools[canonical]
-		if !hintOK {
+		// ContractFinal authored beside the command is the source of truth for
+		// examples/selection. Residual schema_hints rows must not override it
+		// after full colocation (otherwise shared factories / stale hint-file
+		// examples fail primary/alias path validation).
+		var hint ManualAgentToolHint
+		if HasRuntimeContractFinal(spec.PrimaryCommand) {
 			hint = contractFinalSelectionHint(spec.PrimaryCommand)
+		} else if fileHint, hintOK := hints.Tools[canonical]; hintOK {
+			hint = fileHint
+		} else {
+			hint = ManualAgentToolHint{}
 		}
 		var typedTool ToolSpec
 		if typedTools != nil {

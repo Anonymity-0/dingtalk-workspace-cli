@@ -14,6 +14,8 @@
 package smart
 
 import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -41,6 +43,26 @@ var DocAppend = shortcut.Shortcut{
 		"不需要你先去查文档块列表、算末尾位置或手工拼块结构。" +
 		"会真实写入文档内容。",
 	Risk: shortcut.RiskWrite,
+	Safety: cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "在文档末尾追加一段文本（安全追加，不改动原有内容）",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "在文档末尾追加一段文本（安全追加，不改动原有内容）",
+			UseWhen:      []string{"当你只想往一篇钉钉文档的最后面补一段文字、又不想动原有内容时使用；内部用文档更新的“追加(append)”模式，把你给的文本安全地拼到文档末尾，不需要你先去查文档块列表、算末尾位置或手工拼块结构。会真实写入文档内容。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples: []string{
+				"dws doc +doc-append --doc DOC_ID --text \"补充说明：本方案已评审通过。\"",
+				"dws doc +doc-append --doc \"https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>\" --text \"追加一行备注\"",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "doc", Type: shortcut.FlagString, Desc: "文档 documentId / nodeId（或文档 URL/token）", Required: true},
 		{Name: "text", Type: shortcut.FlagString, Desc: "要追加到文档末尾的文本", Required: true},

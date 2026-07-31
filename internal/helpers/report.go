@@ -79,6 +79,28 @@ func newReportCommand() *cobra.Command {
 		Example: `  dws report template list`,
 		RunE:    runReportTemplateList,
 	}
+	DeclareLeafMetadata(templateListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取当前员工可使用的日志模版列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "get_available_report_templates",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取当前员工可使用的日志模版列表",
+				UseWhen:      []string{"提交日志前需要列出可用模版名称与 templateId 时"},
+				AvoidWhen:    []string{"已知模版名称需要字段定义时改用 dws report template get"},
+				Examples: []string{
+					"dws report template list",
+					"dws report template list --format json",
+				},
+			},
+		},
+	})
 
 	templateGetCmd := &cobra.Command{
 		Use:     "get",
@@ -86,6 +108,28 @@ func newReportCommand() *cobra.Command {
 		Example: `  dws report template get --name <templateName>`,
 		RunE:    runReportTemplateDetail,
 	}
+	DeclareLeafMetadata(templateGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按名称获取日志模版字段定义",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "get_template_details_by_name",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按名称获取日志模版字段定义",
+				UseWhen:      []string{"已知模版名称，提交前需要读取字段名称、类型与排序时"},
+				AvoidWhen:    []string{"不知道有哪些模版时先用 dws report template list"},
+				Examples: []string{
+					"dws report template get --name <templateName>",
+					"dws report template get --name \"日报\" --format json",
+				},
+			},
+		},
+	})
 	addReportTemplateDetailFlags(templateGetCmd)
 
 	templateDetailCmd := &cobra.Command{
@@ -108,6 +152,31 @@ func newReportCommand() *cobra.Command {
   dws report entry get --report-id <reportId>`,
 		RunE: runReportDetail,
 	}
+	DeclareLeafMetadata(entryGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定一篇日志的详情信息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "get_report_entry_details",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定一篇日志的详情信息",
+				UseWhen:      []string{"已知 reportId，需要读取日志正文、字段明细或钉钉跳转链接时"},
+				AvoidWhen: []string{
+					"要提交新日志时改用 dws report entry submit",
+					"要看已读/评论统计时改用 dws report entry stats",
+				},
+				Examples: []string{
+					"dws report entry get --report-id <reportId> --format json",
+					"dws report entry get --report-id <reportId>",
+				},
+			},
+		},
+	})
 	addReportDetailFlags(entryGetCmd)
 
 	entryStatsCmd := &cobra.Command{
@@ -117,6 +186,31 @@ func newReportCommand() *cobra.Command {
   dws report entry stats --report-id <reportId>`,
 		RunE: runReportStats,
 	}
+	DeclareLeafMetadata(entryStatsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定日志的统计数据",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "get_report_statistics_by_id",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定日志的统计数据",
+				UseWhen:      []string{"已知 reportId，需要查看评论数、点赞数、已读数等统计时"},
+				AvoidWhen: []string{
+					"要读正文时改用 dws report entry get",
+					"要提交新日志时改用 dws report entry submit",
+				},
+				Examples: []string{
+					"dws report entry stats --report-id <reportId>",
+					"dws report entry stats --report-id <reportId> --format json",
+				},
+			},
+		},
+	})
 	addReportStatsFlags(entryStatsCmd)
 
 	entrySubmitCmd := &cobra.Command{
@@ -136,6 +230,31 @@ func newReportCommand() *cobra.Command {
   dws report entry submit --template-id TPL_ID --contents '[...]' --to-chat --to-user-ids userId1,userId2`,
 		RunE: runReportCreate,
 	}
+	DeclareLeafMetadata(entrySubmitCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "按模版提交一份新日报",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "create_report",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按模版提交一份新日报",
+				UseWhen:      []string{"已取得 templateId 与字段定义，需要按模版提交日报/周报（contents[].key 必须等于模板 field_name）时"},
+				AvoidWhen: []string{
+					"尚未读取模板字段时先用 dws report template list / template get",
+					"只需查看已有日志正文时改用 dws report entry get",
+				},
+				Examples: []string{
+					"dws report entry submit --template-id <templateId> --contents-file ./report.json --format json",
+					"dws report entry submit --template-id <templateId> --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json",
+				},
+			},
+		},
+	})
 	addReportCreateFlags(entrySubmitCmd)
 
 	entryCmd.AddCommand(entryGetCmd, entryStatsCmd, entrySubmitCmd)
@@ -157,6 +276,28 @@ func newReportCommand() *cobra.Command {
   # CLI 只返回 JSON，Agent 从 result[] 拼 Markdown 表展示给用户，reportId 仅用于 entry get/stats`,
 		RunE: runReportList,
 	}
+	DeclareLeafMetadata(inboxListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询当前人收到的日志列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "get_received_report_list",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询当前人收到的日志列表",
+				UseWhen:      []string{"需要按时间范围查看别人发给我的日志列表并提取 reportId 时"},
+				AvoidWhen: []string{
+					"要看自己发出的日志时改用 dws report outbox list",
+					"已知 reportId 要看正文时改用 dws report entry get",
+				},
+				Examples: []string{"dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"},
+			},
+		},
+	})
 	addReportListFlags(inboxListCmd)
 
 	inboxCmd.AddCommand(inboxListCmd)
@@ -172,6 +313,31 @@ func newReportCommand() *cobra.Command {
   dws report outbox list --cursor 0 --size 20 --template-name "日报"`,
 		RunE: runReportSent,
 	}
+	DeclareLeafMetadata(outboxListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询当前人创建的日志详情列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "report", RPCName: "get_send_report_list",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询当前人创建的日志详情列表",
+				UseWhen:      []string{"需要查看我发出/创建的日志列表（含内容摘要、创建时间、访问地址）时"},
+				AvoidWhen: []string{
+					"要看收到的日志时改用 dws report inbox list",
+					"已知 reportId 要完整正文时改用 dws report entry get",
+				},
+				Examples: []string{
+					"dws report outbox list --cursor 0 --size 20 --format json",
+					"dws report outbox list --cursor 0 --size 20",
+				},
+			},
+		},
+	})
 	addReportSentFlags(outboxListCmd)
 
 	outboxCmd.AddCommand(outboxListCmd)

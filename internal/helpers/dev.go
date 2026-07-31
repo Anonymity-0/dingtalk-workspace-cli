@@ -66,7 +66,7 @@ func (devHandler) Command(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
-	doc.AddCommand(newDevdocArticleSearchCommand())
+	doc.AddCommand(newDevDocSearchCommand())
 
 	root.AddCommand(
 		newDevAppCommand(runner),

@@ -2,12 +2,12 @@
   "product": "audit",
   "tools": {
     "audit.export": {
-      "agent_metadata_source": "cmdcore.contract",
+      "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "agent_summary": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只看最近几条用 audit tail",
@@ -20,7 +20,7 @@
       "description": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
       "display": "操作审计日志管理",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws audit export --format jsonl",
         "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
@@ -32,16 +32,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
         },
         "availability": {
@@ -50,16 +50,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "available"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -68,8 +68,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "只看最近几条用 audit tail",
                 "只校验哈希链完整性用 audit verify"
@@ -79,8 +79,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "只看最近几条用 audit tail",
             "只校验哈希链完整性用 audit verify"
@@ -92,16 +92,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "audit.export"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "audit.export"
         },
         "confirmation": {
@@ -110,16 +110,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "not_required"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "not_required"
         },
         "description": {
@@ -128,16 +128,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
         },
         "effect": {
@@ -146,16 +146,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "read"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "read"
         },
         "examples": {
@@ -164,8 +164,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "dws audit export --format jsonl",
                 "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
@@ -175,8 +175,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "dws audit export --format jsonl",
             "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
@@ -188,16 +188,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "idempotent"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -206,16 +206,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "local"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
@@ -224,16 +224,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC"
         },
         "interface_ref": {
@@ -242,16 +242,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": null
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": null
         },
         "metadata_source": {
@@ -260,17 +260,17 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
-              "value": "cmdcore.contract"
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
+              "value": "corecmd.contract"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
-          "value": "cmdcore.contract"
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
+          "value": "corecmd.contract"
         },
         "reviewed": {
           "candidates": [
@@ -278,16 +278,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": true
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": true
         },
         "risk": {
@@ -296,16 +296,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "low"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "low"
         },
         "title": {
@@ -314,16 +314,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "导出审计日志"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "导出审计日志"
         },
         "use_when": {
@@ -332,8 +332,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
               ]
@@ -342,8 +342,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
           ]
@@ -354,7 +354,7 @@
       "interface_mode": "local",
       "interface_reason": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
       "is_alias": false,
-      "metadata_source": "cmdcore.contract",
+      "metadata_source": "corecmd.contract",
       "name": "export",
       "parameter_count": 3,
       "parameters": {
@@ -630,12 +630,12 @@
       ]
     },
     "audit.tail": {
-      "agent_metadata_source": "cmdcore.contract",
+      "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "agent_summary": "查看本地操作审计日志最近 N 条记录",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要按日期范围整段导出用 audit export",
@@ -648,7 +648,7 @@
       "description": "查看本地操作审计日志最近 N 条记录",
       "display": "操作审计日志管理",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws audit tail",
         "dws audit tail --lines 50"
@@ -660,16 +660,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "查看本地操作审计日志最近 N 条记录"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "查看本地操作审计日志最近 N 条记录"
         },
         "availability": {
@@ -678,16 +678,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "available"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -696,8 +696,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "需要按日期范围整段导出用 audit export",
                 "需要校验哈希链用 audit verify"
@@ -707,8 +707,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "需要按日期范围整段导出用 audit export",
             "需要校验哈希链用 audit verify"
@@ -720,16 +720,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "audit.tail"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "audit.tail"
         },
         "confirmation": {
@@ -738,16 +738,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "not_required"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "not_required"
         },
         "description": {
@@ -756,16 +756,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "查看本地操作审计日志最近 N 条记录"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "查看本地操作审计日志最近 N 条记录"
         },
         "effect": {
@@ -774,16 +774,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "read"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "read"
         },
         "examples": {
@@ -792,8 +792,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "dws audit tail",
                 "dws audit tail --lines 50"
@@ -803,8 +803,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "dws audit tail",
             "dws audit tail --lines 50"
@@ -816,16 +816,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "idempotent"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -834,16 +834,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "local"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
@@ -852,16 +852,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC"
         },
         "interface_ref": {
@@ -870,16 +870,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": null
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": null
         },
         "metadata_source": {
@@ -888,17 +888,17 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
-              "value": "cmdcore.contract"
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
+              "value": "corecmd.contract"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
-          "value": "cmdcore.contract"
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
+          "value": "corecmd.contract"
         },
         "reviewed": {
           "candidates": [
@@ -906,16 +906,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": true
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": true
         },
         "risk": {
@@ -924,16 +924,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "low"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "low"
         },
         "title": {
@@ -942,16 +942,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "查看最近的审计记录"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "查看最近的审计记录"
         },
         "use_when": {
@@ -960,8 +960,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "需要快速查看最近写入的审计记录（默认最近 20 条）"
               ]
@@ -970,8 +970,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "需要快速查看最近写入的审计记录（默认最近 20 条）"
           ]
@@ -982,7 +982,7 @@
       "interface_mode": "local",
       "interface_reason": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
       "is_alias": false,
-      "metadata_source": "cmdcore.contract",
+      "metadata_source": "corecmd.contract",
       "name": "tail",
       "parameter_count": 1,
       "parameters": {
@@ -1090,12 +1090,12 @@
       ]
     },
     "audit.verify": {
-      "agent_metadata_source": "cmdcore.contract",
+      "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "agent_summary": "校验本地审计日志文件的哈希链完整性",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只浏览或导出日志内容时用 audit tail / audit export"
@@ -1107,7 +1107,7 @@
       "description": "校验本地审计日志文件的哈希链完整性",
       "display": "操作审计日志管理",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws audit verify",
         "dws audit verify --file /path/to/audit.jsonl"
@@ -1119,16 +1119,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "校验本地审计日志文件的哈希链完整性"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "校验本地审计日志文件的哈希链完整性"
         },
         "availability": {
@@ -1137,16 +1137,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "available"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -1155,8 +1155,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "只浏览或导出日志内容时用 audit tail / audit export"
               ]
@@ -1165,8 +1165,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "只浏览或导出日志内容时用 audit tail / audit export"
           ]
@@ -1177,16 +1177,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "audit.verify"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "audit.verify"
         },
         "confirmation": {
@@ -1195,16 +1195,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "not_required"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "not_required"
         },
         "description": {
@@ -1213,16 +1213,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "校验本地审计日志文件的哈希链完整性"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "校验本地审计日志文件的哈希链完整性"
         },
         "effect": {
@@ -1231,16 +1231,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "read"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "read"
         },
         "examples": {
@@ -1249,8 +1249,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "dws audit verify",
                 "dws audit verify --file /path/to/audit.jsonl"
@@ -1260,8 +1260,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "dws audit verify",
             "dws audit verify --file /path/to/audit.jsonl"
@@ -1273,16 +1273,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "idempotent"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -1291,16 +1291,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "local"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
@@ -1309,16 +1309,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC"
         },
         "interface_ref": {
@@ -1327,16 +1327,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": null
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": null
         },
         "metadata_source": {
@@ -1345,17 +1345,17 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
-              "value": "cmdcore.contract"
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
+              "value": "corecmd.contract"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
-          "value": "cmdcore.contract"
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
+          "value": "corecmd.contract"
         },
         "reviewed": {
           "candidates": [
@@ -1363,16 +1363,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": true
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": true
         },
         "risk": {
@@ -1381,16 +1381,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "low"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "low"
         },
         "title": {
@@ -1399,16 +1399,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "校验审计日志哈希链完整性"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "校验审计日志哈希链完整性"
         },
         "use_when": {
@@ -1417,8 +1417,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"
               ]
@@ -1427,8 +1427,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"
           ]
@@ -1439,7 +1439,7 @@
       "interface_mode": "local",
       "interface_reason": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
       "is_alias": false,
-      "metadata_source": "cmdcore.contract",
+      "metadata_source": "corecmd.contract",
       "name": "verify",
       "parameter_count": 1,
       "parameters": {

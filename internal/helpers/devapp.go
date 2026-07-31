@@ -226,18 +226,8 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 		newDevAppCreateCommand(runner),
 		newDevAppUpdateCommand(runner),
 		newDevAppDeleteCommand(runner),
-		newDevAppLifecycleCommand(runner, "disable", "停用开放平台企业内部应用", devAppDisableTool, LeafSelectionDecl{
-			AgentSummary: "停用指定开放平台应用",
-			UseWhen:      []string{"需要让应用暂时不可用但保留配置时"},
-			AvoidWhen:    []string{"永久删除应用使用 dev app delete"},
-			Examples:     []string{"dws dev app disable --unified-app-id <unifiedAppId> --dry-run --format json"},
-		}),
-		newDevAppLifecycleCommand(runner, "enable", "启用开放平台企业内部应用", devAppEnableTool, LeafSelectionDecl{
-			AgentSummary: "启用指定开放平台应用",
-			UseWhen:      []string{"需要恢复一个已停用应用时"},
-			AvoidWhen:    []string{"启用应用内机器人能力使用 dev app robot enable"},
-			Examples:     []string{"dws dev app enable --unified-app-id <unifiedAppId> --dry-run --format json"},
-		}),
+		newDevAppDisableCommand(runner),
+		newDevAppEnableCommand(runner),
 		credentials,
 		webapp,
 		permission,
@@ -497,11 +487,11 @@ func newDevAppCredentialsGetCommand(runner executor.Runner) *cobra.Command {
 	})
 }
 
-func newDevAppLifecycleCommand(runner executor.Runner, use, short, tool string, selection LeafSelectionDecl) *cobra.Command {
+func newDevAppDisableCommand(runner executor.Runner) *cobra.Command {
 	return NewLeafCommand(LeafSpec{
-		Use:    use,
-		Short:  short,
-		Tool:   tool,
+		Use:    "disable",
+		Short:  "停用开放平台企业内部应用",
+		Tool:   devAppDisableTool,
 		Safety: devAppSafetyWrite(),
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
@@ -509,13 +499,45 @@ func newDevAppLifecycleCommand(runner executor.Runner, use, short, tool string, 
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Schema: LeafSchema{
-			Description: short,
+			Description: "停用开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection:   selection,
+			Selection: LeafSelectionDecl{
+				AgentSummary: "停用指定开放平台应用",
+				UseWhen:      []string{"需要让应用暂时不可用但保留配置时"},
+				AvoidWhen:    []string{"永久删除应用使用 dev app delete"},
+				Examples:     []string{"dws dev app disable --unified-app-id <unifiedAppId> --dry-run --format json"},
+			},
 		},
 		Call:      devAppCall(runner),
-		PostMount: devAppMeta(tool),
+		PostMount: devAppMeta(devAppDisableTool),
+	})
+}
+
+func newDevAppEnableCommand(runner executor.Runner) *cobra.Command {
+	return NewLeafCommand(LeafSpec{
+		Use:    "enable",
+		Short:  "启用开放平台企业内部应用",
+		Tool:   devAppEnableTool,
+		Safety: devAppSafetyWrite(),
+		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
+		ConfirmFirst: true,
+		Flags: []LeafFlag{
+			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
+		},
+		Schema: LeafSchema{
+			Description: "启用开放平台企业内部应用",
+			DryRun:      devAppDryRun,
+			Interface:   devAppCompositeInterface(),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "启用指定开放平台应用",
+				UseWhen:      []string{"需要恢复一个已停用应用时"},
+				AvoidWhen:    []string{"启用应用内机器人能力使用 dev app robot enable"},
+				Examples:     []string{"dws dev app enable --unified-app-id <unifiedAppId> --dry-run --format json"},
+			},
+		},
+		Call:      devAppCall(runner),
+		PostMount: devAppMeta(devAppEnableTool),
 	})
 }
 

@@ -211,12 +211,8 @@ func TestCrossPlatformCoverageDriveConfirmationCancellationCoverage(t *testing.T
 		_, _ = file.Seek(0, 0)
 		os.Stdin = file
 		err = executeDriveEdge(t, &scriptedToolCaller{}, test.args...)
-		if test.wantObservableCancel {
-			if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
-				t.Fatalf("cancel %v = %v, want observable cancellation error", test.args, err)
-			}
-		} else if err != nil {
-			t.Fatalf("cancel %v: %v", test.args, err)
+		if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+			t.Fatalf("cancel %v = %v, want 用户取消了操作", test.args, err)
 		}
 		_ = file.Close()
 	}

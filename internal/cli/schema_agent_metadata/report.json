@@ -3,27 +3,27 @@
   "tools": {
     "report +inbox-list": {
       "agent_summary": "列出我收到的日报（按时间范围分页）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "列出我收到的日报（按时间范围分页）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "列出我收到的日报（按时间范围分页）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -31,13 +31,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -47,7 +47,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -55,7 +55,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -63,13 +63,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -77,13 +77,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -93,7 +93,7 @@
           "value": [
             "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -101,7 +101,7 @@
               "value": [
                 "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -109,13 +109,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -123,13 +123,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -137,13 +137,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -151,14 +151,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -167,13 +167,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -181,13 +181,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -197,7 +197,7 @@
           "value": [
             "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -205,7 +205,7 @@
               "value": [
                 "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -218,7 +218,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
@@ -226,14 +226,14 @@
     },
     "report +outbox-list": {
       "agent_summary": "列出我发出的日报（可选时间/模版名过滤）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report +outbox-list --cursor 0 --size 20",
         "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
@@ -241,13 +241,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "列出我发出的日报（可选时间/模版名过滤）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "列出我发出的日报（可选时间/模版名过滤）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -255,13 +255,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -271,7 +271,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -279,7 +279,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -287,13 +287,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -301,13 +301,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -318,7 +318,7 @@
             "dws report +outbox-list --cursor 0 --size 20",
             "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -327,7 +327,7 @@
                 "dws report +outbox-list --cursor 0 --size 20",
                 "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -335,13 +335,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -349,13 +349,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -363,13 +363,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -377,14 +377,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -393,13 +393,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -407,13 +407,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -423,7 +423,7 @@
           "value": [
             "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -431,7 +431,7 @@
               "value": [
                 "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -444,7 +444,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
@@ -452,7 +452,7 @@
     },
     "report entry get": {
       "agent_summary": "获取指定一篇日志的详情信息",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要提交新日志时改用 dws report entry submit",
@@ -460,7 +460,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report entry get --report-id \u003creportId\u003e --format json",
         "dws report entry get --report-id \u003creportId\u003e"
@@ -468,13 +468,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "获取指定一篇日志的详情信息",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "获取指定一篇日志的详情信息",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -482,13 +482,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -505,7 +505,7 @@
             "要提交新日志时改用 dws report entry submit",
             "要看已读/评论统计时改用 dws report entry stats"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -514,7 +514,7 @@
                 "要提交新日志时改用 dws report entry submit",
                 "要看已读/评论统计时改用 dws report entry stats"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -522,13 +522,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -542,13 +542,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -565,7 +565,7 @@
             "dws report entry get --report-id \u003creportId\u003e --format json",
             "dws report entry get --report-id \u003creportId\u003e"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -574,7 +574,7 @@
                 "dws report entry get --report-id \u003creportId\u003e --format json",
                 "dws report entry get --report-id \u003creportId\u003e"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -582,13 +582,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -602,13 +602,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -622,13 +622,13 @@
         },
         "interface_ref": {
           "value": "report.get_report_entry_details",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.get_report_entry_details",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -648,13 +648,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -662,13 +662,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -684,7 +684,7 @@
           "value": [
             "已知 reportId，需要读取日志正文、字段明细或钉钉跳转链接时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -692,7 +692,7 @@
               "value": [
                 "已知 reportId，需要读取日志正文、字段明细或钉钉跳转链接时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -708,7 +708,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.get_report_entry_details",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.get_report_entry_details",
@@ -720,7 +720,7 @@
     },
     "report entry stats": {
       "agent_summary": "获取指定日志的统计数据",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要读正文时改用 dws report entry get",
@@ -728,7 +728,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report entry stats --report-id \u003creportId\u003e",
         "dws report entry stats --report-id \u003creportId\u003e --format json"
@@ -736,13 +736,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "获取指定日志的统计数据",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "获取指定日志的统计数据",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -750,13 +750,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -773,7 +773,7 @@
             "要读正文时改用 dws report entry get",
             "要提交新日志时改用 dws report entry submit"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -782,7 +782,7 @@
                 "要读正文时改用 dws report entry get",
                 "要提交新日志时改用 dws report entry submit"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -790,13 +790,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -810,13 +810,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -833,7 +833,7 @@
             "dws report entry stats --report-id \u003creportId\u003e",
             "dws report entry stats --report-id \u003creportId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -842,7 +842,7 @@
                 "dws report entry stats --report-id \u003creportId\u003e",
                 "dws report entry stats --report-id \u003creportId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -850,13 +850,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -870,13 +870,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -890,13 +890,13 @@
         },
         "interface_ref": {
           "value": "report.get_report_statistics_by_id",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.get_report_statistics_by_id",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -916,13 +916,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -930,13 +930,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -952,7 +952,7 @@
           "value": [
             "已知 reportId，需要查看评论数、点赞数、已读数等统计时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -960,7 +960,7 @@
               "value": [
                 "已知 reportId，需要查看评论数、点赞数、已读数等统计时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -976,7 +976,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.get_report_statistics_by_id",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.get_report_statistics_by_id",
@@ -988,7 +988,7 @@
     },
     "report entry submit": {
       "agent_summary": "按模版提交一份新日报",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "尚未读取模板字段时先用 dws report template list / template get",
@@ -996,7 +996,7 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report entry submit --template-id \u003ctemplateId\u003e --contents-file ./report.json --format json",
         "dws report entry submit --template-id \u003ctemplateId\u003e --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json"
@@ -1004,13 +1004,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "按模版提交一份新日报",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "按模版提交一份新日报",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1018,13 +1018,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1041,7 +1041,7 @@
             "尚未读取模板字段时先用 dws report template list / template get",
             "只需查看已有日志正文时改用 dws report entry get"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1050,7 +1050,7 @@
                 "尚未读取模板字段时先用 dws report template list / template get",
                 "只需查看已有日志正文时改用 dws report entry get"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1058,13 +1058,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1078,13 +1078,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1101,7 +1101,7 @@
             "dws report entry submit --template-id \u003ctemplateId\u003e --contents-file ./report.json --format json",
             "dws report entry submit --template-id \u003ctemplateId\u003e --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1110,7 +1110,7 @@
                 "dws report entry submit --template-id \u003ctemplateId\u003e --contents-file ./report.json --format json",
                 "dws report entry submit --template-id \u003ctemplateId\u003e --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1118,13 +1118,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1138,13 +1138,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1158,13 +1158,13 @@
         },
         "interface_ref": {
           "value": "report.create_report",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.create_report",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1184,13 +1184,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1205,13 +1205,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1227,7 +1227,7 @@
           "value": [
             "已取得 templateId 与字段定义，需要按模版提交日报/周报（contents[].key 必须等于模板 field_name）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1235,7 +1235,7 @@
               "value": [
                 "已取得 templateId 与字段定义，需要按模版提交日报/周报（contents[].key 必须等于模板 field_name）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1251,7 +1251,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.create_report",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_hints/metadata/report.json",
@@ -1264,7 +1264,7 @@
     },
     "report inbox list": {
       "agent_summary": "查询当前人收到的日志列表",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要看自己发出的日志时改用 dws report outbox list",
@@ -1272,20 +1272,20 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询当前人收到的日志列表",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询当前人收到的日志列表",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1293,13 +1293,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1316,7 +1316,7 @@
             "要看自己发出的日志时改用 dws report outbox list",
             "已知 reportId 要看正文时改用 dws report entry get"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1325,7 +1325,7 @@
                 "要看自己发出的日志时改用 dws report outbox list",
                 "已知 reportId 要看正文时改用 dws report entry get"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1333,13 +1333,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1353,13 +1353,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1375,7 +1375,7 @@
           "value": [
             "dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1383,7 +1383,7 @@
               "value": [
                 "dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1391,13 +1391,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1411,13 +1411,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1431,13 +1431,13 @@
         },
         "interface_ref": {
           "value": "report.get_received_report_list",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.get_received_report_list",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1457,13 +1457,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1471,13 +1471,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1493,7 +1493,7 @@
           "value": [
             "需要按时间范围查看别人发给我的日志列表并提取 reportId 时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1501,7 +1501,7 @@
               "value": [
                 "需要按时间范围查看别人发给我的日志列表并提取 reportId 时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1517,7 +1517,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.get_received_report_list",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.get_received_report_list",
@@ -1529,7 +1529,7 @@
     },
     "report outbox list": {
       "agent_summary": "查询当前人创建的日志详情列表",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要看收到的日志时改用 dws report inbox list",
@@ -1537,7 +1537,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report outbox list --cursor 0 --size 20 --format json",
         "dws report outbox list --cursor 0 --size 20"
@@ -1545,13 +1545,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "查询当前人创建的日志详情列表",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询当前人创建的日志详情列表",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1559,13 +1559,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1582,7 +1582,7 @@
             "要看收到的日志时改用 dws report inbox list",
             "已知 reportId 要完整正文时改用 dws report entry get"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1591,7 +1591,7 @@
                 "要看收到的日志时改用 dws report inbox list",
                 "已知 reportId 要完整正文时改用 dws report entry get"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1599,13 +1599,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1619,13 +1619,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1642,7 +1642,7 @@
             "dws report outbox list --cursor 0 --size 20 --format json",
             "dws report outbox list --cursor 0 --size 20"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1651,7 +1651,7 @@
                 "dws report outbox list --cursor 0 --size 20 --format json",
                 "dws report outbox list --cursor 0 --size 20"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1659,13 +1659,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1679,13 +1679,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1699,13 +1699,13 @@
         },
         "interface_ref": {
           "value": "report.get_send_report_list",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.get_send_report_list",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1725,13 +1725,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1739,13 +1739,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1761,7 +1761,7 @@
           "value": [
             "需要查看我发出/创建的日志列表（含内容摘要、创建时间、访问地址）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1769,7 +1769,7 @@
               "value": [
                 "需要查看我发出/创建的日志列表（含内容摘要、创建时间、访问地址）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1785,7 +1785,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.get_send_report_list",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.get_send_report_list",
@@ -1797,14 +1797,14 @@
     },
     "report template get": {
       "agent_summary": "按名称获取日志模版字段定义",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "不知道有哪些模版时先用 dws report template list"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report template get --name \u003ctemplateName\u003e",
         "dws report template get --name \"日报\" --format json"
@@ -1812,13 +1812,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "按名称获取日志模版字段定义",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "按名称获取日志模版字段定义",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1826,13 +1826,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1848,7 +1848,7 @@
           "value": [
             "不知道有哪些模版时先用 dws report template list"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1856,7 +1856,7 @@
               "value": [
                 "不知道有哪些模版时先用 dws report template list"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1864,13 +1864,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1884,13 +1884,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1907,7 +1907,7 @@
             "dws report template get --name \u003ctemplateName\u003e",
             "dws report template get --name \"日报\" --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1916,7 +1916,7 @@
                 "dws report template get --name \u003ctemplateName\u003e",
                 "dws report template get --name \"日报\" --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1924,13 +1924,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1944,13 +1944,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1964,13 +1964,13 @@
         },
         "interface_ref": {
           "value": "report.get_template_details_by_name",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.get_template_details_by_name",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1990,13 +1990,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2004,13 +2004,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2026,7 +2026,7 @@
           "value": [
             "已知模版名称，提交前需要读取字段名称、类型与排序时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2034,7 +2034,7 @@
               "value": [
                 "已知模版名称，提交前需要读取字段名称、类型与排序时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2050,7 +2050,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.get_template_details_by_name",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.get_template_details_by_name",
@@ -2062,14 +2062,14 @@
     },
     "report template list": {
       "agent_summary": "获取当前员工可使用的日志模版列表",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "已知模版名称需要字段定义时改用 dws report template get"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws report template list",
         "dws report template list --format json"
@@ -2077,13 +2077,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "获取当前员工可使用的日志模版列表",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "获取当前员工可使用的日志模版列表",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2091,13 +2091,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2113,7 +2113,7 @@
           "value": [
             "已知模版名称需要字段定义时改用 dws report template get"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2121,7 +2121,7 @@
               "value": [
                 "已知模版名称需要字段定义时改用 dws report template get"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2129,13 +2129,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2149,13 +2149,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2172,7 +2172,7 @@
             "dws report template list",
             "dws report template list --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2181,7 +2181,7 @@
                 "dws report template list",
                 "dws report template list --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2189,13 +2189,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2209,13 +2209,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2229,13 +2229,13 @@
         },
         "interface_ref": {
           "value": "report.get_available_report_templates",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "report.get_available_report_templates",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2255,13 +2255,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2269,13 +2269,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2291,7 +2291,7 @@
           "value": [
             "提交日志前需要列出可用模版名称与 templateId 时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2299,7 +2299,7 @@
               "value": [
                 "提交日志前需要列出可用模版名称与 templateId 时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2315,7 +2315,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.get_available_report_templates",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.get_available_report_templates",

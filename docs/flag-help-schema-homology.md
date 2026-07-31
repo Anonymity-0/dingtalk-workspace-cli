@@ -2,13 +2,13 @@
 
 - **状态**：已决策（路径 A + Contract 嵌入 Schema）
 - **相关**：[`rfc-command-framework-convergence.md`](rfc-command-framework-convergence.md)、[`schema-dynamic-endpoint-design.md`](schema-dynamic-endpoint-design.md)
-- **实现门面**：`LeafSpec` → `cmdcore.CommandSpec` → `cmdcore.NewCommand`
+- **实现门面**：`LeafSpec` → `corecmd.Spec` → `corecmd.New`
 
 ## 1. 决策
 
 采用 **路径 A：Contract / LeafSpec 为 CLI 表面权威**，并且 **Contract 必须嵌入进 Schema**。
 
-「同源」的含义是：同一份 Contract（今日经 LeafSpec / `CommandSpec` 表达）同时决定——且门禁能证明——
+「同源」的含义是：同一份 Contract（今日经 LeafSpec / `corecmd.Spec` 表达）同时决定——且门禁能证明——
 
 1. cobra 实际注册的 flags / required / defaults；
 2. `--help` 的 Flags 与「参数约束」段；
@@ -17,10 +17,10 @@
 嵌入机制（已落地）：
 
 ```text
-CommandSpec
+corecmd.Spec
   → RegisterFlags + embedContractIntoSchema
   → cobra annotations:
-       dws.schema.contract=cmdcore
+       dws.schema.contract=command
        dws.schema.property / type / required  (per flag)
        dws.schema.constraints
   → RegisterRuntimeContractFinal(SafetySpec + SchemaDecl)
@@ -28,7 +28,7 @@ CommandSpec
   → go:embed schema_catalog / schema_agent_metadata
 ```
 
-cmdcore/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷，不使用字符串枚举注解。
+command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷，不使用字符串枚举注解。
 
 ### 1.1 硬规则：声明 = 最终数据源（Schema 透传）
 
@@ -56,11 +56,11 @@ cmdcore/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 
 | 入口 | 类型 | 归一 |
 |---|---|---|
-| Leaf 命令 | `helpers.LeafSpec` | `FromLeafSpec` → `cmdcore.CommandSpec` |
-| Shortcut | Shortcut 声明（经 `FromShortcut`） | → `cmdcore.CommandSpec` |
-| 直接基座 | `cmdcore.CommandSpec` | `cmdcore.NewCommand` |
+| Leaf 命令 | `helpers.LeafSpec` | `FromLeafSpec` → `corecmd.Spec` |
+| Shortcut | Shortcut 声明（经 `FromShortcut`） | → `corecmd.Spec` |
+| 直接基座 | `corecmd.Spec` | `corecmd.New` |
 
-今日产品 CLI 叶子以 **`LeafSpec` 为声明门面**；字段与 `CommandSpec` 契约面一一对应。
+今日产品 CLI 叶子以 **`LeafSpec` 为声明门面**；字段与 `corecmd.Spec` 契约面一一对应。
 
 #### 1.2.1 契约字段（算声明）
 
@@ -129,7 +129,7 @@ NewLeafCommand(LeafSpec{
 })
 ```
 
-**空 `Safety` 的含义**：cmdcore 为兼容旧只读叶保留 `read/low/not_required/idempotent` 默认。因此「会改状态却留空 Safety」**不是**合法声明；新 Leaf 必须写完整 SafetySpec，未迁移旧路径则按 §1.3 标注 gate。
+**空 `Safety` 的含义**：command 为兼容旧只读叶保留 `read/low/not_required/idempotent` 默认。因此「会改状态却留空 Safety」**不是**合法声明；新 Leaf 必须写完整 SafetySpec，未迁移旧路径则按 §1.3 标注 gate。
 
 ### 1.3 人工标注（annotate）：声明的补充通道
 
@@ -138,7 +138,7 @@ NewLeafCommand(LeafSpec{
 | 标注手段 | 典型值 | 何时用 |
 |---|---|---|
 | `cli.AnnotateRuntimeGate` / `devAppMetaWrite` | `dws.schema.runtime_gate=devAppRequireWriteGuard` | 尚未迁移到 SafetySpec 的旧写命令（`HOM-S2`） |
-| `cli.AnnotateRuntimeRisk` | `dws.schema.risk=…` | Shortcut 暂存的旧兼容路径；cmdcore/Leaf 禁止新增 |
+| `cli.AnnotateRuntimeRisk` | `dws.schema.risk=…` | Shortcut 暂存的旧兼容路径；command/Leaf 禁止新增 |
 | `cli.AnnotateRuntimeFlag` / Constraints | 与 embed 同形 | 手写 cobra 叶补齐表面（长期应迁入 Contract） |
 | reviewed `schema_hints/metadata` Safety | effect/risk/confirmation | 迁移期遗留；受管命令收敛后让位于 Safety/gate |
 
@@ -169,7 +169,7 @@ NewLeafCommand(LeafSpec{
 
 | 字段类 | 权威 | 投影到 |
 |---|---|---|
-| flags / defaults / required / enum / 关系约束 / 运行时 Risk | Contract（LeafSpec / `CommandSpec` 门面） | cobra、`--help`、Schema `parameters` / constraints / confirmation |
+| flags / defaults / required / enum / 关系约束 / 运行时 Risk | Contract（LeafSpec / `corecmd.Spec` 门面） | cobra、`--help`、Schema `parameters` / constraints / confirmation |
 | ConstParams、Bind、OmitEmpty、Transform | 同上（载荷声明，不上 flag 表） | toolArgs；Schema 不把 ConstParams 伪装成用户 flag |
 | canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
 | use_when / avoid_when / examples / agent_summary 文案 | `schema_hints/selection` | Schema selection |
@@ -186,7 +186,7 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 已具备：
 
-- Flags / ConstParams / Constraints → 注册、校验与 `ConstraintHelp`；SafetySpec → 运行时 `ConfirmSafety`（cmdcore）；
+- Flags / ConstParams / Constraints → 注册、校验与 `ConstraintHelp`；SafetySpec → 运行时 `ConfirmSafety`（command）；
 - Call / Execute 作为执行体；业务参数不得在 Call 内装配（helpers 门禁）；
 - **Contract → Schema 嵌入**：参数/约束写原生 annotation，SafetySpec 与 SchemaDecl 注册为类型化 Contract Final 并由 Schema 组装透传。
 

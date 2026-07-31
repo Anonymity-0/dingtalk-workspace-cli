@@ -1,10 +1,10 @@
-# 命令框架对比：DWS cmdcore vs lark-cli vs GWS
+# 命令框架对比：DWS command vs lark-cli vs GWS
 
 本文档对比 DWS（钉钉工作区 CLI）、lark-cli（飞书 CLI）和 GWS（Google Workspace CLI / gcloud）三套命令框架的设计差异。
 
 ## 总览对比
 
-| 维度 | DWS (cmdcore) | lark-cli | GWS (gcloud) |
+| 维度 | DWS (command) | lark-cli | GWS (gcloud) |
 |------|---------------|----------|--------------|
 | 语言 | Go | Go | Python (gcloud) / Go (部分) |
 | CLI 框架 | cobra | cobra | argparse + calliope |
@@ -15,10 +15,10 @@
 
 ## 架构对比
 
-### DWS cmdcore
+### DWS command
 
 ```
-CommandSpec (声明) → NewCommand() → cobra.Command
+corecmd.Spec (声明) → corecmd.New() → cobra.Command
      │
      ├── cli.SafetySpec (运行时 + Schema 单一安全来源)
      ├── FlagSpec[] (参数 + 回退链 + 绑定)
@@ -77,7 +77,7 @@ API Discovery → 代码生成 → surface command
 
 ### 1. 声明粒度
 
-| 能力 | DWS cmdcore | lark-cli | GWS |
+| 能力 | DWS command | lark-cli | GWS |
 |------|-------------|----------|-----|
 | 参数别名 + 环境变量回退 | ✅ FlagSpec.Aliases + EnvVar | ❌ 无 | ❌ 无 |
 | 声明式约束 (互斥/至少一个) | ✅ Constraint[] | ❌ 只有 Validate hook | ✅ argparse group |
@@ -89,7 +89,7 @@ API Discovery → 代码生成 → surface command
 
 ### 2. 执行模型
 
-| 维度 | DWS cmdcore | lark-cli | GWS |
+| 维度 | DWS command | lark-cli | GWS |
 |------|-------------|----------|-----|
 | 参数装配 | 框架自动 (BuildArgs) | 手写 (`runtime.Str()/Bool()`) | 自动映射 |
 | 派发方式 | Invoke(ctx, toolArgs) | Execute(ctx, runtime) | 自动调用 |
@@ -99,7 +99,7 @@ API Discovery → 代码生成 → surface command
 
 ### 3. Agent 适配
 
-| 维度 | DWS cmdcore | lark-cli | GWS |
+| 维度 | DWS command | lark-cli | GWS |
 |------|-------------|----------|-----|
 | 工具发现 | `dws schema --all` (静态 catalog) | `--print-schema` (运行时) | API Discovery |
 | 选择指引 | SelectionDecl (UseWhen/AvoidWhen) | Description + Tips | 无 |
@@ -122,7 +122,7 @@ GWS:      API Discovery JSON → 代码生成 → surface command
 
 ## 设计哲学对比
 
-### DWS cmdcore 的选择
+### DWS command 的选择
 
 | 选择 | 理由 | 对比 |
 |------|------|------|
@@ -156,13 +156,13 @@ GWS:      API Discovery JSON → 代码生成 → surface command
 
 | 框架 | 核心框架代码 | 单命令声明开销 | 备注 |
 |------|-------------|---------------|------|
-| DWS cmdcore | ~1400 行 (cmdcore.go + schema_decl.go) | ~20-30 行 (纯声明) | 框架重、单命令轻 |
+| DWS command | ~1400 行 (command.go + schema_decl.go) | ~20-30 行 (纯声明) | 框架重、单命令轻 |
 | lark-cli | ~800 行 (runner.go + types.go + common.go) | ~50-150 行 (声明 + Execute 逻辑) | 框架轻、单命令重 |
 | GWS gcloud | ~5000+ 行 (calliope 框架) | ~10 行 (多数自动生成) | 框架最重、单命令最轻 |
 
 ## DWS 命令声明示例 vs lark-cli
 
-### DWS (cmdcore / LeafSpec)
+### DWS (command / LeafSpec)
 
 ```go
 NewLeafCommand(LeafSpec{
@@ -229,8 +229,8 @@ var CalendarCreate = common.Shortcut{
 
 | 场景 | 最适合 | 原因 |
 |------|--------|------|
-| MCP 后端 + Agent Schema 投影 | **DWS cmdcore** | 内建 Schema 声明、SafetySpec 契约、离线 catalog |
+| MCP 后端 + Agent Schema 投影 | **DWS command** | 内建 Schema 声明、SafetySpec 契约、离线 catalog |
 | REST API 直连 + OAuth scope 管理 | **lark-cli** | CallAPITyped + scope 预检 + DryRun API 计划 |
 | API-first 大规模 surface 生成 | **GWS gcloud** | Discovery 驱动，一份 Schema 生成一切 |
 | 多步编排 (跨服务链式调用) | **lark-cli** / DWS Orchestrate | lark 的 CallAPITyped 链式 + DWS 的 Orchestrate |
-| 遗留系统迁移 (保持行为等价) | **DWS cmdcore** | ConfirmFirst + 回退链 + catalog 漂移门禁 |
+| 遗留系统迁移 (保持行为等价) | **DWS command** | ConfirmFirst + 回退链 + catalog 漂移门禁 |

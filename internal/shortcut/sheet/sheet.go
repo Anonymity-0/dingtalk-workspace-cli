@@ -17,6 +17,8 @@
 package sheet
 
 import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -31,6 +33,23 @@ var ListSheets = shortcut.Shortcut{
 	Description: "获取表格文档中全部工作表列表",
 	Intent:      "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。",
 	Risk:        shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "获取表格文档中全部工作表列表",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "获取表格文档中全部工作表列表",
+			UseWhen:      []string{"当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws sheet +list-sheets --node NODE_ID"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "表格文档 ID 或 URL", Required: true},
 	},
@@ -136,6 +155,23 @@ var Read = shortcut.Shortcut{
 	Description: "读取工作表指定范围的结构化单元格数据",
 	Intent:      "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。",
 	Risk:        shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "读取工作表指定范围的结构化单元格数据",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "读取工作表指定范围的结构化单元格数据",
+			UseWhen:      []string{"当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws sheet +read --node NODE_ID --sheet-id SHEET_ID --range \"A1:D10\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "表格文档 ID 或 URL", Required: true},
 		{Name: "sheet-id", Type: shortcut.FlagString, Desc: "工作表 ID 或名称 (不传则第一个工作表)"},

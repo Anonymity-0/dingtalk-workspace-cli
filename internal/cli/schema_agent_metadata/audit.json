@@ -3,7 +3,7 @@
   "tools": {
     "audit export": {
       "agent_summary": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只看最近几条用 audit tail",
@@ -11,7 +11,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws audit export --format jsonl",
         "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
@@ -19,13 +19,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -33,13 +33,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -50,7 +50,7 @@
             "只看最近几条用 audit tail",
             "只校验哈希链完整性用 audit verify"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -59,7 +59,7 @@
                 "只看最近几条用 audit tail",
                 "只校验哈希链完整性用 audit verify"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -67,13 +67,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -81,13 +81,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -98,7 +98,7 @@
             "dws audit export --format jsonl",
             "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -107,7 +107,7 @@
                 "dws audit export --format jsonl",
                 "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -115,13 +115,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -129,13 +129,13 @@
         },
         "interface_mode": {
           "value": "local",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "local",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -143,13 +143,13 @@
         },
         "interface_reason": {
           "value": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -157,14 +157,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
@@ -173,13 +173,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -187,13 +187,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -203,7 +203,7 @@
           "value": [
             "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -211,7 +211,7 @@
               "value": [
                 "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -224,7 +224,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
@@ -232,7 +232,7 @@
     },
     "audit tail": {
       "agent_summary": "查看本地操作审计日志最近 N 条记录",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要按日期范围整段导出用 audit export",
@@ -240,7 +240,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws audit tail",
         "dws audit tail --lines 50"
@@ -248,13 +248,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "查看本地操作审计日志最近 N 条记录",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查看本地操作审计日志最近 N 条记录",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -262,13 +262,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -279,7 +279,7 @@
             "需要按日期范围整段导出用 audit export",
             "需要校验哈希链用 audit verify"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -288,7 +288,7 @@
                 "需要按日期范围整段导出用 audit export",
                 "需要校验哈希链用 audit verify"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -296,13 +296,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -310,13 +310,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -327,7 +327,7 @@
             "dws audit tail",
             "dws audit tail --lines 50"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -336,7 +336,7 @@
                 "dws audit tail",
                 "dws audit tail --lines 50"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -344,13 +344,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -358,13 +358,13 @@
         },
         "interface_mode": {
           "value": "local",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "local",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -372,13 +372,13 @@
         },
         "interface_reason": {
           "value": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -386,14 +386,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
@@ -402,13 +402,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -416,13 +416,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -432,7 +432,7 @@
           "value": [
             "需要快速查看最近写入的审计记录（默认最近 20 条）"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -440,7 +440,7 @@
               "value": [
                 "需要快速查看最近写入的审计记录（默认最近 20 条）"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -453,7 +453,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "需要快速查看最近写入的审计记录（默认最近 20 条）"
@@ -461,14 +461,14 @@
     },
     "audit verify": {
       "agent_summary": "校验本地审计日志文件的哈希链完整性",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只浏览或导出日志内容时用 audit tail / audit export"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws audit verify",
         "dws audit verify --file /path/to/audit.jsonl"
@@ -476,13 +476,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "校验本地审计日志文件的哈希链完整性",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "校验本地审计日志文件的哈希链完整性",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -490,13 +490,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -506,7 +506,7 @@
           "value": [
             "只浏览或导出日志内容时用 audit tail / audit export"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -514,7 +514,7 @@
               "value": [
                 "只浏览或导出日志内容时用 audit tail / audit export"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -522,13 +522,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -536,13 +536,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -553,7 +553,7 @@
             "dws audit verify",
             "dws audit verify --file /path/to/audit.jsonl"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -562,7 +562,7 @@
                 "dws audit verify",
                 "dws audit verify --file /path/to/audit.jsonl"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -570,13 +570,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -584,13 +584,13 @@
         },
         "interface_mode": {
           "value": "local",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "local",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -598,13 +598,13 @@
         },
         "interface_reason": {
           "value": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -612,14 +612,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
@@ -628,13 +628,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -642,13 +642,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -658,7 +658,7 @@
           "value": [
             "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -666,7 +666,7 @@
               "value": [
                 "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -679,7 +679,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"

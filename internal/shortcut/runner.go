@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -217,11 +217,11 @@ func (rt *RuntimeContext) Output(payload any) error {
 	return output.WriteCommandPayload(rt.cmd, payload, output.FormatJSON)
 }
 
-// mount compiles a Shortcut into a cobra command through the unified cmdcore
+// mount compiles a Shortcut into a cobra command through the unified command
 // path. FromShortcut expands the legacy Risk only when Safety is absent; when
 // Safety is explicit the same value drives both ConfirmSafety and ContractFinal.
 func mount(s Shortcut) *cobra.Command {
-	cmd := cmdcore.NewCommand(FromShortcut(s))
+	cmd := corecmd.New(FromShortcut(s))
 	// Preserve the historical Shortcut help surface: Tips, rather than Agent
 	// selection examples, own cobra's Example block. The Schema declaration still
 	// carries its reviewed examples in ContractFinal.

@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 func leafConstraintTestSpec(captured *map[string]any) LeafSpec {
@@ -617,7 +617,7 @@ func TestCrossPlatformCoverageLeafSafetyYesAndDryRunBypass(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageLeafYesFlagAndIntEdges(t *testing.T) {
-	if cmdcore.BoolFlag(nil, "yes") {
+	if corecmd.BoolFlag(nil, "yes") {
 		t.Fatal("nil cmd should not report --yes")
 	}
 

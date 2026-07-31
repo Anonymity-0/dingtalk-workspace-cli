@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmdcore
+package corecmd
 
 import (
 	"strings"
@@ -21,7 +21,7 @@ import (
 )
 
 func TestNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:   "create",
 		Short: "short",
 		Long:  "long",
@@ -145,7 +145,7 @@ func TestNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
 					t.Fatalf("panic = %v, want mention %s", recovered, tc.wantSub)
 				}
 			}()
-			NewCommand(CommandSpec{
+			New(Spec{
 				Use:    "x",
 				Short:  "x",
 				Schema: tc.schema,
@@ -166,7 +166,7 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 			Examples:     []string{"dws create --mode a", "dws create --mode b --dry-run"},
 		},
 	}
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:    "create",
 		Short:  "short",
 		Safety: testWriteSafety(),
@@ -179,7 +179,7 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 	}
 
 	schema.Selection.Examples = []string{"dws create --mode a"}
-	explicit := NewCommand(CommandSpec{
+	explicit := New(Spec{
 		Use:     "create",
 		Short:   "short",
 		Example: "  dws create --custom",
@@ -202,8 +202,8 @@ func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 			},
 		}
 	}
-	build := func(spec CommandSpec) *cli.SafetySpec {
-		cmd := NewCommand(spec)
+	build := func(spec Spec) *cli.SafetySpec {
+		cmd := New(spec)
 		final, ok := cli.RuntimeContractFinal(cmd)
 		if !ok || final.Safety == nil {
 			t.Fatalf("expected declared safety, final=%#v ok=%v", final, ok)
@@ -215,14 +215,14 @@ func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 		Effect: "write", Risk: "low",
 		Confirmation: "not_required", Idempotency: "non_idempotent",
 	}
-	if got := build(CommandSpec{Use: "w", Short: "w", Safety: declared, Schema: schema(),
+	if got := build(Spec{Use: "w", Short: "w", Safety: declared, Schema: schema(),
 		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != declared.Effect ||
 		got.Risk != declared.Risk || got.Confirmation != declared.Confirmation ||
 		got.Idempotency != declared.Idempotency {
 		t.Fatalf("SafetySpec must pass through without cross-field inference: %#v", got)
 	}
 	// A wholly empty declaration preserves the historical read-only default.
-	if got := build(CommandSpec{Use: "r", Short: "r", Schema: schema(),
+	if got := build(Spec{Use: "r", Short: "r", Schema: schema(),
 		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "read" || got.Risk != "low" ||
 		got.Confirmation != "not_required" || got.Idempotency != "idempotent" {
 		t.Fatalf("empty Safety must use read default, = %#v", got)
@@ -230,7 +230,7 @@ func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 }
 
 func TestSchemaDeclEmptySkipsFinal(t *testing.T) {
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:    "get",
 		Short:  "g",
 		Flags:  []FlagSpec{{Name: "id", Usage: "id"}},
@@ -255,7 +255,7 @@ func TestNewCommandRejectsPartialSafetySpec(t *testing.T) {
 			t.Fatalf("panic = %v, want missing Safety.Confirmation", recovered)
 		}
 	}()
-	NewCommand(CommandSpec{
+	New(Spec{
 		Use:    "partial",
 		Safety: cli.SafetySpec{Effect: "write", Risk: "medium", Idempotency: "unknown"},
 		Invoke: func(*Ctx, map[string]any) error { return nil },

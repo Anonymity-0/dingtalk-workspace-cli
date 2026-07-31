@@ -1,11 +1,11 @@
 # 命令框架架构
 
-本文档描述 `internal/cmdcore` 统一命令框架的当前架构，面向框架使用者和维护者。
+本文档描述 `internal/corecmd` 统一命令框架的当前架构，面向框架使用者和维护者。
 
 ## 概览
 
 ```
-用户输入 → cobra 命令树 → cmdcore.NewCommand() → 运行时管线 → 后端派发
+用户输入 → cobra 命令树 → corecmd.New() → 运行时管线 → 后端派发
 ```
 
 命令框架将 CLI 命令的**声明**与**执行**分离：
@@ -17,12 +17,12 @@
 
 ## 核心类型
 
-### CommandSpec
+### corecmd.Spec
 
 统一的类型化命令规格，是框架的核心数据结构：
 
 ```go
-type CommandSpec struct {
+type Spec struct {
     // 声明面
     Use         string
     Short       string
@@ -48,7 +48,7 @@ type CommandSpec struct {
 
 ### SafetySpec（单一安全来源）
 
-`CommandSpec.Safety` 直接使用现有 Agent Runtime Schema 的 `cli.SafetySpec`：
+`Spec.Safety` 直接使用现有 Agent Runtime Schema 的 `cli.SafetySpec`：
 
 | 字段 | 职责 |
 |------|------|
@@ -116,7 +116,7 @@ flag 解析按以下顺序取值（先命中先生效）：
 
 ## 构建时流程
 
-`cmdcore.NewCommand(spec)` 执行以下构建时检查（失败则 panic）：
+`corecmd.New(spec)` 执行以下构建时检查（失败则 panic）：
 
 1. **validateDispatchDecl** — 恰好一个执行体（Invoke/Orchestrate/RunE）
 2. **validateSafetySpec** — 非空 SafetySpec 的四个独立字段必须完整
@@ -192,13 +192,39 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 }
 ```
 
-`NewLeafCommand` 经 `FromLeafSpec()` 归一为 `CommandSpec`，再交 `NewCommand()` 构建。
+`NewLeafCommand` 经 `FromLeafSpec()` 归一为 `corecmd.Spec`，再交 `corecmd.New()` 构建。这是**完全托管模式**：声明 + 执行都归 command。
+
+### 声明元数据模式（既有命令补 Schema）
+
+执行体必须冻结时，用同一套 `LeafSpec` 词汇只声明元数据，写在命令字面量旁：
+
+```go
+baseListCmd := &cobra.Command{
+    Use: "list", Short: "获取 AI 表格列表",
+    RunE: func(cmd *cobra.Command, args []string) error { /* 原执行体不动 */ },
+}
+DeclareLeafMetadata(baseListCmd, LeafSpec{
+    Safety: aitableSafetyRead(),
+    Schema: LeafSchema{
+        Description: "列出最近访问的 AI 表格 Base。",
+        Interface:   aitableMCPInterface("list_bases"),
+        Selection: LeafSelectionDecl{
+            AgentSummary: "列出最近访问的 AI 表格 Base。",
+            UseWhen:      []string{"只需浏览最近打开过的 Base 时"},
+            AvoidWhen:    []string{"按名称查找优先 base search"},
+            Examples:     []string{"dws aitable base list"},
+        },
+    },
+})
+```
+
+`DeclareLeafMetadata` 调用 `corecmd.AttachSchema` 挂 Safety+Schema；不注册 flag、不接管参数投影。当 `Safety.Confirmation=user_required` 时，用**同一份** SafetySpec 包一层 `ConfirmSafety`，保证执行门禁与 Catalog 同源。迁移态入口；新命令仍应走 `NewLeafCommand`。
 
 ### Shortcut（智能快捷方式，已接入 live mount）
 
 ```go
 func mount(s Shortcut) *cobra.Command {
-    return cmdcore.NewCommand(FromShortcut(s))
+    return corecmd.New(FromShortcut(s))
 }
 
 spec := FromShortcut(Shortcut{
@@ -211,18 +237,18 @@ spec := FromShortcut(Shortcut{
 ```
 
 Shortcut 当前仍保留自身的 `Risk`，adapter 只在边界将它展开成完整
-`cli.SafetySpec`；cmdcore/Leaf 不再保留该枚举。Shortcut 的 Cobra
-type/default/usage provenance 保持不变，cmdcore 统一补充 Required、Enum 和关系约束投影。
+`cli.SafetySpec`；command/Leaf 不再保留该枚举。Shortcut 的 Cobra
+type/default/usage provenance 保持不变，command 统一补充 Required、Enum 和关系约束投影。
 
 ## 文件结构
 
 | 文件 | 职责 |
 |------|------|
-| `internal/cmdcore/cmdcore.go` | 核心类型 + NewCommand 构建器 + 运行时管线 |
-| `internal/cmdcore/schema_decl.go` | SchemaDecl 载荷类型 + 声明完整性守卫 |
-| `internal/helpers/leaf.go` | LeafSpec 门面 + type alias + FromLeafSpec 映射 |
+| `internal/corecmd/command.go` | 核心类型 + NewCommand 构建器 + 运行时管线 |
+| `internal/corecmd/schema_decl.go` | SchemaDecl 载荷类型 + 声明完整性守卫 |
+| `internal/helpers/leaf.go` | LeafSpec 门面：`NewLeafCommand`（完全托管）+ `DeclareLeafMetadata`（声明元数据） |
 | `internal/shortcut/adapter.go` | FromShortcut 完整映射与 Risk 兼容边界 |
-| `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 cmdcore |
+| `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 command |
 
 ## Schema 投影
 

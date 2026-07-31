@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmdcore
+package corecmd
 
 import (
 	"os"
@@ -22,7 +22,7 @@ import (
 )
 
 // Pins RFC §5.0 so the command-framework meaning of "declare" cannot drift
-// away from the homology docs / CommandSpec godoc without failing CI.
+// away from the homology docs / Spec godoc without failing CI.
 func TestRFCPinsFrameworkDeclareDefinition(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -42,7 +42,7 @@ func TestRFCPinsFrameworkDeclareDefinition(t *testing.T) {
 		"**Schema 透传**",
 		"禁止** JSON 注解桥",
 		"RegisterRuntimeContractFinal",
-		"今日契约字段（`CommandSpec` / `LeafSpec`）",
+		"今日契约字段（`corecmd.Spec` / `LeafSpec`）",
 		"Schema 全覆盖：`ToolSpec` 字段权威",
 		"**Identity**",
 		"**Parameters**",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"net/http"
 	"os"
@@ -119,6 +120,25 @@ func newMailCommand() *cobra.Command {
 			return callMCPTool("list_user_mailboxes", nil)
 		},
 	}
+	DeclareLeafMetadata(mailboxListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出当前登录用户自己的可用邮箱",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "list_user_mailboxes",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出当前登录用户自己的可用邮箱",
+				UseWhen:      []string{"需要选择当前用户企业邮箱或个人邮箱时"},
+				AvoidWhen:    []string{"查找他人的邮箱地址不能使用此命令"},
+				Examples:     []string{"dws mail mailbox list"},
+			},
+		},
+	})
 
 	mailboxProfileCmd := &cobra.Command{
 		Use:   "profile",
@@ -221,6 +241,28 @@ func newMailCommand() *cobra.Command {
 			return callMCPTool("search_emails", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(messageSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "用 KQL 搜索邮件，返回 ID 与元信息而非完整正文",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "search_emails",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "用 KQL 搜索邮件，返回 ID 与元信息而非完整正文",
+				UseWhen:      []string{"按主题/发件人/时间等条件搜索邮件并提取 messageId"},
+				AvoidWhen: []string{
+					"已知 messageId 直接看正文时用 mail message get",
+					"只列某文件夹邮件且无需复杂条件时优先 mail message list",
+				},
+				Examples: []string{"dws mail message search --email user@company.com --query \"subject:周报\""},
+			},
+		},
+	})
 
 	messageListCmd := &cobra.Command{
 		Use:   "list",
@@ -260,6 +302,28 @@ func newMailCommand() *cobra.Command {
 			return callMCPTool("search_emails", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(messageListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出收件箱或指定文件夹中的邮件（无需手写 KQL）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "CLI wrapper converts the reviewed folder selection into a KQL query and maps pagination before calling the pinned search_emails RPC; the local transform plus RPC call is not a one-to-one interface contract",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出收件箱或指定文件夹中的邮件（无需手写 KQL）",
+				UseWhen:      []string{"浏览某文件夹邮件列表，且没有复杂搜索条件"},
+				AvoidWhen:    []string{"需要主题/发件人/日期等组合条件时用 mail message search"},
+				Examples: []string{
+					"dws mail message list --email user@company.com",
+					"dws mail message list --email user@company.com --folder-id 1 --limit 50",
+				},
+			},
+		},
+	})
 
 	messageGetCmd := &cobra.Command{
 		Use:   "get",
@@ -282,6 +346,25 @@ func newMailCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(messageGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定邮件的完整正文和元数据",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "get_email_by_message_id",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定邮件的完整正文和元数据",
+				UseWhen:      []string{"搜索或列表已返回 messageId，需要打开邮件内容时"},
+				AvoidWhen:    []string{"只需筛选邮件列表时使用 message list 或 search"},
+				Examples:     []string{"dws mail message get --email user@company.com --id <messageId>"},
+			},
+		},
+	})
 
 	messageSendCmd := &cobra.Command{
 		Use:   "send",
@@ -343,6 +426,28 @@ func newMailCommand() *cobra.Command {
 			return callMCPTool("send_email", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(messageSendCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "以指定邮箱地址发送一封邮件",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "send_email",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "以指定邮箱地址发送一封邮件",
+				UseWhen:      []string{"用户明确要发邮件，且已确认发件人邮箱、收件人、主题与正文"},
+				AvoidWhen: []string{
+					"只需创建草稿不发送时用 mail draft create",
+					"回复/转发已有邮件时用 mail message reply / forward",
+				},
+				Examples: []string{"dws mail message send --from user@company.com --to colleague@company.com --subject \"周报\" --content \"本周完成...\""},
+			},
+		},
+	})
 
 	folderCmd := &cobra.Command{Use: "folder", Short: "邮件文件夹管理", RunE: groupRunE}
 
@@ -377,6 +482,25 @@ func newMailCommand() *cobra.Command {
 			return callMCPTool("list_folders", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(folderListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出指定邮箱的系统和自定义文件夹",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "list_folders",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出指定邮箱的系统和自定义文件夹",
+				UseWhen:      []string{"需要取得 folderId 或浏览邮箱目录时"},
+				AvoidWhen:    []string{"按文件夹列出邮件时使用 mail message list"},
+				Examples:     []string{"dws mail folder list --email user@company.com"},
+			},
+		},
+	})
 
 	folderListCmd.Flags().String("email", "", "邮件所属邮箱地址 (必填)")
 	folderListCmd.Flags().String("folder", "", "父文件夹唯一标识，不传则返回顶层文件夹 (可选)")
@@ -413,6 +537,25 @@ func newMailCommand() *cobra.Command {
 			return callMCPTool("create_mail_folder", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(folderCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建自定义邮件文件夹",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_mail_folder",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建自定义邮件文件夹",
+				UseWhen:      []string{"需要在指定邮箱中新建归档文件夹时"},
+				AvoidWhen:    []string{"移动邮件到已有文件夹时使用 mail message batch-move"},
+				Examples:     []string{"dws mail folder create --email user@company.com --name \"项目资料\""},
+			},
+		},
+	})
 
 	folderDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -438,6 +581,28 @@ func newMailCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(folderDeleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "删除指定邮箱下的邮件文件夹",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "delete_mail_folder",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除指定邮箱下的邮件文件夹",
+				UseWhen:      []string{"已通过 folder list 拿到文件夹 ID，用户明确要删除该文件夹"},
+				AvoidWhen: []string{
+					"不要把文件夹名称当作 ID",
+					"只重命名时用 mail folder update",
+				},
+				Examples: []string{"dws mail folder delete --email user@company.com --id <folderId>"},
+			},
+		},
+	})
 
 	folderUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -464,6 +629,25 @@ func newMailCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(folderUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "重命名指定邮件文件夹",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "update_mail_folder",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "重命名指定邮件文件夹",
+				UseWhen:      []string{"已知 folderId 并需要修改文件夹名称时"},
+				AvoidWhen:    []string{"创建或删除文件夹使用对应命令"},
+				Examples:     []string{"dws mail folder update --email user@company.com --id <folderId> --name \"新文件夹名\""},
+			},
+		},
+	})
 
 	folderCreateCmd.Flags().String("email", "", "邮件所属邮箱地址 (必填)")
 	folderCreateCmd.Flags().String("name", "", "新建邮件文件夹名称 (必填)")
@@ -510,6 +694,25 @@ func newMailCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(tagListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出指定邮箱可用的邮件标签",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "list_tags",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出指定邮箱可用的邮件标签",
+				UseWhen:      []string{"需要取得标签 ID 或查看现有标签时"},
+				AvoidWhen:    []string{"邮件文件夹目录使用 mail folder list"},
+				Examples:     []string{"dws mail tag list --email user@company.com"},
+			},
+		},
+	})
 
 	tagCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -701,6 +904,25 @@ func newMailCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(threadGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定邮件会话的详情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "get_thread",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定邮件会话的详情",
+				UseWhen:      []string{"已知 conversationId 并需要查看同一会话中的邮件上下文时"},
+				AvoidWhen:    []string{"只有单封 messageId 时使用 mail message get"},
+				Examples:     []string{"dws mail thread get --email user@company.com --id <conversationId>"},
+			},
+		},
+	})
 
 	threadUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -978,6 +1200,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(messageReplyCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建仅回复原发件人的邮件草稿",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_reply_draft",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建仅回复原发件人的邮件草稿",
+				UseWhen:      []string{"已知原邮件 ID 并要回复发件人时"},
+				AvoidWhen:    []string{"需要回复全部参与者时使用 mail message reply-all"},
+				Examples:     []string{"dws mail message reply --from user@company.com --id <messageId> --subject \"Re: 周报\" --content \"已收到\""},
+			},
+		},
+	})
 
 	messageReplyAllCmd := &cobra.Command{
 		Use:   "reply-all",
@@ -1027,6 +1268,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(messageReplyAllCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建回复原邮件全部参与者的草稿",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_replyall_draft",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建回复原邮件全部参与者的草稿",
+				UseWhen:      []string{"已知原邮件 ID 且回复需要覆盖所有相关收件人时"},
+				AvoidWhen:    []string{"只回复原发件人时使用 mail message reply"},
+				Examples:     []string{"dws mail message reply-all --from user@company.com --id <messageId> --subject \"Re: 周报\" --content \"感谢大家\""},
+			},
+		},
+	})
 
 	messageForwardCmd := &cobra.Command{
 		Use:   "forward",
@@ -1076,6 +1336,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(messageForwardCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "基于已有邮件创建转发草稿",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_forward_draft",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "基于已有邮件创建转发草稿",
+				UseWhen:      []string{"已知原邮件 ID，需要编辑收件人或附言后再发送时"},
+				AvoidWhen:    []string{"直接发送全新邮件使用 mail message send"},
+				Examples:     []string{"dws mail message forward --from user@company.com --to colleague@company.com --id <messageId> --subject \"Fwd: 周报\""},
+			},
+		},
+	})
 
 	messageBatchMoveCmd := &cobra.Command{
 		Use:   "batch-move",
@@ -1098,6 +1377,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(messageBatchMoveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把多封邮件批量移动到指定文件夹",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "batch_move_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把多封邮件批量移动到指定文件夹",
+				UseWhen:      []string{"已知邮件 ID 列表和目标 folderId 时"},
+				AvoidWhen:    []string{"永久删除邮件时使用 mail message batch-delete"},
+				Examples:     []string{"dws mail message batch-move --email user@company.com --ids <id1>,<id2> --folder 6"},
+			},
+		},
+	})
 
 	messageBatchDeleteCmd := &cobra.Command{
 		Use:   "batch-delete",
@@ -1117,6 +1415,28 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(messageBatchDeleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "批量删除邮件（可移入已删除或按类型删除）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "batch_delete_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量删除邮件（可移入已删除或按类型删除）",
+				UseWhen:      []string{"已知多个 messageId，用户明确要求删除这些邮件"},
+				AvoidWhen: []string{
+					"只需换文件夹时用 mail message batch-move",
+					"messageId 未确认时先 search/get",
+				},
+				Examples: []string{"dws mail message batch-delete --email user@company.com --ids <id1>,<id2>"},
+			},
+		},
+	})
 
 	messageBatchModifyCmd := &cobra.Command{
 		Use:   "batch-update",
@@ -1282,6 +1602,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			return callMCPTool("create_draft", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(draftCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建邮件草稿但不发送",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_draft",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建邮件草稿但不发送",
+				UseWhen:      []string{"需要先保存收件人、主题、正文或附件供后续编辑时"},
+				AvoidWhen:    []string{"用户要求立即发信时使用 mail message send"},
+				Examples:     []string{"dws mail draft create --from user@company.com --to colleague@company.com --subject \"草稿标题\" --content \"草稿正文\""},
+			},
+		},
+	})
 
 	draftUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1340,6 +1679,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			return callMCPTool("update_draft", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(draftUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新已有邮件草稿的内容",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "update_draft",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新已有邮件草稿的内容",
+				UseWhen:      []string{"已知草稿 messageId 并需要修改主题、正文或收件人时"},
+				AvoidWhen:    []string{"已发送邮件不能用草稿更新"},
+				Examples:     []string{"dws mail draft update --from user@company.com --id <messageId> --subject \"新标题\" --content \"新正文\""},
+			},
+		},
+	})
 
 	attachmentCmd := &cobra.Command{Use: "attachment", Short: "邮件附件管理", RunE: groupRunE}
 
@@ -1367,6 +1725,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(attachmentListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出指定邮件的全部附件元数据",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "list_mail_attachments",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出指定邮件的全部附件元数据",
+				UseWhen:      []string{"已知邮件 ID 并需要取得附件 ID、名称或大小时"},
+				AvoidWhen:    []string{"实际保存附件时使用 mail attachment download"},
+				Examples:     []string{"dws mail attachment list --email user@company.com --id <messageId>"},
+			},
+		},
+	})
 
 	attachmentListCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	attachmentListCmd.Flags().String("id", "", "邮件唯一标识 messageId (必填)")
@@ -1402,6 +1779,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			return runMailAttachmentDownload(cmd)
 		},
 	}
+	DeclareLeafMetadata(attachmentDownloadCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "把指定邮件附件下载到本地文件",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_download_session",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把指定邮件附件下载到本地文件",
+				UseWhen:      []string{"已知邮件 ID、附件 ID 和文件名，需要保存单个附件时"},
+				AvoidWhen:    []string{"只需列出附件元数据时使用 mail attachment list"},
+				Examples:     []string{"dws mail attachment download --email user@company.com --message-id <messageId> --attachment-id <attachmentId> --name report.pdf --output ."},
+			},
+		},
+	})
 
 	attachmentDownloadCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	attachmentDownloadCmd.Flags().String("message-id", "", "邮件唯一标识 messageId (必填)")
@@ -1625,6 +2021,25 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			})
 		},
 	}
+	DeclareLeafMetadata(draftSendCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "发送草稿箱中已有的邮件草稿",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "send_draft",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "发送草稿箱中已有的邮件草稿",
+				UseWhen:      []string{"已知草稿 messageId 且用户要求发送该草稿时"},
+				AvoidWhen:    []string{"创建或编辑草稿分别使用 draft create 和 draft update"},
+				Examples:     []string{"dws mail draft send --from user@company.com --id <messageId>"},
+			},
+		},
+	})
 
 	draftSendCmd.Flags().String("from", "", "发件人邮箱 (必填)，别名: --sender")
 	draftSendCmd.Flags().String("sender", "", "--from 的别名")
@@ -1694,6 +2109,25 @@ user 对象字段：
 			return callMCPTool("search_mail_users", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(userSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按姓名、工号或关键词搜索企业邮箱用户",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "search_mail_users",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按姓名、工号或关键词搜索企业邮箱用户",
+				UseWhen:      []string{"需要查找他人的企业邮箱地址时"},
+				AvoidWhen:    []string{"列出当前用户自己的邮箱使用 mail mailbox list，搜索邮件内容使用 message search"},
+				Examples:     []string{"dws mail user search --email user@company.com --keyword \"张三\" --limit 20"},
+			},
+		},
+	})
 
 	userSearchCmd.Flags().String("email", "", "搜索目标邮箱地址 (可选)")
 	userSearchCmd.Flags().String("keyword", "", "搜索关键词（未提供 --employee-no 时为必填）")
@@ -1747,6 +2181,25 @@ user 对象字段：
 			return callMCPTool("create_user_message_template", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建可复用的邮件模板",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_user_message_template",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建可复用的邮件模板",
+				UseWhen:      []string{"需要保存固定主题、正文或收件人供重复使用时"},
+				AvoidWhen:    []string{"只创建一次性草稿时使用 mail draft create"},
+				Examples:     []string{"dws mail template create --email user@company.com --from user@company.com --name \"周报模板\" --subject \"周报\" --content \"本周工作总结\""},
+			},
+		},
+	})
 
 	templateCreateCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	templateCreateCmd.Flags().String("from", "", "模板发件人邮箱 (可选)")
@@ -1788,6 +2241,25 @@ user 对象字段：
 			return callMCPTool("list_user_message_templates", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "分页列出当前邮箱的邮件模板",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "list_user_message_templates",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "分页列出当前邮箱的邮件模板",
+				UseWhen:      []string{"需要浏览模板或取得 templateId 时"},
+				AvoidWhen:    []string{"查看单个模板详情时使用 mail template get"},
+				Examples:     []string{"dws mail template list --email user@company.com --limit 20"},
+			},
+		},
+	})
 
 	templateListCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	templateListCmd.Flags().String("cursor", "", "分页游标，取自响应中的 nextCursor 字段 (可选)")
@@ -1816,6 +2288,25 @@ user 对象字段：
 			})
 		},
 	}
+	DeclareLeafMetadata(templateGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定邮件模板的完整内容",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "get_user_message_template",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定邮件模板的完整内容",
+				UseWhen:      []string{"已知 templateId 并需要查看主题、正文或收件人时"},
+				AvoidWhen:    []string{"需要浏览所有模板时使用 mail template list"},
+				Examples:     []string{"dws mail template get --email user@company.com --id <templateId>"},
+			},
+		},
+	})
 
 	templateGetCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	templateGetCmd.Flags().String("id", "", "模板唯一标识 (必填)")
@@ -1868,6 +2359,25 @@ user 对象字段：
 			return err
 		},
 	}
+	DeclareLeafMetadata(templateUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新已有邮件模板的内容",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "update_user_message_template",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新已有邮件模板的内容",
+				UseWhen:      []string{"已知 templateId 并需要修改名称、主题、正文或收件人时"},
+				AvoidWhen:    []string{"创建新模板时使用 mail template create"},
+				Examples:     []string{"dws mail template update --email user@company.com --id <templateId> --subject \"新标题\" --content \"新正文\""},
+			},
+		},
+	})
 
 	templateUpdateCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	templateUpdateCmd.Flags().String("id", "", "模板唯一标识 (必填)")
@@ -1898,6 +2408,25 @@ user 对象字段：
 			})
 		},
 	}
+	DeclareLeafMetadata(templateDeleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "删除指定邮件模板",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "delete_user_message_template",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除指定邮件模板",
+				UseWhen:      []string{"已知 templateId 且明确不再需要该模板时"},
+				AvoidWhen:    []string{"只修改模板内容时使用 mail template update"},
+				Examples:     []string{"dws mail template delete --email user@company.com --id <templateId>"},
+			},
+		},
+	})
 
 	templateDeleteCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	templateDeleteCmd.Flags().String("id", "", "模板唯一标识 (必填)")
@@ -1940,6 +2469,25 @@ user 对象字段：
 			return callMCPTool("create_user_mail_contact", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(contactCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建个人邮件联系人",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "create_user_mail_contact",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建个人邮件联系人",
+				UseWhen:      []string{"需要把一个邮件地址保存到自己的联系人列表时"},
+				AvoidWhen:    []string{"按姓名搜索企业邮箱用户时使用 mail user search"},
+				Examples:     []string{"dws mail contact create --email user@company.com --contact-email colleague@company.com --display-name \"张三\""},
+			},
+		},
+	})
 
 	contactCreateCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	contactCreateCmd.Flags().String("contact-email", "", "联系人邮箱地址 (必填)")
@@ -1977,6 +2525,25 @@ user 对象字段：
 			return callMCPTool("list_user_mail_contacts", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(contactListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "分页列出个人保存的邮件联系人",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "list_user_mail_contacts",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "分页列出个人保存的邮件联系人",
+				UseWhen:      []string{"需要浏览自己的联系人或取得 contactId 时"},
+				AvoidWhen:    []string{"搜索企业通讯录用户时使用 mail user search"},
+				Examples:     []string{"dws mail contact list --email user@company.com --limit 20"},
+			},
+		},
+	})
 
 	contactListCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	contactListCmd.Flags().String("cursor", "", "分页游标，取自响应中的 nextCursor 字段 (可选)")
@@ -2019,6 +2586,25 @@ user 对象字段：
 			return callMCPTool("update_user_mail_contact", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(contactUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新个人邮件联系人的资料",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "update_user_mail_contact",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新个人邮件联系人的资料",
+				UseWhen:      []string{"已知 contactId 并需要改显示名或邮箱信息时"},
+				AvoidWhen:    []string{"企业通讯录资料不能通过此命令修改"},
+				Examples:     []string{"dws mail contact update --email user@company.com --contact-id <contactId> --display-name \"李四\""},
+			},
+		},
+	})
 
 	contactUpdateCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	contactUpdateCmd.Flags().String("contact-id", "", "联系人唯一标识 (必填)")
@@ -2046,6 +2632,25 @@ user 对象字段：
 			})
 		},
 	}
+	DeclareLeafMetadata(contactBatchDeleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "批量删除个人邮件联系人",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "mail", RPCName: "batch_delete_user_mail_contacts",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量删除个人邮件联系人",
+				UseWhen:      []string{"需要从自己的联系人列表移除多个已知 contactId 时"},
+				AvoidWhen:    []string{"删除邮件或查询企业通讯录用户时不要使用"},
+				Examples:     []string{"dws mail contact batch-delete --email user@company.com --contact-ids <id1>,<id2>"},
+			},
+		},
+	})
 
 	contactBatchDeleteCmd.Flags().String("email", "", "用户邮箱地址 (必填)")
 	contactBatchDeleteCmd.Flags().String("contact-ids", "", "要删除的联系人 ID 列表，逗号分隔 (必填)")

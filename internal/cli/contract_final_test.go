@@ -91,7 +91,7 @@ func TestRuntimeToolSpecFromContractFinalPassThrough(t *testing.T) {
 	if spec.Selection.AgentSummary != "from contract" {
 		t.Fatalf("selection = %#v", spec.Selection)
 	}
-	if spec.MetadataSource != "cmdcore.contract" {
+	if spec.MetadataSource != "corecmd.contract" {
 		t.Fatalf("metadata_source = %q", spec.MetadataSource)
 	}
 	if len(spec.Parameters) != 1 || spec.Parameters[0].Name != "mode" {

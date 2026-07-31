@@ -1221,6 +1221,31 @@ func newChatCommand() *cobra.Command {
 			return nil
 		},
 	}
+	DeclareLeafMetadata(chatGroupCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建群聊并可指定群名与初始成员",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "create_group_conversation",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建群聊并可指定群名与初始成员",
+				UseWhen: []string{
+					"需要新建内部/外部群或话题圈，并带上初始成员",
+					"用户明确要建群且已给出群名与成员标识",
+				},
+				AvoidWhen: []string{
+					"已有群只需加人时使用 chat group members add",
+					"只是搜索已有群时使用 chat search",
+				},
+				Examples: []string{"dws chat group create --name \"Q1 项目冲刺群\" --users userId1,userId2,userId3"},
+			},
+		},
+	})
 
 	chatSearchCmd := &cobra.Command{
 		Use:   "search",
@@ -1250,6 +1275,32 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "search_groups", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按关键词搜索群聊并拿到 openConversationId",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the CLI calls im/search_groups with a flat payload, while the pinned snapshot only contains the incompatible chat/search_groups_by_keyword contract.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按关键词搜索群聊并拿到 openConversationId",
+				UseWhen:      []string{"只知道群名关键词，需要定位群并提取 openConversationId"},
+				AvoidWhen: []string{
+					"已有群号时用 chat group get-by-group-id",
+					"查我创建/管理的群用 chat group list-my-groups",
+					"查与某人的共同群用 chat search-common",
+				},
+				Examples: []string{
+					"dws chat search --query \"项目冲刺\"",
+					"dws chat search --query \"项目冲刺\" --limit 20 --cursor 0",
+				},
+			},
+		},
+	})
 
 	chatGroupMembersCmd := &cobra.Command{
 		Use:   "members",
@@ -1288,6 +1339,28 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupMembersAddBotCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把企业机器人拉进我有管理权限的群",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "bot", RPCName: "add_robot_to_group",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把企业机器人拉进我有管理权限的群",
+				UseWhen:      []string{"需要把已有企业机器人加入指定群"},
+				AvoidWhen: []string{
+					"添加普通成员时使用 chat group members add",
+					"移除群内机器人时使用 chat group members remove-bot",
+				},
+				Examples: []string{"dws chat group members add-bot --robot-code <robot-code> --id <openconversation_id>"},
+			},
+		},
+	})
 
 	chatGroupRenameCmd := &cobra.Command{
 		Use:   "rename",
@@ -1304,6 +1377,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupRenameCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "修改指定群聊的名称",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "update_group_name",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "修改指定群聊的名称",
+				UseWhen:      []string{"需要给已有群聊重命名时"},
+				AvoidWhen:    []string{"只修改个人可见备注时不要使用群名称更新"},
+				Examples:     []string{"dws chat group rename --id <openConversationId> --name \"新群名\""},
+			},
+		},
+	})
 
 	chatGroupMemberAddCmd := &cobra.Command{
 		Use:   "add",
@@ -1325,6 +1417,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("add_group_member", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupMemberAddCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "向指定群聊添加成员",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "add_group_member",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "向指定群聊添加成员",
+				UseWhen:      []string{"已知群 ID 和成员 ID，需要邀请成员入群时"},
+				AvoidWhen:    []string{"添加机器人时使用 chat group members add-bot"},
+				Examples:     []string{"dws chat group members add --id <openConversationId> --users userId1,userId2"},
+			},
+		},
+	})
 
 	chatGroupMemberRemoveCmd := &cobra.Command{
 		Use:   "remove",
@@ -1349,6 +1460,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupMemberRemoveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "从指定群聊移除成员",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "remove_group_member",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "从指定群聊移除成员",
+				UseWhen:      []string{"群管理员明确要移除一个或多个普通成员时"},
+				AvoidWhen:    []string{"移除机器人时使用 chat group members remove-bot"},
+				Examples:     []string{"dws chat group members remove --id <openConversationId> --users userId1,userId2"},
+			},
+		},
+	})
 
 	// ── message 子命令 ────────────────────────────────────────
 
@@ -1427,6 +1557,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("list_individual_chat_message", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "分页读取指定会话消息及其引用上下文",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "list_conversation_message_v2",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "分页读取指定会话消息及其引用上下文",
+				UseWhen:      []string{"用户明确指定某个会话，并要读取消息或追溯引用回复中的原消息上下文时"},
+				AvoidWhen:    []string{"跨全部会话按时间查询时使用 chat message list-all"},
+				Examples:     []string{"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50"},
+			},
+		},
+	})
 
 	chatMessageListDirectCmd := &cobra.Command{
 		Use:    "list-direct",
@@ -1474,6 +1623,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("list_individual_chat_message", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListDirectCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "读取与指定用户的单聊消息记录",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "list_individual_chat_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取与指定用户的单聊消息记录",
+				UseWhen:      []string{"用户明确要求查看和某人的一对一聊天时"},
+				AvoidWhen:    []string{"跨群聊按发送者查询时使用 chat message list-by-sender"},
+				Examples:     []string{"dws chat message list-direct --user <userId> --time \"2026-07-01 00:00:00\" --direction newer --limit 50"},
+			},
+		},
+	})
 
 	chatMessageSendCmd := &cobra.Command{
 		Use:   "send",
@@ -1716,6 +1884,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("send_personal_message", newDirectParams)
 		},
 	}
+	DeclareLeafMetadata(chatMessageSendCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "以当前用户身份发送群聊或单聊消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "send_personal_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "以当前用户身份发送群聊或单聊消息",
+				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时"},
+				AvoidWhen:    []string{"机器人身份或 Webhook 发送应使用对应命令"},
+				Examples:     []string{"dws chat message send --group <openConversationId> \"项目已更新\""},
+			},
+		},
+	})
 
 	// send-by-bot: 群聊传 --group，单聊传 --users/--open-dingtalk-ids；--text 支持 Markdown
 	chatMessageSendByBotCmd := &cobra.Command{
@@ -1815,6 +2002,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("bot", "batch_send_robot_msg_to_users", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageSendByBotCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "以应用机器人身份发送群消息或批量单聊",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "以应用机器人身份发送群消息或批量单聊",
+				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递消息时"},
+				AvoidWhen:    []string{"个人身份发送或自定义 Webhook 告警不要使用"},
+				Examples:     []string{"dws chat message send-by-bot --robot-code <robotCode> --group <openConversationId> --title \"日报\" --text \"今日进展\""},
+			},
+		},
+	})
 
 	// recall-by-bot: 传 --group 为群聊撤回，不传为单聊撤回
 	chatMessageRecallByBotCmd := &cobra.Command{
@@ -1850,6 +2056,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageRecallByBotCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "撤回指定机器人发送的消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "撤回指定机器人发送的消息",
+				UseWhen:      []string{"持有 robotCode 和发送结果 key，需要撤回机器人消息时"},
+				AvoidWhen:    []string{"个人身份消息撤回使用 chat message recall"},
+				Examples:     []string{"dws chat message recall-by-bot --robot-code <robotCode> --group <openConversationId> --keys <processQueryKey>"},
+			},
+		},
+	})
 
 	chatMessageSendByWebhookCmd := &cobra.Command{
 		Use:   "send-by-webhook",
@@ -1915,6 +2140,28 @@ func newChatCommand() *cobra.Command {
 			return nil
 		},
 	}
+	DeclareLeafMetadata(chatMessageSendByWebhookCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "用自定义机器人 Webhook 向群发送消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "bot", RPCName: "send_message_by_custom_robot",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "用自定义机器人 Webhook 向群发送消息",
+				UseWhen:      []string{"已有自定义机器人 webhook token，需要向群发告警或通知"},
+				AvoidWhen: []string{
+					"使用企业机器人 robot-code 发消息时用 chat message send-by-bot",
+					"以个人身份发消息时用 chat message send",
+				},
+				Examples: []string{"dws chat message send-by-webhook --token <webhook-token> --title \"告警\" --text \"CPU 超 90%\" --at-all"},
+			},
+		},
+	})
 
 	chatMessageListTopicRepliesCmd := &cobra.Command{
 		Use:   "list-topic-replies",
@@ -1948,6 +2195,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("list_topic_replies", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListTopicRepliesCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "分页读取指定话题的回复",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "list_topic_replies",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "分页读取指定话题的回复",
+				UseWhen:      []string{"已知话题 ID 并需要查看回复串时"},
+				AvoidWhen:    []string{"读取普通会话消息时使用 chat message list"},
+				Examples:     []string{"dws chat message list-topic-replies --group <openConversationId> --topic-id <topicId> --limit 50"},
+			},
+		},
+	})
 
 	chatMessageListAllCmd := &cobra.Command{
 		Use:   "list-all",
@@ -1970,6 +2236,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("search_messages_by_time_range", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListAllCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按时间范围搜索跨会话消息并保留权益指引",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "search_messages_by_time_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按时间范围搜索跨会话消息并保留权益指引",
+				UseWhen:      []string{"需要汇总一段时间内所有可见会话消息时"},
+				AvoidWhen:    []string{"已指定单个会话时优先使用 chat message list"},
+				Examples:     []string{"dws chat message list-all --start \"2026-07-01 00:00:00\" --end \"2026-07-02 00:00:00\" --limit 50"},
+			},
+		},
+	})
 
 	chatMessageListBySenderCmd := &cobra.Command{
 		Use:   "list-by-sender",
@@ -2024,6 +2309,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("search_messages_by_sender", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListBySenderCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按发送者和时间范围查询消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "search_messages_by_sender",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按发送者和时间范围查询消息",
+				UseWhen:      []string{"需要查某人发送过的消息且不限定单聊时"},
+				AvoidWhen:    []string{"明确查询与某人的单聊记录时使用 chat message list-direct"},
+				Examples:     []string{"dws chat message list-by-sender --sender-user-id <userId> --start \"2026-07-01T00:00:00+08:00\" --end \"2026-07-02T00:00:00+08:00\" --limit 50"},
+			},
+		},
+	})
 
 	chatMessageListMentionsCmd := &cobra.Command{
 		Use:   "list-mentions",
@@ -2064,6 +2368,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("search_at_me_message", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListMentionsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询指定时间范围内提及当前用户的消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "search_at_me_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询指定时间范围内提及当前用户的消息",
+				UseWhen:      []string{"需要找出 @我的消息和待关注事项时"},
+				AvoidWhen:    []string{"查询全部消息时使用 chat message list-all"},
+				Examples:     []string{"dws chat message list-mentions --start \"2026-07-01T00:00:00+08:00\" --end \"2026-07-02T00:00:00+08:00\" --limit 50"},
+			},
+		},
+	})
 
 	chatMessageListFocusedCmd := &cobra.Command{
 		Use:   "list-focused",
@@ -2082,6 +2405,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("list_special_focus_messages", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListFocusedCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出当前用户特别关注的消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "list_special_focus_messages",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出当前用户特别关注的消息",
+				UseWhen:      []string{"需要查看特别关注或重点消息列表时"},
+				AvoidWhen:    []string{"普通未读消息或提及消息使用对应专用命令"},
+				Examples:     []string{"dws chat message list-focused --limit 50"},
+			},
+		},
+	})
 
 	chatMessageListTopConversationsCmd := &cobra.Command{
 		Use:   "list-top-conversations",
@@ -2103,6 +2445,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("list_top_conversations", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListTopConversationsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出当前用户置顶的会话",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "list_top_conversations",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出当前用户置顶的会话",
+				UseWhen:      []string{"需要查看现有置顶会话清单时"},
+				AvoidWhen:    []string{"设置或取消某个会话置顶时使用 chat set-top"},
+				Examples:     []string{"dws chat list-top-conversations --limit 100"},
+			},
+		},
+	})
 
 	chatMessageListUnreadConversationsCmd := &cobra.Command{
 		Use:   "list-unread-conversations",
@@ -2121,6 +2482,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("unread_message_conversation_list", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListUnreadConversationsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出当前用户存在未读消息的会话",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "unread_message_conversation_list",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出当前用户存在未读消息的会话",
+				UseWhen:      []string{"需要定位哪些会话还有未读内容时"},
+				AvoidWhen:    []string{"查询某条消息的已读人员时使用 chat message read-status"},
+				Examples:     []string{"dws chat message list-unread-conversations --count 50"},
+			},
+		},
+	})
 
 	chatMessageSearchCmd := &cobra.Command{
 		Use:   "search",
@@ -2164,6 +2544,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("search_messages_by_keyword", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按关键词和时间范围搜索消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "search_messages_by_keyword",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按关键词和时间范围搜索消息",
+				UseWhen:      []string{"需要用关键词查找消息且过滤条件较简单时"},
+				AvoidWhen:    []string{"需要多会话、发送者或 @维度组合时使用 search-advanced"},
+				Examples:     []string{"dws chat message search --query \"发布计划\" --start \"2026-07-01T00:00:00+08:00\" --end \"2026-07-10T00:00:00+08:00\""},
+			},
+		},
+	})
 
 	// ── search-advanced：多维度搜索消息 ──────
 
@@ -2279,6 +2678,29 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "search_messages", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageSearchAdvancedCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "search_messages",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
+				UseWhen:      []string{"需要组合时间范围、关键词、发送者、@我/@某人、指定会话等条件搜消息"},
+				AvoidWhen: []string{
+					"只需按关键词在会话里搜时优先评估 chat message search",
+					"只需拉取某会话时间线时使用 chat message list",
+					"只需某人发给我的消息时使用 chat message list-by-sender",
+				},
+				Examples: []string{"dws chat message search-advanced --query \"周报\" --start \"2026-04-01T00:00:00+08:00\" --end \"2026-04-15T00:00:00+08:00\""},
+			},
+		},
+	})
 
 	// ── query-send-status：查询消息发送状态（走 IM MCP）──────
 
@@ -2297,6 +2719,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageQuerySendStatusCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询异步消息发送任务的状态",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "query_message_send_status",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询异步消息发送任务的状态",
+				UseWhen:      []string{"发送命令返回 openTaskId 后需要确认投递结果时"},
+				AvoidWhen:    []string{"没有 openTaskId 或只需查消息内容时不要使用"},
+				Examples:     []string{"dws chat message query-send-status --open-task-id <openTaskId>"},
+			},
+		},
+	})
 
 	// ── recall：撤回用户发送的消息（走 IM MCP）──────
 
@@ -2320,6 +2761,28 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageRecallCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "撤回当前用户已发送的单条消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "recall_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "撤回当前用户已发送的单条消息",
+				UseWhen:      []string{"已知会话与消息 ID，需要撤回自己发出的那条消息"},
+				AvoidWhen: []string{
+					"撤回机器人消息时使用 chat message recall-by-bot",
+					"消息 ID 未确认时先用消息查询/搜索拿到 openMessageId",
+				},
+				Examples: []string{"dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>"},
+			},
+		},
+	})
 
 	chatMessageEditCmd := &cobra.Command{
 		Use:   "edit",
@@ -2380,6 +2843,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "edit_message", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageEditCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "编辑当前用户已发送消息的 Markdown 内容",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI builds or accepts message content and calls im/edit_message, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "编辑当前用户已发送消息的 Markdown 内容",
+				UseWhen:      []string{"已有会话 openConversationId 和消息 openMessageId，需要更正已发送消息的标题、正文或 @ 信息"},
+				AvoidWhen:    []string{"发送新消息应使用 chat message send；撤回消息应使用 chat message recall"},
+				Examples:     []string{"dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text \"更新后的内容\""},
+			},
+		},
+	})
 
 	chatMessageReadStatusCmd := &cobra.Command{
 		Use:   "read-status",
@@ -2412,6 +2894,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "query_msg_read_status", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageReadStatusCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询指定消息的已读状态和人员",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "query_msg_read_status",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询指定消息的已读状态和人员",
+				UseWhen:      []string{"已知会话 ID 与消息 ID，需要核对阅读情况时"},
+				AvoidWhen:    []string{"查看哪些会话未读时使用 chat message list-unread-conversations"},
+				Examples:     []string{"dws chat message read-status --conversation-id <openConversationId> --message-id <openMessageId>"},
+			},
+		},
+	})
 
 	chatSearchCommonCmd := &cobra.Command{
 		Use:   "search-common",
@@ -2422,6 +2923,25 @@ func newChatCommand() *cobra.Command {
   dws chat search-common --nicks "风雷,山乔,天鸡" --limit 10 --cursor <nextCursor>`,
 		RunE: runChatSearchCommon,
 	}
+	DeclareLeafMetadata(chatSearchCommonCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询指定人员共同所在的群聊",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "search_common_groups",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询指定人员共同所在的群聊",
+				UseWhen:      []string{"需要找两人或多人共同群聊时"},
+				AvoidWhen:    []string{"按群名称搜索时使用 chat search"},
+				Examples:     []string{"dws chat search-common --nicks \"张三,李四\" --match-mode all --limit 20"},
+			},
+		},
+	})
 
 	chatMessageSearchCommonCmd := &cobra.Command{
 		Use:    "search-common",
@@ -2466,6 +2986,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("bot", "search_my_robots", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatBotSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "搜索我创建的企业机器人并提取 robot-code",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "bot", RPCName: "search_my_robots",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索我创建的企业机器人并提取 robot-code",
+				UseWhen:      []string{"需要我自己创建的机器人及其 robot-code"},
+				AvoidWhen:    []string{"搜索全部可用企业机器人时使用 chat bot find"},
+				Examples:     []string{"dws chat bot search --page 1 --size 10 --name \"日报\""},
+			},
+		},
+	})
 
 	// group 子命令 flags
 	chatGroupCreateCmd.Flags().String("name", "", "群名称 (必填)")
@@ -2871,6 +3410,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("chat", "get_conversation_info", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatConversationInfoCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取群聊或单聊会话的详细信息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "get_conversation_info",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取群聊或单聊会话的详细信息",
+				UseWhen:      []string{"已知群 ID 或用户标识并需要解析会话详情时"},
+				AvoidWhen:    []string{"按群名查找会话时使用 chat search"},
+				Examples:     []string{"dws chat conversation-info --group <openConversationId> --format json"},
+			},
+		},
+	})
 	chatConversationInfoCmd.Flags().String("group", "", "群聊 openConversationId（群聊时使用）")
 	chatConversationInfoCmd.Flags().String("conversation-id", "", "--group 的别名")
 	chatConversationInfoCmd.Flags().String("id", "", "--group 的别名")
@@ -2936,6 +3494,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "list_user_define_conv_categories", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出当前用户的自定义会话分组",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "list_user_define_conv_categories",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出当前用户的自定义会话分组",
+				UseWhen:      []string{"需要取得分组 ID 或浏览分组配置时"},
+				AvoidWhen:    []string{"需要查看某个分组内会话时使用 chat category list-conversations"},
+				Examples:     []string{"dws chat category list"},
+			},
+		},
+	})
 
 	chatCategoryConvsCmd := &cobra.Command{
 		Use:   "list-conversations",
@@ -2953,6 +3530,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "list_conversations_by_category", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatCategoryConvsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出指定会话分组中的会话",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "list_conversations_by_category",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出指定会话分组中的会话",
+				UseWhen:      []string{"已知分组 ID 并需要查看其中会话时"},
+				AvoidWhen:    []string{"只需列出分组本身时使用 chat category list"},
+				Examples:     []string{"dws chat category list-conversations --category-id 123"},
+			},
+		},
+	})
 
 	chatCategoryCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -3081,6 +3677,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryListByConvCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询指定会话所属的自定义会话分组",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps a conversation locator to im/list_conv_categories_by_conv, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询指定会话所属的自定义会话分组",
+				UseWhen:      []string{"已有会话 openConversationId，需要反查该会话被放入了哪些自定义分组"},
+				AvoidWhen:    []string{"列出全部自定义分组应使用 chat category list；按 categoryId 查详情应使用 chat category batch-info"},
+				Examples:     []string{"dws chat category list-by-conv --group <openConversationId>"},
+			},
+		},
+	})
 
 	chatCategoryBatchInfoCmd := &cobra.Command{
 		Use:   "batch-info",
@@ -3101,6 +3716,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryBatchInfoCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按分组 ID 批量获取自定义会话分组详情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI parses category IDs and calls im/get_conv_categories_info, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按分组 ID 批量获取自定义会话分组详情",
+				UseWhen:      []string{"已经有一个或多个会话分组 categoryId，需要批量读取分组信息"},
+				AvoidWhen:    []string{"不知道 categoryId 时先用 chat category list；按会话反查所属分组应使用 chat category list-by-conv"},
+				Examples:     []string{"dws chat category batch-info --category-ids 123,456"},
+			},
+		},
+	})
 
 	// ── group get-by-group-id（走 IM MCP）─────────────────────────
 
@@ -3116,6 +3750,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupInfoByIdCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "把数字群号解析为群聊信息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "get_conv_info_by_group_id",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把数字群号解析为群聊信息",
+				UseWhen:      []string{"用户只提供数字群号且需要 openConversationId 时"},
+				AvoidWhen:    []string{"已经持有 openConversationId 时直接使用目标命令"},
+				Examples:     []string{"dws chat group get-by-group-id --group-id 12345678"},
+			},
+		},
+	})
 
 	// ── message 新增命令（批量查消息、emoji 表情、文字表情）─────
 
@@ -3137,6 +3790,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageListByIdsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按消息 ID 批量获取消息详情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "list_messages_by_ids",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按消息 ID 批量获取消息详情",
+				UseWhen:      []string{"已经持有一组 msgId 并需要精确取回消息时"},
+				AvoidWhen:    []string{"只有关键词或时间范围时使用 search 或 list 命令"},
+				Examples:     []string{"dws chat message list-by-ids --msg-ids msgId1,msgId2"},
+			},
+		},
+	})
 	chatMessageListByIdsCmd.Flags().String("msg-ids", "", "消息 ID 列表，逗号分隔，最多 50 条 (必填)")
 	_ = chatMessageListByIdsCmd.MarkFlagRequired("msg-ids")
 
@@ -3159,6 +3831,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageAddEmojiCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "给指定消息添加表情回应",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "add_emoji_reaction",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "给指定消息添加表情回应",
+				UseWhen:      []string{"需要对已有消息添加一个 emoji reaction 时"},
+				AvoidWhen:    []string{"发送文本消息或文字表情时不要使用"},
+				Examples:     []string{"dws chat message add-emoji --conversation-id <openConversationId> --msg-id <openMessageId> --emoji \"赞\""},
+			},
+		},
+	})
 	chatMessageAddEmojiCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	chatMessageAddEmojiCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageAddEmojiCmd.Flags().String("id", "", "--conversation-id 的别名")
@@ -3185,6 +3876,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageRemoveEmojiCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "移除指定消息上的表情回应",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "remove_emoji_reaction",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "移除指定消息上的表情回应",
+				UseWhen:      []string{"需要取消此前添加的 emoji reaction 时"},
+				AvoidWhen:    []string{"移除文字表情时使用 chat message remove-text-emotion"},
+				Examples:     []string{"dws chat message remove-emoji --conversation-id <openConversationId> --msg-id <openMessageId> --emoji \"赞\""},
+			},
+		},
+	})
 	chatMessageRemoveEmojiCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	chatMessageRemoveEmojiCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageRemoveEmojiCmd.Flags().String("id", "", "--conversation-id 的别名")
@@ -3213,6 +3923,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageAddTextEmotionCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "给指定消息添加已定义的文字表情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "add_text_emotion",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "给指定消息添加已定义的文字表情",
+				UseWhen:      []string{"已有文字表情定义并要附加到消息时"},
+				AvoidWhen:    []string{"需要先创建文字表情资源时使用 chat message create-text-emotion"},
+				Examples:     []string{"dws chat message add-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
+			},
+		},
+	})
 	chatMessageAddTextEmotionCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	chatMessageAddTextEmotionCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageAddTextEmotionCmd.Flags().String("id", "", "--conversation-id 的别名")
@@ -3244,6 +3973,25 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageRemoveTextEmotionCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "移除指定消息上的文字表情回应",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "remove_text_emotion",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "移除指定消息上的文字表情回应",
+				UseWhen:      []string{"需要取消已添加的文字表情时"},
+				AvoidWhen:    []string{"移除普通 emoji reaction 时使用 chat message remove-emoji"},
+				Examples:     []string{"dws chat message remove-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
+			},
+		},
+	})
 	chatMessageRemoveTextEmotionCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	chatMessageRemoveTextEmotionCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageRemoveTextEmotionCmd.Flags().String("id", "", "--conversation-id 的别名")
@@ -3273,6 +4021,28 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageUpdateTextEmotionCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "把消息上已有的文字表情原地替换为新的文字表情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把消息上已有的文字表情原地替换为新的文字表情",
+				UseWhen:      []string{"需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"},
+				AvoidWhen: []string{
+					"消息上还没有文字表情时使用 chat message add-text-emotion",
+					"只需清除文字表情时使用 chat message remove-text-emotion",
+				},
+				Examples: []string{"dws chat message update-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"},
+			},
+		},
+	})
 	chatMessageUpdateTextEmotionCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	chatMessageUpdateTextEmotionCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageUpdateTextEmotionCmd.Flags().String("id", "", "--conversation-id 的别名")
@@ -3310,6 +4080,25 @@ func newChatCommand() *cobra.Command {
 			return callMCPToolOnServer("im", "create_text_emotion", params)
 		},
 	}
+	DeclareLeafMetadata(chatMessageCreateTextEmotionCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建可用于消息回应的文字表情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "create_text_emotion",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建可用于消息回应的文字表情",
+				UseWhen:      []string{"需要定义新的文字表情资源时"},
+				AvoidWhen:    []string{"已有 emotionId 并要回应消息时使用 chat message add-text-emotion"},
+				Examples:     []string{"dws chat message create-text-emotion --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
+			},
+		},
+	})
 	chatMessageCreateTextEmotionCmd.Flags().String("emotion-name", "", "表情名称 (必填)")
 	_ = chatMessageCreateTextEmotionCmd.MarkFlagRequired("emotion-name")
 	chatMessageCreateTextEmotionCmd.Flags().String("text", "", "文字内容 (必填)")
@@ -3354,6 +4143,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "create_and_send_card", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageSendCardCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建并向群聊或单聊发送互动卡片",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "create_and_send_card",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建并向群聊或单聊发送互动卡片",
+				UseWhen:      []string{"需要卡片式交互且已准备接收会话或用户时"},
+				AvoidWhen:    []string{"只发送普通文本时使用 send 或 send-by-bot"},
+				Examples:     []string{"dws chat message send-card --group <openConversationId>"},
+			},
+		},
+	})
 	chatMessageSendCardCmd.Flags().String("group", "", "群聊 openConversationId（群聊时必填，与 --receiver 互斥）")
 	chatMessageSendCardCmd.Flags().String("receiver", "", "单聊接收者 openDingTalkId（单聊时必填，与 --group 互斥）")
 
@@ -3381,6 +4189,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageUpdateCardCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新已发送流式卡片的内容和状态",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_streaming_card",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新已发送流式卡片的内容和状态",
+				UseWhen:      []string{"已有 bizId 并需要追加内容或结束流式输出时"},
+				AvoidWhen:    []string{"创建新卡片时使用 chat message send-card"},
+				Examples:     []string{"dws chat message update-card --biz-id <bizId> --content \"处理完成\" --flow-status 2"},
+			},
+		},
+	})
 	chatMessageUpdateCardCmd.Flags().String("biz-id", "", "卡片业务 ID (必填)")
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("biz-id")
 	chatMessageUpdateCardCmd.Flags().String("content", "", "卡片消息内容 (必填)")
@@ -3497,6 +4324,26 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return nil
 		},
 	}
+	DeclareLeafMetadata(chatMessageDownloadMediaCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "下载消息中的媒体资源到本地",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "下载消息中的媒体资源到本地",
+				UseWhen:      []string{"已知消息、会话和资源 ID，需要保存媒体文件时"},
+				AvoidWhen:    []string{"只查看文本消息内容时使用对应消息查询命令"},
+				Examples:     []string{"dws chat message download-media --type mediaId --resource-id <mediaId> --message-id <openMessageId> --open-conversation-id <openConversationId> --output ."},
+			},
+		},
+	})
 
 	// download-media flags
 	chatMessageDownloadMediaCmd.Flags().String("type", "", "资源类型: mediaId (必填)")
@@ -3560,6 +4407,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupTransferOwnerCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把群主身份转让给指定群成员",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "transfer_group_owner",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把群主身份转让给指定群成员",
+				UseWhen:      []string{"现群主明确指定新群主时"},
+				AvoidWhen:    []string{"只是授予管理员权限时使用 chat group set-admin"},
+				Examples:     []string{"dws chat group transfer-owner --group <openConversationId> --new-owner <openDingTalkId>"},
+			},
+		},
+	})
 	chatGroupTransferOwnerCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupTransferOwnerCmd.MarkFlagRequired("group")
 	chatGroupTransferOwnerCmd.Flags().String("new-owner", "", "新群主 openDingTalkId")
@@ -3588,6 +4454,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "get_group_invite_url", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupInviteUrlCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定群聊的邀请链接",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "get_group_invite_url",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定群聊的邀请链接",
+				UseWhen:      []string{"需要生成群邀请链接或设置有效期时"},
+				AvoidWhen:    []string{"需要直接添加已知成员时使用 chat group members add"},
+				Examples:     []string{"dws chat group invite-url --group <openConversationId> --expires-seconds 86400"},
+			},
+		},
+	})
 	chatGroupInviteUrlCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupInviteUrlCmd.MarkFlagRequired("group")
 	chatGroupInviteUrlCmd.Flags().Int64("expires-seconds", 0, "链接有效期（秒），0 表示永久有效，不传使用服务端默认值")
@@ -3612,6 +4497,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMuteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "开启或关闭指定会话的免打扰",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_notification_off",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "开启或关闭指定会话的免打扰",
+				UseWhen:      []string{"用户明确要静音或恢复某个会话通知时"},
+				AvoidWhen:    []string{"群成员禁言属于发言权限，应使用 group-mute 命令"},
+				Examples:     []string{"dws chat mute --conversation-id <openConversationId>"},
+			},
+		},
+	})
 	chatMuteCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	chatMuteCmd.Flags().String("id", "", "--conversation-id 的别名")
 	chatMuteCmd.Flags().String("chat", "", "--conversation-id 的别名")
@@ -3634,6 +4538,28 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupQuitCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "当前用户退出群聊，群本身保留",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "quit_group",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "当前用户退出群聊，群本身保留",
+				UseWhen:      []string{"用户只要自己离开某个群，不需要解散群"},
+				AvoidWhen: []string{
+					"需要永久解散整个群时使用 chat group dismiss",
+					"需要踢出其他成员时使用 chat group members remove",
+				},
+				Examples: []string{"dws chat group quit --group <openConversationId>"},
+			},
+		},
+	})
 	chatGroupQuitCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupQuitCmd.MarkFlagRequired("group")
 
@@ -3657,6 +4583,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupUpdateIconCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "使用真实媒体 ID 更新群头像",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_group_icon",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "使用真实媒体 ID 更新群头像",
+				UseWhen:      []string{"已有上传后的头像 mediaId 并要修改群头像时"},
+				AvoidWhen:    []string{"没有真实可用 mediaId 时先完成媒体上传"},
+				Examples:     []string{"dws chat group update-icon --group <openConversationId> --icon-media-id @mediaId"},
+			},
+		},
+	})
 	chatGroupUpdateIconCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupUpdateIconCmd.MarkFlagRequired("group")
 	chatGroupUpdateIconCmd.Flags().String("icon-media-id", "", "群头像 mediaId (必填)")
@@ -3703,6 +4648,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupUpdateSettingsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新指定群聊的一项设置开关",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_group_settings",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新指定群聊的一项设置开关",
+				UseWhen:      []string{"需要调整 searchable、入群验证或群权限等设置时"},
+				AvoidWhen:    []string{"全员禁言和成员禁言使用专门的 mute 命令"},
+				Examples:     []string{"dws chat group update-settings --group <openConversationId> --setting-key searchable --status 1"},
+			},
+		},
+	})
 	chatGroupUpdateSettingsCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupUpdateSettingsCmd.MarkFlagRequired("group")
 	chatGroupUpdateSettingsCmd.Flags().String("setting-key", "", "群设置项 key (必填)")
@@ -3759,6 +4723,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPTool("send_personal_message", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageReplyCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "引用指定消息发送个人回复",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "send_personal_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "引用指定消息发送个人回复",
+				UseWhen:      []string{"用户要针对某条已有消息进行引用回复时"},
+				AvoidWhen:    []string{"无需引用上下文的普通消息使用 chat message send"},
+				Examples:     []string{"dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text \"收到\""},
+			},
+		},
+	})
 	chatMessageReplyCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	_ = chatMessageReplyCmd.MarkFlagRequired("conversation-id")
 	chatMessageReplyCmd.Flags().String("ref-msg-id", "", "被引用的消息 openMessageId (必填)")
@@ -3798,6 +4781,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "forward_message", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageForwardCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把一条已有消息转发到另一个会话",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "forward_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把一条已有消息转发到另一个会话",
+				UseWhen:      []string{"已知源消息与源、目标会话 ID 时"},
+				AvoidWhen:    []string{"合并转发多条消息时使用 chat message combine-forward"},
+				Examples:     []string{"dws chat message forward --src-conversation-id <srcConversationId> --msg-id <openMessageId> --dest-conversation-id <destConversationId>"},
+			},
+		},
+	})
 	chatMessageForwardCmd.Flags().String("src-conversation-id", "", "源会话 openConversationId (必填，支持单聊/群聊)")
 	_ = chatMessageForwardCmd.MarkFlagRequired("src-conversation-id")
 	chatMessageForwardCmd.Flags().String("msg-id", "", "源消息 openMessageId (必填)")
@@ -3830,6 +4832,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatSetTopCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "设置或取消指定会话置顶",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "set_top_conversation",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "设置或取消指定会话置顶",
+				UseWhen:      []string{"需要改变某个会话在列表中的置顶状态时"},
+				AvoidWhen:    []string{"只查看置顶清单时使用 chat list-top-conversations"},
+				Examples:     []string{"dws chat set-top --conversation-id <openConversationId>"},
+			},
+		},
+	})
 	chatSetTopCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
 	_ = chatSetTopCmd.MarkFlagRequired("conversation-id")
 	chatSetTopCmd.Flags().Bool("off", false, "取消置顶（不传则设置置顶）")
@@ -3850,6 +4871,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupGetMuteConfigCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询群用户禁言配置（禁言黑名单/全员禁言白名单）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询群用户禁言配置（禁言黑名单/全员禁言白名单）",
+				UseWhen:      []string{"用户说 看下群里谁被禁言/禁言配置"},
+				AvoidWhen:    []string{"设置全员禁言用 chat group-mute；禁言个人用 chat group-mute-member"},
+				Examples:     []string{"dws chat group get-mute-config --group <openConversationId> --format json"},
+			},
+		},
+	})
 	chatGroupGetMuteConfigCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	chatGroupCmd.AddCommand(chatGroupGetMuteConfigCmd)
 
@@ -3874,6 +4914,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupMuteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "开启或关闭群聊全员禁言",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "set_group_mute",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "开启或关闭群聊全员禁言",
+				UseWhen:      []string{"需要控制整个群的发言权限时"},
+				AvoidWhen:    []string{"只禁言指定成员时使用 chat group-mute-member"},
+				Examples:     []string{"dws chat group-mute --group <openConversationId>"},
+			},
+		},
+	})
 	chatGroupMuteCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	chatGroupMuteCmd.Flags().String("conversation-id", "", "--group 的别名")
 	_ = chatGroupMuteCmd.Flags().MarkHidden("conversation-id")
@@ -3938,6 +4997,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "set_group_member_mute_list", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupMuteMemberCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "禁言或解除禁言指定群成员",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "set_group_member_mute_list",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "禁言或解除禁言指定群成员",
+				UseWhen:      []string{"需要按成员设置禁言时长或解除禁言时"},
+				AvoidWhen:    []string{"需要全员禁言时使用 chat group-mute"},
+				Examples:     []string{"dws chat group-mute-member --group <openConversationId> --users userId1,userId2 --mute-time 3600000"},
+			},
+		},
+	})
 	chatGroupMuteMemberCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	chatGroupMuteMemberCmd.Flags().String("conversation-id", "", "--group 的别名")
 	_ = chatGroupMuteMemberCmd.Flags().MarkHidden("conversation-id")
@@ -3986,6 +5064,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "update_conv_member_roles", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupSetAdminCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "设置或取消群管理员角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_conv_member_roles",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "设置或取消群管理员角色",
+				UseWhen:      []string{"需要变更指定成员的群管理员身份时"},
+				AvoidWhen:    []string{"自定义业务角色应使用 chat group-role 系列命令"},
+				Examples:     []string{"dws chat group set-admin --group <openConversationId> --users userId1,userId2"},
+			},
+		},
+	})
 	chatGroupSetAdminCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupSetAdminCmd.MarkFlagRequired("group")
 	chatGroupSetAdminCmd.Flags().String("users", "", "成员 userId 列表，逗号分隔（批量）")
@@ -4068,6 +5165,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出群聊中的自定义角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "list_custom_group_roles",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出群聊中的自定义角色",
+				UseWhen:      []string{"需要取得角色 ID 或查看角色定义时"},
+				AvoidWhen:    []string{"查询某个成员已分配角色时使用 chat group-role query-user"},
+				Examples:     []string{"dws chat group-role list --group <openConversationId>"},
+			},
+		},
+	})
 	chatGroupRoleListCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleListCmd.MarkFlagRequired("group")
 
@@ -4085,6 +5201,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleAddCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "在群聊中创建自定义角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "add_custom_group_role",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在群聊中创建自定义角色",
+				UseWhen:      []string{"需要新增可分配给群成员的业务角色时"},
+				AvoidWhen:    []string{"设置系统管理员角色时使用 chat group set-admin"},
+				Examples:     []string{"dws chat group-role add --group <openConversationId> --name \"值班负责人\""},
+			},
+		},
+	})
 	chatGroupRoleAddCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleAddCmd.MarkFlagRequired("group")
 	chatGroupRoleAddCmd.Flags().String("name", "", "群身份名称 (必填)")
@@ -4105,6 +5240,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新群聊自定义角色的名称",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_custom_group_role",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新群聊自定义角色的名称",
+				UseWhen:      []string{"已知角色 ID 并需要重命名该角色时"},
+				AvoidWhen:    []string{"需要变更成员角色分配时使用 set-user 或 remove-user"},
+				Examples:     []string{"dws chat group-role update --group <openConversationId> --role-id <openRoleId> --name \"新名称\""},
+			},
+		},
+	})
 	chatGroupRoleUpdateCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleUpdateCmd.MarkFlagRequired("group")
 	chatGroupRoleUpdateCmd.Flags().String("role-id", "", "群身份 openRoleId，由 group-role list 返回 (必填)")
@@ -4126,6 +5280,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleRemoveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "删除群聊中的自定义角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "remove_custom_group_role",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除群聊中的自定义角色",
+				UseWhen:      []string{"明确要移除整个自定义角色定义时"},
+				AvoidWhen:    []string{"只取消某个成员的角色时使用 chat group-role remove-user"},
+				Examples:     []string{"dws chat group-role remove --group <openConversationId> --role-id <openRoleId>"},
+			},
+		},
+	})
 	chatGroupRoleRemoveCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleRemoveCmd.MarkFlagRequired("group")
 	chatGroupRoleRemoveCmd.Flags().String("role-id", "", "群身份 openRoleId，由 group-role list 返回 (必填)")
@@ -4158,6 +5331,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "set_custom_user_roles", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleSetUserCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "为指定群成员设置自定义角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "set_custom_user_roles",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "为指定群成员设置自定义角色",
+				UseWhen:      []string{"需要把一个或多个已有角色分配给成员时"},
+				AvoidWhen:    []string{"创建新角色定义时使用 chat group-role add"},
+				Examples:     []string{"dws chat group-role set-user --group <openConversationId> --user <userId> --role-ids roleId1,roleId2"},
+			},
+		},
+	})
 	chatGroupRoleSetUserCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleSetUserCmd.MarkFlagRequired("group")
 	chatGroupRoleSetUserCmd.Flags().String("user", "", "用户 userId（必填）")
@@ -4191,6 +5383,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "remove_custom_user_roles", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleRemoveUserCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "取消指定成员的一个或多个自定义角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "remove_custom_user_roles",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "取消指定成员的一个或多个自定义角色",
+				UseWhen:      []string{"需要保留角色定义但解除成员角色时"},
+				AvoidWhen:    []string{"删除角色定义本身时使用 chat group-role remove"},
+				Examples:     []string{"dws chat group-role remove-user --group <openConversationId> --user <userId> --role-ids roleId1,roleId2"},
+			},
+		},
+	})
 	chatGroupRoleRemoveUserCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleRemoveUserCmd.MarkFlagRequired("group")
 	chatGroupRoleRemoveUserCmd.Flags().String("user", "", "用户 userId（必填）")
@@ -4222,6 +5433,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "query_custom_user_roles", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupRoleQueryUserCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询指定群成员的自定义角色",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "query_custom_user_roles",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询指定群成员的自定义角色",
+				UseWhen:      []string{"需要核对某个成员在群内的业务角色时"},
+				AvoidWhen:    []string{"列出全部角色定义时使用 chat group-role list"},
+				Examples:     []string{"dws chat group-role query-user --group <openConversationId> --user <userId>"},
+			},
+		},
+	})
 	chatGroupRoleQueryUserCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupRoleQueryUserCmd.MarkFlagRequired("group")
 	chatGroupRoleQueryUserCmd.Flags().String("user", "", "用户 userId（必填）")
@@ -4255,6 +5485,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupBotsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出群内机器人",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "bot", RPCName: "list_group_bots",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出群内机器人",
+				UseWhen:      []string{"需要查看某群已安装哪些机器人或提取 openBotId"},
+				AvoidWhen:    []string{"搜索企业内机器人目录时使用 chat bot find"},
+				Examples:     []string{"dws chat group bots --group <openConversationId>"},
+			},
+		},
+	})
 	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupBotsCmd.MarkFlagRequired("group")
 
@@ -4275,6 +5524,28 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupMembersRemoveBotCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "从群内移除指定机器人",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "bot", RPCName: "remove_robot_in_group",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "从群内移除指定机器人",
+				UseWhen:      []string{"需要把某个机器人踢出指定群"},
+				AvoidWhen: []string{
+					"移除普通成员时使用 chat group members remove",
+					"解散整个群时使用 chat group dismiss",
+				},
+				Examples: []string{"dws chat group members remove-bot --id <openConversationId> --bot-id <openBotId>"},
+			},
+		},
+	})
 	chatGroupMembersRemoveBotCmd.Flags().String("id", "", "群聊 openConversationId (必填)")
 	_ = chatGroupMembersRemoveBotCmd.MarkFlagRequired("id")
 	chatGroupMembersRemoveBotCmd.Flags().String("bot-id", "", "机器人 openBotId (必填)")
@@ -4314,6 +5585,28 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("bot", "search_bots", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatBotFindCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按关键词搜索企业机器人并拿到 openDingTalkId",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "bot", RPCName: "search_bots",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按关键词搜索企业机器人并拿到 openDingTalkId",
+				UseWhen:      []string{"要找可用机器人并提取 openDingTalkId（例如后续单聊机器人）"},
+				AvoidWhen: []string{
+					"只查我创建的机器人时使用 chat bot search",
+					"已有 robot-code 直接发消息时不要先搜",
+				},
+				Examples: []string{"dws chat bot find --query \"日报\""},
+			},
+		},
+	})
 	chatBotFindCmd.Flags().String("query", "", "搜索关键词 (必填)")
 	chatBotFindCmd.Flags().String("keyword", "", "--query 的别名")
 	_ = chatBotFindCmd.Flags().MarkHidden("keyword")
@@ -4330,19 +5623,37 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
 				return err
 			}
-			if !commandBoolFlag(cmd, "yes") {
-				return apperrors.NewValidation(
-					"解散群聊不可逆；获得用户确认后加 --yes 执行",
-					apperrors.WithReason("confirmation_required"),
-					apperrors.WithHint("先确认目标群聊及影响范围；用户明确同意后以相同参数追加 --yes"),
-					apperrors.WithActions("确认目标群聊", "获得用户确认后使用 --yes 执行"),
-				)
-			}
 			return callMCPToolOnServer("im", "dismiss_group", map[string]any{
 				"openConversationId": mustGetFlag(cmd, "group"),
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupDismissCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "永久解散指定群聊（不可恢复，仅群主）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "dismiss_group",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "永久解散指定群聊（不可恢复，仅群主）",
+				UseWhen: []string{
+					"群主明确要求永久解散整个群，而不是自己退出",
+					"已确认 openConversationId，且用户接受群与历史消息一并消失",
+				},
+				AvoidWhen: []string{
+					"当前用户只想自己离开群时使用 chat group quit",
+					"仍需保留群供他人继续使用时不要解散",
+					"目标群未确认或用户未明确同意不可恢复后果时不要执行",
+				},
+				Examples: []string{"dws chat group dismiss --group <openConversationId>"},
+			},
+		},
+	})
 	chatGroupDismissCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupDismissCmd.MarkFlagRequired("group")
 
@@ -4372,6 +5683,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupSetHistoryCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "设置新成员可见的群历史消息范围",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "update_show_history_msg_option",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "设置新成员可见的群历史消息范围",
+				UseWhen:      []string{"需要调整新成员入群后的历史消息可见性时"},
+				AvoidWhen:    []string{"普通消息查询或群设置的其他开关不要使用"},
+				Examples:     []string{"dws chat group set-history --group <openConversationId> --option RECENT_100"},
+			},
+		},
+	})
 	chatGroupSetHistoryCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupSetHistoryCmd.MarkFlagRequired("group")
 	chatGroupSetHistoryCmd.Flags().String("option", "", "可见范围: FORBIDDEN | RECENT_100 | ALL (必填)")
@@ -4403,6 +5733,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "combine_forward_messages", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageCombineForwardCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把多条消息合并转发到目标会话",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "combine_forward_messages",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把多条消息合并转发到目标会话",
+				UseWhen:      []string{"需要保留多条源消息并作为合集转发时"},
+				AvoidWhen:    []string{"只转发单条消息时使用 chat message forward"},
+				Examples:     []string{"dws chat message combine-forward --src-conversation-id <srcConversationId> --msg-ids <id1>,<id2> --dest-conversation-id <destConversationId>"},
+			},
+		},
+	})
 	chatMessageCombineForwardCmd.Flags().String("src-conversation-id", "", "源会话 openConversationId (必填，支持单聊/群聊)")
 	_ = chatMessageCombineForwardCmd.MarkFlagRequired("src-conversation-id")
 	chatMessageCombineForwardCmd.Flags().String("msg-ids", "", "源消息 openMessageId 列表，逗号分隔 (必填)")
@@ -4439,6 +5788,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "forward_topic", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageForwardTopicCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把一个话题消息转发到目标会话",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "forward_topic",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把一个话题消息转发到目标会话",
+				UseWhen:      []string{"需要转发话题圈中的主题及上下文时"},
+				AvoidWhen:    []string{"普通单条消息转发使用 chat message forward"},
+				Examples:     []string{"dws chat message forward-topic --src-msg-id <openMessageId> --src-conversation-id <srcConversationId> --src-thread-id <threadId> --dest-conversation-id <destConversationId>"},
+			},
+		},
+	})
 	chatMessageForwardTopicCmd.Flags().String("src-msg-id", "", "源消息 openMessageId (必填，要转发的消息)")
 	_ = chatMessageForwardTopicCmd.MarkFlagRequired("src-msg-id")
 	chatMessageForwardTopicCmd.Flags().String("src-conversation-id", "", "源会话 openConversationId (必填，消息所在的会话)")
@@ -4469,6 +5837,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageSetPinCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "把指定消息设为会话置顶消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "set_pin_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把指定消息设为会话置顶消息",
+				UseWhen:      []string{"需要在会话中置顶一条已知消息时"},
+				AvoidWhen:    []string{"取消置顶使用 chat message unset-pin-msg"},
+				Examples:     []string{"dws chat message set-pin-msg --open-conversation-id <openConversationId> --msg-id <openMessageId>"},
+			},
+		},
+	})
 	chatMessageSetPinCmd.Flags().String("open-conversation-id", "", "会话 openConversationId (必填，支持群聊/单聊)")
 	_ = chatMessageSetPinCmd.MarkFlagRequired("open-conversation-id")
 	chatMessageSetPinCmd.Flags().String("msg-id", "", "消息 openMessageId (必填)")
@@ -4493,6 +5880,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageUnsetPinCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "取消指定消息的会话置顶",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "unset_pin_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "取消指定消息的会话置顶",
+				UseWhen:      []string{"需要移除一条已知置顶消息时"},
+				AvoidWhen:    []string{"新增置顶使用 chat message set-pin-msg"},
+				Examples:     []string{"dws chat message unset-pin-msg --open-conversation-id <openConversationId> --msg-id <openMessageId>"},
+			},
+		},
+	})
 	chatMessageUnsetPinCmd.Flags().String("open-conversation-id", "", "会话 openConversationId (必填，支持群聊/单聊)")
 	_ = chatMessageUnsetPinCmd.MarkFlagRequired("open-conversation-id")
 	chatMessageUnsetPinCmd.Flags().String("msg-id", "", "消息 openMessageId (必填)")
@@ -4525,6 +5931,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "list_pin_messages", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatMessageListPinCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出指定会话中的置顶消息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "list_pin_messages",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出指定会话中的置顶消息",
+				UseWhen:      []string{"需要查看群聊当前置顶的消息时"},
+				AvoidWhen:    []string{"设置或取消置顶时使用 set-pin-msg 或 unset-pin-msg"},
+				Examples:     []string{"dws chat message list-pin-msg --open-conversation-id <openConversationId> --size 50"},
+			},
+		},
+	})
 	chatMessageListPinCmd.Flags().String("open-conversation-id", "", "会话 openConversationId (必填，支持群聊/单聊)")
 	_ = chatMessageListPinCmd.MarkFlagRequired("open-conversation-id")
 	chatMessageListPinCmd.Flags().String("cursor", "", "分页游标（首次不传，翻页时传上次返回的 nextCursor）")
@@ -4549,6 +5974,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageAddFavoriteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "将指定会话中的一条消息加入当前用户的收藏。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "将指定会话中的一条消息加入当前用户的收藏。",
+				UseWhen:      []string{"用户明确要收藏一条已知消息，且已取得消息 ID 与所属会话 ID 时。"},
+				AvoidWhen:    []string{"需要给消息添加表情、置顶消息或发送新消息时不要使用；本命令只修改当前用户的收藏状态。"},
+				Examples:     []string{"dws chat message add-favorite --open-message-id MSG_ID --open-conversation-id CONVERSATION_ID"},
+			},
+		},
+	})
 	chatMessageAddFavoriteCmd.Flags().String("open-message-id", "", "消息 openMessageId (必填)")
 	_ = chatMessageAddFavoriteCmd.MarkFlagRequired("open-message-id")
 	chatMessageAddFavoriteCmd.Flags().String("open-conversation-id", "", "消息所在会话的 openConversationId (必填，支持群聊/单聊)")
@@ -4571,6 +6015,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageRemoveFavoriteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "取消当前用户对指定消息的收藏标记，不删除原消息。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "取消当前用户对指定消息的收藏标记，不删除原消息。",
+				UseWhen:      []string{"用户明确要从个人收藏中移除一条已知消息时。"},
+				AvoidWhen:    []string{"需要撤回或删除原消息、移除表情回应或取消消息置顶时不要使用。"},
+				Examples:     []string{"dws chat message remove-favorite --open-message-id MSG_ID --open-conversation-id CONVERSATION_ID"},
+			},
+		},
+	})
 	chatMessageRemoveFavoriteCmd.Flags().String("open-message-id", "", "消息 openMessageId (必填)")
 	_ = chatMessageRemoveFavoriteCmd.MarkFlagRequired("open-message-id")
 	chatMessageRemoveFavoriteCmd.Flags().String("open-conversation-id", "", "消息所在会话的 openConversationId (必填，支持群聊/单聊)")
@@ -4601,6 +6064,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			})
 		},
 	}
+	DeclareLeafMetadata(chatMessageListFavoritesCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "分页查询当前用户收藏的消息列表。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "分页查询当前用户收藏的消息列表。",
+				UseWhen:      []string{"需要查看当前用户已经收藏的消息，或使用 nextCursor 继续翻页时。"},
+				AvoidWhen:    []string{"需要搜索普通聊天记录、置顶消息或修改收藏状态时不要使用。"},
+				Examples:     []string{"dws chat message list-favorites --cursor 0 --size 20"},
+			},
+		},
+	})
 	chatMessageListFavoritesCmd.Flags().Int64("cursor", 0, "数字分页游标（默认 0；翻页时传上次返回的 nextCursor）")
 	chatMessageListFavoritesCmd.Flags().Int("size", 20, "一次拉取的收藏数量（默认 20，范围 1-100）")
 
@@ -4632,6 +6114,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			return callMCPToolOnServer("im", "list_owned_or_admin_groups", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupListMyGroupsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出当前用户创建或管理的群聊",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "im", RPCName: "list_owned_or_admin_groups",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出当前用户创建或管理的群聊",
+				UseWhen:      []string{"需要按群主或管理员角色盘点群聊时"},
+				AvoidWhen:    []string{"按名称搜索任意可见群时使用 chat search"},
+				Examples:     []string{"dws chat group list-my-groups --role OWNER --limit 100"},
+			},
+		},
+	})
 	chatGroupListMyGroupsCmd.Flags().String("role", "", "角色过滤: OWNER(仅群主) / ADMIN(仅管理员)，不传返回全部")
 	chatGroupListMyGroupsCmd.Flags().Int("limit", 0, "最多返回群数量，不传返回全部")
 	chatGroupListMyGroupsCmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
@@ -4973,6 +6474,28 @@ status 可选值:
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupUpdateNickCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "设置或清除当前用户在指定群内的昵称",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps nickname update or clear semantics to im/update_group_nick, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "设置或清除当前用户在指定群内的昵称",
+				UseWhen:      []string{"用户要求修改自己的群昵称，或明确要求清除群昵称"},
+				AvoidWhen:    []string{"修改群名称应使用 chat group rename；修改其他成员信息不应使用本命令"},
+				Examples: []string{
+					"dws chat group update-nick --group <openConversationId> --nick \"项目昵称\"",
+					"dws chat group update-nick --group <openConversationId>",
+				},
+			},
+		},
+	})
 	chatGroupUpdateNickCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
 	_ = chatGroupUpdateNickCmd.MarkFlagRequired("group")
 	chatGroupUpdateNickCmd.Flags().String("nick", "", "个人群昵称，不传则清除群昵称")
@@ -5320,17 +6843,28 @@ status 可选值:
 				}
 				toolArgs["extension"] = extension
 			}
-			if !deps.Caller.DryRun() && !commandBoolFlag(cmd, "yes") {
-				return apperrors.NewValidation(
-					"普通群升级为外部群不可逆；获得用户确认后加 --yes 执行，或加 --dry-run 预览",
-					apperrors.WithReason("confirmation_required"),
-					apperrors.WithHint("先确认目标群聊及升级影响；用户明确同意后以相同参数追加 --yes"),
-					apperrors.WithActions("确认目标群聊和升级影响", "获得用户确认后使用 --yes 执行"),
-				)
-			}
 			return callMCPToolOnServer("im", "upgrade_group_to_external", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatGroupUpgradeToExternalCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "不可逆地把已有普通群升级为外部群",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI validates an optional string map and calls im/upgrade_group_to_external, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "不可逆地把已有普通群升级为外部群",
+				UseWhen:      []string{"群主明确要求保留现有会话并升级为可跨组织协作的外部群，且已确认不可逆影响"},
+				AvoidWhen:    []string{"新建外部群应使用 chat group create --type EXTERNAL；未确认群主身份和不可逆影响时不要执行"},
+				Examples:     []string{"dws chat group upgrade-to-external --group <openConversationId>"},
+			},
+		},
+	})
 	chatGroupUpgradeToExternalCmd.Flags().String("group", "", "待升级普通群的 openConversationId (必填)")
 	_ = chatGroupUpgradeToExternalCmd.MarkFlagRequired("group")
 	chatGroupUpgradeToExternalCmd.Flags().String("extension", "", `预留扩展字段 JSON 对象 (可选)，如 '{"source":"dws"}'`)
@@ -5368,6 +6902,25 @@ status 可选值:
 			return callMCPToolOnServer("im", "create_smart_conv_category", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chatCategoryCreateSmartCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "按名称、成员或关键词创建智能会话分组",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按名称、成员或关键词创建智能会话分组",
+				UseWhen:      []string{"需要自动归集符合条件的会话时"},
+				AvoidWhen:    []string{"只需查看现有分组或手工管理会话时不要使用"},
+				Examples:     []string{"dws chat category create-smart --name \"项目群\" --keywords \"项目,交付\""},
+			},
+		},
+	})
 	chatCategoryCreateSmartCmd.Flags().String("name", "", "分组名称 (必填)")
 	_ = chatCategoryCreateSmartCmd.MarkFlagRequired("name")
 	chatCategoryCreateSmartCmd.Flags().String("keywords", "", "群名称关键词列表，逗号分隔（可选）")
@@ -5458,6 +7011,25 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupUserSettingsQueryCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "批量查询当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量查询当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
+				UseWhen:      []string{"用户说 看下这些群我的置顶和免打扰设置"},
+				AvoidWhen:    []string{"管理员级群功能开关用 chat group update-settings"},
+				Examples:     []string{"dws chat group user-settings query --groups cid1,cid2 --format json"},
+			},
+		},
+	})
 	chatGroupUserSettingsQueryCmd.Flags().String("groups", "", "群会话 openConversationId 列表，逗号分隔，最多 100 个 (必填)")
 	chatGroupUserSettingsSetCmd := &cobra.Command{
 		Use:     "set",
@@ -5490,6 +7062,25 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 			})
 		},
 	}
+	DeclareLeafMetadata(chatGroupUserSettingsSetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "批量更新当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量更新当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
+				UseWhen:      []string{"用户说 把这些群都设为免打扰/置顶"},
+				AvoidWhen:    []string{"单个群昵称优先 chat group update-nick"},
+				Examples:     []string{"dws chat group user-settings set --items '[{\"openConversationId\":\"cid1\",\"top\":true,\"mute\":false}]' --format json"},
+			},
+		},
+	})
 	chatGroupUserSettingsSetCmd.Flags().String("items", "", `JSON 数组，每项 {"openConversationId":"cid","top":bool,"mute":bool,"groupNick":"...","groupAlias":"..."} (必填)`)
 	chatGroupUserSettingsCmd.AddCommand(chatGroupUserSettingsQueryCmd, chatGroupUserSettingsSetCmd)
 	chatGroupCmd.AddCommand(chatGroupUserSettingsCmd)

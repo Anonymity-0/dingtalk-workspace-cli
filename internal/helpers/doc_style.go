@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,12 +49,50 @@ func newDocStyleCommand() *cobra.Command {
   dws doc style cover set --node DOC_ID --file ./cover.png --position 0.3`,
 		RunE: runDocStyleCoverSet,
 	}
+	DeclareLeafMetadata(coverSetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "设置钉钉文档顶部封面图（外链或本地图片上传）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "设置钉钉文档顶部封面图（外链或本地图片上传）",
+				UseWhen:      []string{"用户说 给文档设置封面/换个封面图"},
+				AvoidWhen:    []string{"读取当前封面用 doc style get；移除封面用 cover clear"},
+				Examples:     []string{"dws doc style cover set --node <DOC_ID> --image https://img.example.com/cover.png --format json"},
+			},
+		},
+	})
 	coverClearCmd := &cobra.Command{
 		Use:     "clear",
 		Short:   "移除文档封面",
 		Example: `  dws doc style cover clear --node DOC_ID`,
 		RunE:    runDocStyleCoverClear,
 	}
+	DeclareLeafMetadata(coverClearCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "移除钉钉文档封面",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "移除钉钉文档封面",
+				UseWhen:      []string{"用户说 去掉文档封面"},
+				AvoidWhen:    []string{"设置封面用 cover set"},
+				Examples:     []string{"dws doc style cover clear --node <DOC_ID> --format json"},
+			},
+		},
+	})
 
 	backgroundCmd := &cobra.Command{
 		Use:   "background",
@@ -67,12 +106,50 @@ func newDocStyleCommand() *cobra.Command {
 		Example: `  dws doc style background set --node DOC_ID --color "#E8F2FE"`,
 		RunE:    runDocStyleBackgroundSet,
 	}
+	DeclareLeafMetadata(backgroundSetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "设置钉钉文档背景纯色（#RRGGBB）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "设置钉钉文档背景纯色（#RRGGBB）",
+				UseWhen:      []string{"用户说 给文档设置背景色"},
+				AvoidWhen:    []string{"背景不支持图片；封面用 cover set"},
+				Examples:     []string{"dws doc style background set --node <DOC_ID> --color \"#E8F2FE\" --format json"},
+			},
+		},
+	})
 	backgroundClearCmd := &cobra.Command{
 		Use:     "clear",
 		Short:   "清除文档背景",
 		Example: `  dws doc style background clear --node DOC_ID`,
 		RunE:    runDocStyleBackgroundClear,
 	}
+	DeclareLeafMetadata(backgroundClearCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "清除钉钉文档背景",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "清除钉钉文档背景",
+				UseWhen:      []string{"用户说 去掉文档背景色"},
+				AvoidWhen:    []string{"设置背景用 background set"},
+				Examples:     []string{"dws doc style background clear --node <DOC_ID> --format json"},
+			},
+		},
+	})
 	getCmd := &cobra.Command{
 		Use:     "get",
 		Short:   "读取文档封面/背景 (只读)",
@@ -80,6 +157,25 @@ func newDocStyleCommand() *cobra.Command {
 		Example: `  dws doc style get --node DOC_ID`,
 		RunE:    runDocStyleGet,
 	}
+	DeclareLeafMetadata(getCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "读取文档当前封面与背景配置（只读）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取文档当前封面与背景配置（只读）",
+				UseWhen:      []string{"用户说 看下文档现在的封面/背景"},
+				AvoidWhen:    []string{"修改用 cover set / background set"},
+				Examples:     []string{"dws doc style get --node <DOC_ID> --format json"},
+			},
+		},
+	})
 
 	// cover set flags
 	coverSetCmd.Flags().String("node", "", "目标文档标识，支持 URL 或 ID (必填)")

@@ -16,6 +16,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"os"
 	"strings"
@@ -55,6 +56,25 @@ func newTableCmds() []*cobra.Command {
 			return callMCPTool("table_get", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(tableGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "读取结构化 table 区域数据。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取结构化 table 区域数据。",
+				UseWhen:      []string{"工作表内存在结构化 table，需要按 table 语义读取时"},
+				AvoidWhen:    []string{"普通单元格区域用 range read；AI 表格记录用 aitable record query"},
+				Examples:     []string{"dws sheet table-get --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+		},
+	})
 	tableGetCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	tableGetCmd.Flags().String("sheet-id", "", "工作表 ID 或名称")
 	tableGetCmd.Flags().String("range", "", "读取范围，A1 表示法；可带 sheet 前缀，如 Sheet1!A1:D10")
@@ -101,6 +121,25 @@ func newTableCmds() []*cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(tablePutCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "写入一个或多个结构化 table。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "写入一个或多个结构化 table。",
+				UseWhen:      []string{"需要按结构化 table 协议写入表数据时"},
+				AvoidWhen:    []string{"普通区域写入用 range update/csv-put；AI 表格记录写入用 aitable record create"},
+				Examples:     []string{"dws sheet table-put --node NODE_ID --sheets '[{\"name\":\"Sheet1\",\"columns\":[\"name\"],\"data\":[[\"Alice\"]]}]'"},
+			},
+		},
+	})
 	tablePutCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	tablePutCmd.Flags().String("sheets", "", "sheet table JSON、@文件路径 或 - 表示 stdin (必填)")
 

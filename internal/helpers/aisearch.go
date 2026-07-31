@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -221,6 +222,35 @@ func newAisearchCommand() *cobra.Command {
   dws aisearch person --keyword "W12345" --dimension jobNumber`,
 		RunE: runAisearchPerson,
 	}
+	DeclareLeafMetadata(personCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "aisearch", RPCName: "enterprise_person_search",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
+				UseWhen: []string{
+					"找人、谁负责某事、查上级/下级、按手机号或工号定位人员",
+					"需要把维度词映射到 --dimension，关键词只保留目标实体",
+				},
+				AvoidWhen: []string{
+					"已有 userId 只需详情时用 contact user get",
+					"精确通讯录关键词搜同事/好友且不涉及职责语义时可用 contact user search",
+					"搜企业知识内容时用 aisearch enterprise；搜行为记录时用 aisearch behavior",
+				},
+				Examples: []string{
+					"dws aisearch person --keyword \"张三\" --dimension name --format json",
+					"dws aisearch person --keyword \"五道\" --dimension supervisor --format json",
+				},
+			},
+		},
+	})
 	addAisearchPersonFlags(personCmd)
 
 	enterpriseCmd := &cobra.Command{
@@ -242,6 +272,35 @@ func newAisearchCommand() *cobra.Command {
   dws aisearch enterprise --queries "OKR" --types document,im,mail`,
 		RunE: runAisearchEnterprise,
 	}
+	DeclareLeafMetadata(enterpriseCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "aisearch", RPCName: "search_enterprise",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
+				UseWhen: []string{
+					"按主题找资料、方案、文档、消息、邮件等内容，且关注“有什么内容”",
+					"用户显式给出时间词或类型词时分别映射到 --time-range / --types",
+				},
+				AvoidWhen: []string{
+					"问“我发给谁/谁发给我/我创建过”等行为追溯时用 aisearch behavior",
+					"企业找人时用 aisearch person",
+					"已知具体资源 ID 要读写时改用对应产品命令",
+				},
+				Examples: []string{
+					"dws aisearch enterprise --queries \"智能化方案\" --types document --format json",
+					"dws aisearch enterprise --queries \"OKR\" --types mail --time-range \"最近\" --format json",
+				},
+			},
+		},
+	})
 	enterpriseCmd.Flags().String("queries", "", "内容关键词列表，多个用逗号分隔；汇总类场景可留空")
 	enterpriseCmd.Flags().String("types", "all", "搜索类型: all/document/im/calendar/todo/minute/report/image/link/notable/baike/mail，多个用逗号分隔")
 	enterpriseCmd.Flags().String("search-types", "", "--types 的别名")
@@ -266,6 +325,31 @@ func newAisearchCommand() *cobra.Command {
   dws aisearch behavior --types im --chat-scope "scrum群" --behavior-type send --time-range "今天"`,
 		RunE: runAisearchBehavior,
 	}
+	DeclareLeafMetadata(behaviorCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "搜索发送/创建/分享/编辑/接收等明确行为记录",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "aisearch", RPCName: "search_enterprise_behavior",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索发送/创建/分享/编辑/接收等明确行为记录",
+				UseWhen:      []string{"用户明确问我/某人发过、发给、收到、创建、分享、编辑过什么"},
+				AvoidWhen: []string{
+					"只按主题找内容本身时用 aisearch enterprise",
+					"没有行为动作词时不要选用本工具",
+				},
+				Examples: []string{
+					"dws aisearch behavior --types mail --behavior-type send --direction \"我->汐峰\" --format json",
+					"dws aisearch behavior --queries \"智能化方案\" --types document --behavior-type create --format json",
+				},
+			},
+		},
+	})
 	behaviorCmd.Flags().String("queries", "", "内容关键词列表，多个用逗号分隔；汇总类场景可留空")
 	behaviorCmd.Flags().String("types", "all", "搜索类型: all/document/im/calendar/todo/minute/report/image/link/notable/baike/mail，多个用逗号分隔")
 	behaviorCmd.Flags().String("search-types", "", "--types 的别名")

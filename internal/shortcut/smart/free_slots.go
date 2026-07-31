@@ -15,6 +15,8 @@ package smart
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"sort"
 	"time"
 
@@ -42,6 +44,26 @@ var FreeSlots = shortcut.Shortcut{
 		"再在工作时间范围内（默认 09:00-18:00，可用 --from/--to 指定起止小时）算出所有空闲窗口并给出每段的起止与时长。" +
 		"只读操作，不修改任何日程；用于快速定位可预约的空档。",
 	Risk: shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "找我某天工作时段内的空闲时间段（默认今天 09:00-18:00）",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "找我某天工作时段内的空闲时间段（默认今天 09:00-18:00）",
+			UseWhen:      []string{"当你想知道『我今天（或某天）还有哪些时间是空的、可以安排会议/事情』时使用；内部列出目标日期（默认今天，--in-days 指定几天后）的全部日程，合并忙碌时段，再在工作时间范围内（默认 09:00-18:00，可用 --from/--to 指定起止小时）算出所有空闲窗口并给出每段的起止与时长。只读操作，不修改任何日程；用于快速定位可预约的空档。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples: []string{
+				"dws calendar +free-slots",
+				"dws calendar +free-slots --in-days 1 --from 9 --to 20",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "in-days", Type: shortcut.FlagInt, Desc: "几天后（可选，0=今天默认）", Required: false},
 		{Name: "from", Type: shortcut.FlagInt, Desc: "工作时段起始小时（可选，默认 9）", Required: false},

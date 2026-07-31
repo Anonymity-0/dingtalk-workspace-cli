@@ -2,12 +2,12 @@
   "product": "live",
   "tools": {
     "live.get_my_lives": {
-      "agent_metadata_source": "cmdcore.contract",
+      "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "agent_summary": "查看当前用户发起的直播列表与基础统计",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"
@@ -19,7 +19,7 @@
       "description": "查看当前用户发起的直播列表与基础统计",
       "display": "直播列表 / 信息",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws live stream list"
       ],
@@ -30,16 +30,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "查看当前用户发起的直播列表与基础统计"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "查看当前用户发起的直播列表与基础统计"
         },
         "availability": {
@@ -48,16 +48,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "available"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -66,8 +66,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"
               ]
@@ -76,8 +76,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"
           ]
@@ -88,16 +88,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "live.get_my_lives"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "live.get_my_lives"
         },
         "confirmation": {
@@ -106,16 +106,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "not_required"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "not_required"
         },
         "description": {
@@ -124,16 +124,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "查看当前用户发起的直播列表与基础统计"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "查看当前用户发起的直播列表与基础统计"
         },
         "effect": {
@@ -142,16 +142,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "read"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "read"
         },
         "examples": {
@@ -160,8 +160,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "dws live stream list"
               ]
@@ -170,8 +170,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "dws live stream list"
           ]
@@ -182,16 +182,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "idempotent"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -200,16 +200,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "mcp"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -218,8 +218,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": {
                 "product_id": "live",
                 "rpc_name": "get_my_lives"
@@ -229,8 +229,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": {
             "product_id": "live",
             "rpc_name": "get_my_lives"
@@ -242,17 +242,17 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
-              "value": "cmdcore.contract"
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
+              "value": "corecmd.contract"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
-          "value": "cmdcore.contract"
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
+          "value": "corecmd.contract"
         },
         "reviewed": {
           "candidates": [
@@ -260,16 +260,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": true
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": true
         },
         "risk": {
@@ -278,16 +278,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "low"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "low"
         },
         "title": {
@@ -296,16 +296,16 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": "查看我的直播列表"
             }
           ],
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": "查看我的直播列表"
         },
         "use_when": {
@@ -314,8 +314,8 @@
               "precedence": "contract_final",
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cmdcore.contract",
-              "source_ref": "cmdcore.SchemaDecl",
+              "source": "corecmd.contract",
+              "source_ref": "corecmd.SchemaDecl",
               "value": [
                 "用户要看自己发起过的直播、状态或观看量等列表信息"
               ]
@@ -324,8 +324,8 @@
           "precedence": "contract_final",
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
-          "source": "cmdcore.contract",
-          "source_ref": "cmdcore.SchemaDecl",
+          "source": "corecmd.contract",
+          "source_ref": "corecmd.SchemaDecl",
           "value": [
             "用户要看自己发起过的直播、状态或观看量等列表信息"
           ]
@@ -340,7 +340,7 @@
         "rpc_name": "get_my_lives"
       },
       "is_alias": false,
-      "metadata_source": "cmdcore.contract",
+      "metadata_source": "corecmd.contract",
       "name": "get_my_lives",
       "parameter_count": 0,
       "parameters": {},

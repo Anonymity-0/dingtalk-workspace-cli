@@ -19,6 +19,8 @@ package report
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
 
@@ -46,6 +48,23 @@ var InboxList = shortcut.Shortcut{
 	Description: "列出我收到的日报（按时间范围分页）",
 	Intent:      "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。",
 	Risk:        shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "列出我收到的日报（按时间范围分页）",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "列出我收到的日报（按时间范围分页）",
+			UseWhen:      []string{"当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "start", Type: shortcut.FlagString, Desc: "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00)", Required: true},
 		{Name: "end", Type: shortcut.FlagString, Desc: "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00)", Required: true},
@@ -172,6 +191,26 @@ var OutboxList = shortcut.Shortcut{
 	Description: "列出我发出的日报（可选时间/模版名过滤）",
 	Intent:      "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。",
 	Risk:        shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "列出我发出的日报（可选时间/模版名过滤）",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "列出我发出的日报（可选时间/模版名过滤）",
+			UseWhen:      []string{"当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples: []string{
+				"dws report +outbox-list --cursor 0 --size 20",
+				"dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\"",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "分页游标，首次传 0"},
 		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "每页条数，最大 20"},

@@ -1,12 +1,12 @@
-# cmdcore 领域模型
+# command 领域模型
 
-本文档描述 `internal/cmdcore` 包的领域模型——类型、概念及其关系。
+本文档描述 `internal/corecmd` 包的领域模型——类型、概念及其关系。
 
 ## 核心模型图
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         CommandSpec                                  │
+│                         corecmd.Spec                                  │
 │                    (一个叶子命令的完整契约)                             │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
@@ -64,7 +64,7 @@
 ## 构建与执行流
 
 ```
-CommandSpec ──── NewCommand() ────▶ cobra.Command ──── 用户执行 ────▶ Ctx
+corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ──── 用户执行 ────▶ Ctx
                      │                    │                            │
               构建时检查:              注册产物:                    执行上下文:
               • validateDispatchDecl   • Flags + Aliases            • Str(name)
@@ -81,7 +81,7 @@ CommandSpec ──── NewCommand() ────▶ cobra.Command ────
 
 | 概念 | 类型 | 职责 |
 |------|------|------|
-| **CommandSpec** | struct | 一个命令的完整契约（声明 + 执行） |
+| **corecmd.Spec** | struct | 一个命令的完整契约（声明 + 执行） |
 | **FlagSpec** | struct | 一个参数的注册、回退链、绑定规则 |
 | **Constraint** | struct | 参数间的关系约束 |
 | **Safety** | cli.SafetySpec | 运行时与 Schema 共用的安全契约 |
@@ -96,7 +96,7 @@ CommandSpec ──── NewCommand() ────▶ cobra.Command ────
 
 ## SafetySpec
 
-`CommandSpec.Safety` 直接复用 `cli.SafetySpec`，没有 cmdcore 自定义 Risk/Safety 枚举，也没有 `SafetyDecl` 覆盖层：
+`corecmd.Spec.Safety` 直接复用 `cli.SafetySpec`，没有 command 自定义 Risk/Safety 枚举，也没有 `SafetyDecl` 覆盖层：
 
 ```go
 Safety: cli.SafetySpec{
@@ -199,8 +199,8 @@ DryRunDecl{
 
 ## 设计不变量
 
-1. **一个 CommandSpec = 一个叶子命令的全部事实**
-2. **声明面绝不调用后端**——cmdcore 是 dispatch-agnostic
+1. **一个 corecmd.Spec = 一个叶子命令的全部事实**
+2. **声明面绝不调用后端**——command 是 dispatch-agnostic
 3. **执行面绝不发明 CLI 表面**——业务 flag 必须在 Flags 声明
 4. **构建时拦截 > 运行时报错**——声明错误 panic 在注册阶段
 5. **SafetySpec 是单一事实源**——Confirmation 驱动运行时，其余字段原样进入 Schema

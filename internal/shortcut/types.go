@@ -27,7 +27,7 @@ package shortcut
 
 import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // Risk classifies the side effect of running a shortcut. It drives whether a
@@ -150,7 +150,7 @@ type Shortcut struct {
 	Safety cli.SafetySpec
 	// Schema is the final Agent Schema overlay (selection/interface/dry-run).
 	// Empty keeps the legacy hints path until the command is migrated.
-	Schema cmdcore.SchemaDecl
+	Schema corecmd.SchemaDecl
 	// Flags are the command-specific flags. Global flags are injected separately.
 	Flags []Flag
 	// Constraints publish and enforce relationships that individual flags cannot

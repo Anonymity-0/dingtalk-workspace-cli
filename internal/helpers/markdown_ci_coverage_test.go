@@ -52,7 +52,7 @@ func TestCrossPlatformCoverageMarkdownUploadStatFailures(t *testing.T) {
 		installMarkdownCITempFileDisappearance(t)
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
 			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1",
-			"--name", "a.md", "--content", "body")
+			"--name", "a.md", "--content", "body", "--yes")
 		if err == nil || !strings.Contains(err.Error(), "读取上传文件失败") {
 			t.Fatalf("error = %v", err)
 		}
@@ -234,7 +234,7 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		installMarkdownDriveDeps(t, &markdownDriveCaller{format: "json"})
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
 			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1",
-			"--name", "a.md", "--content", "@"+filepath.Join(t.TempDir(), "missing"))
+			"--name", "a.md", "--content", "@"+filepath.Join(t.TempDir(), "missing"), "--yes")
 		if err == nil || !strings.Contains(err.Error(), "从文件") {
 			t.Fatalf("error = %v", err)
 		}
@@ -245,7 +245,7 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		caller := &markdownDriveCaller{format: "json", steps: []markdownDriveStep{{err: boom}}}
 		installMarkdownDriveDeps(t, caller)
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
-			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1", "--content", "body")
+			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1", "--content", "body", "--yes")
 		if err == nil || !strings.Contains(err.Error(), "自动获取文件名失败") {
 			t.Fatalf("error = %v", err)
 		}
@@ -256,7 +256,7 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "missing"))
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
 			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1",
-			"--name", "a.md", "--content", "body")
+			"--name", "a.md", "--content", "body", "--yes")
 		if err == nil || !strings.Contains(err.Error(), "创建临时目录失败") {
 			t.Fatalf("error = %v", err)
 		}
@@ -267,7 +267,7 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		name := strings.Repeat("x", 300) + ".md"
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
 			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1",
-			"--name", name, "--content", "body")
+			"--name", name, "--content", "body", "--yes")
 		if err == nil || !strings.Contains(err.Error(), "写入临时文件失败") {
 			t.Fatalf("error = %v", err)
 		}
@@ -278,7 +278,7 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		installMarkdownCITempFileDisappearance(t)
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
 			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1",
-			"--name", "a.md", "--content", "body")
+			"--name", "a.md", "--content", "body", "--yes")
 		if err == nil || !strings.Contains(err.Error(), "读取上传文件失败") {
 			t.Fatalf("error = %v", err)
 		}
@@ -290,7 +290,7 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		installMarkdownDriveDeps(t, caller)
 		path := writeMarkdownDriveFixture(t, "source.md", "body")
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil,
-			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1", "--file", path)
+			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1", "--file", path, "--yes")
 		if err == nil || !strings.Contains(err.Error(), "自动获取文件名失败") {
 			t.Fatalf("error = %v", err)
 		}
@@ -317,8 +317,8 @@ func TestMarkdownCICoverageOverwriteEdges(t *testing.T) {
 		err := executeMarkdownDriveCommand(t, newMarkdownCommand(), strings.NewReader("no\n"),
 			"markdown", "overwrite", "--node", "node-1", "--space-id", "space-1",
 			"--name", "source.md", "--file", path)
-		if err != nil {
-			t.Fatal(err)
+		if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+			t.Fatalf("error = %v, want 用户取消了操作", err)
 		}
 	})
 }

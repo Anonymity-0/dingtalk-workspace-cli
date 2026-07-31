@@ -64,7 +64,7 @@ func attachSchemaHintDecl(cmd *cobra.Command, decl schemaHintDecl) {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		}
 	}
-	safety.EffectSource = "cmdcore.contract"
+	safety.EffectSource = "corecmd.contract"
 
 	payload := ContractFinalPayload{
 		Title:       firstNonEmptyTrim(cmd.Short),

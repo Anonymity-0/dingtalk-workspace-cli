@@ -15,9 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/chatbot"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 type coverageFailingReader struct{}
@@ -262,6 +265,67 @@ func TestCrossPlatformCoverageProtectSheetMutationCommandPanics(t *testing.T) {
 		protectSheetMutationCommand(&cobra.Command{Annotations: map[string]string{sheetMutationConfirmationGuardAnnotation: "true"}, RunE: func(*cobra.Command, []string) error { return nil }}, "delete", "target")
 	})
 	assertPanic("missing RunE", func() { protectSheetMutationCommand(&cobra.Command{Use: "leaf"}, "delete", "target") })
+}
+
+func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testing.T) {
+	// Sheet agent hardening: outer --yes-only gate must win over ConfirmSafety
+	// honoring piped stdin yes (review: delete-sheet / range clear / version revert).
+	ran := false
+	cmd := &cobra.Command{
+		Use: "delete-sheet",
+		RunE: func(*cobra.Command, []string) error {
+			ran = true
+			return nil
+		},
+	}
+	cmd.Flags().Bool("yes", false, "")
+	cmd.Flags().Bool("dry-run", false, "")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "test sheet delete",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "unit test fixture",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "test sheet delete",
+				UseWhen:      []string{"unit test"},
+				AvoidWhen:    []string{"unit test"},
+				Examples:     []string{"dws sheet delete-sheet --yes"},
+			},
+		},
+	})
+	protectSheetMutationCommand(cmd, "删除工作表", "文档和工作表")
+	if !HasContractConfirmSafety(cmd) || !HasSheetMutationConfirmationGuard(cmd) {
+		t.Fatal("expected both contract confirm and sheet mutation markers")
+	}
+
+	cmd.SetIn(strings.NewReader("yes\n"))
+	cmd.SetArgs(nil)
+	err := cmd.Execute()
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("piped yes must be confirmation_required, got %#v", err)
+	}
+	if ran {
+		t.Fatal("RunE must not run without --yes")
+	}
+
+	ran = false
+	cmd.SetIn(strings.NewReader(""))
+	if err := cmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("--yes must proceed, got %v", err)
+	}
+	if !ran {
+		t.Fatal("RunE must run with --yes")
+	}
 }
 
 func TestCrossPlatformCoverageOpenCodeAttachmentFallbackNameAndStat(t *testing.T) {

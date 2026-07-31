@@ -3,27 +3,27 @@
   "tools": {
     "wiki +space-search": {
       "agent_summary": "搜索知识库",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki +space-search --query \"产品文档\""
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "搜索知识库",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "搜索知识库",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -31,13 +31,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -47,7 +47,7 @@
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -55,7 +55,7 @@
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -63,13 +63,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -77,13 +77,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -93,7 +93,7 @@
           "value": [
             "dws wiki +space-search --query \"产品文档\""
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -101,7 +101,7 @@
               "value": [
                 "dws wiki +space-search --query \"产品文档\""
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -109,13 +109,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -123,13 +123,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -137,13 +137,13 @@
         },
         "interface_reason": {
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -151,14 +151,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -167,13 +167,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -181,13 +181,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -197,7 +197,7 @@
           "value": [
             "当你只记得知识库名称的部分关键词、想快速按名称定位某个知识库时使用；输入关键词返回匹配的知识库列表，比逐页 +space-list 更快找到目标 workspaceId。"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -205,7 +205,7 @@
               "value": [
                 "当你只记得知识库名称的部分关键词、想快速按名称定位某个知识库时使用；输入关键词返回匹配的知识库列表，比逐页 +space-list 更快找到目标 workspaceId。"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -218,7 +218,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你只记得知识库名称的部分关键词、想快速按名称定位某个知识库时使用；输入关键词返回匹配的知识库列表，比逐页 +space-list 更快找到目标 workspaceId。"
@@ -226,7 +226,7 @@
     },
     "wiki member add": {
       "agent_summary": "为指定知识库添加一个或多个成员，并授予指定角色",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "「我的文档」不支持容器成员——改用 drive/doc permission add 做节点授权",
@@ -234,7 +234,7 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki member add --workspace \u003cWS_ID\u003e --users uid1 --role READER --format json",
         "dws wiki member add --workspace \u003cWS_ID\u003e --users uid1,uid2 --role EDITOR --format json"
@@ -242,13 +242,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "为指定知识库添加一个或多个成员，并授予指定角色",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "为指定知识库添加一个或多个成员，并授予指定角色",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -256,13 +256,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -279,7 +279,7 @@
             "「我的文档」不支持容器成员——改用 drive/doc permission add 做节点授权",
             "单篇文档分享用节点 permission，不要用 member add"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -288,7 +288,7 @@
                 "「我的文档」不支持容器成员——改用 drive/doc permission add 做节点授权",
                 "单篇文档分享用节点 permission，不要用 member add"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -296,13 +296,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -316,13 +316,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -339,7 +339,7 @@
             "dws wiki member add --workspace \u003cWS_ID\u003e --users uid1 --role READER --format json",
             "dws wiki member add --workspace \u003cWS_ID\u003e --users uid1,uid2 --role EDITOR --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -348,7 +348,7 @@
                 "dws wiki member add --workspace \u003cWS_ID\u003e --users uid1 --role READER --format json",
                 "dws wiki member add --workspace \u003cWS_ID\u003e --users uid1,uid2 --role EDITOR --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -356,13 +356,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -376,13 +376,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -396,13 +396,13 @@
         },
         "interface_ref": {
           "value": "wiki.add_member",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.add_member",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -416,13 +416,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -436,13 +436,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -458,7 +458,7 @@
           "value": [
             "给知识库容器添加成员（USER + 角色）；新员工入职开通整库访问时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -466,7 +466,7 @@
               "value": [
                 "给知识库容器添加成员（USER + 角色）；新员工入职开通整库访问时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -482,7 +482,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.add_member",
         "skills/mono/references/products/doc.md",
         "skills/mono/references/products/wiki.md"
@@ -493,7 +493,7 @@
     },
     "wiki member list": {
       "agent_summary": "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "返回无 userId：要 update/remove 需另用 contact user search 反查",
@@ -501,20 +501,20 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki member list --workspace \u003cWS_ID\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -522,13 +522,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -545,7 +545,7 @@
             "返回无 userId：要 update/remove 需另用 contact user search 反查",
             "增删改成员用 add/update/remove"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -554,7 +554,7 @@
                 "返回无 userId：要 update/remove 需另用 contact user search 反查",
                 "增删改成员用 add/update/remove"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -562,13 +562,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -582,13 +582,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -604,7 +604,7 @@
           "value": [
             "dws wiki member list --workspace \u003cWS_ID\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -612,7 +612,7 @@
               "value": [
                 "dws wiki member list --workspace \u003cWS_ID\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -620,13 +620,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -640,13 +640,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -660,13 +660,13 @@
         },
         "interface_ref": {
           "value": "wiki.list_member",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.list_member",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -680,13 +680,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -700,13 +700,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -722,7 +722,7 @@
           "value": [
             "查看知识库成员名单与角色时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -730,7 +730,7 @@
               "value": [
                 "查看知识库成员名单与角色时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -746,7 +746,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.list_member",
         "skills/mono/references/products/wiki.md"
       ],
@@ -756,7 +756,7 @@
     },
     "wiki member remove": {
       "agent_summary": "从指定知识库中移除一个或多个成员（仅支持 USER 类型）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "改角色用 update；节点级权限用 drive permission remove",
@@ -764,20 +764,20 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki member remove --workspace \u003cWS_ID\u003e --users uid1 --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "从指定知识库中移除一个或多个成员（仅支持 USER 类型）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "从指定知识库中移除一个或多个成员（仅支持 USER 类型）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -785,13 +785,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -808,7 +808,7 @@
             "改角色用 update；节点级权限用 drive permission remove",
             "OWNER 不可移除此接口"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -817,7 +817,7 @@
                 "改角色用 update；节点级权限用 drive permission remove",
                 "OWNER 不可移除此接口"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -825,13 +825,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -845,13 +845,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -867,7 +867,7 @@
           "value": [
             "dws wiki member remove --workspace \u003cWS_ID\u003e --users uid1 --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -875,7 +875,7 @@
               "value": [
                 "dws wiki member remove --workspace \u003cWS_ID\u003e --users uid1 --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -883,13 +883,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -903,13 +903,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -923,13 +923,13 @@
         },
         "interface_ref": {
           "value": "wiki.remove_member",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.remove_member",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -943,13 +943,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -963,13 +963,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -985,7 +985,7 @@
           "value": [
             "从知识库移除成员访问（离职/清理）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -993,7 +993,7 @@
               "value": [
                 "从知识库移除成员访问（离职/清理）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1009,7 +1009,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.remove_member",
         "skills/mono/references/products/wiki.md"
       ],
@@ -1019,27 +1019,27 @@
     },
     "wiki member update": {
       "agent_summary": "更新指定知识库已有成员的角色",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "新加成员用 add；移除用 remove；OWNER 不可经此变更"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki member update --workspace \u003cWS_ID\u003e --users uid1 --role EDITOR --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "更新指定知识库已有成员的角色",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "更新指定知识库已有成员的角色",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1047,13 +1047,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1069,7 +1069,7 @@
           "value": [
             "新加成员用 add；移除用 remove；OWNER 不可经此变更"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1077,7 +1077,7 @@
               "value": [
                 "新加成员用 add；移除用 remove；OWNER 不可经此变更"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1085,13 +1085,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1105,13 +1105,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1127,7 +1127,7 @@
           "value": [
             "dws wiki member update --workspace \u003cWS_ID\u003e --users uid1 --role EDITOR --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1135,7 +1135,7 @@
               "value": [
                 "dws wiki member update --workspace \u003cWS_ID\u003e --users uid1 --role EDITOR --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1143,13 +1143,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1163,13 +1163,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1183,13 +1183,13 @@
         },
         "interface_ref": {
           "value": "wiki.update_member",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.update_member",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1203,13 +1203,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1223,13 +1223,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1245,7 +1245,7 @@
           "value": [
             "调整知识库成员角色（如升为 EDITOR/MANAGER）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1253,7 +1253,7 @@
               "value": [
                 "调整知识库成员角色（如升为 EDITOR/MANAGER）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1269,7 +1269,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.update_member",
         "skills/mono/references/products/wiki.md"
       ],
@@ -1279,7 +1279,7 @@
     },
     "wiki node copy": {
       "agent_summary": "将知识库中的节点复制到指定位置",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "跨产品/默认文档空间复制优先 dws drive copy",
@@ -1287,20 +1287,20 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki node copy --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "将知识库中的节点复制到指定位置",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "将知识库中的节点复制到指定位置",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1308,13 +1308,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1331,7 +1331,7 @@
             "跨产品/默认文档空间复制优先 dws drive copy",
             "要移动不留副本用 node move"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1340,7 +1340,7 @@
                 "跨产品/默认文档空间复制优先 dws drive copy",
                 "要移动不留副本用 node move"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1348,13 +1348,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1368,13 +1368,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1390,7 +1390,7 @@
           "value": [
             "dws wiki node copy --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1398,7 +1398,7 @@
               "value": [
                 "dws wiki node copy --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1406,13 +1406,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1426,13 +1426,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1446,13 +1446,13 @@
         },
         "interface_ref": {
           "value": "doc.copy_document",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "doc.copy_document",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1466,13 +1466,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1486,13 +1486,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1508,7 +1508,7 @@
           "value": [
             "在知识库上下文内复制节点到同库某文件夹（需 --workspace + --node）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1516,7 +1516,7 @@
               "value": [
                 "在知识库上下文内复制节点到同库某文件夹（需 --workspace + --node）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1532,7 +1532,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.node_copy",
         "skills/mono/references/products/wiki.md"
       ],
@@ -1542,7 +1542,7 @@
     },
     "wiki node create": {
       "agent_summary": "在指定知识库中创建文档、文件夹或其他类型的节点",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要带初始 Markdown 的文字文档可用 doc create",
@@ -1551,7 +1551,7 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki node create --workspace \u003cworkspaceId\u003e --name \"新文档\" --format json",
         "dws wiki node create --workspace \u003cworkspaceId\u003e --name \"方案目录\" --type folder --format json"
@@ -1559,13 +1559,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "在指定知识库中创建文档、文件夹或其他类型的节点",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "在指定知识库中创建文档、文件夹或其他类型的节点",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1573,13 +1573,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1597,7 +1597,7 @@
             "钉盘普通文件夹用 drive mkdir（无需 workspace）",
             "type 不要用 asheet，在线表格用 axls"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1607,7 +1607,7 @@
                 "钉盘普通文件夹用 drive mkdir（无需 workspace）",
                 "type 不要用 asheet，在线表格用 axls"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1615,13 +1615,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1635,13 +1635,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1658,7 +1658,7 @@
             "dws wiki node create --workspace \u003cworkspaceId\u003e --name \"新文档\" --format json",
             "dws wiki node create --workspace \u003cworkspaceId\u003e --name \"方案目录\" --type folder --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1667,7 +1667,7 @@
                 "dws wiki node create --workspace \u003cworkspaceId\u003e --name \"新文档\" --format json",
                 "dws wiki node create --workspace \u003cworkspaceId\u003e --name \"方案目录\" --type folder --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1675,13 +1675,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1695,13 +1695,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1715,13 +1715,13 @@
         },
         "interface_ref": {
           "value": "doc.create_file",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "doc.create_file",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1735,13 +1735,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1755,13 +1755,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1777,7 +1777,7 @@
           "value": [
             "在知识库内创建空节点：adoc/axls/appt/adraw/amind/able/folder（必须 --workspace）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1785,7 +1785,7 @@
               "value": [
                 "在知识库内创建空节点：adoc/axls/appt/adraw/amind/able/folder（必须 --workspace）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1801,7 +1801,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.create_file",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/doc.md",
@@ -1813,7 +1813,7 @@
     },
     "wiki node delete": {
       "agent_summary": "将知识库中的节点移入回收站",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "删整个知识库用 space delete",
@@ -1821,20 +1821,20 @@
       ],
       "confirmation": "user_required",
       "effect": "destructive",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki node delete --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "将知识库中的节点移入回收站",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "将知识库中的节点移入回收站",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1842,13 +1842,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1865,7 +1865,7 @@
             "删整个知识库用 space delete",
             "未确认或 node 不明时不要删"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1874,7 +1874,7 @@
                 "删整个知识库用 space delete",
                 "未确认或 node 不明时不要删"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1882,13 +1882,13 @@
         },
         "confirmation": {
           "value": "user_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "user_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1902,13 +1902,13 @@
         },
         "effect": {
           "value": "destructive",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "destructive",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1924,7 +1924,7 @@
           "value": [
             "dws wiki node delete --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -1932,7 +1932,7 @@
               "value": [
                 "dws wiki node delete --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -1940,13 +1940,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1960,13 +1960,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -1980,13 +1980,13 @@
         },
         "interface_ref": {
           "value": "doc.delete_document",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "doc.delete_document",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2000,13 +2000,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2020,13 +2020,13 @@
         },
         "risk": {
           "value": "high",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "high",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2042,7 +2042,7 @@
           "value": [
             "用户确认后删除知识库内节点（移入回收站；需 --workspace 校验权限）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2050,7 +2050,7 @@
               "value": [
                 "用户确认后删除知识库内节点（移入回收站；需 --workspace 校验权限）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2066,7 +2066,7 @@
       "reviewed": true,
       "risk": "high",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.delete_document",
         "skills/mono/references/products/wiki.md"
       ],
@@ -2076,7 +2076,7 @@
     },
     "wiki node list": {
       "agent_summary": "列出指定知识库下的直接子节点（文档、文件夹、表格等）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "库内关键词搜索用 node search；全局搜用 drive search",
@@ -2084,7 +2084,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki node list --workspace \u003cworkspaceId\u003e --format json",
         "dws wiki node list --workspace \u003cworkspaceId\u003e --folder \u003cparentNodeId\u003e --format json"
@@ -2092,13 +2092,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "列出指定知识库下的直接子节点（文档、文件夹、表格等）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "列出指定知识库下的直接子节点（文档、文件夹、表格等）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2106,13 +2106,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2129,7 +2129,7 @@
             "库内关键词搜索用 node search；全局搜用 drive search",
             "读文档内容拿到 nodeId 后用 doc read"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2138,7 +2138,7 @@
                 "库内关键词搜索用 node search；全局搜用 drive search",
                 "读文档内容拿到 nodeId 后用 doc read"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2146,13 +2146,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2166,13 +2166,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2189,7 +2189,7 @@
             "dws wiki node list --workspace \u003cworkspaceId\u003e --format json",
             "dws wiki node list --workspace \u003cworkspaceId\u003e --folder \u003cparentNodeId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2198,7 +2198,7 @@
                 "dws wiki node list --workspace \u003cworkspaceId\u003e --format json",
                 "dws wiki node list --workspace \u003cworkspaceId\u003e --folder \u003cparentNodeId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2206,13 +2206,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2226,13 +2226,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2246,13 +2246,13 @@
         },
         "interface_ref": {
           "value": "doc.list_nodes",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "doc.list_nodes",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2266,13 +2266,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2286,13 +2286,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2308,7 +2308,7 @@
           "value": [
             "在已知 workspace 下浏览知识库根目录或某文件夹子节点时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2316,7 +2316,7 @@
               "value": [
                 "在已知 workspace 下浏览知识库根目录或某文件夹子节点时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2332,7 +2332,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.list_nodes",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/wiki.md"
@@ -2343,27 +2343,27 @@
     },
     "wiki node move": {
       "agent_summary": "将知识库中的节点移动到指定位置",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要保留副本用 node copy / drive copy"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki node move --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "将知识库中的节点移动到指定位置",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "将知识库中的节点移动到指定位置",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2371,13 +2371,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2393,7 +2393,7 @@
           "value": [
             "要保留副本用 node copy / drive copy"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2401,7 +2401,7 @@
               "value": [
                 "要保留副本用 node copy / drive copy"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2409,13 +2409,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2429,13 +2429,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2451,7 +2451,7 @@
           "value": [
             "dws wiki node move --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2459,7 +2459,7 @@
               "value": [
                 "dws wiki node move --workspace \u003cworkspaceId\u003e --node \u003cnodeId\u003e --folder \u003ctargetFolderId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2467,13 +2467,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2487,13 +2487,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2507,13 +2507,13 @@
         },
         "interface_ref": {
           "value": "doc.move_document",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "doc.move_document",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2527,13 +2527,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2547,13 +2547,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2569,7 +2569,7 @@
           "value": [
             "在知识库内移动节点到目标文件夹时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2577,7 +2577,7 @@
               "value": [
                 "在知识库内移动节点到目标文件夹时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2593,7 +2593,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.node_move",
         "skills/mono/references/products/wiki.md"
       ],
@@ -2603,14 +2603,14 @@
     },
     "wiki node search": {
       "agent_summary": "在指定知识库内搜索文档/文件夹/表格等节点",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "全局/钉盘搜索用 drive search；浏览目录用 node list"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki node search --workspace \u003cworkspaceId\u003e --query \"方案\" --format json",
         "dws wiki node search --workspace \u003cworkspaceId\u003e --query \"周报\" --extensions adoc --format json"
@@ -2618,13 +2618,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "在指定知识库内搜索文档/文件夹/表格等节点",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "在指定知识库内搜索文档/文件夹/表格等节点",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2632,13 +2632,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2654,7 +2654,7 @@
           "value": [
             "全局/钉盘搜索用 drive search；浏览目录用 node list"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2662,7 +2662,7 @@
               "value": [
                 "全局/钉盘搜索用 drive search；浏览目录用 node list"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2670,13 +2670,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2690,13 +2690,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2713,7 +2713,7 @@
             "dws wiki node search --workspace \u003cworkspaceId\u003e --query \"方案\" --format json",
             "dws wiki node search --workspace \u003cworkspaceId\u003e --query \"周报\" --extensions adoc --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2722,7 +2722,7 @@
                 "dws wiki node search --workspace \u003cworkspaceId\u003e --query \"方案\" --format json",
                 "dws wiki node search --workspace \u003cworkspaceId\u003e --query \"周报\" --extensions adoc --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2730,13 +2730,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2750,13 +2750,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2770,13 +2770,13 @@
         },
         "interface_ref": {
           "value": "doc.search_documents",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "doc.search_documents",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2790,13 +2790,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2810,13 +2810,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2832,7 +2832,7 @@
           "value": [
             "在指定知识库内按关键词搜节点（可 --extensions）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2840,7 +2840,7 @@
               "value": [
                 "在指定知识库内按关键词搜节点（可 --extensions）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2856,7 +2856,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.node_search",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/wiki.md"
@@ -2867,14 +2867,14 @@
     },
     "wiki space create": {
       "agent_summary": "创建一个新的钉钉文档知识库（WikiSpace）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "在已有知识库内建文档/文件夹用 node create，不要反复 create space"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki space create --name \"产品文档库\" --format json",
         "dws wiki space create --name \"技术方案\" --desc \"团队技术方案归档\" --format json"
@@ -2882,13 +2882,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "创建一个新的钉钉文档知识库（WikiSpace）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "创建一个新的钉钉文档知识库（WikiSpace）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2896,13 +2896,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2918,7 +2918,7 @@
           "value": [
             "在已有知识库内建文档/文件夹用 node create，不要反复 create space"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2926,7 +2926,7 @@
               "value": [
                 "在已有知识库内建文档/文件夹用 node create，不要反复 create space"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2934,13 +2934,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2954,13 +2954,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -2977,7 +2977,7 @@
             "dws wiki space create --name \"产品文档库\" --format json",
             "dws wiki space create --name \"技术方案\" --desc \"团队技术方案归档\" --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -2986,7 +2986,7 @@
                 "dws wiki space create --name \"产品文档库\" --format json",
                 "dws wiki space create --name \"技术方案\" --desc \"团队技术方案归档\" --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -2994,13 +2994,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3014,13 +3014,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3034,13 +3034,13 @@
         },
         "interface_ref": {
           "value": "wiki.create_wikiSpace",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.create_wikiSpace",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3054,13 +3054,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3074,13 +3074,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3096,7 +3096,7 @@
           "value": [
             "用户要新建一个知识库容器时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3104,7 +3104,7 @@
               "value": [
                 "用户要新建一个知识库容器时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3120,7 +3120,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.create_wikiSpace",
         "skills/mono/references/products/wiki.md"
       ],
@@ -3130,7 +3130,7 @@
     },
     "wiki space delete": {
       "agent_summary": "将指定知识库移入回收站",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只删库内某个节点用 wiki node delete",
@@ -3138,20 +3138,20 @@
       ],
       "confirmation": "user_required",
       "effect": "destructive",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki space delete --workspace \u003cworkspaceId\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "将指定知识库移入回收站",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "将指定知识库移入回收站",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3159,13 +3159,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3182,7 +3182,7 @@
             "只删库内某个节点用 wiki node delete",
             "未确认或只要看详情用 space get"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3191,7 +3191,7 @@
                 "只删库内某个节点用 wiki node delete",
                 "未确认或只要看详情用 space get"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3199,13 +3199,13 @@
         },
         "confirmation": {
           "value": "user_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "user_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3219,13 +3219,13 @@
         },
         "effect": {
           "value": "destructive",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "destructive",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3241,7 +3241,7 @@
           "value": [
             "dws wiki space delete --workspace \u003cworkspaceId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3249,7 +3249,7 @@
               "value": [
                 "dws wiki space delete --workspace \u003cworkspaceId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3257,13 +3257,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3277,13 +3277,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3297,13 +3297,13 @@
         },
         "interface_ref": {
           "value": "wiki.delete_wikiSpace",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.delete_wikiSpace",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3317,13 +3317,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3337,13 +3337,13 @@
         },
         "risk": {
           "value": "high",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "high",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3359,7 +3359,7 @@
           "value": [
             "用户明确要求删除整个知识库（移入回收站），且已确认 workspace 与影响范围时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3367,7 +3367,7 @@
               "value": [
                 "用户明确要求删除整个知识库（移入回收站），且已确认 workspace 与影响范围时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3383,7 +3383,7 @@
       "reviewed": true,
       "risk": "high",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.delete_wikiSpace",
         "skills/mono/references/products/wiki.md"
       ],
@@ -3393,27 +3393,27 @@
     },
     "wiki space get": {
       "agent_summary": "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "列知识库用 list；删库用 space delete（需确认）"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki space get --workspace \u003cworkspaceId\u003e --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3421,13 +3421,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3443,7 +3443,7 @@
           "value": [
             "列知识库用 list；删库用 space delete（需确认）"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3451,7 +3451,7 @@
               "value": [
                 "列知识库用 list；删库用 space delete（需确认）"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3459,13 +3459,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3479,13 +3479,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3501,7 +3501,7 @@
           "value": [
             "dws wiki space get --workspace \u003cworkspaceId\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3509,7 +3509,7 @@
               "value": [
                 "dws wiki space get --workspace \u003cworkspaceId\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3517,13 +3517,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3537,13 +3537,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3557,13 +3557,13 @@
         },
         "interface_ref": {
           "value": "wiki.get_wikiSpace",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.get_wikiSpace",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3577,13 +3577,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3597,13 +3597,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3619,7 +3619,7 @@
           "value": [
             "查看指定知识库详情（名称、描述、创建者等）时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3627,7 +3627,7 @@
               "value": [
                 "查看指定知识库详情（名称、描述、创建者等）时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3643,7 +3643,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.get_wikiSpace",
         "skills/mono/references/products/wiki.md"
       ],
@@ -3653,7 +3653,7 @@
     },
     "wiki space list": {
       "agent_summary": "列出当前用户可访问的知识库或钉盘空间",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "按名称搜知识库用 space search",
@@ -3661,7 +3661,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki space list --format json",
         "dws wiki space list --type myWikiSpace --format json"
@@ -3669,13 +3669,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "列出当前用户可访问的知识库或钉盘空间",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "列出当前用户可访问的知识库或钉盘空间",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3683,13 +3683,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3706,7 +3706,7 @@
             "按名称搜知识库用 space search",
             "看单个知识库详情用 space get"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3715,7 +3715,7 @@
                 "按名称搜知识库用 space search",
                 "看单个知识库详情用 space get"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3723,13 +3723,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3743,13 +3743,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3766,7 +3766,7 @@
             "dws wiki space list --format json",
             "dws wiki space list --type myWikiSpace --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3775,7 +3775,7 @@
                 "dws wiki space list --format json",
                 "dws wiki space list --type myWikiSpace --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3783,13 +3783,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3803,13 +3803,13 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "composite",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3823,13 +3823,13 @@
         },
         "interface_reason": {
           "value": "The CLI command routes by --type between wiki/list_wikiSpaces and drive/list_spaces, so the reviewed executable wrapper has no single direct MCP interface.",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "The CLI command routes by --type between wiki/list_wikiSpaces and drive/list_spaces, so the reviewed executable wrapper has no single direct MCP interface.",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3837,14 +3837,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
@@ -3861,13 +3861,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3881,13 +3881,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3904,7 +3904,7 @@
             "列出组织知识库（默认）、我的文档(--type myWikiSpace)、钉盘企业空间(--type orgSpace)或我的文件(--type mySpace)时",
             "需要 workspaceId / rootFolderId 作为后续 node/drive 操作前置时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3913,7 +3913,7 @@
                 "列出组织知识库（默认）、我的文档(--type myWikiSpace)、钉盘企业空间(--type orgSpace)或我的文件(--type mySpace)时",
                 "需要 workspaceId / rootFolderId 作为后续 node/drive 操作前置时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3926,7 +3926,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.list_wikiSpaces",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/drive.md",
@@ -3939,27 +3939,27 @@
     },
     "wiki space search": {
       "agent_summary": "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "直接列全部知识库用 space list；我的文档用 list --type myWikiSpace"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws wiki space search --query \"产品文档\" --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -3967,13 +3967,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -3989,7 +3989,7 @@
           "value": [
             "直接列全部知识库用 space list；我的文档用 list --type myWikiSpace"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -3997,7 +3997,7 @@
               "value": [
                 "直接列全部知识库用 space list；我的文档用 list --type myWikiSpace"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -4005,13 +4005,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4025,13 +4025,13 @@
         },
         "effect": {
           "value": "read",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4047,7 +4047,7 @@
           "value": [
             "dws wiki space search --query \"产品文档\" --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -4055,7 +4055,7 @@
               "value": [
                 "dws wiki space search --query \"产品文档\" --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -4063,13 +4063,13 @@
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4083,13 +4083,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4103,13 +4103,13 @@
         },
         "interface_ref": {
           "value": "wiki.search_wikiSpaces",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "wiki.search_wikiSpaces",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4123,13 +4123,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4143,13 +4143,13 @@
         },
         "risk": {
           "value": "low",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -4165,7 +4165,7 @@
           "value": [
             "按关键词搜索有权访问的组织知识库时"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -4173,7 +4173,7 @@
               "value": [
                 "按关键词搜索有权访问的组织知识库时"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -4189,7 +4189,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.wiki.search_wikiSpaces",
         "skills/mono/references/products/wiki.md"
       ],

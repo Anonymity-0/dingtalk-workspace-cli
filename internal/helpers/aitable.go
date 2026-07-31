@@ -838,6 +838,90 @@ func resolveFormUpdateTitle(cmd *cobra.Command) string {
 	return ""
 }
 
+// runAitableViewGetAttr projects one view attribute from get_views.
+// attrUse is the CLI subcommand name (for viewType error messages).
+func runAitableViewGetAttr(cmd *cobra.Command, attrUse, blockKey string, viewTypeWhitelist []string, dynamicDispatch bool) error {
+	if err := validateRequiredFlags(cmd, "table-id", "view-id"); err != nil {
+		return err
+	}
+	baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+	if err != nil {
+		return err
+	}
+	view, viewType, err := getViewRaw(context.Background(), baseID, mustGetFlag(cmd, "table-id"), mustGetFlag(cmd, "view-id"))
+	if err != nil {
+		return err
+	}
+	key := blockKey
+	if dynamicDispatch {
+		key, err = dispatchCardKey(viewType)
+		if err != nil {
+			return err
+		}
+	} else if len(viewTypeWhitelist) > 0 {
+		if err := requireViewType(viewType, attrUse, viewTypeWhitelist); err != nil {
+			return err
+		}
+	}
+	// blockKey 支持 dotted path（如 "custom.widthMap"），供 read 路径
+	// 投影到嵌套字段。服务端某些属性（fieldWidths）写入走 config.<key>，
+	// 但 get_views 响应里落到 view.custom.<sub>，read/write 路径不对称。
+	return printViewSubBlock(walkViewPath(view, key))
+}
+
+// viewUpdateCommonPreflight validates base-id/table-id/view-id; when needed it
+// loads viewType via get_views and returns the dispatched blockKey.
+func viewUpdateCommonPreflight(cmd *cobra.Command, attr string,
+	viewTypeWhitelist []string, dynamicDispatch bool,
+) (baseID, tableID, viewID, blockKey string, err error) {
+	if err = validateRequiredFlags(cmd, "table-id", "view-id"); err != nil {
+		return
+	}
+	baseID, err = mustFlagOrFallback(cmd, "base-id", "base")
+	if err != nil {
+		return
+	}
+	tableID = mustGetFlag(cmd, "table-id")
+	viewID = mustGetFlag(cmd, "view-id")
+	blockKey = attr
+	if dynamicDispatch || len(viewTypeWhitelist) > 0 {
+		_, viewType, e := getViewRaw(context.Background(), baseID, tableID, viewID)
+		if e != nil {
+			err = e
+			return
+		}
+		if dynamicDispatch {
+			blockKey, err = dispatchCardKey(viewType)
+			if err != nil {
+				return
+			}
+		} else if err = requireViewType(viewType, attr, viewTypeWhitelist); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func runAitableViewUpdateArray(cmd *cobra.Command, blockKey string) error {
+	baseID, tableID, viewID, _, err := viewUpdateCommonPreflight(cmd, blockKey, nil, false)
+	if err != nil {
+		return err
+	}
+	jsonStr, _ := cmd.Flags().GetString("json")
+	if jsonStr == "" {
+		return fmt.Errorf("必须指定 --json 传入 %s JSON 数组", blockKey)
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
+		return fmt.Errorf("--json 解析失败: %v", err)
+	}
+	cfgMap := map[string]any{blockKey: parsed}
+	if err := normalizeViewConfigBlock(cfgMap); err != nil {
+		return err
+	}
+	return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, cfgMap[blockKey], nil)
+}
+
 func newAitableCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "aitable",
@@ -890,6 +974,19 @@ func newAitableCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(baseGetPrimaryDocIdCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取某记录主键文档 ID。",
+			Interface:   aitableMCPInterface("get_base_primary_doc_id"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取某记录主键文档 ID。",
+				UseWhen:      []string{"已知 base/table/record，需要取 primaryDoc 的文档 ID 时"},
+				AvoidWhen:    []string{"等价视角也可用 record primary-doc-get；创建主键文档用 record primary-doc-create"},
+				Examples:     []string{"dws aitable base get-primary-doc-id --base-id <BASE_ID> --table-id <TABLE_ID> --record-id <RECORD_ID>"},
+			},
+		},
+	})
 
 	baseListCmd := &cobra.Command{
 		Use:   "list",
@@ -913,6 +1010,19 @@ AI 表格访问地址可按 baseId 拼接为：https://alidocs.dingtalk.com/i/no
 			return callAitableTool("list_bases", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(baseListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出最近访问的 AI 表格 Base。",
+			Interface:   aitableMCPInterface("list_bases"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出最近访问的 AI 表格 Base。",
+				UseWhen:      []string{"只需浏览最近打开过的 Base 时"},
+				AvoidWhen:    []string{"按名称查找优先 base search；详情用 base get"},
+				Examples:     []string{"dws aitable base list"},
+			},
+		},
+	})
 
 	baseSearchCmd := &cobra.Command{
 		Use:   "search",
@@ -940,6 +1050,19 @@ AI 表格访问地址可按 baseId 拼接为：https://alidocs.dingtalk.com/i/no
 			return callAitableTool("search_bases", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(baseSearchCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "按名称搜索 AI 表格 Base（优先于仅最近访问的 list）。",
+			Interface:   aitableMCPInterface("search_bases"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按名称搜索 AI 表格 Base（优先于仅最近访问的 list）。",
+				UseWhen:      []string{"用户要找某个 AI 表格/多维表，按名称检索时优先使用"},
+				AvoidWhen:    []string{"只要最近访问列表用 base list；已知 baseId 取详情用 base get；电子表格 axls 用 sheet"},
+				Examples:     []string{"dws aitable base search --query \"项目\""},
+			},
+		},
+	})
 
 	baseGetCmd := &cobra.Command{
 		Use:   "get",
@@ -957,6 +1080,19 @@ AI 表格访问地址可按 baseId 拼接为：https://alidocs.dingtalk.com/i/no
 			})
 		},
 	}
+	DeclareLeafMetadata(baseGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取 Base 信息及 tables 目录。",
+			Interface:   aitableMCPInterface("get_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取 Base 信息及 tables 目录。",
+				UseWhen:      []string{"已知 baseId，需要看 Base 元数据与下属 tableId 时"},
+				AvoidWhen:    []string{"搜 Base 用 search；取字段详情用 field get / table get"},
+				Examples:     []string{"dws aitable base get --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	baseCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -982,6 +1118,19 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 			return callMCPTool("create_base", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(baseCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建 AI 表格 Base。",
+			Interface:   aitableMCPInterface("create_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建 AI 表格 Base。",
+				UseWhen:      []string{"需要新建一份 AI 多维表（able）时"},
+				AvoidWhen:    []string{"创建在线电子表格用 sheet create；复制已有 Base 用 base copy"},
+				Examples:     []string{"dws aitable base create --name \"项目跟踪\""},
+			},
+		},
+	})
 
 	baseUpdateCmd := &cobra.Command{
 		Use:     "update",
@@ -1006,6 +1155,19 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 			return callAitableTool("update_base", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(baseUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新 Base 名称。",
+			Interface:   aitableMCPInterface("update_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新 Base 名称。",
+				UseWhen:      []string{"需要重命名 AI 表格 Base 时"},
+				AvoidWhen:    []string{"改数据表名用 table update；删 Base 用 base delete"},
+				Examples:     []string{"dws aitable base update --base-id <BASE_ID> --name \"新名称\""},
+			},
+		},
+	})
 
 	baseDeleteCmd := &cobra.Command{
 		Use:     "delete",
@@ -1017,9 +1179,6 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 			if err != nil {
 				return err
 			}
-			if !confirmDelete("AI 表格 Base", baseID) {
-				return nil
-			}
 			toolArgs := map[string]any{
 				"baseId": baseID,
 			}
@@ -1029,6 +1188,19 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 			return callAitableTool("delete_base", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(baseDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除 AI 表格 Base（不可逆，需确认）。",
+			Interface:   aitableMCPInterface("delete_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除 AI 表格 Base（不可逆，需确认）。",
+				UseWhen:      []string{"用户明确要求永久删除整个 Base 时"},
+				AvoidWhen:    []string{"只删其中一张数据表用 table delete；删记录用 record delete"},
+				Examples:     []string{"dws aitable base delete --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	baseCopyCmd := &cobra.Command{
 		Use:   "copy",
@@ -1058,6 +1230,19 @@ MCP 层不会会自动解析 URL，必须直接传入 dentryUuid 以避免报错
 			return callAitableTool("copy_base", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(baseCopyCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "复制整个 Base 到目标文件夹（可仅结构）。",
+			Interface:   aitableMCPInterface("copy_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "复制整个 Base 到目标文件夹（可仅结构）。",
+				UseWhen:      []string{"需要复制 AI 表格到另一文件夹，可选 --only-struct 时"},
+				AvoidWhen:    []string{"新建空白 Base 用 base create"},
+				Examples:     []string{"dws aitable base copy --base-id <BASE_ID> --target-folder-id <FOLDER_ID>"},
+			},
+		},
+	})
 
 	// ── table: 数据表管理 ───────────────────────────────────────
 
@@ -1087,6 +1272,19 @@ MCP 层不会会自动解析 URL，必须直接传入 dentryUuid 以避免报错
 			return callAitableTool("get_tables", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(tableGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取数据表结构（字段+视图目录）。",
+			Interface:   aitableMCPInterface("get_tables"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取数据表结构（字段+视图目录）。",
+				UseWhen:      []string{"需要字段 fieldId 或视图目录以继续 record/field 操作时优先 table get"},
+				AvoidWhen:    []string{"只关心 Base 级 tables 列表可先 base get；字段完整配置也可用 field get"},
+				Examples:     []string{"dws aitable table get --base-id BASE_ID"},
+			},
+		},
+	})
 
 	tableCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1166,6 +1364,19 @@ config 结构参考：
 			})
 		},
 	}
+	DeclareLeafMetadata(tableCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "在 Base 下创建数据表（可带 fields，空数组会补标题列）。",
+			Interface:   aitableMCPInterface("create_table"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在 Base 下创建数据表（可带 fields，空数组会补标题列）。",
+				UseWhen:      []string{"需要在已有 Base 中新建一张数据表时"},
+				AvoidWhen:    []string{"新建整个 Base 用 base create；只加字段用 field create"},
+				Examples:     []string{"dws aitable table create --base-id <BASE_ID> --name \"任务\" --fields '[]'"},
+			},
+		},
+	})
 
 	tableUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1213,6 +1424,19 @@ config 结构参考：
 			return callAitableTool("update_table", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(tableUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "重命名数据表。",
+			Interface:   aitableMCPInterface("update_table"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "重命名数据表。",
+				UseWhen:      []string{"需要修改数据表名称时"},
+				AvoidWhen:    []string{"改字段用 field update；删表用 table delete；调字段顺序用 view update visibleFieldIds"},
+				Examples:     []string{"dws aitable table update --base-id <BASE_ID> --table-id <TABLE_ID> --name \"新表名\""},
+			},
+		},
+	})
 
 	tableDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -1229,9 +1453,6 @@ config 结构参考：
 				return err
 			}
 			tableID := mustGetFlag(cmd, "table-id")
-			if !confirmDelete("数据表", tableID) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -1246,6 +1467,19 @@ config 结构参考：
 			return callAitableTool("delete_table", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(tableDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除数据表（不可逆，需确认）。",
+			Interface:   aitableMCPInterface("delete_table"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除数据表（不可逆，需确认）。",
+				UseWhen:      []string{"用户明确要求删除整张数据表时"},
+				AvoidWhen:    []string{"只删字段用 field delete；只删记录用 record delete"},
+				Examples:     []string{"dws aitable table delete --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
 
 	// ── field: 字段管理 ─────────────────────────────────────────
 
@@ -1283,6 +1517,19 @@ config 结构参考：
 			return callAitableTool("get_fields", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(fieldGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取字段完整配置。",
+			Interface:   aitableMCPInterface("get_fields"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取字段完整配置。",
+				UseWhen:      []string{"需要字段类型/config（选项、公式等）详情时"},
+				AvoidWhen:    []string{"表级字段目录也可用 table get；创建字段用 field create；不可用本命令改类型"},
+				Examples:     []string{"dws aitable field get --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
 
 	fieldCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1382,6 +1629,19 @@ config 结构参考：
 			})
 		},
 	}
+	DeclareLeafMetadata(fieldCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建字段（单字段或批量，单次最多 15 个）。",
+			Interface:   aitableMCPInterface("create_fields"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建字段（单字段或批量，单次最多 15 个）。",
+				UseWhen:      []string{"需要在已有表中新增一列或多列字段时"},
+				AvoidWhen:    []string{"改字段名/配置用 field update（不可改类型）；删字段用 field delete；调列顺序用 view update"},
+				Examples:     []string{"dws aitable field create --base-id <BASE_ID> --table-id <TABLE_ID> --name \"状态\" --type singleSelect"},
+			},
+		},
+	})
 
 	fieldUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1432,6 +1692,19 @@ newFieldName、config、aiConfig 至少传入一项。
 			return callAitableTool("update_field", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(fieldUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新字段名或配置（不可变更字段类型）。",
+			Interface:   aitableMCPInterface("update_field"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新字段名或配置（不可变更字段类型）。",
+				UseWhen:      []string{"需要重命名字段或改选项/公式等配置且类型不变时"},
+				AvoidWhen:    []string{"换类型需删重建；删除用 field delete；新增用 field create"},
+				Examples:     []string{"dws aitable field update --base-id <BASE_ID> --table-id <TABLE_ID> --field-id <FIELD_ID> --name \"新字段名\""},
+			},
+		},
+	})
 
 	fieldSearchOptionsCmd := &cobra.Command{
 		Use:   "search-options",
@@ -1469,6 +1742,19 @@ newFieldName、config、aiConfig 至少传入一项。
 			return callMCPTool("search_field_options", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(fieldSearchOptionsCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "搜索单选/多选字段的选项。",
+			Interface:   aitableMCPInterface("search_field_options"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索单选/多选字段的选项。",
+				UseWhen:      []string{"需要模糊查找 singleSelect/multipleSelect 选项值时"},
+				AvoidWhen:    []string{"非选项字段不要用；改选项配置用 field update"},
+				Examples:     []string{"dws aitable field search-options --base-id <BASE_ID> --table-id <TABLE_ID> --field-id <FIELD_ID> --keyword \"进行中\""},
+			},
+		},
+	})
 
 	fieldDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -1487,9 +1773,6 @@ newFieldName、config、aiConfig 至少传入一项。
 				return err
 			}
 			fieldID := mustGetFlag(cmd, "field-id")
-			if !confirmDelete("字段", fieldID) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -1501,6 +1784,19 @@ newFieldName、config、aiConfig 至少传入一项。
 			})
 		},
 	}
+	DeclareLeafMetadata(fieldDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除字段（不可逆，需确认）。",
+			Interface:   aitableMCPInterface("delete_field"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除字段（不可逆，需确认）。",
+				UseWhen:      []string{"用户明确要求删除某列字段时"},
+				AvoidWhen:    []string{"隐藏表单题目用 form field hide；调视图可见列用 view update"},
+				Examples:     []string{"dws aitable field delete --base-id <BASE_ID> --table-id <TABLE_ID> --field-id <FIELD_ID>"},
+			},
+		},
+	})
 
 	// ── record: 记录管理 ────────────────────────────────────────
 
@@ -1609,6 +1905,19 @@ newFieldName、config、aiConfig 至少传入一项。
 			return recordQueryFetchAll(toolArgs, pageLimit)
 		},
 	}
+	DeclareLeafMetadata(recordQueryCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查询/搜索记录（filters/sort/分页/--all；cells 键为 fieldId）。",
+			Interface:   aitableMCPInterface("query_records"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询/搜索记录（filters/sort/分页/--all；cells 键为 fieldId）。",
+				UseWhen:      []string{"查看、筛选、全文搜索或遍历记录时的主入口"},
+				AvoidWhen:    []string{"已知 recordId 窄查可用 record get；空行用 query-empty；写入用 create/update；电子表格单元格用 sheet"},
+				Examples:     []string{"dws aitable record query --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
 
 	recordCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1687,6 +1996,19 @@ CLI 会自动从文件中读取内容作为 --records 的值。这样可以避�
 			})
 		},
 	}
+	DeclareLeafMetadata(recordCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "新增记录（cells 的 key 必须是 fieldId）。",
+			Interface:   aitableMCPInterface("create_records"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "新增记录（cells 的 key 必须是 fieldId）。",
+				UseWhen:      []string{"需要插入新行数据时"},
+				AvoidWhen:    []string{"更新已有行用 record update；有则更无则增用 upsert；批量同 patch 用 batch-update"},
+				Examples:     []string{"dws aitable record create --base-id <BASE_ID> --table-id <TABLE_ID> --records '[{\"cells\":{\"fldXXX\":\"值\"}}]'"},
+			},
+		},
+	})
 
 	recordUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1745,6 +2067,19 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 			})
 		},
 	}
+	DeclareLeafMetadata(recordUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新已有记录字段（先 query 拿 recordId；只传需改字段）。",
+			Interface:   aitableMCPInterface("update_records"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新已有记录字段（先 query 拿 recordId；只传需改字段）。",
+				UseWhen:      []string{"需要修改已有记录若干字段时"},
+				AvoidWhen:    []string{"新建用 create；多条共用同一 cells patch 用 batch-update；混合创建/更新用 upsert"},
+				Examples:     []string{"dws aitable record update --base-id <BASE_ID> --table-id <TABLE_ID> --records '[{\"recordId\":\"recXXX\",\"cells\":{\"fldYYY\":\"新值\"}}]'"},
+			},
+		},
+	})
 
 	recordDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -1760,9 +2095,6 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 				return err
 			}
 			recordIDs := mustGetFlag(cmd, "record-ids")
-			if !confirmDelete("记录", recordIDs) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -1774,6 +2106,19 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 			})
 		},
 	}
+	DeclareLeafMetadata(recordDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除记录（不可逆，需确认）。",
+			Interface:   aitableMCPInterface("delete_records"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除记录（不可逆，需确认）。",
+				UseWhen:      []string{"用户明确要求删除一条或多条记录时"},
+				AvoidWhen:    []string{"先 query 确认目标；删字段/表用 field/table delete"},
+				Examples:     []string{"dws aitable record delete --base-id <BASE_ID> --table-id <TABLE_ID> --record-ids <ID>"},
+			},
+		},
+	})
 
 	recordBatchUpdateCmd := &cobra.Command{
 		Use:   "batch-update",
@@ -1833,6 +2178,19 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 			})
 		},
 	}
+	DeclareLeafMetadata(recordBatchUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "把同一份 cells 批量应用到多条 recordIds。",
+			Interface:   aitableCompositeInterface("Reviewed composite wrapper: the CLI expands record IDs and shared cells into the pinned aitable/update_records request, so it is not a direct parameter-equivalent RPC projection."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "把同一份 cells 批量应用到多条 recordIds。",
+				UseWhen:      []string{"多条记录要写入相同字段补丁时"},
+				AvoidWhen:    []string{"各记录 cells 不同用 record update；新建用 create"},
+				Examples:     []string{"dws aitable record batch-update --base-id BASE_ID --table-id TABLE_ID --record-ids rec1,rec2 --cells '{\"fldXXX\":\"值\"}'"},
+			},
+		},
+	})
 
 	// record query-empty：查询完全没填用户字段的空行
 	recordQueryEmptyCmd := &cobra.Command{
@@ -1873,6 +2231,19 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 			return callAitableHelperTool("query_empty_records", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(recordQueryEmptyCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查询完全未填用户字段的空行。",
+			Interface:   aitableHelperMCPInterface("query_empty_records"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询完全未填用户字段的空行。",
+				UseWhen:      []string{"需要找出空白记录以便清理时"},
+				AvoidWhen:    []string{"普通条件查询用 record query"},
+				Examples:     []string{"dws aitable record query-empty --base-id <BASE_ID> --table-id <TABLE_ID> --limit 50"},
+			},
+		},
+	})
 
 	// record history-list：按 recordId 查变更历史
 	recordHistoryListCmd := &cobra.Command{
@@ -1922,6 +2293,19 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 			return callAitableHelperTool("query_record_history", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(recordHistoryListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查询单条记录变更历史。",
+			Interface:   aitableHelperMCPInterface("query_record_history"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询单条记录变更历史。",
+				UseWhen:      []string{"需要审计某条记录的历史变更时"},
+				AvoidWhen:    []string{"当前字段值用 record get/query"},
+				Examples:     []string{"dws aitable record history-list --base-id <BASE_ID> --table-id <TABLE_ID> --record-id <RECORD_ID>"},
+			},
+		},
+	})
 
 	// record share-url：批量获取 record 分享链接
 	recordShareUrlCmd := &cobra.Command{
@@ -1960,6 +2344,19 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 			return callAitableHelperTool("get_record_share_url", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(recordShareUrlCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "批量获取记录分享链接（最多 20）。",
+			Interface:   aitableHelperMCPInterface("get_record_share_url"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量获取记录分享链接（最多 20）。",
+				UseWhen:      []string{"需要生成记录分享 URL 时"},
+				AvoidWhen:    []string{"查记录内容用 query/get"},
+				Examples:     []string{"dws aitable record share-url --base-id <BASE_ID> --table-id <TABLE_ID> --record-ids id1,id2"},
+			},
+		},
+	})
 
 	// record upsert：按 recordId 是否存在自动拆分 create / update
 	recordUpsertCmd := &cobra.Command{
@@ -2011,6 +2408,19 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 			})
 		},
 	}
+	DeclareLeafMetadata(recordUpsertCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "批量创建或更新（有 recordId 更新，无则创建）。",
+			Interface:   aitableHelperMCPInterface("record_upsert"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "批量创建或更新（有 recordId 更新，无则创建）。",
+				UseWhen:      []string{"一批记录中部分新建部分更新时"},
+				AvoidWhen:    []string{"纯新建用 create；纯更新用 update"},
+				Examples:     []string{"dws aitable record upsert --base-id <BASE_ID> --table-id <TABLE_ID> --records '[{\"cells\":{\"fldXXX\":\"值\"}}]'"},
+			},
+		},
+	})
 
 	// record primary-doc-get：查询主键文档
 	recordPrimaryDocGetCmd := &cobra.Command{
@@ -2035,6 +2445,19 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 			})
 		},
 	}
+	DeclareLeafMetadata(recordPrimaryDocGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查询记录主键文档 nodeId。",
+			Interface:   aitableHelperMCPInterface("get_primary_doc"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询记录主键文档 nodeId。",
+				UseWhen:      []string{"需要打开记录关联的主键文档时"},
+				AvoidWhen:    []string{"无文档时会报错；创建用 primary-doc-create"},
+				Examples:     []string{"dws aitable record primary-doc-get --base-id <BASE_ID> --table-id <TABLE_ID> --record-id <RECORD_ID>"},
+			},
+		},
+	})
 
 	// record primary-doc-create：创建主键文档
 	recordPrimaryDocCreateCmd := &cobra.Command{
@@ -2060,6 +2483,19 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(recordPrimaryDocCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "为记录创建主键文档（幂等；field 须 primaryDoc 类型）。",
+			Interface:   aitableHelperMCPInterface("create_primary_doc"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "为记录创建主键文档（幂等；field 须 primaryDoc 类型）。",
+				UseWhen:      []string{"记录尚无主键文档，需要创建时"},
+				AvoidWhen:    []string{"仅查询用 primary-doc-get"},
+				Examples:     []string{"dws aitable record primary-doc-create --base-id <BASE_ID> --table-id <TABLE_ID> --record-id <RECORD_ID> --field-id <FIELD_ID>"},
+			},
+		},
+	})
 
 	// ── template: 模板搜索 ──────────────────────────────────────
 
@@ -2089,6 +2525,19 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 			return callAitableTool("search_templates", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateSearchCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "搜索 AI 表格模板。",
+			Interface:   aitableMCPInterface("search_templates"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索 AI 表格模板。",
+				UseWhen:      []string{"按关键词找 AI 表格模板时"},
+				AvoidWhen:    []string{"电子表格模板用 sheet template search"},
+				Examples:     []string{"dws aitable template search --query \"项目管理\""},
+			},
+		},
+	})
 
 	// ── attachment: 附件管理 ──────────────────────────────────────
 
@@ -2142,6 +2591,19 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 			return callAitableTool("prepare_attachment_upload", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(attachmentUploadCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "准备 AI 表格附件上传凭证（不要用钉盘 drive）。",
+			Interface:   aitableMCPInterface("prepare_attachment_upload"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "准备 AI 表格附件上传凭证（不要用钉盘 drive）。",
+				UseWhen:      []string{"需要把文件作为记录附件字段上传时"},
+				AvoidWhen:    []string{"禁止改用 drive upload；电子表格附件用 sheet media-upload"},
+				Examples:     []string{"dws aitable attachment upload --base-id BASE_ID --file-name report.xlsx --size 204800"},
+			},
+		},
+	})
 
 	// ── view: 视图管理 ───────────────────────────────────────────
 
@@ -2178,93 +2640,198 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	}
 
 	// ─── view get <attr> 子命令：按属性投影 view 响应 ──────────────
-	//
-	// 共用 makeViewGetSubCmd 工厂构造。card/timebar/aggregate 需要 viewType
-	// 校验；filter/sort/group/visible-fields/field-widths 不需要。
-	makeViewGetSubCmd := func(use, short, longExtra, blockKey string,
-		viewTypeWhitelist []string,
-		// 当 blockKey == "card" 时由 dispatchCardKey 动态决定取哪个字段（kanbanCard / galleryCard）
-		dynamicDispatch bool,
-	) *cobra.Command {
-		long := fmt.Sprintf(`获取指定视图的 %s 配置。`, short)
-		if longExtra != "" {
-			long += "\n" + longExtra
-		}
-		return &cobra.Command{
-			Use:     use,
-			Short:   "获取视图 " + use + " 配置",
-			Long:    long,
-			Example: fmt.Sprintf("  dws aitable view get %s --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID", use),
-			RunE: func(cmd *cobra.Command, args []string) error {
-				if err := validateRequiredFlags(cmd, "table-id", "view-id"); err != nil {
-					return err
-				}
-				baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
-				if err != nil {
-					return err
-				}
-				view, viewType, err := getViewRaw(context.Background(), baseID, mustGetFlag(cmd, "table-id"), mustGetFlag(cmd, "view-id"))
-				if err != nil {
-					return err
-				}
-				key := blockKey
-				if dynamicDispatch {
-					key, err = dispatchCardKey(viewType)
-					if err != nil {
-						return err
-					}
-				} else if len(viewTypeWhitelist) > 0 {
-					if err := requireViewType(viewType, use, viewTypeWhitelist); err != nil {
-						return err
-					}
-				}
-				// blockKey 支持 dotted path（如 "custom.widthMap"），供 read 路径
-				// 投影到嵌套字段。服务端某些属性（fieldWidths）写入走 config.<key>，
-				// 但 get_views 响应里落到 view.custom.<sub>，read/write 路径不对称。
-				return printViewSubBlock(walkViewPath(view, key))
-			},
-		}
+	// card/timebar/aggregate 需要 viewType 校验；filter/sort/group/visible-fields/field-widths 不需要。
+	viewGetCardCmd := &cobra.Command{
+		Use:   "card",
+		Short: "获取视图 card 配置",
+		Long: `获取指定视图的 card 配置。
+适用视图：Kanban / Gallery。返回对应视图的卡片配置子块（kanbanCard 或 galleryCard）。`,
+		Example: `  dws aitable view get card --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "card", "", nil, true)
+		},
 	}
+	DeclareLeafMetadata(viewGetCardCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取卡片视图配置",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取卡片视图配置",
+				UseWhen:      []string{"查看卡片视图展示配置时"},
+				AvoidWhen:    []string{"修改用 update card"},
+				Examples:     []string{"dws aitable view get card --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetCardCmd := makeViewGetSubCmd("card",
-		"card",
-		"适用视图：Kanban / Gallery。返回对应视图的卡片配置子块（kanbanCard 或 galleryCard）。",
-		"", nil, true)
+	viewGetTimebarCmd := &cobra.Command{
+		Use:   "timebar",
+		Short: "获取视图 timebar 配置",
+		Long: `获取指定视图的 timebar 配置。
+适用视图：Gantt。返回 ganttTimebar 子块（startField / endField / displayFieldId / timelineScale / colorConfigs / officialHoliday）。`,
+		Example: `  dws aitable view get timebar --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "timebar", "ganttTimebar", []string{"Gantt"}, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetTimebarCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取时间条配置",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取时间条配置",
+				UseWhen:      []string{"查看甘特/时间条配置时"},
+				AvoidWhen:    []string{"修改用 update timebar"},
+				Examples:     []string{"dws aitable view get timebar --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetTimebarCmd := makeViewGetSubCmd("timebar",
-		"timebar",
-		"适用视图：Gantt。返回 ganttTimebar 子块（startField / endField / displayFieldId / timelineScale / colorConfigs / officialHoliday）。",
-		"ganttTimebar", []string{"Gantt"}, false)
+	viewGetAggregateCmd := &cobra.Command{
+		Use:   "aggregate",
+		Short: "获取视图 aggregate 配置",
+		Long: `获取指定视图的 aggregate 配置。
+适用视图：Grid。返回字段聚合统计配置（map[fieldId]→AggregateAction）。`,
+		Example: `  dws aitable view get aggregate --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "aggregate", "aggregate", []string{"Grid"}, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetAggregateCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取视图聚合配置",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取视图聚合配置",
+				UseWhen:      []string{"查看视图聚合指标时"},
+				AvoidWhen:    []string{"修改用 view update aggregate"},
+				Examples:     []string{"dws aitable view get aggregate --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetAggregateCmd := makeViewGetSubCmd("aggregate",
-		"aggregate",
-		"适用视图：Grid。返回字段聚合统计配置（map[fieldId]→AggregateAction）。",
-		"aggregate", []string{"Grid"}, false)
+	viewGetFilterCmd := &cobra.Command{
+		Use:   "filter",
+		Short: "获取视图 filter 配置",
+		Long: `获取指定视图的 filter 配置。
+返回视图当前的筛选规则数组。所有视图类型都支持。`,
+		Example: `  dws aitable view get filter --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "filter", "filter", nil, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetFilterCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取视图筛选",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取视图筛选",
+				UseWhen:      []string{"查看视图 filter 规则时"},
+				AvoidWhen:    []string{"修改用 update filter；记录级临时筛选用 record query --filters"},
+				Examples:     []string{"dws aitable view get filter --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetFilterCmd := makeViewGetSubCmd("filter",
-		"filter",
-		"返回视图当前的筛选规则数组。所有视图类型都支持。",
-		"filter", nil, false)
+	viewGetSortCmd := &cobra.Command{
+		Use:   "sort",
+		Short: "获取视图 sort 配置",
+		Long: `获取指定视图的 sort 配置。
+返回视图当前的排序规则数组。所有视图类型都支持。`,
+		Example: `  dws aitable view get sort --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "sort", "sort", nil, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetSortCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取视图排序",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取视图排序",
+				UseWhen:      []string{"查看排序规则时"},
+				AvoidWhen:    []string{"修改用 update sort；临时排序可用 record query --sort"},
+				Examples:     []string{"dws aitable view get sort --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetSortCmd := makeViewGetSubCmd("sort",
-		"sort",
-		"返回视图当前的排序规则数组。所有视图类型都支持。",
-		"sort", nil, false)
+	viewGetGroupCmd := &cobra.Command{
+		Use:   "group",
+		Short: "获取视图 group 配置",
+		Long: `获取指定视图的 group 配置。
+返回视图当前的分组规则数组。所有视图类型都支持。`,
+		Example: `  dws aitable view get group --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "group", "group", nil, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetGroupCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取视图分组",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取视图分组",
+				UseWhen:      []string{"查看分组规则时"},
+				AvoidWhen:    []string{"修改用 update group"},
+				Examples:     []string{"dws aitable view get group --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetGroupCmd := makeViewGetSubCmd("group",
-		"group",
-		"返回视图当前的分组规则数组。所有视图类型都支持。",
-		"group", nil, false)
+	viewGetVisibleFieldsCmd := &cobra.Command{
+		Use:   "visible-fields",
+		Short: "获取视图 visible-fields 配置",
+		Long: `获取指定视图的 visible-fields 配置。
+返回视图当前可见字段 ID 列表（即 columns 字段，按显示顺序）。所有视图类型都支持。`,
+		Example: `  dws aitable view get visible-fields --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "visible-fields", "columns", nil, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetVisibleFieldsCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取可见字段及顺序",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取可见字段及顺序",
+				UseWhen:      []string{"查看视图可见列顺序时"},
+				AvoidWhen:    []string{"调整顺序/显隐用 update visible-fields（这是调字段顺序的入口）"},
+				Examples:     []string{"dws aitable view get visible-fields --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
-	viewGetVisibleFieldsCmd := makeViewGetSubCmd("visible-fields",
-		"visible-fields",
-		"返回视图当前可见字段 ID 列表（即 columns 字段，按显示顺序）。所有视图类型都支持。",
-		"columns", nil, false)
-
-	viewGetFieldWidthsCmd := makeViewGetSubCmd("field-widths",
-		"field-widths",
-		"适用视图：Grid。返回字段列宽映射（map[fieldId]→width）。注意服务端响应里落在 custom.widthMap，read 路径已自动投影到此。",
-		"custom.widthMap", []string{"Grid"}, false)
+	viewGetFieldWidthsCmd := &cobra.Command{
+		Use:   "field-widths",
+		Short: "获取视图 field-widths 配置",
+		Long: `获取指定视图的 field-widths 配置。
+适用视图：Grid。返回字段列宽映射（map[fieldId]→width）。注意服务端响应里落在 custom.widthMap，read 路径已自动投影到此。`,
+		Example: `  dws aitable view get field-widths --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "field-widths", "custom.widthMap", []string{"Grid"}, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetFieldWidthsCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取 Grid 列宽",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取 Grid 列宽",
+				UseWhen:      []string{"查看字段列宽映射时"},
+				AvoidWhen:    []string{"修改用 update field-widths"},
+				Examples:     []string{"dws aitable view get field-widths --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	viewGetCmd.AddCommand(
 		viewGetCardCmd,
@@ -2317,6 +2884,19 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 			return callMCPTool("create_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建视图（Grid/Kanban/Gantt/Calendar/Gallery/FormDesigner）。",
+			Interface:   aitableMCPInterface("create_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建视图（Grid/Kanban/Gantt/Calendar/Gallery/FormDesigner）。",
+				UseWhen:      []string{"需要新建某种类型的视图时；创建表单也可用 form create"},
+				AvoidWhen:    []string{"更新视图配置用对应 view update-*；删除用 view delete"},
+				Examples:     []string{"dws aitable view create --base-id <BASE_ID> --table-id <TABLE_ID> --view-type Grid --name \"默认表格\""},
+			},
+		},
+	})
 
 	viewUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -2363,39 +2943,6 @@ fieldWidths 仅支持 Grid 视图。
 
 	// ─── view update <attr> 子命令：按属性局部更新 ────────────────────
 
-	// viewUpdateCommonPreflight 校验 base-id/table-id/view-id；对需要 viewType 校验
-	// 的 attr，preflight 调 get_views 拿 viewType，并返回 dispatch 后的 blockKey。
-	viewUpdateCommonPreflight := func(cmd *cobra.Command, attr string,
-		viewTypeWhitelist []string, dynamicDispatch bool,
-	) (baseID, tableID, viewID, blockKey string, err error) {
-		if err = validateRequiredFlags(cmd, "table-id", "view-id"); err != nil {
-			return
-		}
-		baseID, err = mustFlagOrFallback(cmd, "base-id", "base")
-		if err != nil {
-			return
-		}
-		tableID = mustGetFlag(cmd, "table-id")
-		viewID = mustGetFlag(cmd, "view-id")
-		blockKey = attr
-		if dynamicDispatch || len(viewTypeWhitelist) > 0 {
-			_, viewType, e := getViewRaw(context.Background(), baseID, tableID, viewID)
-			if e != nil {
-				err = e
-				return
-			}
-			if dynamicDispatch {
-				blockKey, err = dispatchCardKey(viewType)
-				if err != nil {
-					return
-				}
-			} else if err = requireViewType(viewType, attr, viewTypeWhitelist); err != nil {
-				return
-			}
-		}
-		return
-	}
-
 	// view update card: 同时支持 Kanban / Gallery，preflight 拿 viewType dispatch
 	viewUpdateCardCmd := &cobra.Command{
 		Use:   "card",
@@ -2438,6 +2985,22 @@ typed flag 与 --json 同时存在时，typed flag 优先。--no-cover 与 --cov
 			return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, block, nil)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateCardCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新卡片视图配置",
+			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新卡片视图配置",
+				UseWhen:      []string{"调整卡片封面/标题字段时"},
+				AvoidWhen:    []string{"只读用 get card"},
+				Examples: []string{
+					"dws aitable view update card --view-id KANBAN_ID --cover-field-id fldAttachment --cover-resize-mode contain",
+					"dws aitable view update card --view-id KANBAN_ID --no-cover",
+				},
+			},
+		},
+	})
 
 	viewUpdateTimebarCmd := &cobra.Command{
 		Use:   "timebar",
@@ -2473,6 +3036,22 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 			return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, block, nil)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateTimebarCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新时间条配置",
+			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新时间条配置",
+				UseWhen:      []string{"调整甘特时间条字段时"},
+				AvoidWhen:    []string{"只读用 get timebar"},
+				Examples: []string{
+					"dws aitable view update timebar --view-id GANTT_ID --start-field fldStart --end-field fldEnd --timeline-scale month",
+					"dws aitable view update timebar --view-id GANTT_ID --official-holiday=true",
+				},
+			},
+		},
+	})
 
 	viewUpdateAggregateCmd := &cobra.Command{
 		Use:   "aggregate",
@@ -2509,6 +3088,19 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 			return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, block, nil)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateAggregateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新视图聚合配置",
+			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新视图聚合配置",
+				UseWhen:      []string{"需要改聚合指标时"},
+				AvoidWhen:    []string{"只读用 get aggregate"},
+				Examples:     []string{"dws aitable view update aggregate --view-id GRID_ID --field-id fldX --action SUM"},
+			},
+		},
+	})
 
 	viewUpdateFieldWidthsCmd := &cobra.Command{
 		Use:   "field-widths",
@@ -2538,6 +3130,19 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 			return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, block, nil)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateFieldWidthsCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新 Grid 列宽",
+			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新 Grid 列宽",
+				UseWhen:      []string{"调整列宽时"},
+				AvoidWhen:    []string{"只读用 get field-widths"},
+				Examples:     []string{"dws aitable view update field-widths --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --field-id fldX --width 200"},
+			},
+		},
+	})
 
 	viewUpdateVisibleFieldsCmd := &cobra.Command{
 		Use:   "visible-fields",
@@ -2580,48 +3185,95 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 			return callUpdateViewWithBlock(baseID, tableID, viewID, "visibleFieldIds", fieldIDs, nil)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateVisibleFieldsCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新可见字段列表与顺序",
+			Interface:   aitableMCPInterface("update_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新可见字段列表与顺序",
+				UseWhen:      []string{"用户要移动字段/调整列顺序时必须走本命令"},
+				AvoidWhen:    []string{"没有独立 field reorder；只读用 get visible-fields；首列字段须保留第一位"},
+				Examples:     []string{"dws aitable view update visible-fields --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --field-ids fld1,fld2,fld3"},
+			},
+		},
+	})
 
 	// view update filter / sort / group：纯 --json 入口，复用 normalize helper 做数组化
-	makeViewUpdateArrayCmd := func(use, blockKey, shortDesc, hintExample string) *cobra.Command {
-		return &cobra.Command{
-			Use:   use,
-			Short: "更新视图 " + use + " 配置",
-			Long: fmt.Sprintf(`按属性更新视图的 %s 配置（整组替换）。
-%s
-若传对象会自动 wrap 为数组；其他非法格式拒绝。`, shortDesc, hintExample),
-			Example: fmt.Sprintf("  dws aitable view update %s --view-id VIEW_ID --json '%s'", use, hintExample),
-			RunE: func(cmd *cobra.Command, args []string) error {
-				baseID, tableID, viewID, _, err := viewUpdateCommonPreflight(cmd, blockKey, nil, false)
-				if err != nil {
-					return err
-				}
-				jsonStr, _ := cmd.Flags().GetString("json")
-				if jsonStr == "" {
-					return fmt.Errorf("必须指定 --json 传入 %s JSON 数组", blockKey)
-				}
-				// jsonStringToMap 只解 map，不解 array；这里直接 Unmarshal 到 any
-				// 以支持 filter/sort/group 的数组入参。
-				var parsed any
-				if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
-					return fmt.Errorf("--json 解析失败: %v", err)
-				}
-				cfgMap := map[string]any{blockKey: parsed}
-				if err := normalizeViewConfigBlock(cfgMap); err != nil {
-					return err
-				}
-				return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, cfgMap[blockKey], nil)
-			},
-		}
+	viewUpdateFilterCmd := &cobra.Command{
+		Use:   "filter",
+		Short: "更新视图 filter 配置",
+		Long: `按属性更新视图的 filter 数组每项为 {operator,operands} 配置（整组替换）。
+[{"operator":"and","operands":[{"operator":"eq","operands":["fldX","value"]}]}]
+若传对象会自动 wrap 为数组；其他非法格式拒绝。`,
+		Example: `  dws aitable view update filter --view-id VIEW_ID --json '[{"operator":"and","operands":[{"operator":"eq","operands":["fldX","value"]}]}]'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewUpdateArray(cmd, "filter")
+		},
 	}
-	viewUpdateFilterCmd := makeViewUpdateArrayCmd("filter", "filter",
-		"filter 数组每项为 {operator,operands}",
-		`[{"operator":"and","operands":[{"operator":"eq","operands":["fldX","value"]}]}]`)
-	viewUpdateSortCmd := makeViewUpdateArrayCmd("sort", "sort",
-		"sort 数组每项为 {fieldId,direction}",
-		`[{"fieldId":"fldX","direction":"asc"}]`)
-	viewUpdateGroupCmd := makeViewUpdateArrayCmd("group", "group",
-		"group 数组每项为 {fieldId,direction}",
-		`[{"fieldId":"fldX","direction":"asc"}]`)
+	DeclareLeafMetadata(viewUpdateFilterCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新视图筛选",
+			Interface:   aitableMCPInterface("update_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新视图筛选",
+				UseWhen:      []string{"固化视图筛选条件时"},
+				AvoidWhen:    []string{"一次性查询过滤用 record query --filters"},
+				Examples:     []string{"dws aitable view update filter --view-id VIEW_ID --json '[{\"operator\":\"and\",\"operands\":[{\"operator\":\"eq\",\"operands\":[\"fldX\",\"value\"]}]}]'"},
+			},
+		},
+	})
+
+	viewUpdateSortCmd := &cobra.Command{
+		Use:   "sort",
+		Short: "更新视图 sort 配置",
+		Long: `按属性更新视图的 sort 数组每项为 {fieldId,direction} 配置（整组替换）。
+[{"fieldId":"fldX","direction":"asc"}]
+若传对象会自动 wrap 为数组；其他非法格式拒绝。`,
+		Example: `  dws aitable view update sort --view-id VIEW_ID --json '[{"fieldId":"fldX","direction":"asc"}]'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewUpdateArray(cmd, "sort")
+		},
+	}
+	DeclareLeafMetadata(viewUpdateSortCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新视图排序",
+			Interface:   aitableMCPInterface("update_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新视图排序",
+				UseWhen:      []string{"固化视图排序时"},
+				AvoidWhen:    []string{"一次性查询排序用 record query --sort"},
+				Examples:     []string{"dws aitable view update sort --view-id VIEW_ID --json '[{\"fieldId\":\"fldX\",\"direction\":\"asc\"}]'"},
+			},
+		},
+	})
+
+	viewUpdateGroupCmd := &cobra.Command{
+		Use:   "group",
+		Short: "更新视图 group 配置",
+		Long: `按属性更新视图的 group 数组每项为 {fieldId,direction} 配置（整组替换）。
+[{"fieldId":"fldX","direction":"asc"}]
+若传对象会自动 wrap 为数组；其他非法格式拒绝。`,
+		Example: `  dws aitable view update group --view-id VIEW_ID --json '[{"fieldId":"fldX","direction":"asc"}]'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewUpdateArray(cmd, "group")
+		},
+	}
+	DeclareLeafMetadata(viewUpdateGroupCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新视图分组",
+			Interface:   aitableMCPInterface("update_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新视图分组",
+				UseWhen:      []string{"设置分组字段时"},
+				AvoidWhen:    []string{"只读用 get group"},
+				Examples:     []string{"dws aitable view update group --view-id VIEW_ID --json '[{\"fieldId\":\"fldX\",\"direction\":\"asc\"}]'"},
+			},
+		},
+	})
 
 	viewUpdateNameCmd := &cobra.Command{
 		Use:     "name",
@@ -2641,6 +3293,19 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				"", nil, map[string]any{"newViewName": newName})
 		},
 	}
+	DeclareLeafMetadata(viewUpdateNameCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "重命名视图",
+			Interface:   aitableMCPInterface("update_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "重命名视图",
+				UseWhen:      []string{"只需改视图名称时"},
+				AvoidWhen:    []string{"改筛选/排序等用对应 update-*"},
+				Examples:     []string{"dws aitable view update name --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID> --name \"新视图名\""},
+			},
+		},
+	})
 
 	viewUpdateCmd.AddCommand(
 		viewUpdateCardCmd, viewUpdateTimebarCmd, viewUpdateAggregateCmd,
@@ -2682,6 +3347,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("get_view_lock_status", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewGetLockCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取视图锁状态",
+			Interface:   aitableHelperMCPInterface("get_view_lock_status"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取视图锁状态",
+				UseWhen:      []string{"确认视图是否锁定时"},
+				AvoidWhen:    []string{"加锁用 view lock"},
+				Examples:     []string{"dws aitable view get lock --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// view lock：调 lock_or_unlock_view（默认 action=lock，--off 时 action=unlock）
 	viewLockCmd := &cobra.Command{
@@ -2704,6 +3382,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("lock_or_unlock_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewLockCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "锁定或管理视图锁。",
+			Interface:   aitableHelperMCPInterface("lock_or_unlock_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "锁定或管理视图锁。",
+				UseWhen:      []string{"需要锁定视图防止他人改配置时"},
+				AvoidWhen:    []string{"查看锁状态用 view get lock"},
+				Examples:     []string{"dws aitable view lock --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// view get frozen-cols：调 get_frozen_columns_of_view
 	viewGetFrozenColsCmd := &cobra.Command{
@@ -2720,6 +3411,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("get_frozen_columns_of_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewGetFrozenColsCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取冻结列",
+			Interface:   aitableHelperMCPInterface("get_frozen_columns_of_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取冻结列",
+				UseWhen:      []string{"查看冻结列数时"},
+				AvoidWhen:    []string{"修改用 update frozen-cols"},
+				Examples:     []string{"dws aitable view get frozen-cols --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// view update frozen-cols：调 set_frozen_columns_of_view，--count int 必填
 	viewUpdateFrozenColsCmd := &cobra.Command{
@@ -2748,6 +3452,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("set_frozen_columns_of_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateFrozenColsCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新冻结列",
+			Interface:   aitableHelperMCPInterface("set_frozen_columns_of_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新冻结列",
+				UseWhen:      []string{"设置冻结列数时"},
+				AvoidWhen:    []string{"只读用 get frozen-cols"},
+				Examples:     []string{"dws aitable view update frozen-cols --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID> --count 1"},
+			},
+		},
+	})
 
 	// view get row-height：调 get_cell_height_of_view
 	viewGetRowHeightCmd := &cobra.Command{
@@ -2764,6 +3481,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("get_cell_height_of_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewGetRowHeightCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取行高",
+			Interface:   aitableHelperMCPInterface("get_cell_height_of_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取行高",
+				UseWhen:      []string{"查看行高配置时"},
+				AvoidWhen:    []string{"修改用 update row-height"},
+				Examples:     []string{"dws aitable view get row-height --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// view update row-height：调 set_cell_height_of_view，--cell-height int 必填（像素）
 	viewUpdateRowHeightCmd := &cobra.Command{
@@ -2792,12 +3522,44 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("set_cell_height_of_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateRowHeightCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新行高",
+			Interface:   aitableHelperMCPInterface("set_cell_height_of_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新行高",
+				UseWhen:      []string{"调整视图行高时"},
+				AvoidWhen:    []string{"只读用 get row-height"},
+				Examples:     []string{"dws aitable view update row-height --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --cell-height 32"},
+			},
+		},
+	})
 
 	// view get fill-color-rule：server 没独立 get 工具，从 view.conditionalFormats 投影
-	viewGetFillColorRuleCmd := makeViewGetSubCmd("fill-color-rule",
-		"fill-color-rule",
-		"读取视图当前的条件填色规则（conditionalFormats 数组）。所有视图类型都支持。",
-		"conditionalFormats", nil, false)
+	viewGetFillColorRuleCmd := &cobra.Command{
+		Use:   "fill-color-rule",
+		Short: "获取视图 fill-color-rule 配置",
+		Long: `获取指定视图的 fill-color-rule 配置。
+读取视图当前的条件填色规则（conditionalFormats 数组）。所有视图类型都支持。`,
+		Example: `  dws aitable view get fill-color-rule --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAitableViewGetAttr(cmd, "fill-color-rule", "conditionalFormats", nil, false)
+		},
+	}
+	DeclareLeafMetadata(viewGetFillColorRuleCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "读取填充色规则",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取填充色规则",
+				UseWhen:      []string{"查看条件填色规则时"},
+				AvoidWhen:    []string{"修改用 update fill-color-rule"},
+				Examples:     []string{"dws aitable view get fill-color-rule --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// view update fill-color-rule：调 set_view_fill_color_rule，--json 数组必填
 	viewUpdateFillColorRuleCmd := &cobra.Command{
@@ -2836,6 +3598,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableTool("set_view_fill_color_rule", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewUpdateFillColorRuleCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新填充色规则",
+			Interface:   aitableMCPInterface("set_view_fill_color_rule"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新填充色规则",
+				UseWhen:      []string{"设置视图条件填色时"},
+				AvoidWhen:    []string{"只读用 get fill-color-rule"},
+				Examples:     []string{"dws aitable view update fill-color-rule --view-id GRID_ID --json '[]'"},
+			},
+		},
+	})
 
 	// view duplicate：调 duplicate_view，源视图字段名是 sourceViewId（与 server 对齐）
 	viewDuplicateCmd := &cobra.Command{
@@ -2864,6 +3639,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("duplicate_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(viewDuplicateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "复制视图。",
+			Interface:   aitableHelperMCPInterface("duplicate_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "复制视图。",
+				UseWhen:      []string{"需要基于现有视图复制一份时"},
+				AvoidWhen:    []string{"新建空白视图用 view create"},
+				Examples:     []string{"dws aitable view duplicate --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// 把上面新增的子命令补挂到对应父级（与 view get/update 已有的 AddCommand 调用各自累加）
 	viewGetCmd.AddCommand(
@@ -2892,9 +3680,6 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 				return err
 			}
 			viewID := mustGetFlag(cmd, "view-id")
-			if !confirmDelete("视图", viewID) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -2906,6 +3691,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(viewDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除视图（不可删最后一个/锁定视图；需确认）。",
+			Interface:   aitableMCPInterface("delete_view"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除视图（不可删最后一个/锁定视图；需确认）。",
+				UseWhen:      []string{"用户明确要求删除某个视图时"},
+				AvoidWhen:    []string{"删表单视图也可用 form delete；锁定视图需先解锁"},
+				Examples:     []string{"dws aitable view delete --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	// ── form: 表单管理 ──────────────────────────────────────────
 
@@ -2932,6 +3730,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(formListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出表单视图。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出表单视图。",
+				UseWhen:      []string{"需要枚举某表下的表单时"},
+				AvoidWhen:    []string{"普通视图列表用 view list；详情用 form get"},
+				Examples:     []string{"dws aitable form list --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
 
 	formCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -2957,6 +3768,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callMCPTool("create_view", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(formCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建表单视图（推荐路径；也可用 view create FormDesigner）。",
+			Interface:   aitableCompositeInterface("Reviewed composite wrapper: the CLI constrains pinned aitable/create_view to FormDesigner and applies form-specific argument semantics, so it is not a direct parameter-equivalent RPC projection."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建表单视图（推荐路径；也可用 view create FormDesigner）。",
+				UseWhen:      []string{"需要为数据表创建收集表单时"},
+				AvoidWhen:    []string{"改表单标题/描述用 form update；删表单用 form delete"},
+				Examples:     []string{"dws aitable form create --base-id BASE_ID --table-id TABLE_ID --name \"员工信息收集\""},
+			},
+		},
+	})
 
 	formGetCmd := &cobra.Command{
 		Use:   "get",
@@ -2999,6 +3823,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return printViewSubBlock(form)
 		},
 	}
+	DeclareLeafMetadata(formGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "按 viewId 获取表单详情。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按 viewId 获取表单详情。",
+				UseWhen:      []string{"已知表单 viewId，需要看表单配置时"},
+				AvoidWhen:    []string{"列表用 form list；更新用 form update"},
+				Examples:     []string{"dws aitable form get --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	formDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -3012,9 +3849,6 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 				return err
 			}
 			viewID := mustGetFlag(cmd, "view-id")
-			if !confirmDelete("表单", viewID) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -3026,6 +3860,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(formDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除表单（不可逆，需确认）。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除表单（不可逆，需确认）。",
+				UseWhen:      []string{"用户明确要求删除表单视图时"},
+				AvoidWhen:    []string{"删普通视图用 view delete；只隐藏题目用 form field hide"},
+				Examples:     []string{"dws aitable form delete --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID"},
+			},
+		},
+	})
 
 	formUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3063,6 +3910,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("update_form_info", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(formUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新表单 title/name/description。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新表单 title/name/description。",
+				UseWhen:      []string{"需要改表单显示名称或说明时"},
+				AvoidWhen:    []string{"改表单字段显隐用 form field；删表单用 form delete"},
+				Examples:     []string{"dws aitable form update --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID> --title \"新标题\""},
+			},
+		},
+	})
 
 	// ── form questions: 表单题目（form 视角的字段管理，等价于 field create / field delete） ──
 
@@ -3079,6 +3939,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
   dws aitable form questions create --base-id BASE_ID --table-id TABLE_ID --name "电话" --type "text"`,
 		RunE: fieldCreateCmd.RunE,
 	}
+	DeclareLeafMetadata(formQuestionsCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "在表单侧创建题目（等价 field create）。",
+			Interface:   aitableCompositeInterface("Reviewed composite wrapper: the CLI converts single-question flags or batch JSON into the pinned aitable/create_fields request, so it is not a direct parameter-equivalent RPC projection."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在表单侧创建题目（等价 field create）。",
+				UseWhen:      []string{"在表单场景下新增题目/字段时"},
+				AvoidWhen:    []string{"直接字段管理也可用 field create；删题目用 questions delete"},
+				Examples:     []string{"dws aitable form questions create --base-id BASE_ID --table-id TABLE_ID --fields '[{\"fieldName\":\"姓名\",\"type\":\"text\"},{\"fieldName\":\"邮箱\",\"type\":\"text\"}]'"},
+			},
+		},
+	})
 
 	formQuestionsDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -3088,6 +3961,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 		Example: `  dws aitable form questions delete --base-id BASE_ID --table-id TABLE_ID --field-id fldXXX --yes`,
 		RunE:    fieldDeleteCmd.RunE,
 	}
+	DeclareLeafMetadata(formQuestionsDeleteCmd, LeafSpec{
+		Safety: aitableSafetyWriteConfirm(),
+		Schema: LeafSchema{
+			Description: "删除表单题目（等价 field delete，需确认语义）。",
+			Interface:   aitableMCPInterface("delete_field"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除表单题目（等价 field delete，需确认语义）。",
+				UseWhen:      []string{"在表单场景下删除题目/字段时"},
+				AvoidWhen:    []string{"仅隐藏用 form field hide；删整个表单用 form delete"},
+				Examples:     []string{"dws aitable form questions delete --base-id BASE_ID --table-id TABLE_ID --field-id fldXXX"},
+			},
+		},
+	})
 
 	formFieldListCmd := &cobra.Command{
 		Use:   "list",
@@ -3111,6 +3997,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(formFieldListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出表单字段/题目。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出表单字段/题目。",
+				UseWhen:      []string{"管理表单题目显隐或属性前先列出字段时"},
+				AvoidWhen:    []string{"更新属性用 form field update；隐藏用 hide"},
+				Examples:     []string{"dws aitable form field list --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	formFieldUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3142,6 +4041,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			return callAitableHelperTool("update_form_field", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(formFieldUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新表单字段展示属性。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新表单字段展示属性。",
+				UseWhen:      []string{"需要改表单中某字段的展示/必填等属性时"},
+				AvoidWhen:    []string{"隐藏字段用 form field hide；真正增删字段用 field create/delete 或 form questions"},
+				Examples:     []string{"dws aitable form field update --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID> --field-id <FIELD_ID>"},
+			},
+		},
+	})
 
 	formFieldHideCmd := &cobra.Command{
 		Use:   "hide",
@@ -3168,6 +4080,22 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(formFieldHideCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "切换表单中字段的隐藏/显示。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "切换表单中字段的隐藏/显示。",
+				UseWhen:      []string{"需要在表单中隐藏或重新显示某题目时"},
+				AvoidWhen:    []string{"删除真实字段用 field delete；删表单用 form delete"},
+				Examples:     []string{"dws aitable form field hide --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID> --field-id <FIELD_ID>"},
+			},
+		},
+	})
 
 	formShareGetCmd := &cobra.Command{
 		Use:   "get",
@@ -3191,6 +4119,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(formShareGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取表单分享配置。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取表单分享配置。",
+				UseWhen:      []string{"查看表单是否已分享及分享类型时"},
+				AvoidWhen:    []string{"更新分享用 form share update"},
+				Examples:     []string{"dws aitable form share get --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+		},
+	})
 
 	formShareUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3215,6 +4156,19 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(formShareUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新表单分享配置。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新表单分享配置。",
+				UseWhen:      []string{"开启/调整表单分享时"},
+				AvoidWhen:    []string{"只查询用 share get"},
+				Examples:     []string{"dws aitable form share update --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --enabled true"},
+			},
+		},
+	})
 
 	// ── workflow: 自动化工作流管理 ────────────────────────────────
 
@@ -3259,6 +4213,22 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			return callMCPToolOnServer("aitable", "create_workflow", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(workflowCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "创建并发布 AI 表格自动化工作流。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建并发布 AI 表格自动化工作流。",
+				UseWhen:      []string{"用户明确要求在已知 Base 中创建自动化，且已准备完整 workflow-dsl/v1 定义时"},
+				AvoidWhen:    []string{"已有工作流要修改时用 workflow update；仅启停已有工作流用 enable/disable；请求结果不确定时先 list 核对，避免非幂等重复创建"},
+				Examples:     []string{"dws aitable workflow create --base-id <BASE_ID> --dsl @workflow.json --locale zh-CN"},
+			},
+		},
+	})
 
 	workflowUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3294,6 +4264,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			return callAitableTool("update_workflow", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(workflowUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "用完整 DSL 更新并发布已有 AI 表格自动化工作流。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "用完整 DSL 更新并发布已有 AI 表格自动化工作流。",
+				UseWhen:      []string{"用户明确要求修改已知工作流，且已先留底当前详情并准备完整 workflow-dsl/v1 目标定义时"},
+				AvoidWhen:    []string{"新建工作流用 create；只改变运行状态用 enable/disable；不要把局部 patch 或 workflow get 返回的 flowSchema 直接当作 DSL"},
+				Examples:     []string{"dws aitable workflow update --base-id <BASE_ID> --workflow-id <FLOW_ID> --dsl @workflow.json --locale zh-CN"},
+			},
+		},
+	})
 
 	workflowEnableCmd := &cobra.Command{
 		Use:   "enable",
@@ -3317,6 +4300,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			})
 		},
 	}
+	DeclareLeafMetadata(workflowEnableCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "启用工作流。",
+			Interface:   aitableHelperMCPInterface("enable_workflow"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "启用工作流。",
+				UseWhen:      []string{"需要重新打开已停止的自动化工作流时"},
+				AvoidWhen:    []string{"禁用用 workflow disable（高危，需确认）"},
+				Examples:     []string{"dws aitable workflow enable --base-id <BASE_ID> --workflow-id <FLOW_ID>"},
+			},
+		},
+	})
 
 	workflowDisableCmd := &cobra.Command{
 		Use:   "disable",
@@ -3336,15 +4332,28 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				return err
 			}
 			workflowID := mustGetFlag(cmd, "workflow-id")
-			if !confirmDelete("工作流（禁用后将停止自动触发）", workflowID) {
-				return nil
-			}
 			return callAitableHelperTool("disable_workflow", map[string]any{
 				"baseId":     baseID,
 				"workflowId": workflowID,
 			})
 		},
 	}
+	DeclareLeafMetadata(workflowDisableCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "禁用工作流（高危，需确认；status 变 STOP）。",
+			Interface:   aitableHelperMCPInterface("disable_workflow"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "禁用工作流（高危，需确认；status 变 STOP）。",
+				UseWhen:      []string{"用户明确要求停止某自动化工作流时"},
+				AvoidWhen:    []string{"启用用 enable；不能通过 CLI 删除工作流"},
+				Examples:     []string{"dws aitable workflow disable --base-id <BASE_ID> --workflow-id <FLOW_ID>"},
+			},
+		},
+	})
 
 	workflowGetCmd := &cobra.Command{
 		Use:   "get",
@@ -3367,6 +4376,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			})
 		},
 	}
+	DeclareLeafMetadata(workflowGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取工作流详情（含 flowSchema）。",
+			Interface:   aitableHelperMCPInterface("get_workflow"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取工作流详情（含 flowSchema）。",
+				UseWhen:      []string{"已知 workflow-id，需要看工作流定义时"},
+				AvoidWhen:    []string{"列表用 list；启停用 enable/disable"},
+				Examples:     []string{"dws aitable workflow get --base-id <BASE_ID> --workflow-id <FLOW_ID>"},
+			},
+		},
+	})
 
 	workflowListCmd := &cobra.Command{
 		Use:   "list",
@@ -3399,6 +4421,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			return callAitableHelperTool("list_workflows", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(workflowListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出 Base 下自动化工作流。",
+			Interface:   aitableHelperMCPInterface("list_workflows"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出 Base 下自动化工作流。",
+				UseWhen:      []string{"查看有哪些工作流及 status/flowId 时"},
+				AvoidWhen:    []string{"CLI 不能新建/修改/删除工作流；启用/禁用用 enable/disable"},
+				Examples:     []string{"dws aitable workflow list --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	// ── dashboard: 仪表盘管理 ────────────────────────────────────
 
@@ -3414,6 +4449,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			return callAitableTool("get_dashboard_config_example", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(dashboardConfigExampleCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查看仪表盘配置模板。",
+			Interface:   aitableMCPInterface("get_dashboard_config_example"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查看仪表盘配置模板。",
+				UseWhen:      []string{"创建/更新仪表盘前需要参考配置 JSON 模板时"},
+				AvoidWhen:    []string{"图表 widgets 模板用 chart widgets-example"},
+				Examples:     []string{"dws aitable dashboard config-example"},
+			},
+		},
+	})
 
 	dashboardGetCmd := &cobra.Command{
 		Use:   "get",
@@ -3436,6 +4484,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			})
 		},
 	}
+	DeclareLeafMetadata(dashboardGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取仪表盘及 charts 列表。",
+			Interface:   aitableMCPInterface("get_dashboard"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取仪表盘及 charts 列表。",
+				UseWhen:      []string{"查看仪表盘配置或拿到 chartId 时"},
+				AvoidWhen:    []string{"先看模板用 dashboard config-example；改配置用 dashboard update"},
+				Examples:     []string{"dws aitable dashboard get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID>"},
+			},
+		},
+	})
 
 	dashboardCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -3473,6 +4534,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			})
 		},
 	}
+	DeclareLeafMetadata(dashboardCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建仪表盘。",
+			Interface:   aitableMCPInterface("create_dashboard"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建仪表盘。",
+				UseWhen:      []string{"需要新建仪表盘时"},
+				AvoidWhen:    []string{"配置模板先看 config-example；删仪表盘用 delete"},
+				Examples:     []string{"dws aitable dashboard create --base-id <BASE_ID> --name \"运营看板\""},
+			},
+		},
+	})
 
 	dashboardUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3514,6 +4588,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			})
 		},
 	}
+	DeclareLeafMetadata(dashboardUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新仪表盘。",
+			Interface:   aitableMCPInterface("update_dashboard"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新仪表盘。",
+				UseWhen:      []string{"需要改仪表盘名称或配置时"},
+				AvoidWhen:    []string{"排版布局用 dashboard arrange；删用 delete"},
+				Examples:     []string{"dws aitable dashboard update --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --name \"新看板\""},
+			},
+		},
+	})
 
 	dashboardDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -3526,9 +4613,6 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				return err
 			}
 			dashboardID := mustGetFlag(cmd, "dashboard-id")
-			if !confirmDelete("仪表盘", dashboardID) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -3543,6 +4627,19 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			return callAitableTool("delete_dashboard", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(dashboardDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除仪表盘（需确认）。",
+			Interface:   aitableMCPInterface("delete_dashboard"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除仪表盘（需确认）。",
+				UseWhen:      []string{"用户明确要求删除仪表盘时"},
+				AvoidWhen:    []string{"删图表用 chart delete"},
+				Examples:     []string{"dws aitable dashboard delete --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID>"},
+			},
+		},
+	})
 
 	// dashboard arrange：自动重排仪表盘内的图表布局
 	dashboardArrangeCmd := &cobra.Command{
@@ -3569,6 +4666,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(dashboardArrangeCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "调整仪表盘布局。",
+			Interface:   aitableHelperMCPInterface("align_dashboard"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "调整仪表盘布局。",
+				UseWhen:      []string{"需要重排仪表盘内组件位置时"},
+				AvoidWhen:    []string{"改仪表盘元数据用 update"},
+				Examples:     []string{"dws aitable dashboard arrange --base-id <base-id> --dashboard-id <dashboard-id>"},
+			},
+		},
+	})
 
 	// ── dashboard share: 仪表盘分享管理 ────────────────────────────
 
@@ -3594,6 +4704,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(dashboardShareGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查询仪表盘分享配置（可能 404，按可重试处理）。",
+			Interface:   aitableMCPInterface("get_dashboard_share"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询仪表盘分享配置（可能 404，按可重试处理）。",
+				UseWhen:      []string{"查看仪表盘分享状态时"},
+				AvoidWhen:    []string{"更新用 share update；不要把偶发 404 当参数错误"},
+				Examples:     []string{"dws aitable dashboard share get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID>"},
+			},
+		},
+	})
 
 	dashboardShareUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3631,6 +4754,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			return callAitableTool("update_dashboard_share", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(dashboardShareUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新仪表盘分享配置。",
+			Interface:   aitableMCPInterface("update_dashboard_share"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新仪表盘分享配置。",
+				UseWhen:      []string{"开启或调整仪表盘组织内分享时"},
+				AvoidWhen:    []string{"查询用 share get"},
+				Examples:     []string{"dws aitable dashboard share update --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --share-type ORG"},
+			},
+		},
+	})
 
 	// ── chart: 图表管理 ──────────────────────────────────────────
 
@@ -3646,6 +4782,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			return callAitableTool("get_dashboard_widgets_example", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(chartWidgetsExampleCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "查看图表 widgets 配置模板。",
+			Interface:   aitableMCPInterface("get_dashboard_widgets_example"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查看图表 widgets 配置模板。",
+				UseWhen:      []string{"创建/更新图表前需要 widgets JSON 样例时"},
+				AvoidWhen:    []string{"仪表盘配置样例用 dashboard config-example"},
+				Examples:     []string{"dws aitable chart widgets-example"},
+			},
+		},
+	})
 
 	chartGetCmd := &cobra.Command{
 		Use:   "get",
@@ -3670,6 +4819,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(chartGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取图表详情。",
+			Interface:   aitableMCPInterface("get_chart"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取图表详情。",
+				UseWhen:      []string{"已知 dashboardId/chartId，需要看图表配置时"},
+				AvoidWhen:    []string{"列表可从 dashboard get 的 charts[] 取；更新用 chart update"},
+				Examples:     []string{"dws aitable chart get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-id <CHART_ID>"},
+			},
+		},
+	})
 
 	chartCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -3702,6 +4864,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(chartCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建图表。",
+			Interface:   aitableMCPInterface("create_chart"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建图表。",
+				UseWhen:      []string{"在仪表盘下新建图表时；先参考 widgets-example"},
+				AvoidWhen:    []string{"电子表格浮动图用 sheet chart；更新用 chart update"},
+				Examples:     []string{"dws aitable chart create --base-id BASE_ID --dashboard-id DASHBOARD_ID --config '{\"chartName\":\"销售柱图\",\"chartType\":\"bar\",...}' --layout '{\"x\":0,\"y\":0,\"w\":6,\"h\":4}'"},
+			},
+		},
+	})
 
 	chartUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3737,6 +4912,22 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			return callAitableTool("update_chart", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chartUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新图表。",
+			Interface:   aitableMCPInterface("update_chart"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新图表。",
+				UseWhen:      []string{"调整已有图表 widgets/配置时"},
+				AvoidWhen:    []string{"新建用 create；删除用 delete"},
+				Examples: []string{
+					"dws aitable chart update --base-id BASE_ID --dashboard-id DASHBOARD_ID --chart-id CHART_ID --config '{\"chartName\":\"新柱图名\",...}'",
+					"dws aitable chart update --base-id BASE_ID --dashboard-id DASHBOARD_ID --chart-id CHART_ID --layout '{\"x\":0,\"y\":4,\"w\":12,\"h\":4}'",
+				},
+			},
+		},
+	})
 
 	chartDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -3749,9 +4940,6 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 				return err
 			}
 			chartID := mustGetFlag(cmd, "chart-id")
-			if !confirmDelete("图表", chartID) {
-				return nil
-			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
@@ -3767,6 +4955,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			return callAitableTool("delete_chart", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chartDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除图表（需确认）。",
+			Interface:   aitableMCPInterface("delete_chart"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除图表（需确认）。",
+				UseWhen:      []string{"用户明确要求删除仪表盘中的图表时"},
+				AvoidWhen:    []string{"删整个仪表盘用 dashboard delete"},
+				Examples:     []string{"dws aitable chart delete --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-id <CHART_ID>"},
+			},
+		},
+	})
 
 	// ── chart share: 图表分享管理 ────────────────────────────────
 
@@ -3793,6 +4994,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			})
 		},
 	}
+	DeclareLeafMetadata(chartShareGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取图表分享配置（稳定返回 enabled）。",
+			Interface:   aitableMCPInterface("get_chart_share"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取图表分享配置（稳定返回 enabled）。",
+				UseWhen:      []string{"查看图表分享开关时"},
+				AvoidWhen:    []string{"仪表盘分享用 dashboard share get"},
+				Examples:     []string{"dws aitable chart share get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-id <CHART_ID>"},
+			},
+		},
+	})
 
 	chartShareUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -3831,6 +5045,19 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 			return callAitableTool("update_chart_share", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chartShareUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "更新图表分享配置。",
+			Interface:   aitableMCPInterface("update_chart_share"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新图表分享配置。",
+				UseWhen:      []string{"开启或关闭图表分享时"},
+				AvoidWhen:    []string{"查询用 share get"},
+				Examples:     []string{"dws aitable chart share update --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-id <CHART_ID> --share-type ORG"},
+			},
+		},
+	})
 
 	// ── export / import: 数据导入导出 ────────────────────────────
 
@@ -3915,6 +5142,19 @@ export-format 可选值：excel、attachment、excel_and_attachment、excel_with
 			return callAitableTool("export_data", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(exportDataCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "导出数据（异步：可能返回 taskId 需继续轮询）。",
+			Interface:   aitableMCPInterface("export_data"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "导出数据（异步：可能返回 taskId 需继续轮询）。",
+				UseWhen:      []string{"需要导出 Base/表/视图数据为文件时；scope=table 需 table-id，scope=view 需 table+view"},
+				AvoidWhen:    []string{"导入用 import；电子表格导出用 sheet export"},
+				Examples:     []string{"dws aitable export data --base-id <BASE_ID> --scope table --table-id <TABLE_ID> --export-format excel"},
+			},
+		},
+	})
 
 	importCmd := &cobra.Command{Use: "import", Short: "数据导入", RunE: groupRunE}
 
@@ -3940,6 +5180,19 @@ export-format 可选值：excel、attachment、excel_and_attachment、excel_with
 			})
 		},
 	}
+	DeclareLeafMetadata(advpermEnableCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "开启 Base 高级权限总开关。",
+			Interface:   aitableHelperMCPInterface("set_advanced_permission"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "开启 Base 高级权限总开关。",
+				UseWhen:      []string{"需要让自定义角色规则生效时先开启总开关"},
+				AvoidWhen:    []string{"关闭总开关用 advperm disable（高危）；角色 CRUD 用 role-*"},
+				Examples:     []string{"dws aitable advperm enable --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	advpermDisableCmd := &cobra.Command{
 		Use:   "disable",
@@ -3956,15 +5209,28 @@ message: "the current user must be a manager (administrator) of this base to man
 				return err
 			}
 			// 先确认 baseID 合法再进入二次确认提示，避免对无效请求弹无意义的确认。
-			if !commandDryRun(cmd) && !confirmDelete("高级权限（关闭后所有自定义角色失效）", baseID) {
-				return nil
-			}
 			return callAitableHelperTool("set_advanced_permission", map[string]any{
 				"baseId":  baseID,
 				"enabled": false,
 			})
 		},
 	}
+	DeclareLeafMetadata(advpermDisableCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "关闭高级权限总开关（高危，需确认；全员回退默认权限）。",
+			Interface:   aitableHelperMCPInterface("set_advanced_permission"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "关闭高级权限总开关（高危，需确认；全员回退默认权限）。",
+				UseWhen:      []string{"用户明确要求关闭高级权限使自定义角色失效时"},
+				AvoidWhen:    []string{"开启用 enable；删单个角色用 role-delete"},
+				Examples:     []string{"dws aitable advperm disable --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	advpermRoleListCmd := &cobra.Command{
 		Use:   "role-list",
@@ -3986,6 +5252,19 @@ subRoles[].display.* 提供人类可读标签（authLevelLabel / targetTypeLabel
 			})
 		},
 	}
+	DeclareLeafMetadata(advpermRoleListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出 Base 下全部角色（含系统角色与自定义）。",
+			Interface:   aitableHelperMCPInterface("list_roles"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出 Base 下全部角色（含系统角色与自定义）。",
+				UseWhen:      []string{"需要枚举角色并区分 custom vs system_ 时"},
+				AvoidWhen:    []string{"单角色详情用 role-get"},
+				Examples:     []string{"dws aitable advperm role-list --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	advpermRoleGetCmd := &cobra.Command{
 		Use:   "role-get",
@@ -4007,6 +5286,19 @@ subRoles[].display.* 提供人类可读标签（authLevelLabel / targetTypeLabel
 			})
 		},
 	}
+	DeclareLeafMetadata(advpermRoleGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取单角色完整配置（含 subRoles）。",
+			Interface:   aitableHelperMCPInterface("get_role"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取单角色完整配置（含 subRoles）。",
+				UseWhen:      []string{"已知 roleId，需要看字段/行级规则时"},
+				AvoidWhen:    []string{"列表用 role-list；更新用 role-update"},
+				Examples:     []string{"dws aitable advperm role-get --base-id <BASE_ID> --role-id <ROLE_ID>"},
+			},
+		},
+	})
 
 	advpermRoleCreateCmd := &cobra.Command{
 		Use:   "role-create",
@@ -4051,6 +5343,19 @@ subRoles[].display.* 提供人类可读标签（authLevelLabel / targetTypeLabel
 			return callAitableHelperTool("create_role", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(advpermRoleCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建自定义角色（可选同时指定 sub-roles）。",
+			Interface:   aitableHelperMCPInterface("create_role"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建自定义角色（可选同时指定 sub-roles）。",
+				UseWhen:      []string{"需要新增自定义权限角色时"},
+				AvoidWhen:    []string{"系统角色不可当自定义创建；删除用 role-delete；成员绑定需 Web"},
+				Examples:     []string{"dws aitable advperm role-create --base-id <BASE_ID> --name \"市场可读\""},
+			},
+		},
+	})
 
 	advpermRoleUpdateCmd := &cobra.Command{
 		Use:   "role-update",
@@ -4098,6 +5403,19 @@ role-get 自行 merge）。
 			return callAitableHelperTool("patch_role", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(advpermRoleUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "增量更新自定义角色（PATCH）。",
+			Interface:   aitableHelperMCPInterface("patch_role"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "增量更新自定义角色（PATCH）。",
+				UseWhen:      []string{"需要改角色名或合并 sub-roles 时"},
+				AvoidWhen:    []string{"创建用 role-create；删除用 role-delete"},
+				Examples:     []string{"dws aitable advperm role-update --base-id <BASE_ID> --role-id <ROLE_ID> --name \"新角色名\""},
+			},
+		},
+	})
 
 	advpermRoleDeleteCmd := &cobra.Command{
 		Use:   "role-delete",
@@ -4120,15 +5438,25 @@ role-get 自行 merge）。
 				return err
 			}
 			roleID := mustGetFlag(cmd, "role-id")
-			if !confirmDelete("角色", roleID) {
-				return nil
-			}
 			return callAitableHelperTool("delete_role", map[string]any{
 				"baseId": baseID,
 				"roleId": roleID,
 			})
 		},
 	}
+	DeclareLeafMetadata(advpermRoleDeleteCmd, LeafSpec{
+		Safety: aitableSafetyDestructive(),
+		Schema: LeafSchema{
+			Description: "删除自定义角色（需确认；系统角色禁删；需管理员）。",
+			Interface:   aitableHelperMCPInterface("delete_role"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除自定义角色（需确认；系统角色禁删；需管理员）。",
+				UseWhen:      []string{"用户明确要求删除自定义角色时"},
+				AvoidWhen:    []string{"关闭全部高级权限用 advperm disable；系统角色不可删"},
+				Examples:     []string{"dws aitable advperm role-delete --base-id <BASE_ID> --role-id <ROLE_ID>"},
+			},
+		},
+	})
 
 	importUploadCmd := &cobra.Command{
 		Use:   "upload",
@@ -4166,6 +5494,19 @@ role-get 自行 merge）。
 			return callAitableTool("prepare_import_upload", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(importUploadCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "申请导入文件上传凭证。",
+			Interface:   aitableMCPInterface("prepare_import_upload"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "申请导入文件上传凭证。",
+				UseWhen:      []string{"导入前需要上传文件凭证时"},
+				AvoidWhen:    []string{"触发导入用 import data；附件字段上传用 attachment upload"},
+				Examples:     []string{"dws aitable import upload --base-id BASE_ID --file-name data.xlsx --file-size 204800"},
+			},
+		},
+	})
 
 	importDataCmd := &cobra.Command{
 		Use:   "data",
@@ -4217,6 +5558,19 @@ role-get 自行 merge）。
 			return callAitableTool("import_data", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(importDataCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "触发数据导入。",
+			Interface:   aitableMCPInterface("import_data"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "触发数据导入。",
+				UseWhen:      []string{"上传凭证就绪后触发导入任务时"},
+				AvoidWhen:    []string{"导出用 export data"},
+				Examples:     []string{"dws aitable import data --import-id IMPORT_ID"},
+			},
+		},
+	})
 
 	// ── section: 文件夹与节点管理（导航树组织） ──────────────────────────────
 
@@ -4256,6 +5610,19 @@ role-get 自行 merge）。
 			return callMCPToolOnServer("aitable-helper", "create_section", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "在 Base 导航树创建文件夹。",
+			Interface:   aitableHelperMCPInterface("create_section"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在 Base 导航树创建文件夹。",
+				UseWhen:      []string{"需要组织 table/dashboard/表单等节点到文件夹时"},
+				AvoidWhen:    []string{"移动已有节点用 move-node；删文件夹用 section delete"},
+				Examples:     []string{"dws aitable section create --base-id <BASE_ID> --name \"我的文件夹\""},
+			},
+		},
+	})
 
 	sectionRenameCmd := &cobra.Command{
 		Use:   "rename",
@@ -4281,6 +5648,19 @@ role-get 自行 merge）。
 			return callMCPToolOnServer("aitable-helper", "rename_section", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionRenameCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "重命名文件夹。",
+			Interface:   aitableHelperMCPInterface("rename_section"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "重命名文件夹。",
+				UseWhen:      []string{"需要改导航文件夹名称时"},
+				AvoidWhen:    []string{"调整顺序用 reorder；跨父级移动用 move-node"},
+				Examples:     []string{"dws aitable section rename --base-id <BASE_ID> --section-id <SECTION_ID> --new-name \"新名称\""},
+			},
+		},
+	})
 
 	sectionDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -4305,6 +5685,19 @@ role-get 自行 merge）。
 			return callMCPToolOnServer("aitable-helper", "delete_section", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionDeleteCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "删除文件夹（运行时无 confirmDelete；调用前自行确认）。",
+			Interface:   aitableHelperMCPInterface("delete_section"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除文件夹（运行时无 confirmDelete；调用前自行确认）。",
+				UseWhen:      []string{"需要删除导航文件夹时；可先 list-empty 确认是否为空"},
+				AvoidWhen:    []string{"删数据表/仪表盘用 table/dashboard delete，不是 section delete"},
+				Examples:     []string{"dws aitable section delete --base-id <BASE_ID> --section-id <SECTION_ID>"},
+			},
+		},
+	})
 
 	sectionReorderCmd := &cobra.Command{
 		Use:   "reorder",
@@ -4334,6 +5727,19 @@ role-get 自行 merge）。
 			return callMCPToolOnServer("aitable-helper", "reorder_section", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionReorderCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "在当前父文件夹下调整文件夹顺序。",
+			Interface:   aitableHelperMCPInterface("reorder_section"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在当前父文件夹下调整文件夹顺序。",
+				UseWhen:      []string{"需要改同级文件夹展示顺序时"},
+				AvoidWhen:    []string{"跨父级移动用 move-node"},
+				Examples:     []string{"dws aitable section reorder --base-id <BASE_ID> --section-id <SECTION_ID> --target-index 0"},
+			},
+		},
+	})
 
 	sectionListEmptyCmd := &cobra.Command{
 		Use:   "list-empty",
@@ -4354,6 +5760,19 @@ parentSectionId 为空串表示该文件夹在 Base 根目录下。`,
 			return callMCPToolOnServer("aitable-helper", "list_empty_sections", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionListEmptyCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出空文件夹。",
+			Interface:   aitableHelperMCPInterface("list_empty_sections"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出空文件夹。",
+				UseWhen:      []string{"清理导航树前查找空文件夹时"},
+				AvoidWhen:    []string{"列出全部节点用 list-nodes"},
+				Examples:     []string{"dws aitable section list-empty --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	sectionListNodesCmd := &cobra.Command{
 		Use:   "list-nodes",
@@ -4375,6 +5794,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			return callMCPToolOnServer("aitable-helper", "list_nsheet_nodes", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionListNodesCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出 Base 导航全部节点。",
+			Interface:   aitableHelperMCPInterface("list_nsheet_nodes"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出 Base 导航全部节点。",
+				UseWhen:      []string{"move-node/reorder 前需要 nodeId 与 parentSectionId 时"},
+				AvoidWhen:    []string{"只找空文件夹用 list-empty"},
+				Examples:     []string{"dws aitable section list-nodes --base-id <BASE_ID>"},
+			},
+		},
+	})
 
 	sectionMoveNodeCmd := &cobra.Command{
 		Use:   "move-node",
@@ -4411,6 +5843,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			return callMCPToolOnServer("aitable-helper", "move_nsheet_node", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(sectionMoveNodeCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "移动导航节点到新父文件夹。",
+			Interface:   aitableHelperMCPInterface("move_nsheet_node"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "移动导航节点到新父文件夹。",
+				UseWhen:      []string{"需要把 table/dashboard/文件夹等挪到另一目录时"},
+				AvoidWhen:    []string{"仅同级改序对文件夹可用 reorder"},
+				Examples:     []string{"dws aitable section move-node --base-id <BASE_ID> --node-id <NODE_ID> --new-parent-section-id <SECTION_ID>"},
+			},
+		},
+	})
 
 	// ── 注册命令树（原 init） ─────────────────────────────────────────────
 
@@ -4473,6 +5918,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
   dws aitable table list --base-id BASE_ID --table-ids tbl1,tbl2`,
 		RunE: tableGetCmd.RunE,
 	}
+	DeclareLeafMetadata(tableListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取数据表（table get 别名）。",
+			Interface:   aitableMCPInterface("get_tables"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取数据表（table get 别名）。",
+				UseWhen:      []string{"使用 table list 别名读取表结构时"},
+				AvoidWhen:    []string{"与 table get 等价；写表用 table create/update/delete"},
+				Examples:     []string{"dws aitable table list --base-id <BASE_ID>"},
+			},
+		},
+	})
 	copyFlags(tableGetCmd, tableListCmd, "base-id", "table-ids")
 	tableCmd.AddCommand(tableListCmd)
 
@@ -4523,6 +5981,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
   dws aitable field list --base-id BASE_ID --table-id TABLE_ID --field-ids fld1,fld2`,
 		RunE: fieldGetCmd.RunE,
 	}
+	DeclareLeafMetadata(fieldListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取字段信息（field get 别名）。",
+			Interface:   aitableMCPInterface("get_fields"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取字段信息（field get 别名）。",
+				UseWhen:      []string{"使用 field list 别名读取字段时"},
+				AvoidWhen:    []string{"与 field get 等价"},
+				Examples:     []string{"dws aitable field list --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
 	copyFlags(fieldGetCmd, fieldListCmd, "base-id", "table-id", "field-ids")
 	fieldCmd.AddCommand(fieldListCmd)
 
@@ -4660,6 +6131,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			return recordQueryCmd.RunE(cmd, args)
 		},
 	}
+	DeclareLeafMetadata(recordGetCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "按 recordIds 批量取记录（最多 100）。",
+			Interface:   aitableMCPInterface("query_records"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按 recordIds 批量取记录（最多 100）。",
+				UseWhen:      []string{"已有 recordId 列表，只需按 ID 取字段值时"},
+				AvoidWhen:    []string{"条件筛选/排序/全文搜索用 record query；不要对本命令传 filters"},
+				Examples:     []string{"dws aitable record get --base-id <BASE_ID> --table-id <TABLE_ID> --record-ids <ID1,ID2>"},
+			},
+		},
+	})
 	copyFlags(recordQueryCmd, recordGetCmd, "base-id", "table-id", "record-ids", "field-ids")
 	recordCmd.AddCommand(recordGetCmd)
 
@@ -4787,6 +6271,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
   dws aitable view list --base-id BASE_ID --table-id TABLE_ID --view-ids viw1,viw2`,
 		RunE: viewGetCmd.RunE,
 	}
+	DeclareLeafMetadata(viewListCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出或获取视图配置。",
+			Interface:   aitableMCPInterface("get_views"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出或获取视图配置。",
+				UseWhen:      []string{"需要枚举视图或读取视图配置时"},
+				AvoidWhen:    []string{"表单视图列表可用 form list；创建视图用 view create"},
+				Examples:     []string{"dws aitable view list --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
 	copyFlags(viewGetCmd, viewListCmd, "base-id", "table-id", "view-ids")
 	viewCmd.AddCommand(viewListCmd)
 
@@ -5036,6 +6533,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
   dws aitable search --keyword "评测项目管理"`,
 		RunE: baseSearchCmd.RunE, // 直接复用 baseSearchCmd 的执行逻辑
 	}
+	DeclareLeafMetadata(searchAliasCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "搜索 Base（search 别名）。",
+			Interface:   aitableMCPInterface("search_bases"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索 Base（search 别名）。",
+				UseWhen:      []string{"使用 aitable search 别名按名称找 Base 时"},
+				AvoidWhen:    []string{"主路径推荐 base search"},
+				Examples:     []string{"dws aitable search --query \"项目\""},
+			},
+		},
+	})
 	// 复用 baseSearchCmd 的 flags
 	copyFlags(baseSearchCmd, searchAliasCmd, "query", "keyword", "cursor")
 	_ = searchAliasCmd.Flags().MarkHidden("keyword")
@@ -5051,6 +6561,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
   dws aitable list --limit 5`,
 		RunE: baseListCmd.RunE, // 复用 baseListCmd 的执行逻辑
 	}
+	DeclareLeafMetadata(listAliasCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "列出最近 Base（list 别名）。",
+			Interface:   aitableMCPInterface("list_bases"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出最近 Base（list 别名）。",
+				UseWhen:      []string{"使用 aitable list 别名浏览最近 Base 时"},
+				AvoidWhen:    []string{"主路径推荐 base list；按名搜索用 base search"},
+				Examples:     []string{"dws aitable list"},
+			},
+		},
+	})
 	// 复用 baseListCmd 的 flags
 	copyFlags(baseListCmd, listAliasCmd, "limit", "cursor")
 	root.AddCommand(listAliasCmd)
@@ -5065,6 +6588,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
   dws aitable create --name "项目跟踪" --folder-id FOLDER_ID`,
 		RunE: baseCreateCmd.RunE, // 复用 baseCreateCmd 的执行逻辑
 	}
+	DeclareLeafMetadata(createAliasCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Schema: LeafSchema{
+			Description: "创建 AI 表格 Base（create 别名入口）。",
+			Interface:   aitableMCPInterface("create_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建 AI 表格 Base（create 别名入口）。",
+				UseWhen:      []string{"走 aitable create 别名新建 Base 时"},
+				AvoidWhen:    []string{"推荐主路径 aitable base create；电子表格用 sheet create"},
+				Examples:     []string{"dws aitable create --name \"项目跟踪\""},
+			},
+		},
+	})
 	// 独立注册 flags（不能用 copyFlags 共享指针，cobra 不支持同一 flag 绑多个命令）
 	createAliasCmd.Flags().String("name", "", "Base 名称，1-50 字符；会去除首尾空格后校验 (必填)")
 	createAliasCmd.Flags().String("folder-id", "", "目标父节点的 dentryUuid (知识库节点 ID)，也可传入标准节点 URL，MCP 会在创建前解析出实际生效的节点 ID")
@@ -5080,6 +6616,19 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 		Example: `  dws aitable info --base-id BASE_ID`,
 		RunE:    baseGetCmd.RunE, // 复用 baseGetCmd 的执行逻辑
 	}
+	DeclareLeafMetadata(infoAliasCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Schema: LeafSchema{
+			Description: "获取 Base 信息（info 别名）。",
+			Interface:   aitableMCPInterface("get_base"),
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取 Base 信息（info 别名）。",
+				UseWhen:      []string{"使用 aitable info 别名查看 Base 时"},
+				AvoidWhen:    []string{"主路径推荐 base get"},
+				Examples:     []string{"dws aitable info --base-id <BASE_ID>"},
+			},
+		},
+	})
 	// 独立注册 flags（不能用 copyFlags 共享指针，cobra 不支持同一 flag 绑多个命令）
 	infoAliasCmd.Flags().String("base-id", "", "Base 唯一标识。优先使用 base search / base list 返回值 (必填)")
 	root.AddCommand(infoAliasCmd)

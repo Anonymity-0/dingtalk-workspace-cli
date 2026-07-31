@@ -146,7 +146,7 @@ if ! jq -e --arg registry_count "$registry_count" '
 	 else false end) and
 	(
 	  ((.agent_source_refs // []) | map(test("schema_hints/selection/")) | any) or
-	  .field_provenance.agent_summary.source == "cmdcore.contract"
+	  .field_provenance.agent_summary.source == "corecmd.contract"
 	)
   )
 ' "$catalog" >/dev/null; then

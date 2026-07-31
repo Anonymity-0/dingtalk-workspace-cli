@@ -75,7 +75,7 @@ func TestDevAppCredentialsGetLeafDispatchesTrimmedArgs(t *testing.T) {
 // TestDevAppLifecycleLeafWriteGuardAndArgs 验证框架确认门拦截/放行 + toolArgs 装配。
 func TestDevAppLifecycleLeafWriteGuardAndArgs(t *testing.T) {
 	r := &fakeDevAppRunner{}
-	cmd := newDevAppLifecycleCommand(r, "enable", "启用应用", devAppEnableTool, devAppTestSelection("启用应用"))
+	cmd := newDevAppEnableCommand(r)
 	if err := cmd.Flags().Set("unified-app-id", "APP-9"); err != nil {
 		t.Fatal(err)
 	}
@@ -499,9 +499,7 @@ func TestDevAppLeafToolArgsTable(t *testing.T) {
 		{"version create", newDevAppVersionCreateCommand, map[string]string{"unified-app-id": "APP-V", "desc": "新增机器人"}, true, devAppVersionCreateTool, map[string]any{"unifiedAppId": "APP-V", "desc": "新增机器人"}, []string{"version"}},
 		{"app create", newDevAppCreateCommand, map[string]string{"name": "DemoApp"}, true, devAppCreateTool, map[string]any{"name": "DemoApp"}, []string{"desc", "iconMediaId"}},
 		{"robot config get", newDevAppRobotConfigGetCommand, map[string]string{"unified-app-id": "APP-C"}, false, devAppRobotConfigGetTool, map[string]any{"unifiedAppId": "APP-C"}, nil},
-		{"lifecycle disable", func(r executor.Runner) *cobra.Command {
-			return newDevAppLifecycleCommand(r, "disable", "停用应用", devAppDisableTool, devAppTestSelection("停用应用"))
-		}, map[string]string{"unified-app-id": "APP-D"}, true, devAppDisableTool, map[string]any{"unifiedAppId": "APP-D"}, nil},
+		{"lifecycle disable", newDevAppDisableCommand, map[string]string{"unified-app-id": "APP-D"}, true, devAppDisableTool, map[string]any{"unifiedAppId": "APP-D"}, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

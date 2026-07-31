@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -881,6 +880,25 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("search_documents", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(searchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "搜索文档（不传关键词返回最近访问）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "search_documents",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索文档（不传关键词返回最近访问）",
+				UseWhen:      []string{"兼容入口：按关键词搜文档时（已弃用，日常改用 drive search / wiki node search）"},
+				AvoidWhen:    []string{"全局搜文件用 dws drive search；指定知识库内搜用 dws wiki node search"},
+				Examples:     []string{"dws doc search --query \"会议纪要\" --format json"},
+			},
+		},
+	})
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -915,6 +933,28 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("list_nodes", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(listCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "list_nodes",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
+				UseWhen:      []string{"兼容入口：遍历文件夹或知识库直接子节点时（已弃用，日常改用 drive list / wiki node list）"},
+				AvoidWhen:    []string{"日常浏览「我的文档」/钉盘用 dws drive list；知识库用 dws wiki node list"},
+				Examples: []string{
+					"dws doc list --format json",
+					"dws doc list --folder <FOLDER_ID> --format json",
+				},
+			},
+		},
+	})
 
 	infoCmd := &cobra.Command{
 		Use:   "info",
@@ -930,6 +970,35 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("get_document_info", map[string]any{"nodeId": nodeID})
 		},
 	}
+	DeclareLeafMetadata(infoCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取文档元信息（标题/类型/创建者/权限等）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "get_document_info",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取文档元信息（标题/类型/创建者/权限等）",
+				UseWhen: []string{
+					"用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
+					"准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时",
+				},
+				AvoidWhen: []string{
+					"已确认是 adoc 且只要正文改用 dws doc read",
+					"只要目录列表改用 dws drive list / wiki node list",
+					"需要可靠文件大小 fileSize 时改用 dws drive info；文档元信息接口可能不返回大小",
+				},
+				Examples: []string{
+					"dws doc info --node <DOC_ID> --format json",
+					"dws doc info --node \"https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>\" --format json",
+				},
+			},
+		},
+	})
 
 	readCmd := &cobra.Command{
 		Use:   "read",
@@ -997,6 +1066,36 @@ func newDocCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(readCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "get_document_content",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
+				UseWhen: []string{
+					"用户要读取钉钉在线文字文档(adoc)正文（Markdown）时",
+					"用户直接粘贴文档 URL 且无其他指令时（默认读内容）",
+					"只需标题大纲、指定块区间/单块或特定 JSONML tags 时使用 --content-format jsonml 与 --scope",
+				},
+				AvoidWhen: []string{
+					"非 adoc（表格/多维表/普通文件）不要用本命令；先 doc info 再路由",
+					"要元信息用 doc info；要块结构用 doc block list",
+					"Markdown 为有损投影：保形复制模板请用 doc copy，不要 read→create",
+				},
+				Examples: []string{
+					"dws doc read --node <DOC_ID> --format json",
+					"dws doc read --node <DOC_ID> --content-format jsonml --scope outline --max-depth 3",
+				},
+			},
+		},
+	})
 
 	createCmd := &cobra.Command{
 		Use:   "create",
@@ -1083,6 +1182,35 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("create_document", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(createCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建一篇新的在线文档",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "create_document",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建一篇新的在线文档",
+				UseWhen: []string{
+					"用户要新建一篇文字在线文档(adoc)，可空文档或带初始 Markdown 时",
+					"创建到指定文件夹 --folder、知识库根 --workspace，或默认「我的文档」根目录时",
+				},
+				AvoidWhen: []string{
+					"创建表格/脑图/白板/多维表/演示改用 dws wiki node create --type <type>（勿用 doc create）",
+					"在知识库建空节点实体也可用 wiki node create；本命令侧重可写初始内容的 adoc",
+					"导入本地 Word/Markdown 为在线文档改用 dws doc import（若可用）或 upload --convert",
+				},
+				Examples: []string{
+					"dws doc create --name \"项目周报\" --format json",
+					"dws doc create --name \"Q1 总结\" --content \"# Q1 总结\" --folder <FOLDER_ID> --format json",
+				},
+			},
+		},
+	})
 
 	updateCmd := &cobra.Command{
 		Use:   "update",
@@ -1178,6 +1306,36 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return docWritePipeline(cmd, "update_document", toolArgs, md, "doc update")
 		},
 	}
+	DeclareLeafMetadata(updateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "update_document",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
+				UseWhen: []string{
+					"用户要向已有 adoc 追加内容时用 --mode append（更安全）",
+					"用户明确要求整篇覆盖替换时用 --mode overwrite（破坏性）",
+					"append 且要插到第 N 个 block 前时加 --index N（先 block list）",
+				},
+				AvoidWhen: []string{
+					"目标不是 adoc 或只要改单个块时改用 doc block update",
+					"覆盖模式用户未确认前不要执行；可先 --dry-run 预览",
+					"创建新文档用 doc create，不要用 update 冒充创建",
+				},
+				Examples: []string{
+					"dws doc update --node <DOC_ID> --content \"# 追加内容\" --mode append --format json",
+					"dws doc update --node <DOC_ID> --content-file ./body.md --mode overwrite --dry-run",
+				},
+			},
+		},
+	})
 
 	fileCmd := &cobra.Command{Use: "file", Short: "文件管理", RunE: groupRunE}
 
@@ -1222,6 +1380,28 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("create_file", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(fileCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "create_file",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
+				UseWhen:      []string{"兼容入口：按类型创建文件节点时（已弃用，改用 wiki node create）"},
+				AvoidWhen: []string{
+					"请改用 dws wiki node create --workspace <id> --type <type>",
+					"纯文字带内容创建用 doc create",
+				},
+				Examples: []string{"dws doc file create --name \"项目周报\" --type adoc --format json"},
+			},
+		},
+	})
 
 	folderCmd := &cobra.Command{Use: "folder", Short: "文件夹管理", RunE: groupRunE}
 
@@ -1251,6 +1431,25 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("create_folder", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(folderCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建文件夹",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "create_folder",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建文件夹",
+				UseWhen:      []string{"兼容入口：创建文件夹（已弃用）时"},
+				AvoidWhen:    []string{"个人空间/钉盘改用 dws drive mkdir；知识库改用 wiki node create --type folder"},
+				Examples:     []string{"dws doc folder create --name \"项目资料\" --format json"},
+			},
+		},
+	})
 
 	uploadCmd := &cobra.Command{
 		Use:   "upload",
@@ -1268,6 +1467,32 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc upload --file ./data.xlsx --workspace WS_ID --convert`,
 		RunE: runDocUpload,
 	}
+	DeclareLeafMetadata(uploadCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
+				UseWhen:      []string{"把本地文件上传到文档空间/知识库（可 --convert 转在线文档）时"},
+				AvoidWhen: []string{
+					"钉盘/我的文件上传优先 dws drive upload",
+					"插入文档正文附件用 media insert",
+				},
+				Examples: []string{
+					"dws doc upload --file ./report.pdf --format json",
+					"dws doc upload --file ./data.xlsx --workspace <WS_ID> --convert --format json",
+				},
+			},
+		},
+	})
 
 	downloadCmd := &cobra.Command{
 		Use:   "download",
@@ -1282,6 +1507,29 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc download --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --output ~/downloads/`,
 		RunE: runDocDownload,
 	}
+	DeclareLeafMetadata(downloadCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "download_file",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
+				UseWhen:      []string{"兼容入口：获取文件下载凭证（已迁移场景优先 drive download）时"},
+				AvoidWhen: []string{
+					"常规下载普通文件改用 dws drive download --output ...",
+					"在线文档导出 docx 用 doc export",
+				},
+				Examples: []string{"dws doc download --node <NODE_ID> --output ./report.pdf --format json"},
+			},
+		},
+	})
 
 	blockCmd := &cobra.Command{
 		Use:   "block",
@@ -1327,6 +1575,31 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("list_document_blocks", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(blockListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询文档一级块元素列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "list_document_blocks",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询文档一级块元素列表",
+				UseWhen:      []string{"查看文档一级块结构、拿 blockId，供 insert/update/delete 或划词评论定位时"},
+				AvoidWhen: []string{
+					"只要全文 Markdown 用 doc read",
+					"要改内容分别用 block insert/update/delete",
+				},
+				Examples: []string{
+					"dws doc block list --node <DOC_ID> --format json",
+					"dws doc block list --node <DOC_ID> --start-index 0 --end-index 5 --format json",
+				},
+			},
+		},
+	})
 
 	blockInsertCmd := &cobra.Command{
 		Use:   "insert",
@@ -1425,6 +1698,32 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("insert_document_block", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(blockInsertCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "向文档插入块元素",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "insert_document_block",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "向文档插入块元素",
+				UseWhen:      []string{"在文档中插入新块（段落/标题等）；简单场景用 --text/--heading，复杂块用 --element JSON"},
+				AvoidWhen: []string{
+					"整篇追加 Markdown 优先 doc update --mode append",
+					"插入本地文件附件优先 doc media insert",
+					"删块用 block delete；改已有块用 block update",
+				},
+				Examples: []string{
+					"dws doc block insert --node <DOC_ID> --text \"这是一段文字\" --format json",
+					"dws doc block insert --node <DOC_ID> --heading \"二级标题\" --level 2 --format json",
+				},
+			},
+		},
+	})
 
 	blockUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1477,6 +1776,28 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			})
 		},
 	}
+	DeclareLeafMetadata(blockUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新文档中的指定块",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "update_document_block",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新文档中的指定块",
+				UseWhen:      []string{"修改已有块的文本/标题/样式（已知 blockId）时"},
+				AvoidWhen: []string{
+					"插入新块用 block insert；删除用 block delete",
+					"改文档显示名用 rename；整篇覆盖用 update overwrite",
+				},
+				Examples: []string{"dws doc block update --node <DOC_ID> --block-id <BLOCK_ID> --text \"新内容\" --format json"},
+			},
+		},
+	})
 
 	blockDeleteCmd := &cobra.Command{
 		Use:     "delete",
@@ -1487,9 +1808,6 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				return err
 			}
 			blockID := mustGetFlag(cmd, "block-id")
-			if !confirmDelete("块元素", blockID) {
-				return nil
-			}
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
 				return err
@@ -1500,6 +1818,28 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			})
 		},
 	}
+	DeclareLeafMetadata(blockDeleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "删除块元素（不可逆）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "delete_document_block",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除块元素（不可逆）",
+				UseWhen:      []string{"用户确认后删除文档中指定块元素时"},
+				AvoidWhen: []string{
+					"未确认或 blockId 不明时不要删；先 block list",
+					"删整篇文档用 doc/drive delete",
+				},
+				Examples: []string{"dws doc block delete --node <DOC_ID> --block-id <BLOCK_ID> --format json"},
+			},
+		},
+	})
 
 	copyCmd := &cobra.Command{
 		Use:   "copy",
@@ -1515,6 +1855,34 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc copy --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --folder DOC_FOLDER_NODE_ID`,
 		RunE: buildNodeTransferRunE("copy_document"),
 	}
+	DeclareLeafMetadata(copyCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "copy_document",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
+				UseWhen: []string{
+					"用户要复制文档/文件并保留原位置时（尤其保形复制模板：copy + rename + block update）",
+					"目标文件夹 --folder 或知识库根 --workspace；都不传则默认「我的文档」",
+				},
+				AvoidWhen: []string{
+					"要搬走不留副本改用 dws doc move 或 dws drive move",
+					"跨钉盘整理文件优先 dws drive copy",
+				},
+				Examples: []string{
+					"dws doc copy --node <DOC_ID> --folder <TARGET_FOLDER_ID> --format json",
+					"dws doc copy --node <DOC_ID> --workspace <TARGET_WS_ID> --format json",
+				},
+			},
+		},
+	})
 
 	moveCmd := &cobra.Command{
 		Use:   "move",
@@ -1530,6 +1898,31 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc move --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --folder DOC_FOLDER_NODE_ID`,
 		RunE: buildNodeTransferRunE("move_document"),
 	}
+	DeclareLeafMetadata(moveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "move_document",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
+				UseWhen:      []string{"用户要移动文档/文件且原位置不再保留时"},
+				AvoidWhen: []string{
+					"要保留副本改用 doc/drive copy",
+					"目标未确认时不要 move",
+				},
+				Examples: []string{
+					"dws doc move --node <DOC_ID> --folder <TARGET_FOLDER_ID> --format json",
+					"dws doc move --node <DOC_ID> --workspace <TARGET_WS_ID> --format json",
+				},
+			},
+		},
+	})
 
 	renameCmd := &cobra.Command{
 		Use:   "rename",
@@ -1554,6 +1947,29 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			})
 		},
 	}
+	DeclareLeafMetadata(renameCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "rename_document",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
+				UseWhen:      []string{"用户要改在线文档在列表与链接中展示的名称时"},
+				AvoidWhen: []string{
+					"改正文标题/章节标题改用 doc block update",
+					"不要用 update 或重新 create 来改名",
+					"文件或文件夹重命名优先用 dws drive rename，由该命令读取真实节点类型和当前扩展名",
+				},
+				Examples: []string{"dws doc rename --node <DOC_ID> --name \"新名称\" --format json"},
+			},
+		},
+	})
 
 	deleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -1571,14 +1987,34 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			if err != nil {
 				return err
 			}
-			if !confirmDelete("文档节点", nodeID) {
-				return nil
-			}
 			return callMCPTool("delete_document", map[string]any{
 				"nodeId": nodeID,
 			})
 		},
 	}
+	DeclareLeafMetadata(deleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "delete_document",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
+				UseWhen:      []string{"用户明确要求用 doc delete 兼容入口将文档/文件移入回收站，且已确认目标时"},
+				AvoidWhen: []string{
+					"常规文件删除优先 dws drive delete；本入口仅为兼容",
+					"用户未确认或目标不清时不要删",
+					"删块用 doc block delete；删评论用 doc comment delete",
+				},
+				Examples: []string{"dws doc delete --node <DOC_ID> --format json"},
+			},
+		},
+	})
 
 	// search
 	searchCmd.Flags().String("query", "", "搜索关键词 (不传则返回最近访问)")
@@ -1806,6 +2242,25 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			})
 		},
 	}
+	DeclareLeafMetadata(mediaDownloadCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取文档附件的临时下载链接",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "download_doc_attachment",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取文档附件的临时下载链接",
+				UseWhen:      []string{"获取文档正文中附件的临时下载 URL（resourceId 来自 block list attachment）时"},
+				AvoidWhen:    []string{"下载钉盘普通文件用 drive download；导出在线文档用 doc export"},
+				Examples:     []string{"dws doc media download --node <DOC_ID> --resource-id <RESOURCE_ID> --format json"},
+			},
+		},
+	})
 
 	mediaDownloadCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	mediaDownloadCmd.Flags().String("resource-id", "", "附件资源 ID，可通过 dws doc block list 获取 (必填)")
@@ -1831,6 +2286,29 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
   dws doc media insert --node DOC_ID --file ./image.png --ref-block BLOCK_ID --where before`,
 		RunE: runMediaInsert,
 	}
+	DeclareLeafMetadata(mediaInsertCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "上传本地文件并作为附件插入文档",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "上传本地文件并作为附件插入文档",
+				UseWhen:      []string{"把本地文件/图片作为附件块插入文档正文（自动 prepare+PUT+insert）时"},
+				AvoidWhen: []string{
+					"上传为独立文件用 drive/doc upload，不要与正文附件混淆",
+					"下载正文附件用 media download",
+				},
+				Examples: []string{"dws doc media insert --node <DOC_ID> --file ./report.pdf --format json"},
+			},
+		},
+	})
 
 	mediaInsertCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	mediaInsertCmd.Flags().String("file", "", "本地文件路径 (必填)")
@@ -1908,6 +2386,28 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			return callMCPToolOnServer("doc-comment", "list_comments", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询文档评论列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc-comment", RPCName: "list_comments",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询文档评论列表",
+				UseWhen:      []string{"查看文档评论列表，可按全文/划词、已解决/未解决过滤时"},
+				AvoidWhen:    []string{"创建全文评论用 comment create；划词用 create-inline；回复用 reply；删除用 delete"},
+				Examples: []string{
+					"dws doc comment list --node <DOC_ID> --format json",
+					"dws doc comment list --node <DOC_ID> --type inline --resolve-status unresolved --format json",
+				},
+			},
+		},
+	})
 
 	commentListCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentListCmd.Flags().Int("limit", 50, "每页返回的评论数量，默认 50，最大 50")
@@ -1953,6 +2453,31 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			return callMCPToolOnServer("doc-comment", "create_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "创建文档评论",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc-comment", RPCName: "create_comment",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建文档评论",
+				UseWhen:      []string{"在文档上创建不绑定具体划词位置的全文评论，可 @用户或通过 --mentioned-open-conversation-id @群"},
+				AvoidWhen: []string{
+					"针对某段选中文本的划词评论改用 create-inline（需 blockId+start/end）",
+					"回复已有评论用 reply；删评论用 delete",
+				},
+				Examples: []string{
+					"dws doc comment create --node <DOC_ID> --content \"这里需要修改\" --format json",
+					"dws doc comment create --node <DOC_ID> --content \"请review\" --mention uid1,uid2 --mentioned-open-conversation-id <openConversationId> --format json",
+				},
+			},
+		},
+	})
 
 	commentCreateCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentCreateCmd.Flags().String("content", "", "评论的文字内容，纯文本 (必填)")
@@ -2010,6 +2535,28 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPToolOnServer("doc-comment", "reply_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentReplyCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "回复文档评论",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc-comment", RPCName: "reply_comment",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "回复文档评论",
+				UseWhen:      []string{"回复已有评论（文字、可 @用户/@群，或 --emoji 表情）；commentKey 来自 list/create"},
+				AvoidWhen:    []string{"新建评论用 create/create-inline；删评论用 delete"},
+				Examples: []string{
+					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"同意\" --mentioned-open-conversation-id <openConversationId> --format json",
+					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"比心\" --emoji --format json",
+				},
+			},
+		},
+	})
 
 	commentReplyCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentReplyCmd.Flags().String("content", "", "回复的文字内容，表情回复时填写表情名称 (必填)")
@@ -2051,6 +2598,28 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPToolOnServer("doc-comment", "update_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新指定文档评论的文字内容和可选 @用户/@群。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新指定文档评论的文字内容和可选 @用户/@群。",
+				UseWhen:      []string{"修改已有评论正文；可选更新 --mention 或 --mentioned-open-conversation-id"},
+				AvoidWhen:    []string{"删除评论用 delete；回复用 reply"},
+				Examples: []string{
+					"dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"已按最新数据修正\" --format json",
+					"dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"请群内确认\" --mentioned-open-conversation-id <openConversationId>",
+				},
+			},
+		},
+	})
 	commentUpdateCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentUpdateCmd.Flags().String("comment-key", "", "待更新评论的 commentKey，可从 list/create/create-inline 结果获取 (必填)")
 	commentUpdateCmd.Flags().String("content", "", "更新后的评论文字内容，纯文本 (必填)")
@@ -2073,15 +2642,31 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				return err
 			}
 			commentKey := mustGetFlag(cmd, "comment-key")
-			if !confirmDangerousAction(cmd, "delete 文档评论", commentKey) {
-				return nil
-			}
 			return callMCPToolOnServer("doc-comment", "delete_comment", map[string]any{
 				"nodeId":     nodeID,
 				"commentKey": commentKey,
 			})
 		},
 	}
+	DeclareLeafMetadata(commentDeleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "永久删除指定文档中的一条评论",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "永久删除指定文档中的一条评论",
+				UseWhen:      []string{"用户明确要求永久删除指定文档中的某条评论（已有 commentKey）时"},
+				AvoidWhen:    []string{"只需改文案用 update；回复用 reply；目标评论不明或未确认时不要删"},
+				Examples:     []string{"dws doc comment delete --node <DOC_ID> --comment-key <COMMENT_KEY> --format json"},
+			},
+		},
+	})
 	commentDeleteCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentDeleteCmd.Flags().String("comment-key", "", "待删除评论的 commentKey，可从 list/create/create-inline 结果获取 (必填)")
 
@@ -2130,6 +2715,28 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPToolOnServer("doc-comment", "create_inline_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentCreateInlineCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "在文档选中文本范围创建划词评论",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc-comment", RPCName: "create_inline_comment",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在文档选中文本范围创建划词评论",
+				UseWhen:      []string{"针对块内某段文本创建划词评论（必填 blockId、start、end）时"},
+				AvoidWhen: []string{
+					"不绑定位置的全文评论用 create",
+					"先 block list 取 blockId 与纯文本偏移再调用",
+				},
+				Examples: []string{"dws doc comment create-inline --node <DOC_ID> --block-id <BLOCK_ID> --start 0 --end 10 --content \"这里需要修改\" --format json"},
+			},
+		},
+	})
 
 	commentCreateInlineCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentCreateInlineCmd.Flags().String("content", "", "评论的文字内容，纯文本 (必填)")
@@ -2210,6 +2817,28 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("add_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionAddCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "add_permission",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
+				UseWhen:      []string{"给单篇文档做节点级授权（与 drive permission add 同能力的 doc 入口）时"},
+				AvoidWhen: []string{
+					"知识库容器授权用 wiki member add",
+					"查/改/移除用 permission list/update/remove",
+				},
+				Examples: []string{"dws doc permission add --node <DOC_ID> --users uid1 --role READER --format json"},
+			},
+		},
+	})
 
 	permissionAddCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
 	permissionAddCmd.Flags().String("users", "", "被授权的用户 userId 列表，逗号分隔 (必填，单次最多 30 个)")
@@ -2260,6 +2889,25 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("update_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "update_permission",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
+				UseWhen:      []string{"变更文档节点上已有用户角色时"},
+				AvoidWhen:    []string{"新授权用 add；移除用 remove"},
+				Examples:     []string{"dws doc permission update --node <DOC_ID> --users uid1 --role EDITOR --format json"},
+			},
+		},
+	})
 
 	permissionUpdateCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
 	permissionUpdateCmd.Flags().String("users", "", "被更新的用户 userId 列表，逗号分隔 (必填，单次最多 30 个)")
@@ -2305,6 +2953,25 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("list_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "list_permission",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
+				UseWhen:      []string{"列出文档节点成员权限时"},
+				AvoidWhen:    []string{"增删改权限用 add/update/remove；知识库成员用 wiki member list"},
+				Examples:     []string{"dws doc permission list --node <DOC_ID> --format json"},
+			},
+		},
+	})
 
 	permissionListCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
 	permissionListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 200")
@@ -2350,6 +3017,25 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("remove_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionRemoveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "remove_permission",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
+				UseWhen:      []string{"移除文档节点上指定用户权限时"},
+				AvoidWhen:    []string{"改角色用 update；知识库撤成员用 wiki member remove"},
+				Examples:     []string{"dws doc permission remove --node <DOC_ID> --users uid1 --format json"},
+			},
+		},
+	})
 	permissionRemoveCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
 	permissionRemoveCmd.Flags().String("users", "", "被移除权限的用户 userId 列表，逗号分隔 (必填，单次最多 30 个)")
 	permissionRemoveCmd.Flags().String("user", "", "")
@@ -2566,6 +3252,26 @@ CLI 内部自动完成全部流程：
 			}
 		},
 	}
+	DeclareLeafMetadata(exportGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询文档导出任务结果",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "doc", RPCName: "query_export_job",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询文档导出任务结果",
+				UseWhen:      []string{"doc export 超时/中断后，用 jobId 查询导出任务状态与下载链接时"},
+				AvoidWhen:    []string{"常规导出请直接 dws doc export（一体化提交+轮询+下载），不要先查 job"},
+				Examples:     []string{"dws doc export get --job-id <JOB_ID> --format json"},
+			},
+		},
+	})
 	exportGetCmd.Flags().String("job-id", "", "导出任务 ID (必填)")
 
 	// --node 的隐藏别名（与 doc 下其他命令保持一致）
@@ -2644,6 +3350,26 @@ CLI 内部自动完成全部流程:
 			return runImportGetCommand(cmd, docImportFlowConfig())
 		},
 	}
+	DeclareLeafMetadata(importGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "根据 taskId 查询文档导入任务的执行结果",
+			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "根据 taskId 查询文档导入任务的执行结果",
+				UseWhen:      []string{"查询文档导入任务结果（已有 taskId，导入超时/中断后兜底）时"},
+				AvoidWhen:    []string{"发起导入用 doc import（若入口可用）；不要用本命令代替导入"},
+				Examples:     []string{"dws doc import get --task-id <TASK_ID> --format json"},
+			},
+		},
+	})
 	importGetCmd.Flags().String("task-id", "", "导入任务 ID (必填)")
 	importCmd.AddCommand(importGetCmd)
 
@@ -2669,6 +3395,25 @@ CLI 内部自动完成全部流程:
 			})
 		},
 	}
+	DeclareLeafMetadata(versionSaveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "手动保存文档版本快照",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "手动保存文档版本快照",
+				UseWhen:      []string{"手动保存当前文档版本快照时"},
+				AvoidWhen:    []string{"回滚用 revert；只看历史用 list"},
+				Examples:     []string{"dws doc version save --node <DOC_ID> --format json"},
+			},
+		},
+	})
 	versionSaveCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 
 	versionListCmd := &cobra.Command{
@@ -2692,6 +3437,25 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "list_doc_versions", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(versionListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查看文档历史版本列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查看文档历史版本列表",
+				UseWhen:      []string{"查看文档历史版本列表以确认版本号时"},
+				AvoidWhen:    []string{"回滚用 version revert（需确认）；保存快照用 version save"},
+				Examples:     []string{"dws doc version list --node <DOC_ID> --format json"},
+			},
+		},
+	})
 	versionListCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	versionListCmd.Flags().Int("limit", 0, "返回版本数量上限")
 	versionListCmd.Flags().String("cursor", "", "分页游标")
@@ -2729,9 +3493,6 @@ CLI 内部自动完成全部流程:
 					)),
 					apperrors.WithActions("查询可用文档版本", "选择存在的版本号后重新预览"),
 				)
-			}
-			if err := cmdcore.ConfirmSafety(cmd, versionRevertSafety); err != nil {
-				return err
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,
@@ -2802,6 +3563,28 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "list_doc_templates", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取当前用户可用的文档模板列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取当前用户可用的文档模板列表",
+				UseWhen:      []string{"列出当前用户可用的文档模板时"},
+				AvoidWhen:    []string{"按关键词搜模板用 template search；套用模板用 template apply"},
+				Examples: []string{
+					"dws doc template list --format json",
+					"dws doc template list --source MY --format json",
+				},
+			},
+		},
+	})
 	templateListCmd.Flags().String("source", "", "模板来源: MY(我的模版)/PUBLIC(公开模版)，不传默认 MY")
 	templateListCmd.Flags().Int("limit", 0, "返回数量上限")
 	templateListCmd.Flags().String("cursor", "", "分页游标")
@@ -2836,6 +3619,28 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "search_doc_templates", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "根据关键词搜索文档模板",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "根据关键词搜索文档模板",
+				UseWhen:      []string{"按关键词搜索文档模板时"},
+				AvoidWhen:    []string{"浏览全部模板用 template list；创建文档用 template apply"},
+				Examples: []string{
+					"dws doc template search --query \"周报\" --format json",
+					"dws doc template search --query \"会议纪要\" --source PUBLIC --format json",
+				},
+			},
+		},
+	})
 	templateSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
 	templateSearchCmd.Flags().String("keyword", "", "--query 的别名")
 	_ = templateSearchCmd.Flags().MarkHidden("keyword")
@@ -2871,6 +3676,28 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "apply_doc_template", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateApplyCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "使用指定模板创建新文档",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "使用指定模板创建新文档",
+				UseWhen:      []string{"使用指定模板创建新文档时"},
+				AvoidWhen:    []string{"先 list/search 拿到模板再 apply；普通空文档用 doc create"},
+				Examples: []string{
+					"dws doc template apply --template-id <TPL_ID> --name \"我的周报\" --format json",
+					"dws doc template apply --template-id <TPL_ID> --name \"项目方案\" --folder <FOLDER_ID> --format json",
+				},
+			},
+		},
+	})
 	templateApplyCmd.Flags().String("template-id", "", "模板 ID (必填)")
 	templateApplyCmd.Flags().String("template", "", "--template-id 的别名")
 	_ = templateApplyCmd.Flags().MarkHidden("template")

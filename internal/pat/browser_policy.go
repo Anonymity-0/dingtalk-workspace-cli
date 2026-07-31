@@ -16,6 +16,7 @@ package pat
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"path/filepath"
 	"strings"
@@ -225,5 +226,27 @@ func newBrowserPolicyCommand() *cobra.Command {
 
 	cmd.Flags().Bool("enabled", false, "PAT 撞墙时是否允许本地打开浏览器")
 	cmd.Flags().String("agentCode", "", "Agent 唯一标识（可选；不填则写入全局默认策略，不从 env DINGTALK_DWS_AGENTCODE 回退）")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "配置 PAT 授权流程是否允许打开本地浏览器",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "local", Availability: "available",
+				Reason: "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "配置 PAT 授权流程是否允许打开本地浏览器",
+				UseWhen:      []string{"需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"},
+				AvoidWhen:    []string{"需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"},
+				Examples: []string{
+					"dws pat browser-policy --enabled --format json",
+					"dws pat browser-policy --enabled=false --agentCode <AGENT_CODE> --format json",
+				},
+			},
+		},
+	})
 	return cmd
 }

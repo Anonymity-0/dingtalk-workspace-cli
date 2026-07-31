@@ -336,11 +336,14 @@ func requireSheetMutationConfirmation(cmd *cobra.Command, operation, targetHint 
 
 const sheetMutationConfirmationGuardAnnotation = "dws.sheet.confirmation-guard"
 
-// protectSheetMutationCommand installs the command-local execution guard used
-// by Sheet leaves whose final Schema contract declares
-// confirmation=user_required. Keeping the annotation and the wrapper in the
-// same function makes the Schema-to-runtime coverage gate structural: a
-// command cannot advertise the marker without also running the guard.
+// protectSheetMutationCommand marks a Sheet leaf as covered by the Schema→runtime
+// confirmation gate and installs the Sheet --yes-only runtime guard.
+//
+// Sheet destructive commands intentionally do NOT honor interactive or piped
+// stdin answers (unlike corecmd.ConfirmSafety). Agent/CI must pass --yes.
+// When DeclareLeafMetadata already wrapped ConfirmSafety, this outer guard
+// still runs first: without --yes it fails closed before ConfirmSafety can
+// read stdin; with --yes both layers bypass. No double prompt.
 func protectSheetMutationCommand(cmd *cobra.Command, operation, targetHint string) {
 	if cmd == nil {
 		panic("protect sheet mutation command: nil command")
@@ -348,14 +351,14 @@ func protectSheetMutationCommand(cmd *cobra.Command, operation, targetHint strin
 	if cmd.Annotations != nil && cmd.Annotations[sheetMutationConfirmationGuardAnnotation] == "true" {
 		panic(fmt.Sprintf("protect sheet mutation command: duplicate guard on %q", cmd.CommandPath()))
 	}
-	originalRunE := cmd.RunE
-	if originalRunE == nil {
-		panic(fmt.Sprintf("protect sheet mutation command: %q has no RunE", cmd.CommandPath()))
-	}
 	if cmd.Annotations == nil {
 		cmd.Annotations = make(map[string]string)
 	}
 	cmd.Annotations[sheetMutationConfirmationGuardAnnotation] = "true"
+	originalRunE := cmd.RunE
+	if originalRunE == nil {
+		panic(fmt.Sprintf("protect sheet mutation command: %q has no RunE", cmd.CommandPath()))
+	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if err := requireSheetMutationConfirmation(cmd, operation, targetHint); err != nil {
 			return err

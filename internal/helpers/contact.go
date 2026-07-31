@@ -163,9 +163,6 @@ func newContactDeptCreateCommand() *cobra.Command {
 				}
 				toolArgs["superDeptId"] = parentID
 			}
-			if !confirmDangerousAction(cmd, "create department", name) {
-				return nil
-			}
 			return callMCPTool("department_create", toolArgs)
 		},
 	}
@@ -209,9 +206,6 @@ func newContactDeptUpdateCommand() *cobra.Command {
 					return err
 				}
 				toolArgs["superDeptId"] = parentID
-			}
-			if !confirmDangerousAction(cmd, "update department", strconv.FormatInt(deptID, 10)) {
-				return nil
 			}
 			return callMCPTool("department_update", toolArgs)
 		},
@@ -266,9 +260,6 @@ func newContactUserUpdateCommand() *cobra.Command {
 			if !changed {
 				return fmt.Errorf("至少需要一个修改项：--org-user-name、--depts 或 --master-user-id")
 			}
-			if !confirmDangerousAction(cmd, "update employee", userID) {
-				return nil
-			}
 			return callMCPTool("employee_update", toolArgs)
 		},
 	}
@@ -305,9 +296,6 @@ func newContactUserUpdateSelfCommand() *cobra.Command {
 			}
 			if len(toolArgs) == 0 {
 				return fmt.Errorf("至少需要一个修改项：--nick 或 --avatar-file-id")
-			}
-			if !confirmDangerousAction(cmd, "update current user profile", "current-user") {
-				return nil
 			}
 			return callMCPTool("self_user_profile_update", toolArgs)
 		},
@@ -358,9 +346,6 @@ func newContactAccountUpdateCommand() *cobra.Command {
 			}
 			if len(toolArgs) == 1 {
 				return fmt.Errorf("至少需要一个修改项：--org-user-name、--depts、--master-user-id、--nick 或 --avatar-file-id")
-			}
-			if !confirmDangerousAction(cmd, "update enterprise account", userID) {
-				return nil
 			}
 			return callMCPTool("exclusive_account_user_update", toolArgs)
 		},
@@ -431,6 +416,25 @@ func newContactCommand() *cobra.Command {
 			return callMCPTool("get_current_user_profile", nil)
 		},
 	}
+	DeclareLeafMetadata(contactUserGetSelfCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取当前登录用户资料与 userId",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "get_current_user_profile",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取当前登录用户资料与 userId",
+				UseWhen:      []string{"用户问我是谁/我的 userId/当前账号信息"},
+				AvoidWhen:    []string{"查他人详情用 contact user get 或先搜索"},
+				Examples:     []string{"dws contact user get-self --format json"},
+			},
+		},
+	})
 
 	relationCmd := &cobra.Command{Use: "relation",
 		Short: "人员关系查询",
@@ -446,6 +450,25 @@ func newContactCommand() *cobra.Command {
 			return callMCPTool("list_my_followings", nil)
 		},
 	}
+	DeclareLeafMetadata(contactRelationListMyFollowingsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取当前用户的特别关注列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "list_my_followings",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取当前用户的特别关注列表",
+				UseWhen:      []string{"需要查看当前用户特别关注或星标联系人时"},
+				AvoidWhen:    []string{"需要搜索企业通讯录或查询任意员工详情时不要使用；这里只返回当前用户的特别关注列表。"},
+				Examples:     []string{"dws contact relation list-my-followings --format json"},
+			},
+		},
+	})
 
 	contactUserSearchCmd := &cobra.Command{
 		Use:     "search",
@@ -462,6 +485,29 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactUserSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按关键词搜索好友和同事，提取 userId/openDingTalkId",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "search_contact_by_key_word",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按关键词搜索好友和同事，提取 userId/openDingTalkId",
+				UseWhen:      []string{"按姓名等关键词在通讯录里精确搜人，并需要 userId 或 openDingTalkId"},
+				AvoidWhen: []string{
+					"职责/上级/技能等语义找人优先 aisearch person",
+					"已有 userId 查详情用 contact user get",
+					"查自己用 contact user get-self",
+				},
+				Examples: []string{"dws contact user search --query \"张三\" --format json"},
+			},
+		},
+	})
 
 	contactUserSearchMobileCmd := &cobra.Command{
 		Use:     "search-mobile",
@@ -476,6 +522,25 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactUserSearchMobileCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按手机号搜索用户",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "search_user_by_mobile",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按手机号搜索用户",
+				UseWhen:      []string{"已知手机号，需要精确搜索用户时"},
+				AvoidWhen:    []string{"已有用户 ID 或需要批量用户详情时改用批量详情命令；该命令仅按手机号定位用户。"},
+				Examples:     []string{"dws contact user search-mobile --mobile 13800138000 --format json"},
+			},
+		},
+	})
 
 	contactUserGetCmd := &cobra.Command{
 		Use:   "get",
@@ -513,6 +578,28 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactUserGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按 userId 批量获取员工详情（部门/主管等，受可见性限制）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "get_user_info_by_user_ids",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按 userId 批量获取员工详情（部门/主管等，受可见性限制）",
+				UseWhen:      []string{"已有一个或多个 userId，需要部门、主管等详情"},
+				AvoidWhen: []string{
+					"还没有 userId 时先 search / aisearch person",
+					"查自己不要传 me/self，用 contact user get-self",
+				},
+				Examples: []string{"dws contact user get --ids userId1,userId2"},
+			},
+		},
+	})
 
 	// ── label 角色 ──────────────────────────────────────────────────
 
@@ -623,6 +710,25 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactDeptSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按关键词搜索部门",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "search_dept_by_keyword",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按关键词搜索部门",
+				UseWhen:      []string{"只知道部门名称或关键词，需要定位 deptId 时"},
+				AvoidWhen:    []string{"已经有准确部门 ID 并需要详情时改用部门详情命令；该命令用于关键词定位部门。"},
+				Examples:     []string{"dws contact dept search --query \"技术部\" --format json"},
+			},
+		},
+	})
 
 	contactDeptListChildrenCmd := &cobra.Command{
 		Use:     "list-children",
@@ -639,6 +745,25 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactDeptListChildrenCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出指定部门的直属子部门",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "get_sub_depts_by_dept_id",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出指定部门的直属子部门",
+				UseWhen:      []string{"已知父部门 deptId，需要列出直属子部门时"},
+				AvoidWhen:    []string{"需要父部门自身详情或递归组织树时不要使用；该命令只列直属子部门。"},
+				Examples:     []string{"dws contact dept list-children --dept 12345 --format json"},
+			},
+		},
+	})
 
 	contactDeptGetInfoCmd := &cobra.Command{
 		Use:     "get-info",
@@ -655,6 +780,25 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactDeptGetInfoCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取指定部门详情",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "get_dept_info_by_dept_id",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取指定部门详情",
+				UseWhen:      []string{"已知 deptId，需要部门名称、人数等详情时"},
+				AvoidWhen:    []string{"只知道部门名称时应先搜索部门；需要列出直属子部门时改用子部门查询。"},
+				Examples:     []string{"dws contact dept get-info --dept 12345 --format json"},
+			},
+		},
+	})
 
 	contactDeptListMembersCmd := &cobra.Command{
 		Use:     "list-members",
@@ -681,6 +825,25 @@ func newContactCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(contactDeptListMembersCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查看部门成员（逗号分隔 deptId）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "contact", RPCName: "get_dept_members_by_deptId",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查看部门成员（逗号分隔 deptId）",
+				UseWhen:      []string{"需要按一个或多个 deptId 查看部门成员名单时"},
+				AvoidWhen:    []string{"只需部门详情或人数时使用 contact dept get-info；需要直属子部门时使用 contact dept list-children"},
+				Examples:     []string{"dws contact dept list-members --depts 12345,67890 --format json"},
+			},
+		},
+	})
 
 	// ── user profile 用户档案（花名册） ────────────────────────────────────
 	contactUserProfileCmd := &cobra.Command{
@@ -714,6 +877,25 @@ func newContactCommand() *cobra.Command {
 			return callMCPToolOnServer("hrmregister", "list_authorized_roster_fields", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(contactUserProfileFieldsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询当前用户有权查看的花名册字段",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "hrmregister", RPCName: "list_authorized_roster_fields",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询当前用户有权查看的花名册字段",
+				UseWhen:      []string{"查询花名册前，需要先确认当前用户可见的字段 code 时"},
+				AvoidWhen:    []string{"需要读取某位员工的具体花名册字段值时不要停在字段目录，应再调用员工花名册查询。"},
+				Examples:     []string{"dws contact user profile fields --format json"},
+			},
+		},
+	})
 
 	contactUserProfileGetCmd := &cobra.Command{
 		Use:   "get",
@@ -752,6 +934,28 @@ contact user profile fields 获取可用字段列表。
 			return callMCPToolOnServer("hrmregister", "get_authorized_emp_rosterInfo", params)
 		},
 	}
+	DeclareLeafMetadata(contactUserProfileGetCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按字段 code 查询指定员工花名册字段值",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "hrmregister", RPCName: "get_authorized_emp_rosterInfo",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按字段 code 查询指定员工花名册字段值",
+				UseWhen:      []string{"已确认 staffId 与可见字段 code，需要读花名册字段"},
+				AvoidWhen: []string{
+					"尚不知道可见字段时先用 contact user profile fields",
+					"普通通讯录姓名搜索不要走花名册",
+				},
+				Examples: []string{"dws contact user profile get --staff-id STAFF_ID --fields fieldCode1,fieldCode2"},
+			},
+		},
+	})
 	contactUserProfileGetCmd.Flags().String("staff-id", "", "查询员工 ID（可选）")
 	contactUserProfileGetCmd.Flags().String("fields", "", "指定字段集合, 逗号分隔, 可通过 profile fields 获取（可选）")
 
@@ -839,6 +1043,28 @@ contact user profile fields 获取可用字段列表。
 			return callMCPToolOnServer("hrmregister", "query_dismission_employee_list", params)
 		},
 	}
+	DeclareLeafMetadata(contactUserDismissionSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询离职员工列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "hrmregister", RPCName: "query_dismission_employee_list",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询离职员工列表",
+				UseWhen:      []string{"需要按姓名、离职时间或部门查询离职员工时"},
+				AvoidWhen:    []string{"需要查询在职员工或修改离职信息时不要使用；该命令只检索离职员工记录。"},
+				Examples: []string{
+					"dws contact user dismission search --format json",
+					"dws contact user dismission search --name \"张三\" --format json",
+				},
+			},
+		},
+	})
 	contactUserDismissionSearchCmd.Flags().String("name", "", "员工姓名，模糊搜索（可选）")
 	contactUserDismissionSearchCmd.Flags().String("start", "", "离职日期查询范围开始，格式 YYYY-MM-DD（可选），与end要么都不填要么都填")
 	contactUserDismissionSearchCmd.Flags().String("end", "", "离职日期查询范围结束，格式 YYYY-MM-DD（可选），与start要么都不填要么都填")
@@ -885,11 +1111,68 @@ contact user profile fields 获取可用字段列表。
 			})
 		},
 	}
+	DeclareLeafMetadata(contactUserInviteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按手机号邀请一名员工加入当前企业",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps employee identity and decoded department JSON to contact/add_employee, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按手机号邀请一名员工加入当前企业",
+				UseWhen:      []string{"用户明确要求邀请或添加员工到当前企业，且已提供企业内姓名和手机号"},
+				AvoidWhen:    []string{"需要创建企业专属登录账号时使用 contact account create；需要创建企业组织本身时使用 contact org create"},
+				Examples:     []string{"dws contact user invite --org-user-name \"张三\" --org-user-mobile \"13800138000\" --depts '[{\"deptId\":1}]'"},
+			},
+		},
+	})
 	contactUserInviteCmd.Flags().String("org-user-name", "", "员工在企业内的名称 (必填)")
 	contactUserInviteCmd.Flags().String("org-user-mobile", "", "员工手机号 (必填)")
 	contactUserInviteCmd.Flags().String("depts", "", "员工所属部门列表 JSON 数组（可选），格式: [{\"deptId\":1}]")
 	contactUserUpdateCmd := newContactUserUpdateCommand()
+	DeclareLeafMetadata(contactUserUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "修改指定员工的企业内姓名、所属部门或直属主管",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps employee update flags to contact/employee_update, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "修改指定员工的企业内姓名、所属部门或直属主管",
+				UseWhen:      []string{"用户明确要求更新已有员工的组织信息，且已确认目标 userId 和至少一个修改项"},
+				AvoidWhen:    []string{"修改当前用户自己的昵称或头像应使用 contact user update-self；创建企业专属账号应使用 contact account create"},
+				Examples:     []string{"dws contact user update --user-id user001 --org-user-name \"张三三\""},
+			},
+		},
+	})
 	contactUserUpdateSelfCmd := newContactUserUpdateSelfCommand()
+	DeclareLeafMetadata(contactUserUpdateSelfCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新当前登录用户自己的昵称或头像",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps self-profile update flags to contact/self_user_profile_update, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新当前登录用户自己的昵称或头像",
+				UseWhen:      []string{"用户明确要求修改自己的 profile 昵称或头像 fileId"},
+				AvoidWhen:    []string{"修改其他员工的组织信息应使用 contact user update；修改企业专属账号应使用 contact account update"},
+				Examples:     []string{"dws contact user update-self --nick \"新昵称\""},
+			},
+		},
+	})
 
 	// ── flags 注册 ───────────────────────────────────────────────
 	contactUserSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
@@ -932,7 +1215,45 @@ contact user profile fields 获取可用字段列表。
 		aliases []string
 	}
 	contactDeptCreateCmd := newContactDeptCreateCommand()
+	DeclareLeafMetadata(contactDeptCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "在当前企业的根部门或指定父部门下创建部门",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps department creation flags to contact/department_create, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "在当前企业的根部门或指定父部门下创建部门",
+				UseWhen:      []string{"用户明确要求新建部门，且已确认部门名称、父部门及是否同步创建部门群"},
+				AvoidWhen:    []string{"修改已有部门名称或父级应使用 contact dept update；仅查找部门应使用 contact dept search"},
+				Examples:     []string{"dws contact dept create --name \"新产品部\" --create-dept-group=true"},
+			},
+		},
+	})
 	contactDeptUpdateCmd := newContactDeptUpdateCommand()
+	DeclareLeafMetadata(contactDeptUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新指定部门的名称，并可调整父部门",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps department update flags to contact/department_update, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新指定部门的名称，并可调整父部门",
+				UseWhen:      []string{"用户明确要求修改已有部门名称或迁移父部门，且已确认目标 deptId"},
+				AvoidWhen:    []string{"创建新部门应使用 contact dept create；仅查看部门信息应使用 contact dept get-info"},
+				Examples:     []string{"dws contact dept update --dept 12345 --name \"研发中心\""},
+			},
+		},
+	})
 	for _, s := range []deptIDAliasSpec{
 		{contactDeptGetInfoCmd, []string{"id", "dept-id", "ids", "dept-ids"}},
 		{contactDeptListChildrenCmd, []string{"id", "ids", "dept-id", "dept-ids"}},
@@ -989,6 +1310,25 @@ contact user profile fields 获取可用字段列表。
 			})
 		},
 	}
+	DeclareLeafMetadata(contactOrgCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "创建一个新的钉钉企业组织",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps organization and creator names to contact/org_create, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建一个新的钉钉企业组织",
+				UseWhen:      []string{"用户明确要求创建、新建、开通或初始化企业组织，并已提供企业名称和创建者企业内名称"},
+				AvoidWhen:    []string{"请求中包含企业账号、专属账号或登录账号时改用 contact account create；邀请员工时改用 contact user invite"},
+				Examples:     []string{"dws contact org create --org-name \"我的企业\" --creator-username \"张三\""},
+			},
+		},
+	})
 	contactOrgCreateCmd.Flags().String("org-name", "", "企业名称 (必填)")
 	contactOrgCreateCmd.Flags().String("creator-username", "", "创建者在企业内的名称，对应 creatorUsername (必填)")
 	contactOrgCmd.AddCommand(contactOrgCreateCmd)
@@ -1049,6 +1389,25 @@ contact user profile fields 获取可用字段列表。
 			return callMCPTool("exclusive_account_create", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(contactAccountCreateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "为当前企业创建专属登录账号",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps enterprise-account flags to contact/exclusive_account_create, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "为当前企业创建专属登录账号",
+				UseWhen:      []string{"用户明确要求创建企业账号、专属账号或企业登录账号，并已提供员工名称和登录号"},
+				AvoidWhen:    []string{"创建企业组织本身应使用 contact org create；仅邀请已有手机号员工入企应使用 contact user invite"},
+				Examples:     []string{"dws contact account create --org-user-name \"张三\" --login-id \"zhangsan001\" --org-user-mobile \"13800138000\""},
+			},
+		},
+	})
 	contactAccountCreateCmd.Flags().String("org-user-name", "", "员工在企业内的名称 (必填)")
 	contactAccountCreateCmd.Flags().String("login-id", "", "登录号 (必填)，请勿包含手机号")
 	contactAccountCreateCmd.Flags().String("org-user-mobile", "", "员工手机号（可选）")
@@ -1056,6 +1415,25 @@ contact user profile fields 获取可用字段列表。
 	contactAccountCreateCmd.Flags().String("dept-ids", "", "要加入的部门 ID 列表，逗号分隔（可选）")
 	contactAccountCreateCmd.Flags().Bool("send-pwd-via-sms", false, "是否通过手机短信/邮件发送登录邀请（可选）")
 	contactAccountUpdateCmd := newContactAccountUpdateCommand()
+	DeclareLeafMetadata(contactAccountUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新企业专属账号的组织信息或个人资料",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the executable CLI maps enterprise-account update flags to contact/exclusive_account_user_update, which is absent from the pinned MCP metadata snapshot.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新企业专属账号的组织信息或个人资料",
+				UseWhen:      []string{"用户明确要求修改已有企业专属账号的姓名、部门、主管、昵称或头像"},
+				AvoidWhen:    []string{"创建新企业专属账号应使用 contact account create；修改普通员工组织信息应使用 contact user update"},
+				Examples:     []string{"dws contact account update --user-id user001 --nick \"新昵称\""},
+			},
+		},
+	})
 	contactAccountCmd.AddCommand(contactAccountCreateCmd, contactAccountUpdateCmd)
 
 	relationCmd.AddCommand(contactRelationListMyFollowingsCmd)

@@ -14,6 +14,8 @@
 package smart
 
 import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -41,6 +43,23 @@ var Reschedule = shortcut.Shortcut{
 		"如果 eventId 查不到会直接报错，不会误改别的日程。" +
 		"会真实修改该日程的时间。",
 	Risk: shortcut.RiskWrite,
+	Safety: cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "改一个已有日程的时间（只动开始/结束时间，其他字段不变）",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "改一个已有日程的时间（只动开始/结束时间，其他字段不变）",
+			UseWhen:      []string{"当你想把一个已经存在的日程改到新的时间段、又不想动标题/描述/参会人等其他内容时使用；内部先用 eventId 拉一次日程详情确认它真实存在，再只更新开始和结束时间。如果 eventId 查不到会直接报错，不会误改别的日程。会真实修改该日程的时间。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws calendar +reschedule --event EVENT_ID --start \"2026-03-10T15:00:00+08:00\" --end \"2026-03-10T16:00:00+08:00\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "event", Type: shortcut.FlagString, Desc: "要改期的日程 eventId（可用 dws calendar event list 查询）", Required: true},
 		{Name: "start", Type: shortcut.FlagString, Desc: "新的开始时间（ISO8601，如 2026-03-10T15:00:00+08:00）", Required: true},

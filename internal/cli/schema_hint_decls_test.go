@@ -10,6 +10,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func testSchemaHintDeclFixture() schemaHintDecl {
+	return schemaHintDecl{
+		Safety: SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Description: "fixture command for attachSchemaHintDecl freeze test",
+		Interface: &InterfaceSpec{
+			Mode: InterfaceModeMCP, Availability: InterfaceAvailable,
+			Ref: &InterfaceRefSpec{ProductID: "fixture", RPCName: "fixture_probe"},
+		},
+		Selection: SelectionSpec{
+			AgentSummary: "fixture probe",
+			UseWhen:      []string{"unit testing attachSchemaHintDecl"},
+			AvoidWhen:    []string{"production use"},
+			Examples:     []string{"dws fixture probe"},
+		},
+	}
+}
+
 func TestSchemaHintDeclAttachDoesNotReplaceRunE(t *testing.T) {
 	ran := false
 	cmd := &cobra.Command{
@@ -20,11 +40,7 @@ func TestSchemaHintDeclAttachDoesNotReplaceRunE(t *testing.T) {
 			return nil
 		},
 	}
-	decl, ok := lookupSchemaHintDecl("doc.create_document")
-	if !ok {
-		t.Fatal("expected doc.create_document in compiled hint decls")
-	}
-	attachSchemaHintDecl(cmd, decl)
+	attachSchemaHintDecl(cmd, testSchemaHintDeclFixture())
 	if !HasRuntimeContractFinal(cmd) {
 		t.Fatal("expected ContractFinal after attach")
 	}
@@ -38,10 +54,18 @@ func TestSchemaHintDeclAttachDoesNotReplaceRunE(t *testing.T) {
 }
 
 func TestSchemaHintDeclLookupCoverage(t *testing.T) {
-	if got := len(schemaHintDeclsByCanonical); got < 800 {
-		t.Fatalf("compiled decls = %d, want >= 800", got)
+	// All reviewed tools now author ContractFinal beside the command
+	// (DeclareLeafMetadata / Shortcut.Schema). The compiled residual map is empty.
+	if got := len(schemaHintDeclsByCanonical); got != 0 {
+		t.Fatalf("compiled residual decls = %d, want 0 after full colocation", got)
 	}
-	if _, ok := lookupSchemaHintDecl("aitable.view_update_aggregate"); !ok {
-		t.Fatal("missing aitable.view_update_aggregate")
+	if _, ok := lookupSchemaHintDecl("aitable.view_update_aggregate"); ok {
+		t.Fatal("aitable.view_update_aggregate must not remain in compiled hint decls")
+	}
+	if _, ok := lookupSchemaHintDecl("aitable.shortcut_base_list"); ok {
+		t.Fatal("aitable.shortcut_base_list must not remain in compiled hint decls")
+	}
+	if _, ok := lookupSchemaHintDecl("doc.create_document"); ok {
+		t.Fatal("doc.create_document must not remain in compiled hint decls")
 	}
 }

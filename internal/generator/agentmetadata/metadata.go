@@ -245,7 +245,7 @@ const (
 	selectionRankExplicit           = 300
 	selectionRankReviewedExplicit   = 400
 	selectionRankReviewedManual     = 500
-	// Contract final declarations (cmdcore.SchemaDecl, registered in-process)
+	// Contract final declarations (corecmd.SchemaDecl, registered in-process)
 	// outrank every file/manual source: the declaration in reviewed code is
 	// the final data source for declared tools.
 	selectionRankContractFinal = 600
@@ -263,8 +263,8 @@ const (
 
 // contractFinalOrigin labels every candidate sourced from an in-process
 // Contract final declaration. It is not a file path; the declaration lives in
-// reviewed command source code (cmdcore.SchemaDecl).
-const contractFinalOrigin = "cmdcore.contract"
+// reviewed command source code (corecmd.SchemaDecl).
+const contractFinalOrigin = "corecmd.contract"
 
 type Options struct {
 	Root                     string

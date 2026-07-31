@@ -15,6 +15,8 @@ package smart
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"time"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -39,6 +41,26 @@ var Remind = shortcut.Shortcut{
 	Intent: "当你想给自己记一件事、并（可选）设一个截止时间，又不想先查自己的 userId 时使用；" +
 		"内部先解析当前登录用户的 userId，再显式设置 executorIds，--at 只会按 ISO8601 写入截止时间 dueTime，不会创建独立提醒规则。会真实创建待办。",
 	Risk: shortcut.RiskWrite,
+	Safety: cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "给自己创建一条带可选截止时间的待办",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "给自己创建一条带可选截止时间的待办",
+			UseWhen:      []string{"当你想给自己记一件事、并（可选）设一个截止时间，又不想先查自己的 userId 时使用；内部先解析当前登录用户的 userId，再显式设置 executorIds，--at 只会按 ISO8601 写入截止时间 dueTime，不会创建独立提醒规则。会真实创建待办。"},
+			AvoidWhen: []string{
+				"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令",
+				"用户需要独立提醒规则时改用 dws todo task add-reminder；不要把 --at 解释成提醒时间",
+			},
+			Examples: []string{"dws todo +remind --task \"交周报\" --at 2026-03-10T18:00:00+08:00"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "task", Type: shortcut.FlagString, Desc: "待办标题/内容", Required: true},
 		{Name: "at", Type: shortcut.FlagString, Desc: "截止时间（ISO8601，可选，不是提醒时间；如 2026-03-10T18:00:00+08:00）"},

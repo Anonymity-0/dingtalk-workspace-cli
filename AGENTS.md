@@ -24,7 +24,7 @@ changes must not rewrite it mechanically.
 ## Command framework declaration
 
 - Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
-- Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `cmdcore.CommandSpec` (+ optional `Schema`) → `cmdcore.NewCommand`
+- Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Schema`) → `corecmd.New`
 - **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Schema` (ToolSpec groups)
 - `Safety` uses the existing `cli.SafetySpec` directly. Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); assembly **pass-throughs** Final.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
@@ -34,7 +34,7 @@ changes must not rewrite it mechanically.
 
 - Decision (path A — Contract/LeafSpec is CLI-surface authority **and must embed into Schema**): `docs/flag-help-schema-homology.md`
 - Hard rule: every help/Schema fact is **declared** **or** **annotated**; never inference-only (§1.1–§1.3; framework §5.0).
-- Embed path: `cmdcore.NewCommand` → `dws.schema.*` annotations → Schema catalog assembly
+- Embed path: `corecmd.New` → `dws.schema.*` annotations → Schema catalog assembly
 - MCP metadata must not create CLI flags; optional 1:1 passthrough is a gated subset only.
 - Planned gate IDs: `HOM-P*`, `HOM-S*`, `HOM-I1`, `HOM-D1` (see that doc §4).
 

@@ -15,6 +15,8 @@ package smart
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -43,6 +45,26 @@ var ReplaceBatch = shortcut.Shortcut{
 		"内部按多个 --pair \"原文=>替换\" 逐组调用替换工具，先在本地校验去重（同一个「原文」不能出现两次，避免两条规则互相打架），" +
 		"再逐组应用并聚合每组的成功/失败结果，某一组失败不会中断其余组。这是写操作，会实际修改听记文字内容，请确认 taskUuid 与替换规则无误。",
 	Risk: shortcut.RiskWrite,
+	Safety: cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "对一条妙记（听记）批量执行多组文字替换（原文=>替换）",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "对一条妙记（听记）批量执行多组文字替换（原文=>替换）",
+			UseWhen:      []string{"当你要在同一条听记里一次性纠正多个词（如把多个错识别的人名/术语统一替换），而底层工具一次只能替换一组时使用；内部按多个 --pair \"原文=>替换\" 逐组调用替换工具，先在本地校验去重（同一个「原文」不能出现两次，避免两条规则互相打架），再逐组应用并聚合每组的成功/失败结果，某一组失败不会中断其余组。这是写操作，会实际修改听记文字内容，请确认 taskUuid 与替换规则无误。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples: []string{
+				"dws minutes +replace-batch --id <taskUuid> --pair \"张三=>张三丰\"",
+				"dws minutes +replace-batch --id <taskUuid> --pair \"Q2=>第二季度\" --pair \"PM=>产品经理\"",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid（必填）", Required: true},
 		{Name: "pair", Type: shortcut.FlagStringSlice, Desc: `替换规则，格式 "原文=>替换"，可重复传多组（必填）`, Required: true},

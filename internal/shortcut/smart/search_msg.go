@@ -15,6 +15,8 @@ package smart
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +41,26 @@ var SearchMsg = shortcut.Shortcut{
 		"也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。" +
 		"--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。",
 	Risk: shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "多维搜索消息，可全量翻页并批量富化详情",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "多维搜索消息，可全量翻页并批量富化详情",
+			UseWhen:      []string{"当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"},
+			AvoidWhen:    []string{"只想读取一个已知会话的连续历史时使用 +chat-messages；已有精确消息 ID 时使用 +messages-mget"},
+			Examples: []string{
+				"dws chat +search-msg --query \"周报\" --senders <openDingTalkId> --days 3 --page-all",
+				"dws chat +search-msg --group <openConversationId> --message-type file --download-resources --output-dir ./downloads",
+			},
+		},
+	},
 	Flags: append([]shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词"},
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "--query 的别名", Hidden: true},

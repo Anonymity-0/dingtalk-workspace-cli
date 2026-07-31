@@ -16,6 +16,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
@@ -157,6 +158,25 @@ func newPivotTableCmd() *cobra.Command {
 			return callMCPTool("list_pivot_tables", args)
 		},
 	}
+	DeclareLeafMetadata(listCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "列出或获取透视表信息。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "列出或获取透视表信息。",
+				UseWhen:      []string{"需要查看工作表上有哪些透视表或某个透视表详情时"},
+				AvoidWhen:    []string{"创建/更新/删除分别用 pivot-table create/update/delete"},
+				Examples:     []string{"dws sheet pivot-table list --node NODE_ID --sheet-id SHEET_ID"},
+			},
+		},
+	})
 	listCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	listCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	listCmd.Flags().String("pivot-table-id", "", "透视表 ID (可选，不传则返回全部)")
@@ -193,6 +213,25 @@ func newPivotTableCmd() *cobra.Command {
 			return callMCPTool("create_pivot_table", args)
 		},
 	}
+	DeclareLeafMetadata(createCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "创建原生透视表。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "创建原生透视表。",
+				UseWhen:      []string{"需要基于源数据区域创建透视表时"},
+				AvoidWhen:    []string{"更新配置用 update；删除用 delete"},
+				Examples:     []string{"dws sheet pivot-table create --node NODE_ID --source \"'Sheet1'!A1:D100\" --properties '{\"rows\":[{\"field\":\"A\"}],\"values\":[{\"field\":\"D\",\"aggregation\":\"sum\"}]}'"},
+			},
+		},
+	})
 	createCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	createCmd.Flags().String("source", "", "数据源区域，A1 表示法且包含工作表前缀 (必填)")
 	createCmd.Flags().String("properties", "", "透视表配置 JSON 或 @文件路径 (必填)")
@@ -220,6 +259,25 @@ func newPivotTableCmd() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(updateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新透视表配置。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新透视表配置。",
+				UseWhen:      []string{"已知透视表 ID，需要调整行/列/值字段配置时"},
+				AvoidWhen:    []string{"新建用 create；删除用 delete"},
+				Examples:     []string{"dws sheet pivot-table update --node NODE_ID --sheet-id SHEET_ID --pivot-table-id PIVOT_TABLE_ID --properties '{\"show_subtotals\":false}'"},
+			},
+		},
+	})
 	updateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	updateCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	updateCmd.Flags().String("pivot-table-id", "", "透视表 ID (必填)")
@@ -241,6 +299,25 @@ func newPivotTableCmd() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(deleteCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "删除透视表（需确认后加 --yes）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "删除透视表（需确认后加 --yes）。",
+				UseWhen:      []string{"用户明确要求永久删除指定透视表时"},
+				AvoidWhen:    []string{"只更新配置用 update"},
+				Examples:     []string{"dws sheet pivot-table delete --node NODE_ID --sheet-id SHEET_ID --pivot-table-id PT_ID"},
+			},
+		},
+	})
 	deleteCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	deleteCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	deleteCmd.Flags().String("pivot-table-id", "", "透视表 ID (必填)")

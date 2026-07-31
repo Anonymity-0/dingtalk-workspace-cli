@@ -6,6 +6,8 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -64,6 +66,31 @@ func newAuditTailCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().IntVarP(&n, "lines", "n", 20, "显示最近 N 条记录")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "查看本地操作审计日志最近 N 条记录",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "local", Availability: "available",
+				Reason: "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "查看本地操作审计日志最近 N 条记录",
+				UseWhen:      []string{"需要快速查看最近写入的审计记录（默认最近 20 条）"},
+				AvoidWhen: []string{
+					"需要按日期范围整段导出用 audit export",
+					"需要校验哈希链用 audit verify",
+				},
+				Examples: []string{
+					"dws audit tail",
+					"dws audit tail --lines 50",
+				},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -99,6 +126,31 @@ func newAuditExportCommand() *cobra.Command {
 	cmd.Flags().StringVar(&since, "since", "", "起始日期 (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&until, "until", "", "截止日期 (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&format, "format", "jsonl", "输出格式: jsonl 或 csv")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "按日期范围导出本地操作审计日志（jsonl 或 csv）",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "local", Availability: "available",
+				Reason: "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "按日期范围导出本地操作审计日志（jsonl 或 csv）",
+				UseWhen:      []string{"需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"},
+				AvoidWhen: []string{
+					"只看最近几条用 audit tail",
+					"只校验哈希链完整性用 audit verify",
+				},
+				Examples: []string{
+					"dws audit export --format jsonl",
+					"dws audit export --since 2026-07-01 --until 2026-07-14 --format csv",
+				},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -152,6 +204,28 @@ func newAuditVerifyCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&file, "file", "", "指定审计文件路径（默认最新文件）")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "校验本地审计日志文件的哈希链完整性",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "local", Availability: "available",
+				Reason: "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "校验本地审计日志文件的哈希链完整性",
+				UseWhen:      []string{"怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"},
+				AvoidWhen:    []string{"只浏览或导出日志内容时用 audit tail / audit export"},
+				Examples: []string{
+					"dws audit verify",
+					"dws audit verify --file /path/to/audit.jsonl",
+				},
+			},
+		},
+	})
 	return cmd
 }
 

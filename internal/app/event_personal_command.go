@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"io"
 	"net/http"
 	"os"
@@ -176,6 +177,28 @@ func newEventSchemaCommand() *cobra.Command {
 		Description: "要查询 payload 字段定义的个人事件码",
 		Required:    true,
 		Index:       0,
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "local", Availability: "available",
+				Reason: "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
+				UseWhen:      []string{"已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"},
+				AvoidWhen: []string{
+					"查询 CLI 命令参数契约时用顶层 dws schema",
+					"要实际收事件时用 event consume",
+				},
+				Examples: []string{"dws event schema user_im_message_receive_at --flatten --format json"},
+			},
+		},
 	})
 	return cmd
 }

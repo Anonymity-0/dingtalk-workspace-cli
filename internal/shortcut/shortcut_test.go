@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
@@ -528,13 +528,13 @@ func TestLiveMountExplicitSafetyDrivesRuntimeAndContractFinal(t *testing.T) {
 	s := Shortcut{
 		Service: "chat", Command: "+send", Risk: RiskRead,
 		Safety: explicit,
-		Schema: cmdcore.SchemaDecl{
+		Schema: corecmd.SchemaDecl{
 			Description: "发送消息",
-			Interface: &cmdcore.InterfaceDecl{
+			Interface: &corecmd.InterfaceDecl{
 				Mode: "mcp", Availability: "available",
 				ProductID: "chat", RPCName: "send_message",
 			},
-			Selection: cmdcore.SelectionDecl{
+			Selection: corecmd.SelectionDecl{
 				AgentSummary: "发送消息",
 				UseWhen:      []string{"需要发送消息时"},
 				AvoidWhen:    []string{"只需读取消息时"},

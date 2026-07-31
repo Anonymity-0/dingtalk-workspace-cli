@@ -79,7 +79,7 @@ func BuildManualAgentSelectionEvalFixture(bound BoundCommandRegistry, hints Manu
 		canonical := strings.TrimSpace(command.CanonicalPath)
 		expectedTools[canonical] = true
 		// Declared tools source selection assertions from the Contract final
-		// overlay (cmdcore.SchemaDecl) instead of a hint-file row.
+		// overlay (corecmd.SchemaDecl) instead of a hint-file row.
 		if HasRuntimeContractFinal(command.PrimaryCommand) {
 			declaredTools[canonical] = true
 		}
@@ -188,7 +188,7 @@ func ValidateManualAgentSelectionContract(bound BoundCommandRegistry, hints Manu
 // declared tool from its Contract final overlay, so declared tools keep full
 // semantic-eval coverage without a hint-file row.
 func contractFinalSelectionHint(command *cobra.Command) ManualAgentToolHint {
-	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (cmdcore.SchemaDecl)"}
+	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.SchemaDecl)"}
 	payload, ok := RuntimeContractFinal(command)
 	if !ok || payload.Selection == nil {
 		return hint

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package cmdcore is the shared, dispatch-agnostic base for building leaf
+// Package command is the shared, dispatch-agnostic base for building leaf
 // commands. It concentrates flag registration, the alias/env/default effective
 // value fallback chain, required validation, cross-flag constraint declaration
 // checks + runtime enforcement, SafetySpec-driven confirmation, toolArgs
@@ -19,7 +19,7 @@
 //
 // Declaration vs execution (framework rule):
 //
-//   - Declare = CommandSpec data fields (Flags, Constraints, Safety,
+//   - Declare = Spec data fields (Flags, Constraints, Safety,
 //     ConstParams, Use/Short/Long/Example). NewCommand registers, validates,
 //     confirms, and embeds those facts into dws.schema.*.
 //   - Execute = Validate / Invoke / Orchestrate / RunE / PostMount. Hooks
@@ -47,7 +47,7 @@
 // help and annotations — while the runtime pipeline (required validation,
 // toolArgs assembly, write confirmation, dispatch order) is evidenced solely by
 // this package's own tests plus the leaf/risk/constraint unit tests.
-package cmdcore
+package corecmd
 
 import (
 	"bufio"
@@ -162,7 +162,7 @@ const (
 	ExactlyOne ConstraintKind = "exactly_one"
 	// MutuallyExclusive allows at most one of Flags.
 	MutuallyExclusive ConstraintKind = "mutually_exclusive"
-	// Custom documents validation implemented by CommandSpec.Validate. cmdcore
+	// Custom documents validation implemented by Spec.Validate. command
 	// validates the declaration and renders its help, but does not infer the
 	// command-specific runtime rule.
 	Custom ConstraintKind = "custom"
@@ -188,7 +188,7 @@ type ParameterProjectionMode string
 
 const (
 	// ProjectDeclaredParameters makes the declaration the final parameter
-	// authority. This is the LeafSpec/cmdcore default.
+	// authority. This is the LeafSpec/command default.
 	ProjectDeclaredParameters ParameterProjectionMode = ""
 	// ProjectCobraParameters preserves Cobra usage/type/default provenance and
 	// annotates only facts Cobra cannot express: Required and Enum. Shortcut
@@ -196,7 +196,7 @@ const (
 	ProjectCobraParameters ParameterProjectionMode = "cobra"
 )
 
-// CommandSpec is the single typed definition of a leaf command, shared by the
+// Spec is the single typed definition of a leaf command, shared by the
 // LeafSpec and (via FromShortcut) Shortcut frameworks.
 //
 // Declaration surface is the final Schema data source for managed leaves:
@@ -221,9 +221,9 @@ const (
 //     or assemble business params that belong in Flags/ConstParams.
 //
 // Exactly one of RunE / Invoke / Orchestrate must be set; NewCommand validates
-// this at construction time. cmdcore itself stays dispatch-agnostic and never
+// this at construction time. command itself stays dispatch-agnostic and never
 // calls a backend: the adapters (FromLeafSpec / FromShortcut) supply the body.
-type CommandSpec struct {
+type Spec struct {
 	Use     string
 	Short   string
 	Long    string
@@ -344,7 +344,7 @@ func (c *Ctx) DryRun() bool { return BoolFlag(c.cmd, "dry-run") }
 // Yes reports the effective global --yes.
 func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 
-// NewCommand builds a cobra command from a CommandSpec. It is the single
+// NewCommand builds a cobra command from a Spec. It is the single
 // orchestration path: dispatch declaration check → flag registration →
 // constraint declaration checks → Runtime Schema projection → constraint help →
 // PostMount → generated RunE{ [ConfirmFirst: ConfirmSafety →]
@@ -356,7 +356,7 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 // spec. Here that is a programming error caught at construction time, so a
 // malformed spec can never run the pipeline — write-confirmation prompt
 // included — and then silently exit 0 having done nothing.
-func NewCommand(spec CommandSpec) *cobra.Command {
+func New(spec Spec) *cobra.Command {
 	validateDispatchDecl(spec)
 	validateSafetySpec(spec)
 	validateSchemaDecl(spec)
@@ -443,7 +443,7 @@ func NewCommand(spec CommandSpec) *cobra.Command {
 // ValidateConstraintDecls this panics: a spec with no runnable body (or with two
 // competing ones) is a programming error that every test and startup path should
 // trip immediately, not a condition to surface at user run time.
-func validateDispatchDecl(spec CommandSpec) {
+func validateDispatchDecl(spec Spec) {
 	declared := 0
 	if spec.RunE != nil {
 		declared++
@@ -470,7 +470,7 @@ func validateDispatchDecl(spec CommandSpec) {
 // validateSafetySpec rejects partial safety declarations. A zero value remains
 // the historical read-only default, but once any field is authored all four
 // independent Schema dimensions must be explicit.
-func validateSafetySpec(spec CommandSpec) {
+func validateSafetySpec(spec Spec) {
 	safety := spec.Safety
 	fields := []struct {
 		name  string
@@ -943,7 +943,7 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 			}
 		case Custom:
 			// The declaration is published and rendered in help. Its actual
-			// command-specific rule remains owned by CommandSpec.Validate.
+			// command-specific rule remains owned by Spec.Validate.
 		}
 	}
 	return nil
@@ -953,23 +953,27 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 // Effect, risk and idempotency are metadata only and never imply confirmation.
 // Semantics:
 //
-//   - read-only, --dry-run, or --yes → nil (proceed);
+//   - read-only, --dry-run, --yes, or --user-say-yes → nil (proceed);
 //   - interactive yes/y → nil;
-//   - interactive decline → validation "用户取消了操作" (existing cmdcore path);
+//   - interactive decline → validation "用户取消了操作" (existing command path);
 //   - no interactive answer (EOF / closed stdin) → confirmation_required.
 //
 // EOF must not be treated as decline: that silently drops writes in agent/CI.
+// Prompt text is terminal-gated; a readable piped answer is still honored for
+// non-Sheet leaves. Sheet destructive commands keep a separate --yes-only
+// outer gate (helpers.protectSheetMutationCommand) so agents cannot authorize
+// those via stdin alone.
 func ConfirmSafety(cmd *cobra.Command, safety cli.SafetySpec) error {
 	if strings.TrimSpace(safety.Confirmation) != "user_required" ||
-		BoolFlag(cmd, "dry-run") || BoolFlag(cmd, "yes") {
+		confirmationBypass(cmd) {
 		return nil
 	}
 	// Only print the interactive prompt on a real terminal. In non-interactive
 	// environments (agent/CI: pipe, closed stdin, /dev/null) the prompt is
 	// noise on stderr ahead of the structured confirmation_required error —
-	// callers there must pass --yes/--dry-run instead of answering. A piped
-	// answer (printf 'yes\n' | cmd) is still honored: the read happens either
-	// way, only the prompt print is terminal-gated.
+	// callers there should pass --yes/--dry-run. A piped answer
+	// (printf 'yes\n' | cmd) is still honored for general ConfirmSafety; Sheet
+	// mutations additionally require --yes via protectSheetMutationCommand.
 	if stdinIsTerminal(cmd.InOrStdin()) {
 		fmt.Fprintf(
 			cmd.ErrOrStderr(),
@@ -1021,14 +1025,7 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 	if cmd == nil {
 		return false
 	}
-	getters := []func(string) (bool, error){
-		cmd.Flags().GetBool,
-		cmd.InheritedFlags().GetBool,
-	}
-	if root := cmd.Root(); root != nil {
-		getters = append(getters, root.PersistentFlags().GetBool)
-	}
-	for _, get := range getters {
+	for _, get := range boolFlagGetters(cmd) {
 		if v, err := get(name); err == nil {
 			return v
 		}
@@ -1036,10 +1033,39 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 	return false
 }
 
-// embedContractIntoSchema projects CommandSpec declaration onto the live Cobra
+// confirmationBypass reports whether any flagset on the command tree has
+// --yes / --dry-run / --user-say-yes set true. OR across flagsets matters:
+// a leaf-local --dry-run defaulting to false must not shadow a root
+// persistent --dry-run=true (markdown overwrite / agent global dry-run).
+func confirmationBypass(cmd *cobra.Command) bool {
+	for _, name := range []string{"yes", "dry-run", "user-say-yes"} {
+		for _, get := range boolFlagGetters(cmd) {
+			if v, err := get(name); err == nil && v {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func boolFlagGetters(cmd *cobra.Command) []func(string) (bool, error) {
+	if cmd == nil {
+		return nil
+	}
+	getters := []func(string) (bool, error){
+		cmd.Flags().GetBool,
+		cmd.InheritedFlags().GetBool,
+	}
+	if root := cmd.Root(); root != nil {
+		getters = append(getters, root.PersistentFlags().GetBool)
+	}
+	return getters
+}
+
+// embedContractIntoSchema projects Spec declaration onto the live Cobra
 // leaf as the final Schema payload (dws.schema.*). Assembly pass-throughs these
 // annotations; declared fields do not compete with reviewed hints.
-func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
+func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 	if spec.ParameterProjection == ProjectCobraParameters {
 		for _, flag := range spec.Flags {
 			name := strings.TrimSpace(flag.Name)
@@ -1095,7 +1121,7 @@ func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
 
 // embedSchemaDecl does a light runtime write: only when SchemaDecl is authored,
 // convert once and RegisterRuntimeContractFinal.
-func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
+func embedSchemaDecl(cmd *cobra.Command, spec Spec) {
 	if spec.Schema.empty() {
 		return
 	}
@@ -1113,8 +1139,8 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 	}
 	// Reuse NewCommand's completeness rules so bind-time attaches cannot ship
 	// a partial declaration that would only fail in generated artifacts.
-	validateSchemaDecl(CommandSpec{Use: cmd.Name(), Safety: safety, Schema: schema})
-	validateSafetySpec(CommandSpec{Use: cmd.Name(), Safety: safety})
+	validateSchemaDecl(Spec{Use: cmd.Name(), Safety: safety, Schema: schema})
+	validateSafetySpec(Spec{Use: cmd.Name(), Safety: safety})
 
 	payload := cli.ContractFinalPayload{
 		Title:       firstNonEmpty(schema.Title, short),
@@ -1184,7 +1210,7 @@ func firstNonEmpty(values ...string) string {
 // Schema payload. The zero value keeps the historical read-only default.
 func schemaSafetyFromDecl(safety cli.SafetySpec) *cli.SafetySpec {
 	out := effectiveSafetySpec(safety)
-	out.EffectSource = "cmdcore.contract"
+	out.EffectSource = "corecmd.contract"
 	return &out
 }
 

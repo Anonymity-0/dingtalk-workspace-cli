@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
-# Regenerates internal/cli/schema_hint_decls_generated.go from schema_hints.
-# After the one-shot migration, selection/*.json tools are empty and this
-# script refuses to overwrite the compiled table. Restore selection+metadata
-# from git history if you need to regenerate.
-"""Generate compiled Schema declarations from reviewed hints."""
+# RETIRED one-shot helper — not wired into Makefile or policy.
+#
+# Historical role: compile internal/cli/schema_hints/{selection,metadata}
+# into internal/cli/schema_hint_decls_generated.go for the Schema hint bridge.
+#
+# After ContractFinal migration, leaf/shortcut declarations live in
+# helpers.DeclareLeafMetadata / Shortcut.Schema (package corecmd). The
+# generated map is intentionally empty, and selection/*.json tool maps are
+# empty. This script refuses to overwrite that empty table when selection is
+# empty. Keep schema_hints/ as reviewed residual inputs (parameter/metadata
+# reviews, product-level selection, interface-refs); do not re-fill the
+# global hint map. Restore selection+metadata from git only if you need a
+# forensic regenerate.
+"""Generate compiled Schema declarations from reviewed hints (retired)."""
 
 from __future__ import annotations
 
@@ -130,7 +139,8 @@ def main() -> int:
     if not selection:
         print(
             "selection hints are empty; refusing to overwrite compiled decls.\n"
-            "Restore internal/cli/schema_hints/selection from git to regenerate.",
+            "ContractFinal migration owns leaf Schema now (corecmd / DeclareLeafMetadata).\n"
+            "Restore internal/cli/schema_hints/selection from git only for forensic regenerate.",
             file=sys.stderr,
         )
         return 1

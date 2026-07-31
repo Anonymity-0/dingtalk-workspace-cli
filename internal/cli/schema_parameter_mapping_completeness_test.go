@@ -110,8 +110,8 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 			if prec == "reviewed_explicit" && !strings.Contains(source, "internal/cli/schema_hints/metadata/") {
 				t.Errorf("%s local %s source = %q, want metadata/", canonical, field, source)
 			}
-			if prec == "contract_final" && source != "cmdcore.contract" {
-				t.Errorf("%s local %s source = %q, want cmdcore.contract", canonical, field, source)
+			if prec == "contract_final" && source != "corecmd.contract" {
+				t.Errorf("%s local %s source = %q, want corecmd.contract", canonical, field, source)
 			}
 		}
 	}

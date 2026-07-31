@@ -19,7 +19,7 @@ type dryRunCapabilityGroup struct {
 
 // reviewedDryRunCapabilityGroups contains only command-owned preview paths
 // for tools WITHOUT a Contract final declaration. Declared tools publish
-// their dry_run capability from cmdcore.SchemaDecl (reviewed code) and are
+// their dry_run capability from corecmd.SchemaDecl (reviewed code) and are
 // merged into the reviewed set at assembly time — no manual list entry.
 // Inheriting the root --dry-run flag or reaching the generic EchoRunner is not
 // evidence of a stable capability and must never add a command to this list.

@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
 	"github.com/spf13/cobra"
 )
@@ -64,6 +65,31 @@ func newHrbrainCommand() *cobra.Command {
 			return callMCPTool("list_talent_pools", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(talentPoolListCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool list_talent_pools, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
+				UseWhen:      []string{"需要列出组织中的人才池，或按名称/类型/创建人/标签筛选人才池时"},
+				AvoidWhen: []string{
+					"已知 poolCode 只需要单个人才池详情时改用 dws hrbrain talent-pool detail",
+					"要查看人才池内人员名单时改用 dws hrbrain talent-pool employees",
+				},
+				Examples: []string{
+					"dws hrbrain talent-pool list --page 1 --page-size 20",
+					"dws hrbrain talent-pool list --keyword \"储备干部\"",
+				},
+			},
+		},
+	})
 	talentPoolListCmd.Flags().String("keyword", "", "人才池名称关键词 (可选)")
 	talentPoolListCmd.Flags().String("pool-type", "", "人才池类型 (可选)")
 	talentPoolListCmd.Flags().String("creator", "", "创建人 (可选)")
@@ -85,6 +111,25 @@ func newHrbrainCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(talentPoolDetailCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "根据人才池编码获取人才池详细信息",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_talent_pool_detail, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "根据人才池编码获取人才池详细信息",
+				UseWhen:      []string{"已知 poolCode，需要查看某个人才池的详细信息时"},
+				AvoidWhen:    []string{"尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找"},
+				Examples:     []string{"dws hrbrain talent-pool detail --pool-code POOL_CODE"},
+			},
+		},
+	})
 	talentPoolDetailCmd.Flags().String("pool-code", "", "人才池编码 (必填)")
 
 	talentPoolEmployeesCmd := &cobra.Command{
@@ -105,6 +150,28 @@ func newHrbrainCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(talentPoolEmployeesCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询指定人才池内的人员列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool list_pool_employees, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询指定人才池内的人员列表",
+				UseWhen:      []string{"已知 poolCode，需要查看该人才池内的人员名单时"},
+				AvoidWhen: []string{
+					"尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找",
+					"不限定人才池的人员搜索请改用 dws hrbrain search employees",
+				},
+				Examples: []string{"dws hrbrain talent-pool employees --pool-code POOL_CODE --page 1 --page-size 20"},
+			},
+		},
+	})
 	talentPoolEmployeesCmd.Flags().String("pool-code", "", "人才池编码 (必填)")
 	talentPoolEmployeesCmd.Flags().Int("page", 1, "当前页码 (默认 1)")
 	talentPoolEmployeesCmd.Flags().Int("page-size", 20, "每页条数 (默认 20)")
@@ -129,6 +196,25 @@ func newHrbrainCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(profileMetadataCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询员工档案元数据结构，用于构造档案数据查询参数",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_profile_metadata, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询员工档案元数据结构，用于构造档案数据查询参数",
+				UseWhen:      []string{"需要先了解某员工档案有哪些模块/字段，以构造 hrbrain profile query 的 --data-queries 参数时"},
+				AvoidWhen:    []string{"已知模块与字段编码，直接查询档案数据时改用 dws hrbrain profile query"},
+				Examples:     []string{"dws hrbrain profile metadata --work-no WORK_NO"},
+			},
+		},
+	})
 	profileMetadataCmd.Flags().String("work-no", "", "员工工号 (必填)")
 
 	profileQueryCmd := &cobra.Command{
@@ -156,6 +242,28 @@ func newHrbrainCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(profileQueryCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按模块批量查询员工档案数据",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool query_profile_data, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按模块批量查询员工档案数据",
+				UseWhen:      []string{"已知模块与字段编码（通常先用 hrbrain profile metadata 获取），需要批量查询员工档案数据时"},
+				AvoidWhen: []string{
+					"尚不清楚可查询的模块/字段时先用 dws hrbrain profile metadata",
+					"只需要职业历程或绩效记录时改用 dws hrbrain profile career / profile performance",
+				},
+				Examples: []string{"dws hrbrain profile query --work-no WORK_NO --data-queries '[{\"modelCode\":\"basic\",\"fields\":[\"name\",\"dept\"]}]'"},
+			},
+		},
+	})
 	profileQueryCmd.Flags().String("work-no", "", "目标员工工号 (必填)")
 	profileQueryCmd.Flags().String("data-queries", "", "按模块查询的条件列表 JSON 数组 (必填)")
 
@@ -178,6 +286,25 @@ func newHrbrainCommand() *cobra.Command {
 			return callMCPTool("get_profile_label", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(profileLabelsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "根据员工工号列表获取员工标签",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_profile_label, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "根据员工工号列表获取员工标签",
+				UseWhen:      []string{"需要按一个或多个工号批量查看员工标签时"},
+				AvoidWhen:    []string{"要查看职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"},
+				Examples:     []string{"dws hrbrain profile labels --staff-ids WORK_NO1,WORK_NO2"},
+			},
+		},
+	})
 	profileLabelsCmd.Flags().String("staff-ids", "", "员工工号列表，逗号分隔 (必填)")
 	profileLabelsCmd.Flags().Bool("all-label", false, "是否所有标签 (可选)")
 
@@ -194,6 +321,25 @@ func newHrbrainCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(profileCareerCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询员工在公司内的职业历程",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_employee_career, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询员工在公司内的职业历程",
+				UseWhen:      []string{"需要查看某员工在公司内的岗位/职级变动历史时"},
+				AvoidWhen:    []string{"要查看绩效记录时改用 dws hrbrain profile performance"},
+				Examples:     []string{"dws hrbrain profile career --work-no WORK_NO"},
+			},
+		},
+	})
 	profileCareerCmd.Flags().String("work-no", "", "员工工号 (必填)")
 
 	profilePerformanceCmd := &cobra.Command{
@@ -209,6 +355,25 @@ func newHrbrainCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(profilePerformanceCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "查询员工绩效记录",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_employee_performance, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "查询员工绩效记录",
+				UseWhen:      []string{"需要查看某员工的历史绩效评级/记录时"},
+				AvoidWhen:    []string{"要查看职业历程时改用 dws hrbrain profile career"},
+				Examples:     []string{"dws hrbrain profile performance --work-no WORK_NO"},
+			},
+		},
+	})
 	profilePerformanceCmd.Flags().String("work-no", "", "员工工号 (必填)")
 
 	profileCmd.AddCommand(profileMetadataCmd, profileQueryCmd, profileLabelsCmd, profileCareerCmd, profilePerformanceCmd)
@@ -248,6 +413,31 @@ func newHrbrainCommand() *cobra.Command {
 			return callMCPTool("search_employees", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(employeeSearchCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "按关键词、部门、职务、职级、人才池等条件搜索员工",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool search_employees, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按关键词、部门、职务、职级、人才池等条件搜索员工",
+				UseWhen:      []string{"需要按姓名/工号/部门/职务/职级等基础条件模糊找人时"},
+				AvoidWhen: []string{
+					"需要复杂组合条件（表达式）搜索时改用 dws hrbrain search employees-structured",
+					"已限定某个人才池要看全部人员时改用 dws hrbrain talent-pool employees",
+				},
+				Examples: []string{
+					"dws hrbrain search employees --keyword \"张三\" --page 1 --page-size 20",
+					"dws hrbrain search employees --dept-name \"技术部\" --job-level P7",
+				},
+			},
+		},
+	})
 	employeeSearchCmd.Flags().String("keyword", "", "全文搜索关键词（姓名/工号等）(可选)")
 	employeeSearchCmd.Flags().String("dept-name", "", "部门名称 (可选)")
 	employeeSearchCmd.Flags().String("position-name", "", "职务名称 (可选)")
@@ -297,6 +487,28 @@ func newHrbrainCommand() *cobra.Command {
 			return callMCPTool("search_employees_structured", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(employeeSearchStructuredCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "使用高级条件表达式（originJson）搜索员工",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool search_employees_structured, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "使用高级条件表达式（originJson）搜索员工",
+				UseWhen:      []string{"需要使用组合过滤条件表达式搜索员工，且已通过 dws hrbrain search fields 获取有权限的字段/操作符时"},
+				AvoidWhen: []string{
+					"只是简单关键词/部门/职级搜索时改用 dws hrbrain search employees",
+					"尚未获取可用字段与操作符时先用 dws hrbrain search fields",
+				},
+				Examples: []string{"dws hrbrain search employees-structured --origin-json '{\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}' --fields '[{\"label\":\"姓名\",\"value\":\"name\"}]'"},
+			},
+		},
+	})
 	employeeSearchStructuredCmd.Flags().String("origin-json", "", "搜索条件 JSON 表达式 (必填)")
 	employeeSearchStructuredCmd.Flags().Int("page", 1, "当前页码 (默认 1)")
 	employeeSearchStructuredCmd.Flags().Int("page-size", 20, "每页条数 (默认 20)")
@@ -312,6 +524,25 @@ func newHrbrainCommand() *cobra.Command {
 			return callMCPTool("get_search_fields", nil)
 		},
 	}
+	DeclareLeafMetadata(searchFieldsCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "获取当前操作人有权限使用的高级搜索字段与操作符列表",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls the hrbrain MCP tool get_search_fields, which is absent from the pinned MCP metadata snapshot; no single pinned interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "获取当前操作人有权限使用的高级搜索字段与操作符列表",
+				UseWhen:      []string{"在调用 dws hrbrain search employees-structured 之前，需要确认可用字段与操作符时"},
+				AvoidWhen:    []string{"只是简单关键词搜索时改用 dws hrbrain search employees"},
+				Examples:     []string{"dws hrbrain search fields"},
+			},
+		},
+	})
 
 	searchCmd.AddCommand(employeeSearchCmd, employeeSearchStructuredCmd, searchFieldsCmd)
 

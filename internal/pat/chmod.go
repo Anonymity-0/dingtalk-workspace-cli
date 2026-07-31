@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"io"
 	"os"
 	"regexp"
@@ -426,6 +427,32 @@ agentCode 配置:
 		Index:       0,
 	})
 
+	helpers.DeclareLeafMetadata(chmodCmd, helpers.LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: helpers.LeafSchema{
+			Description: "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
+			Interface: &helpers.LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "pat", RPCName: "pat.batch_grant",
+			},
+			Selection: helpers.LeafSelectionDecl{
+				AgentSummary: "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
+				UseWhen: []string{
+					"命令提示缺少行为授权，需要按产品或 scope 批量授权",
+					"先 --dry-run 查看 selected/skipped/pending，用户确认后再执行",
+				},
+				AvoidWhen: []string{
+					"普通 OAuth 登录用 auth，不要用 pat",
+					"授权产品、grant-type 或 session-id 未明确时不要执行写入",
+					"只要改本地浏览器打开策略时用 pat browser-policy",
+				},
+				Examples: []string{"dws pat chmod --products calendar,aitable --grant-type session --session-id <SESSION_ID> --dry-run --format json"},
+			},
+		},
+	})
 	return chmodCmd
 }
 

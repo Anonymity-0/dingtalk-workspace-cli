@@ -69,5 +69,97 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 		Required:    false,
 		Index:       0,
 	})
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "devdoc", RPCName: "search_open_platform_docs",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
+				UseWhen:      []string{"查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"},
+				AvoidWhen: []string{
+					"搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
+					"要执行开放平台应用配置变更时用 dev",
+				},
+				Examples: []string{
+					"dws devdoc article search --query \"OAuth2 接入\" --format json",
+					"dws devdoc article search --query \"errcode 40078\" --format json",
+				},
+			},
+		},
+	})
+	return cmd
+}
+
+// newDevDocSearchCommand is the `dws dev doc search` surface — same execution
+// body as devdoc article search, but ContractFinal examples must use the
+// reviewed primary path for canonical dev.search_open_platform_docs_rag.
+func newDevDocSearchCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "search [keyword]",
+		Short: "搜索开放平台文档",
+		Long:  `按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。`,
+		Example: `  dws dev doc search "MCP"
+  dws dev doc search --query "MCP" --page 1 --size 10`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && flagOrFallback(cmd, "query", "keyword") == "" {
+				_ = cmd.Flags().Set("query", args[0])
+			}
+			if err := validateRequiredFlagWithAliases(cmd, "query", "keyword"); err != nil {
+				return err
+			}
+			page, _ := strconv.Atoi(mustGetFlag(cmd, "page"))
+			if page < 1 {
+				page = 1
+			}
+			size, _ := strconv.Atoi(mustGetFlag(cmd, "size"))
+			if size < 1 {
+				size = 10
+			}
+			return callMCPTool("search_open_platform_docs", map[string]any{
+				"keyword": flagOrFallback(cmd, "query", "keyword"),
+				"page":    page,
+				"size":    size,
+			})
+		},
+	}
+	cmd.Flags().String("query", "", "搜索关键词 (必填)")
+	cmd.Flags().String("keyword", "", "搜索关键词 (--query 的别名)")
+	_ = cmd.Flags().MarkHidden("keyword")
+	cmd.Flags().String("page", "1", "页码，默认 1")
+	cmd.Flags().String("size", "10", "每页数量，默认 10")
+	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+		Name:        "keyword",
+		Type:        "string",
+		Description: "搜索关键词；也可通过 --query 传入",
+		Required:    false,
+		Index:       0,
+	})
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "通过 dev 兼容入口搜索开放平台文档",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "devdoc", RPCName: "search_open_platform_docs",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "通过 dev 兼容入口搜索开放平台文档",
+				UseWhen:      []string{"明确需要验证或使用 dev doc search 入口时"},
+				AvoidWhen:    []string{"常规开放平台文档检索优先使用可用的 devdoc article search"},
+				Examples:     []string{"dws dev doc search --query \"MCP\" --size 10"},
+			},
+		},
+	})
 	return cmd
 }

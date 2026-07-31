@@ -16,11 +16,32 @@
 // MCP server (helper uses callMCPToolOnServer("im", ...)), reflected in Product.
 package ding
 
-import "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+)
 
 var List = shortcut.Shortcut{
 	Service: "ding", Command: "+list", Product: "im",
 	Description: "查询 DING 消息列表", Intent: "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。", Risk: shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "查询 DING 消息列表",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "查询 DING 消息列表",
+			UseWhen:      []string{"当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws ding +list"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "cursor", Type: shortcut.FlagInt, Desc: "分页游标 (可选)"},
 		{Name: "type", Type: shortcut.FlagString, Default: "ALL", Desc: "类型 (可选，默认 ALL)"},
@@ -42,6 +63,23 @@ var List = shortcut.Shortcut{
 var ReceiverStatus = shortcut.Shortcut{
 	Service: "ding", Command: "+receiver-status", Product: "im",
 	Description: "查询 DING 消息接收人已读状态", Intent: "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。", Risk: shortcut.RiskRead,
+	Safety: cli.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "查询 DING 消息接收人已读状态",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "查询 DING 消息接收人已读状态",
+			UseWhen:      []string{"当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws ding +receiver-status --ding-id <DING_ID>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "ding-id", Type: shortcut.FlagString, Desc: "openDingId", Required: true},
 	},
@@ -55,6 +93,23 @@ var ReceiverStatus = shortcut.Shortcut{
 var SendPersonal = shortcut.Shortcut{
 	Service: "ding", Command: "+send-personal", Product: "im",
 	Description: "以本人身份发送 DING 给指定人", Intent: "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。", Risk: shortcut.RiskWrite,
+	Safety: cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "以本人身份发送 DING 给指定人",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "以本人身份发送 DING 给指定人",
+			UseWhen:      []string{"当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws ding +send-personal --users <VALUES> --content <CONTENT>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "接收人 openDingTalkId 列表 (CSV)", Required: true},
 		{Name: "content", Type: shortcut.FlagString, Desc: "消息内容", Required: true},
@@ -101,6 +156,23 @@ var SendByMessage = shortcut.Shortcut{
 var RecallPersonal = shortcut.Shortcut{
 	Service: "ding", Command: "+recall-personal", Product: "im",
 	Description: "撤回本人发起的 DING", Intent: "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。", Risk: shortcut.RiskHighWrite,
+	Safety: cli.SafetySpec{
+		Effect: "destructive", Risk: "high",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Schema: corecmd.SchemaDecl{
+		Description: "撤回本人发起的 DING",
+		Interface: &corecmd.InterfaceDecl{
+			Mode: "composite", Availability: "available",
+			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: corecmd.SelectionDecl{
+			AgentSummary: "撤回本人发起的 DING",
+			UseWhen:      []string{"当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws ding +recall-personal --id <ID>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "openDingId", Required: true},
 	},

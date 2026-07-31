@@ -19,11 +19,11 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // TestCrossPlatformCoverageFromShortcutMapsSharedBase verifies FromShortcut
-// projects the complete live Shortcut surface into cmdcore.
+// projects the complete live Shortcut surface into command.
 func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	s := Shortcut{
 		Service:     "chat",
@@ -56,7 +56,7 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	if !cs.Hidden || cs.Example != "  dws chat +demo --name a" {
 		t.Fatalf("hidden/example = %v/%q", cs.Hidden, cs.Example)
 	}
-	// Long carries ONLY the intent prose: cmdcore.NewCommand renders the
+	// Long carries ONLY the intent prose: corecmd.New renders the
 	// 参数约束 section, so it must not already be present here.
 	if strings.Contains(cs.Long, "参数约束") {
 		t.Fatalf("Long must not pre-render 参数约束: %q", cs.Long)
@@ -78,7 +78,7 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	if len(cs.Flags) != 5 {
 		t.Fatalf("flags len = %d, want 5", len(cs.Flags))
 	}
-	wantKinds := []cmdcore.FlagKind{cmdcore.KindString, cmdcore.KindInt, cmdcore.KindBool, cmdcore.KindStringSlice, cmdcore.KindString}
+	wantKinds := []corecmd.FlagKind{corecmd.KindString, corecmd.KindInt, corecmd.KindBool, corecmd.KindStringSlice, corecmd.KindString}
 	for i, want := range wantKinds {
 		if cs.Flags[i].Kind != want {
 			t.Fatalf("flag[%d].Kind = %v, want %v", i, cs.Flags[i].Kind, want)
@@ -86,7 +86,7 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	}
 	name := cs.Flags[0]
 	if name.Name != "name" || !name.Required || name.Default != "d" ||
-		!name.Hidden || name.ValidationMode != cmdcore.ValidationShortcut ||
+		!name.Hidden || name.ValidationMode != corecmd.ValidationShortcut ||
 		name.RequiredError != "缺少必填参数 --name：名称" ||
 		strings.Join(name.Enum, ",") != "a,b" {
 		t.Fatalf("name flag base fields = %#v", name)
@@ -103,13 +103,13 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	if len(cs.Constraints) != 4 {
 		t.Fatalf("constraints len = %d, want 4", len(cs.Constraints))
 	}
-	if cs.Constraints[0].Kind != cmdcore.ExactlyOne || cs.Constraints[0].Description != "二选一" {
+	if cs.Constraints[0].Kind != corecmd.ExactlyOne || cs.Constraints[0].Description != "二选一" {
 		t.Fatalf("constraint[0] = %#v", cs.Constraints[0])
 	}
-	if cs.Constraints[1].Kind != cmdcore.AtLeastOne || cs.Constraints[2].Kind != cmdcore.MutuallyExclusive {
+	if cs.Constraints[1].Kind != corecmd.AtLeastOne || cs.Constraints[2].Kind != corecmd.MutuallyExclusive {
 		t.Fatalf("constraint kinds = %#v", cs.Constraints)
 	}
-	if cs.Constraints[3].Kind != cmdcore.Custom ||
+	if cs.Constraints[3].Kind != corecmd.Custom ||
 		cs.Constraints[3].Description != "自定义由 Validate 保证" {
 		t.Fatalf("custom constraint = %#v", cs.Constraints[3])
 	}
@@ -140,7 +140,7 @@ func TestCrossPlatformCoverageFromShortcutMatchesMountSurface(t *testing.T) {
 	}
 
 	mounted := mount(s)
-	projected := cmdcore.NewCommand(FromShortcut(s))
+	projected := corecmd.New(FromShortcut(s))
 
 	mounted.Flags().VisitAll(func(want *pflag.Flag) {
 		got := projected.Flags().Lookup(want.Name)

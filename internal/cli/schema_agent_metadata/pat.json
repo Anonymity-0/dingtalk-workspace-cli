@@ -3,14 +3,14 @@
   "tools": {
     "pat browser-policy": {
       "agent_summary": "配置 PAT 授权流程是否允许打开本地浏览器",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws pat browser-policy --enabled --format json",
         "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
@@ -18,13 +18,13 @@
       "field_provenance": {
         "agent_summary": {
           "value": "配置 PAT 授权流程是否允许打开本地浏览器",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "配置 PAT 授权流程是否允许打开本地浏览器",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -32,13 +32,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -48,7 +48,7 @@
           "value": [
             "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -56,7 +56,7 @@
               "value": [
                 "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -64,13 +64,13 @@
         },
         "confirmation": {
           "value": "not_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -84,13 +84,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -107,7 +107,7 @@
             "dws pat browser-policy --enabled --format json",
             "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -116,7 +116,7 @@
                 "dws pat browser-policy --enabled --format json",
                 "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -124,13 +124,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -144,13 +144,13 @@
         },
         "interface_mode": {
           "value": "local",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "local",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -158,13 +158,13 @@
         },
         "interface_reason": {
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -172,14 +172,14 @@
         },
         "interface_ref": {
           "value": null,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
@@ -188,13 +188,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -202,13 +202,13 @@
         },
         "risk": {
           "value": "medium",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -224,7 +224,7 @@
           "value": [
             "需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -232,7 +232,7 @@
               "value": [
                 "需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -245,7 +245,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "skills/mono/references/products/pat.md"
       ],
       "use_when": [
@@ -254,7 +254,7 @@
     },
     "pat chmod": {
       "agent_summary": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
-      "agent_summary_source": "cmdcore.SchemaDecl",
+      "agent_summary_source": "corecmd.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "普通 OAuth 登录用 auth，不要用 pat",
@@ -263,20 +263,20 @@
       ],
       "confirmation": "user_required",
       "effect": "write",
-      "effect_source": "cmdcore.contract",
+      "effect_source": "corecmd.contract",
       "examples": [
         "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -284,13 +284,13 @@
         },
         "availability": {
           "value": "available",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "available",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -308,7 +308,7 @@
             "授权产品、grant-type 或 session-id 未明确时不要执行写入",
             "只要改本地浏览器打开策略时用 pat browser-policy"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -318,7 +318,7 @@
                 "授权产品、grant-type 或 session-id 未明确时不要执行写入",
                 "只要改本地浏览器打开策略时用 pat browser-policy"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -326,13 +326,13 @@
         },
         "confirmation": {
           "value": "user_required",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "user_required",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -347,13 +347,13 @@
         },
         "effect": {
           "value": "write",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -376,7 +376,7 @@
           "value": [
             "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -384,7 +384,7 @@
               "value": [
                 "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -392,13 +392,13 @@
         },
         "idempotency": {
           "value": "unknown",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -412,13 +412,13 @@
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "mcp",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -432,13 +432,13 @@
         },
         "interface_ref": {
           "value": "pat.pat.batch_grant",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "pat.pat.batch_grant",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -452,13 +452,13 @@
         },
         "reviewed": {
           "value": true,
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": true,
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -472,13 +472,13 @@
         },
         "risk": {
           "value": "high",
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "high",
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             },
@@ -496,7 +496,7 @@
             "命令提示缺少行为授权，需要按产品或 scope 批量授权",
             "先 --dry-run 查看 selected/skipped/pending，用户确认后再执行"
           ],
-          "source": "cmdcore.contract",
+          "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
@@ -505,7 +505,7 @@
                 "命令提示缺少行为授权，需要按产品或 scope 批量授权",
                 "先 --dry-run 查看 selected/skipped/pending，用户确认后再执行"
               ],
-              "source": "cmdcore.contract",
+              "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
             }
@@ -521,7 +521,7 @@
       "reviewed": true,
       "risk": "high",
       "source_refs": [
-        "cmdcore.SchemaDecl",
+        "corecmd.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.pat.batch_grant",
         "skills/mono/references/products/pat.md"
       ],

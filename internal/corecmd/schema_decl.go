@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmdcore
+package corecmd
 
 import (
 	"fmt"
@@ -96,7 +96,7 @@ type IdentityDecl struct {
 // only fail later, opaquely, in generated artifacts. Failing at construction
 // keeps the error next to the authoring mistake and prevents silent drift
 // between cobra prose (Short/Long/Example) and the published Schema values.
-func validateSchemaDecl(spec CommandSpec) {
+func validateSchemaDecl(spec Spec) {
 	if spec.Schema.empty() {
 		return
 	}
@@ -117,7 +117,7 @@ func validateSchemaDecl(spec CommandSpec) {
 		missing = append(missing, "Schema.Selection.Examples")
 	}
 	// Interface is an unconditional catalog required key for declared tools
-	// (no hints fallback). CommandSpec.Safety is validated separately and is
+	// (no hints fallback). Spec.Safety is validated separately and is
 	// the single source for both runtime confirmation and the Schema block.
 	if iface := spec.Schema.Interface; iface == nil ||
 		strings.TrimSpace(iface.Mode) == "" || strings.TrimSpace(iface.Availability) == "" {
@@ -131,6 +131,11 @@ func validateSchemaDecl(spec CommandSpec) {
 			"command %q declares Schema but is missing %s: a declared Schema is the final source and must carry the full reviewed prose (no hints fallback)",
 			spec.Use, strings.Join(missing, ", ")))
 	}
+}
+
+// Empty reports whether no SchemaDecl field was authored.
+func (s SchemaDecl) Empty() bool {
+	return s.empty()
 }
 
 // empty reports whether no SchemaDecl field was authored.

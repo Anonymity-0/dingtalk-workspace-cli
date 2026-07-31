@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
 	"github.com/spf13/cobra"
 )
@@ -69,6 +70,25 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			return callMCPToolCellInfos(toolArgs)
 		},
 	}
+	DeclareLeafMetadata(rangeReadCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "读取工作表指定范围的单元格数据（可取格式化值/原始值/公式）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: the CLI calls sheet/get_cell_infos, which is absent from the pinned MCP metadata snapshot; the incompatible sheet/get_range contract must not be advertised.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "读取工作表指定范围的单元格数据（可取格式化值/原始值/公式）。",
+				UseWhen:      []string{"需要查看 axls 工作表内容或指定 A1 范围时；大表应限制 range"},
+				AvoidWhen:    []string{"搜索关键字用 sheet find；纯 CSV 文本导出区域用 sheet csv-get；本地 xlsx 用 doc download；AI 表格记录用 aitable record query"},
+				Examples:     []string{"dws sheet range read --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:D10\""},
+			},
+		},
+	})
 	rangeReadCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	rangeReadCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (不传则默认第一个工作表)")
 	rangeReadCmd.Flags().String("range", "", "读取范围，A1 表示法 (如 A1:D10，不传则读取全部数据)")
@@ -207,6 +227,25 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			})
 		},
 	}
+	DeclareLeafMetadata(rangeUpdateCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或含公式时使用。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "update_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或含公式时使用。",
+				UseWhen:      []string{"需要写入少量单元格、公式或超链接，且能提供 sheetId 与精确 range 时"},
+				AvoidWhen:    []string{"大批量纯值写入优先 sheet csv-put；末尾追加行用 append；全局替换文本用 replace；只改样式用 range set-style；清整片区域用 range clear"},
+				Examples:     []string{"dws sheet range update --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1\" --values '[[{\"type\":\"text\",\"text\":\"张三\"}]]'"},
+			},
+		},
+	})
 	rangeUpdateCmd.Flags().String("node", "", "表格文档 ID (必填)")
 	rangeUpdateCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	rangeUpdateCmd.Flags().String("range", "", "目标单元格区域地址，如 A1:B3 (必填)")
@@ -246,6 +285,25 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			return callMCPTool("clear_range", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(rangeClearCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "清除指定范围的内容、格式或全部（需确认后加 --yes）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "clear_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "清除指定范围的内容、格式或全部（需确认后加 --yes）。",
+				UseWhen:      []string{"需要清空一片区域且保留行列占位时"},
+				AvoidWhen:    []string{"要物理删除行列用 delete-dimension；删整张工作表用 delete-sheet；单格写空可用 range update 但整片清除应优先本命令"},
+				Examples:     []string{"dws sheet range clear --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:B3\" --type content"},
+			},
+		},
+	})
 	rangeClearCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	rangeClearCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	rangeClearCmd.Flags().String("range", "", "清除范围，A1 表示法 (必填，如 A1:B3)")
@@ -289,6 +347,25 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			return callMCPTool("sort_range", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(rangeSortCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "对指定区域排序（改变物理行序）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "sort_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "对指定区域排序（改变物理行序）。",
+				UseWhen:      []string{"需要按某列对一块矩形区域排序，且不依赖全局筛选时"},
+				AvoidWhen:    []string{"已有全局筛选时按筛选范围排序用 filter sort；不要用读出再写回模拟排序"},
+				Examples:     []string{"dws sheet range sort --node NODE_ID --sheet-id SHEET_ID --range A1:D10 --sort-keys '[{\"column\":\"A\",\"ascending\":true}]'"},
+			},
+		},
+	})
 	rangeSortCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	rangeSortCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	rangeSortCmd.Flags().String("range", "", "排序范围，A1 表示法 (必填，如 A1:D10)")
@@ -327,6 +404,25 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			return callMCPTool("fill_range", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(rangeFillCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "按源区域对目标区域做自动填充（复制或序列）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "fill_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "按源区域对目标区域做自动填充（复制或序列）。",
+				UseWhen:      []string{"需要像拖拽填充一样把源范围扩展到目标范围时"},
+				AvoidWhen:    []string{"直接写死值用 range update/csv-put；区域复制到另一位置用 range copy-to"},
+				Examples:     []string{"dws sheet range fill --node <NODE_ID> --sheet-id <SHEET_ID> --source-range \"A1:A5\" --target-range \"A6:A20\""},
+			},
+		},
+	})
 	rangeFillCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	rangeFillCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	rangeFillCmd.Flags().String("source-range", "", "源数据范围，A1 表示法 (必填，如 A1:A5)")
@@ -369,6 +465,25 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			return callMCPTool("copy_range", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(rangeCopyCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "将源范围复制到目标位置。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "copy_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "将源范围复制到目标位置。",
+				UseWhen:      []string{"需要把一块区域原样复制到另一位置（可跨工作表）时"},
+				AvoidWhen:    []string{"移动而不是复制用 range move-to；自动填充序列用 range fill"},
+				Examples:     []string{"dws sheet range copy-to --node NODE_ID --sheet-id SHEET_ID --source-range \"A1:C5\" --target-range \"E1\""},
+			},
+		},
+	})
 	rangeCopyCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	rangeCopyCmd.Flags().String("sheet-id", "", "源工作表 ID 或名称 (必填)")
 	rangeCopyCmd.Flags().String("source-range", "", "源范围，A1 表示法 (必填，如 A1:C5)")
@@ -409,6 +524,25 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			return callMCPTool("move_range", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(rangeMoveCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "将源范围移动到目标位置（需确认后加 --yes）。",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "sheet", RPCName: "move_range",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "将源范围移动到目标位置（需确认后加 --yes）。",
+				UseWhen:      []string{"需要把区域从源位置挪到目标位置且源处应腾空时"},
+				AvoidWhen:    []string{"只需复制保留源用 range copy-to；移动整行/整列用 move-dimension"},
+				Examples:     []string{"dws sheet range move-to --node NODE_ID --sheet-id SHEET_ID --source-range \"A1:C5\" --target-range \"E1\""},
+			},
+		},
+	})
 	rangeMoveCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	rangeMoveCmd.Flags().String("sheet-id", "", "源工作表 ID 或名称 (必填)")
 	rangeMoveCmd.Flags().String("source-range", "", "源范围，A1 表示法 (必填，如 A1:C5)")

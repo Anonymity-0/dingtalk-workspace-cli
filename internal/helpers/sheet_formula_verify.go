@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"os"
 	"strings"
@@ -60,6 +61,25 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 	cmd.Flags().Int("max-locations-per-error", 0, "每种错误类型最多返回的位置数")
 	cmd.Flags().Int("max-cells", 0, "最多扫描的单元格数")
 	cmd.Flags().Bool("exit-on-error", false, "发现公式错误时返回非 0 退出码，便于 CI/自动化使用")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: LeafSchema{
+			Description: "扫描表格公式单元格并按错误类型聚合返回错误数量与位置",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "扫描表格公式单元格并按错误类型聚合返回错误数量与位置",
+				UseWhen:      []string{"用户说 校验公式/检查公式错误/公式错误扫描"},
+				AvoidWhen:    []string{"读取公式文本用 range read --value-render-option formula"},
+				Examples:     []string{"dws sheet formula-verify --node <NODE_ID> --format json"},
+			},
+		},
+	})
 	return cmd
 }
 

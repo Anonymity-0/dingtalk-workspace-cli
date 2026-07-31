@@ -1,11 +1,11 @@
 # RFC：将 DWS 命令执行收敛到一套类型化契约
 
 - **状态**：draft v5.1，征求设计评审
-- **范围**：`internal/cmdcore`、`internal/helpers`（`LeafSpec`）、`internal/shortcut`
+- **范围**：`internal/corecmd`、`internal/helpers`（`LeafSpec`）、`internal/shortcut`
 - **实现基线**：PR #830 的 `6fb08c9e`
 - **应丢弃的原型**：`0f08484d`（`Invoke` / `Orchestrate` / `Ctx`）
 - **同源决策**：[`flag-help-schema-homology.md`](flag-help-schema-homology.md)（路径 A：Contract 权威）
-- **框架声明定义**：本文 **§5.0**（今日 `CommandSpec`/`LeafSpec` 与目标 `Contract`）
+- **框架声明定义**：本文 **§5.0**（今日 `corecmd.Spec`/`LeafSpec` 与目标 `Contract`）
 
 本文档取代收敛方案的前三版草案。它保留了 PR #830 中有价值的部分——一份声明同时驱动运行时校验、Runtime Schema 和帮助信息，外加严格的漂移门禁——但不把原型提交引入的派发 API 固化下来。
 
@@ -38,7 +38,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 
 > 收敛到一套可执行的 CLI **契约**，而不是一个万能结构体，也不是「一次后端调用」与「多次后端调用」之间的区分。
 
-声明与执行在**框架边界**处分离，而不是靠强迫每条命令各自持有一个 Handler 来分离（定义见 **§5.0**）。一条受管命令声明的是 CLI 表面、校验规则，以及——当它只有一次后端调用时——调用绑定；执行钩子不得充当第二套表面权威。固定流水线由框架执行。只有在控制流无法声明时才存在命令式 `Handler`。MCP 载荷绑定与响应投影都不放在 `cmdcore` 内。裸 Cobra 命令被明确排除在受管命令保证之外。现存裸命令通过清单方式豁免；只有新增的裸注册才需要迁移元数据。
+声明与执行在**框架边界**处分离，而不是靠强迫每条命令各自持有一个 Handler 来分离（定义见 **§5.0**）。一条受管命令声明的是 CLI 表面、校验规则，以及——当它只有一次后端调用时——调用绑定；执行钩子不得充当第二套表面权威。固定流水线由框架执行。只有在控制流无法声明时才存在命令式 `Handler`。MCP 载荷绑定与响应投影都不放在 `command` 内。裸 Cobra 命令被明确排除在受管命令保证之外。现存裸命令通过清单方式豁免；只有新增的裸注册才需要迁移元数据。
 
 ---
 
@@ -59,11 +59,11 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 13. 每一次受管的后端/输出副作用都必须由调用级许可（permit）把关；不要把裸输入流或裸后端 helper 暴露给受管 Handler。
 14. 保持遗留行为 bug-for-bug 兼容，**除非**该行为本身是正确性缺陷。§3.4 的非交互确认要在差分门禁能够要求它之前修好，因为兼容门禁会保护它所度量的一切。
 15. 把「没有可用的交互输入」当作一种独立的确认结果，与接受和拒绝都不同。
-16. **flag / help / schema 参数面同源取路径 A，且 Contract 必须嵌入 Schema**：Contract（LeafSpec 门面）经 `cmdcore.NewCommand` 写入 cobra Schema 注解并注册类型化 Final，供 catalog/agent metadata 组装消费；MCP meta 不得创建 CLI flag；1:1 MCP 透传仅作可选子集。**硬规则**：每份 help/Schema 事实须 **声明 OR 人工标注**，禁止纯推断。**声明** = `LeafSpec`/`CommandSpec` 数据字段（`Flags`/`Constraints`/`Safety`/…），钩子不算声明；未设完整 SafetySpec 的旧写命令须 `runtime_gate` 标注。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.1–§1.3。
-16. 让 dry-run 输出与 `@file`/stdin 输入成为声明式的契约能力，而不是逐 handler 的代码，这样覆盖率就是框架的属性，而不依赖作者自觉。
-17. 从 M1 起要求新命令使用新核心，使框架在 Shortcut 分批迁移之前就已改善代码库。
-18. 把 LeafSpec 已上线的 `Bind → Call → callMCPTool` 路径视为「声明可以完成执行」的存在性证明：27 个源声明 / 28 条上线命令，生产环境 `RunE` 用量为零。Shortcut 应当获得同样的绑定词汇，而不是把每个 `Execute` 都包成 Handler。
-19. 用**残留的手写执行体数量**衡量迁移是否成功（当前为 376 中的约 31 条：多步加纯本地），而不是看是否每条命令都有非 nil 的 Handler。
+16. **flag / help / schema 参数面同源取路径 A，且 Contract 必须嵌入 Schema**：Contract（LeafSpec 门面）经 `corecmd.New` 写入 cobra Schema 注解并注册类型化 Final，供 catalog/agent metadata 组装消费；MCP meta 不得创建 CLI flag；1:1 MCP 透传仅作可选子集。**硬规则**：每份 help/Schema 事实须 **声明 OR 人工标注**，禁止纯推断。**声明** = `LeafSpec`/`corecmd.Spec` 数据字段（`Flags`/`Constraints`/`Safety`/…），钩子不算声明；未设完整 SafetySpec 的旧写命令须 `runtime_gate` 标注。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md) §1.1–§1.3。
+17. 让 dry-run 输出与 `@file`/stdin 输入成为声明式的契约能力，而不是逐 handler 的代码，这样覆盖率就是框架的属性，而不依赖作者自觉。
+18. 从 M1 起要求新命令使用新核心，使框架在 Shortcut 分批迁移之前就已改善代码库。
+19. 把 LeafSpec 已上线的 `Bind → Call → callMCPTool` 路径视为「声明可以完成执行」的存在性证明：27 个源声明 / 28 条上线命令，生产环境 `RunE` 用量为零。Shortcut 应当获得同样的绑定词汇，而不是把每个 `Execute` 都包成 Handler。
+20. 用**残留的手写执行体数量**衡量迁移是否成功（当前为 376 中的约 31 条：多步加纯本地），而不是看是否每条命令都有非 nil 的 Handler。
 
 ---
 
@@ -128,7 +128,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 
 PR #830 为项目提供了一个有用的共享基座和针对它的直接测试。其零漂移结果，是对这些产物所覆盖的生成表面的有效证据。它的包级测试覆盖了 LeafSpec 运行时流水线。
 
-PR #830 当时**没有**证明 `FromShortcut` 可以替换上线的 `mount()`，因为该适配器尚未上线并会丢失运行时语义。后续收敛阶段已经补齐 Hidden、typed default、Changed-required、Enum、Custom/Validate 与隐藏参数 Schema 投影，并将 live `mount()` 切换为 `cmdcore.NewCommand(FromShortcut(s))`；该结论由全量 Shortcut surface 差异测试、Catalog 零漂移和统一确认行为测试守护。
+PR #830 当时**没有**证明 `FromShortcut` 可以替换上线的 `mount()`，因为该适配器尚未上线并会丢失运行时语义。后续收敛阶段已经补齐 Hidden、typed default、Changed-required、Enum、Custom/Validate 与隐藏参数 Schema 投影，并将 live `mount()` 切换为 `corecmd.New(FromShortcut(s))`；该结论由全量 Shortcut surface 差异测试、Catalog 零漂移和统一确认行为测试守护。
 
 ### 3.4 一个兼容策略绝不应保留的已上线缺陷
 
@@ -156,7 +156,7 @@ return answer == "yes" || answer == "y"
 影响范围与归类：
 
 - 全部 168 个 write/high-risk Shortcut 受影响；read 命令从不提示。
-- `cmdcore.ConfirmSafety` 读取 `cmd.InOrStdin()` 而非进程 stdin，因此它是可测试的；EOF 会显式返回 `confirmation_required`，不会把未执行误报为成功。
+- `corecmd.ConfirmSafety` 读取 `cmd.InOrStdin()` 而非进程 stdin，因此它是可测试的；EOF 会显式返回 `confirmation_required`，不会把未执行误报为成功。
 - 这**不是** §5.9 的拒绝策略问题。那个问题是「真实拒绝应当产生哪个退出码」。这里没有任何人拒绝过：拒绝分支在 CLI 最常被使用的那种环境里默认就可达。
 - 由于这是用户可见的行为变更，它走 §9 的 approved delta 流程。该流程不依赖 Contract、解析器或 mcpbind，因此这项修复不受新核心的进度约束。
 - **因此它作为独立 hotfix（§8 中的 H0）先于本 RFC 的实现序列发布，而不是排在架构工作的第四个 PR。** 这是一个已上线的数据完整性级缺陷：168 条写命令在 agent/CI 环境下静默丢弃写操作并报告成功。把它排在一套架构改造之后，等于让缺陷的存续时间取决于一个与它无关的项目的进度。本 RFC 记录它、给出修复形态与门禁，但**不持有它的排期**；即使本 RFC 被否决或推迟，H0 也应照发。
@@ -202,7 +202,7 @@ Orchestrate func(*Ctx) error
 
 ### 4.1 `Invoke` 是由下一步就要移除的 MCP 泄漏所定义的
 
-`Invoke` 与 `Orchestrate` 之间唯一本质的区别，是 `cmdcore` 会在 `Invoke` 之前构建 `map[string]any`。一旦载荷绑定移出核心，两种形态都变成 `func(*Runtime) error`。
+`Invoke` 与 `Orchestrate` 之间唯一本质的区别，是 `command` 会在 `Invoke` 之前构建 `map[string]any`。一旦载荷绑定移出核心，两种形态都变成 `func(*Runtime) error`。
 
 因此旧的 S4 并不是一条独立的清理链。载荷绑定的分离与 handler 模型必须一起设计。
 
@@ -239,7 +239,7 @@ Definition（仅声明；不可编译）
           │
           │  恰好一个构造函数安装执行所有者
           ├── mcpbind.Bind(def, CallSpec[, WithProjector]) ──> *Executable
-          └── cmdcore.WithHandler(def, Handler[, WithPlan]) ──> *Executable
+          └── command.WithHandler(def, Handler[, WithPlan]) ──> *Executable
           │
           v
 解析 argv
@@ -273,7 +273,7 @@ Definition（仅声明；不可编译）
 
 | 层 | 含义 | 今日落点 |
 |---|---|---|
-| **声明（declare）** | `CommandSpec` / `LeafSpec` / `SchemaDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Schema` |
+| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `SchemaDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Schema` |
 | **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedSchemaDecl` → `RegisterRuntimeContractFinal` |
 | **Schema 透传** | 组装读取注册表，原样投影为 `ToolSpec` | `runtimeToolSpecFromContractFinal` |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
@@ -285,9 +285,9 @@ Definition（仅声明；不可编译）
 3. 已声明字段不得被 hints/registry 盖写。迁移期未声明叶可走旧路径。
 4. 受管（已绑定）叶上声明的 `Identity` 必须与绑定 entry 一致（`product_id`/`name`/`canonical_path`/`cli_path`/`aliases` 等）；不一致组装报错（`validateContractFinalIdentity`）。声明 identity 是钉扎与自描述，不是改写 registry 身份的通道。
 
-#### 5.0.2 今日契约字段（`CommandSpec` / `LeafSpec`）
+#### 5.0.2 今日契约字段（`corecmd.Spec` / `LeafSpec`）
 
-下列字段**是**框架声明面（经 `cmdcore.NewCommand` 生效并嵌入 `dws.schema.*`）：
+下列字段**是**框架声明面（经 `corecmd.New` 生效并嵌入 `dws.schema.*`）：
 
 - `Flags`（含 Name/Kind/Default/Required/MarkRequired/Usage 等注册面）
 - `Constraints`
@@ -307,10 +307,26 @@ Definition（仅声明；不可编译）
 3. 写副作用：新 Leaf 声明完整 `SafetySpec`（框架 `ConfirmSafety` + Schema Final）；未迁移旧路径显式标注 `runtime_gate`；二者皆无则不合格；
 4. Schema `ToolSpec` 全字段组均落在 §5.0.4 表中某一权威格，禁止无主字段。
 
+#### 5.0.2a 两种声明模式（完全托管 / 声明元数据）
+
+`LeafSpec` 词汇对应两种正式构建入口，产出同一 `ContractFinal`：
+
+| 模式 | 入口 | 声明面 | 执行面 | 适用 |
+|---|---|---|---|---|
+| **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Schema 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
+| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Schema`（经 `AttachSchema`） | **不**注册 flag、**不**接管参数投影；`user_required` 时用同一 Safety 包 `ConfirmSafety` | 既有命令补声明且执行体必须冻结 |
+
+选用规则：
+
+1. 新命令默认走完全托管模式。
+2. 既有命令要补 Agent Schema、但执行面暂时不能迁入 LeafSpec → 声明元数据模式；声明必须写在命令字面量旁（与完全托管同一作者点），禁止旁路 generated map。
+3. 声明元数据模式是**迁移态**：具备条件后应升级为完全托管；不得用它绕开「业务 flag 必须声明」的框架纪律。
+4. `DeclareLeafMetadata` 传入 Flags/Call/RunE 等执行面字段直接 panic，防止半接管。
+
 #### 5.0.3 与目标 `Contract` 的对应
 
 ```text
-今日 LeafSpec / CommandSpec.Flags|Constraints|Safety|…
+今日 LeafSpec / corecmd.Spec.Flags|Constraints|Safety|…
         ≈  目标 Definition.Contract
 今日 Call / Invoke / Orchestrate / RunE
         ≈  目标 mcpbind 派发 或 Handler（形态 1/2/3）
@@ -370,7 +386,7 @@ type Definition struct {
 }
 
 // Executable 把一份冻结的 Definition 与恰好一个执行所有者配对。所有字段均不导出，
-// 唯一构造函数是 mcpbind.Bind（形态 1/2）与 cmdcore.WithHandler（形态 3）。
+// 唯一构造函数是 mcpbind.Bind（形态 1/2）与 command.WithHandler（形态 3）。
 // 「无所有者」与「双所有者」都无法表达，因此 §4.4 对基数检查的批评不会在此重现。
 type Executable struct {
     definition Definition
@@ -819,10 +835,10 @@ RiskRead 禁止 EffectBackendWrite。RiskWrite 与 RiskHighRiskWrite 可在确�
 
 #### 5.5.1 Shortcut 兼容 Runtime
 
-后端中立性适用于 `cmdcore.Runtime`，而非每一个领域适配器。今天的 376 个 `Shortcut.Execute` 函数体依赖 Shortcut 拥有的、带 MCP、输出与便利方法的 `RuntimeContext`。契约编译器在不可变核心 Runtime 之上重建该门面，**作为迁移桥接，而非终态**：
+后端中立性适用于 `command.Runtime`，而非每一个领域适配器。今天的 376 个 `Shortcut.Execute` 函数体依赖 Shortcut 拥有的、带 MCP、输出与便利方法的 `RuntimeContext`。契约编译器在不可变核心 Runtime 之上重建该门面，**作为迁移桥接，而非终态**：
 
 ```go
-// package shortcut，不是 package cmdcore
+// package shortcut，不是 package corecmd
 type RuntimeDeps struct {
     Caller Caller
     Sink   ResultSink
@@ -832,8 +848,8 @@ type RuntimeDeps struct {
 func adaptHandler(
     s Shortcut,
     deps RuntimeDeps,
-) cmdcore.Handler {
-    return cmdcore.HandlerFunc(func(core *cmdcore.Runtime) error {
+) command.Handler {
+    return command.HandlerFunc(func(core *command.Runtime) error {
         rt := newRuntimeContext(core, s, deps)
         return s.Execute(rt)
     })
@@ -848,7 +864,7 @@ func adaptHandler(
 
 | 现有 `shortcut.RuntimeContext` 表面 | v2 来源 |
 |---|---|
-| `Str`、`Int`、`Bool`、`StrSlice` | 来自 `ResolvedValues` 的类型化 `cmdcore.Get` |
+| `Str`、`Int`、`Bool`、`StrSlice` | 来自 `ResolvedValues` 的类型化 `command.Get` |
 | `StrFirst` | 按已声明名称顺序取第一个非空值 |
 | `IntFirst` | 显式兼容键的 `ValueMeta` 优先，然后是主有效值 |
 | `Changed`、约束 helper 与 `RangeInt` | `ValueMeta` 与同一份不可变值 |
@@ -902,7 +918,7 @@ RiskRead 无需提示。Dry-run 跳过 write/high-risk 提示，但保持写许�
 
 ### 5.7 MCP 绑定适配器
 
-`internal/cmdcore/mcpbind`（或具有相同依赖方向的兄弟包）拥有载荷塑形：
+`internal/corecmd/mcpbind`（或具有相同依赖方向的兄弟包）拥有载荷塑形：
 
 ```go
 type Binding struct {
@@ -923,9 +939,9 @@ const (
     Always
 )
 
-func Param[T cmdcore.ValueType](
+func Param[T command.ValueType](
     backendName string,
-    key cmdcore.Key[T],
+    key command.Key[T],
     include IncludeMode,
     opts ...BindingOption[T],
 ) Binding
@@ -934,19 +950,19 @@ type CallSpec struct {
     Product  string
     Server   string
     Tool     string
-    Effect   cmdcore.EffectKind
+    Effect   command.EffectKind
     Bindings []Binding
 }
 
 type Caller interface {
     Call(
-        cmdcore.EffectPermit,
+        command.EffectPermit,
         CallRequest,
     ) (CallResult, error)
 }
 
 type ResultSink interface {
-    Write(cmdcore.EffectPermit, any) error
+    Write(command.EffectPermit, any) error
 }
 
 // ResponseProjector 在 ResultSink.Write 之前整形单个 CallResult。
@@ -956,15 +972,15 @@ type ResponseProjector func(CallResult) (any, error)
 func IdentityProjector() ResponseProjector
 
 func Uppercase() BindingOption[string]
-func PayloadDefault[T cmdcore.ValueType](T) BindingOption[T]
+func PayloadDefault[T command.ValueType](T) BindingOption[T]
 
 func Bind(
-    base cmdcore.Definition,
+    base command.Definition,
     call CallSpec,
     caller Caller,
     sink ResultSink,
     opts ...BindOption,
-) (*cmdcore.Executable, error)
+) (*command.Executable, error)
 
 func WithProjector(ResponseProjector) BindOption
 ```
@@ -972,18 +988,18 @@ func WithProjector(ResponseProjector) BindOption
 规则：
 
 - `Bind` 是形态 1/2 唯一的公开装配 API。它相对 `base.Contract` 校验每个绑定键，合并后端事实，安装框架派发器作为执行所有者，并返回 `*Executable`。调用方不能把从 Contract A 编译的 Plan 与 Definition B 分开组合。
-- `Bind` 接受 `Definition`，从不接受 `*Executable`；`cmdcore.WithHandler` 亦然。声明驱动派发与命令式 Handler 之间的互斥因此是结构性的；无需经评审的覆盖或运行时检查。
+- `Bind` 接受 `Definition`，从不接受 `*Executable`；`command.WithHandler` 亦然。声明驱动派发与命令式 Handler 之间的互斥因此是结构性的；无需经评审的覆盖或运行时检查。
 - **形态 1/2 不手写 `Definition.Effects`。** `Bind` 从 `CallSpec` 推导出封闭集合 `{CallSpec.Effect, EffectOutput}` 并把它安装进 `*Executable`。派发器随后申请的正是这两个许可（见下文），因此 §5.5 的「未声明的 effect 是内部安全错误」不会被派发器自己的路径触发。作者在形态 1/2 定义上把 `Effects` 设为非零是 `Bind` 错误，不是需要与 `CallSpec.Effect` 比对的「一致性」检查——同一事实只有一个来源，因为只有一处写它。要求作者写 `[后端 effect, EffectOutput]` 再检查它「与单数 `CallSpec.Effect` 一致」是自相矛盾的规则，会稳定产出 376 份错误声明。
-- 手写 `Effects` 只属于形态 3（`cmdcore.WithHandler`），那里没有 `CallSpec` 可推导，且多步/本地 effect 集合本就无法从任何单一事实导出。§5.5.2 的具名网络/本地文件 effect 因此始终是形态 3 的显式声明。
+- 手写 `Effects` 只属于形态 3（`command.WithHandler`），那里没有 `CallSpec` 可推导，且多步/本地 effect 集合本就无法从任何单一事实导出。§5.5.2 的具名网络/本地文件 effect 因此始终是形态 3 的显式声明。
 - `Bind` 仍按 §5.5 校验推导结果：`CallSpec.Effect` 必须与 Contract 的 `Risk` 相容——`RiskRead` 不得推导出 `EffectBackendWrite`——否则返回构造错误。推导免除的是作者的重复劳动，不是校验。
 - 派发器保留其校验过的深拷贝 Contract 的规范 digest，并实现 `ContractBoundHandler`。由于 `Executable` 持有冻结副本且调用方无法触及，该 digest 是针对内部 bug 的纵深防御，而不是防止调用方篡改的保证。
-- 编码通过 `Param[T]` 捕获的类型键经 `cmdcore.Get[T]` 读取；它从不接收原始字符串或公开 `any` 值。
+- 编码通过 `Param[T]` 捕获的类型键经 `command.Get[T]` 读取；它从不接收原始字符串或公开 `any` 值。
 - 包含/省略通过 `IncludeMode` 显式表达，并与编码正交。flag kind 从不静默决定是否发送 `0`、`false` 或空值。Shortcut 模式 `if rt.Changed(name) { params[…] = … }` 映射为 `WhenExplicit` / `WhenSupplied`；它不得继续以手写形式留在形态 1 候选内。
 - 仅载荷默认值留在绑定中，且从不满足 CLI required 规则。
 - `Bind` 拒绝 nil/typed-nil 的 Caller 或 ResultSink、未知键、重复后端键、类型不匹配、非法 include/effect 模式、Contract Safety.Effect/后端 effect 冲突以及不兼容的默认值。
 - 绑定选项有不透明内部，且对内置全函数编码器与类型化载荷默认值仅有封闭、具名的构造函数。没有公开的 `func(string) (any, error)` 转换钩子。可失败的用户输入转换属于 Resolve 或 Validator，因此在 Risk 之前完成。
 - 「全函数」指编码器对任意 T 值都不返回用户错误、也不 panic；内置编码器对其输入域有穷尽测试。
-- 在成功的 Bind、cmdcore Compile 与 Resolve 之后，在派发器内物化载荷不能产生用户校验错误。它仍可能浮现内部不变量失败、后端失败或输出错误。
+- 在成功的 Bind、command Compile 与 Resolve 之后，在派发器内物化载荷不能产生用户校验错误。它仍可能浮现内部不变量失败、后端失败或输出错误。
 - 私有派发器在 Caller 与 ResultSink 之前立即请求 `CallSpec.Effect` 与 EffectOutput 许可。两个接口都不接受裸上下文或 writer，因此上下文、dry-run 与毒化调用检查不会被意外跳过。
 - dry-run 下派发器根本不被调用。§5.11 拥有该路径：框架从 `CallSpec` 推导计划，交由当前渲染器渲染后返回——M1 是复刻遗留信封的兼容渲染器，原生计划渲染是后续 approved delta（§5.11.1）。没有第二条、派发器本地的预览分支。预览载荷/文本仍是每条形态 1/2 命令差分夹具的一部分。
 - 输出委托给显式的 `ResultSink`；适配器不写全局 stdout，也不猜测格式。
@@ -995,7 +1011,7 @@ func WithProjector(ResponseProjector) BindOption
   - 返回的 `error` 由框架**按既有分类透传，不重新包装**：`apperrors` 类型化错误原样保留其类别、消息与退出码；非 `apperrors` 的裸 error 映射到今天同一批 `*Project` helper 在 `Execute` 内返回同类 error 时所落入的那个类别。这条映射不是新政策，而是对现状的固定；M0 交付物 8 把这些边缘错误的当前类别记录为 golden，M5b 阶段 A 的逐条对等对照它比较。没有这条规则，M5b 阶段 A 那句「错误类别、消息与退出码逐条对等」按构造无法满足，因为框架侧的归类未定义；
   - 其 error 发生在 `ResultSink.Write` 之前，因此可观测顺序是「后端调用已发生、输出未写」。这与今天 `CallMCPData` 成功后 `*Project` 失败的行为相同，并在差分夹具中显式覆盖，而不是留给实现推断；
   - **不是**通用投影 DSL。外层 `{count, list}` 信封以后可获得封闭 helper；在复用证据足够之前，82 个独立字段映射保持为具名 Go 函数。
-- `Bind` 把后端身份注解合并进 `Definition.Facts`；cmdcore 投影这些事实而不导入 mcpbind。`CallSpec` 本身永不进入 cmdcore，也不涉及任意 `PostMount`。
+- `Bind` 把后端身份注解合并进 `Definition.Facts`；command 投影这些事实而不导入 mcpbind。`CallSpec` 本身永不进入 command，也不涉及任意 `PostMount`。
 
 当前生产 Leaf 总体只有两个 transform；二者都是大写字符串且不会失败。它们映射为全函数内置编码器。可失败的 transform 夹具仍是遗留路径的测试，不带入新的 mcpbind API。
 
@@ -1020,7 +1036,7 @@ func RegisterRaw(
 
 裸命令：
 
-- 不宣称 cmdcore 强制执行 Required/Constraint/Risk；
+- 不宣称 command 强制执行 Required/Constraint/Risk；
 - 在迁移前保留各自经评审的 Schema 元数据；
 - 不计入已收敛的受管定义。
 
@@ -1173,7 +1189,7 @@ Dry-run 安全性已由框架强制，不是缺口。遗留 runner 在 `--dry-ru
 
 ```go
 // 计划不是 Definition 字段：它属于执行所有者。形态 1/2 在 mcpbind.Bind
-// 内从 CallSpec 推导；形态 3 通过 cmdcore.WithHandler(def, h, cmdcore.WithPlan(p))
+// 内从 CallSpec 推导；形态 3 通过 command.WithHandler(def, h, command.WithPlan(p))
 // 提供。对 write/high-risk 形态 3 handler 必需，其余可选。
 
 type Planner interface {
@@ -1299,7 +1315,7 @@ type PlannedStep struct {
    - 28 条上线 Leaf 命令的既有构建/执行路径。
 12. 签入 28 条上线 Leaf 命令的 `--dry-run` 输出 golden，逐字保留当前 `executor.Result` 信封（§5.11.1）。M1 的兼容渲染器对照它比较；没有这份 golden，「dry-run 零增量」无法被证明，只能被声称。
 
-M0 不能对 Contract 编译或受管 Resolve 做基准，因为这些组件尚不存在。M1 记录首个 cmdcore/mcpbind 组件基线；M3 记录首个 376 定义 Contract 编译器/桥接基线。在此之前，冷启动/根/遗留端到端测量是跨实现回归门禁。
+M0 不能对 Contract 编译或受管 Resolve 做基准，因为这些组件尚不存在。M1 记录首个 command/mcpbind 组件基线；M3 记录首个 376 定义 Contract 编译器/桥接基线。在此之前，冷启动/根/遗留端到端测量是跨实现回归门禁。
 
 在本步骤可复现之前，暂定的 1195/141/92/368/594 普查不用作硬规划输入。
 
@@ -1333,7 +1349,7 @@ M0 不能对 Contract 编译或受管 Resolve 做基准，因为这些组件尚�
 
 LeafSpec 可保留为 Contract + mcpbind 之上的领域门面。在同一合并边界内，移除旧核心流水线及其 MCP 泄漏：
 
-- `CommandSpec` 与原型 `Ctx`/`Invoke`/`Orchestrate`；
+- `corecmd.Spec` 与原型 `Ctx`/`Invoke`/`Orchestrate`；
 - `BuildArgs`；
 - 核心的 `Bind`、`ArgDefault`、`Transform` 与 `OmitEmpty` 字段。
 
@@ -1353,7 +1369,7 @@ M1 还关闭入口，这使该里程碑本身就有价值，而不是仅作为 M
 
 **门禁**：
 
-- cmdcore 与 mcpbind 直接测试，变更代码覆盖率 100%；
+- command 与 mcpbind 直接测试，变更代码覆盖率 100%；
 - 非法静态/动态定义在命令可执行前失败；
 - 未知/错误 kind 访问返回编程错误；mcpbind 与 Shortcut 兼容桥在后端/输出副作用前失败闭合；
 - 任何执行所有者（派发器或 Handler）都不得在 required/enum/constraint/validator/Risk 检查之前运行；
@@ -1422,13 +1438,13 @@ type ExecutorSelector interface {
 
 在 M3 期间，`legacySurfaceCompiler` 仍是生产路径与独立对等预言机。P4 切换到规范表面后它仅用于测试。`contractSurfaceCompiler` 构建候选规范 Cobra 表面。运行时选择单独设计，且不得决定命令字段。
 
-在 `cmdcore.Runtime + ResolvedValues + RuntimeDeps` 之上实现 §5.5.1 Shortcut 兼容 Runtime。其签入的方法清单覆盖全部 23 个当前方法/helper：
+在 `command.Runtime + ResolvedValues + RuntimeDeps` 之上实现 §5.5.1 Shortcut 兼容 Runtime。其签入的方法清单覆盖全部 23 个当前方法/helper：
 
 - 类型化访问器与 `Changed` 读取不可变快照；
 - `StrFirst` 保留第一个非空顺序，而 `IntFirst` 在主有效值之前保留显式兼容键优先；
 - 声明式关系 helper 迁入核心；其余兼容校验器读取同一快照；
 - DryRun、Yes、参数、Context、Clock 与输出选项来自核心 Runtime；
-- CallMCP/Data/WriteData、JSON/错误行为、AI 打标与 Output 位于注入的 Shortcut 适配器，不在 cmdcore；
+- CallMCP/Data/WriteData、JSON/错误行为、AI 打标与 Output 位于注入的 Shortcut 适配器，不在 command；
 - 当前两处 `Command().Context()` 调用迁到 `Runtime.Context()`；Validate、Execute 与共享适配器不得读 Cobra flag 或流；
 - 隔离的 `legacyRuntimeSource` 仅为广告的遗留执行器保留旧的 Cobra 背书访问器，并随其删除。
 

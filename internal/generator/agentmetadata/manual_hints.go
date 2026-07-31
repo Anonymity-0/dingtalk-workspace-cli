@@ -220,7 +220,7 @@ func validateSelectionAuthoringContracts(opts Options) error {
 	}
 	expectedTools := expectedCanonicalToolSet(opts)
 	// Declared tools carry their selection fields in the Contract final
-	// overlay (cmdcore.SchemaDecl); they are exempt from hint-file coverage.
+	// overlay (corecmd.SchemaDecl); they are exempt from hint-file coverage.
 	// Hint rows for them may still exist during migration, but are no longer
 	// required and never win over the declaration.
 	for canonical := range expectedTools {

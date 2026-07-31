@@ -2,7 +2,7 @@
 set -eu
 
 # Ensure catalog confirmation=user_required exactly matches executable truth:
-# typed cmdcore Contract SafetySpec declarations plus migration-only metadata
+# typed corecmd Contract SafetySpec declarations plus migration-only metadata
 # runtime_gate != none entries.
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
@@ -34,7 +34,7 @@ jq -r '
   .tools
   | to_entries[]
   | select(.value.confirmation == "user_required")
-  | select(.value.field_provenance.confirmation.source == "cmdcore.contract")
+  | select(.value.field_provenance.confirmation.source == "corecmd.contract")
   | .key
 ' "$catalog" >"$tmp/contract_gated"
 
@@ -49,7 +49,7 @@ jq -r '
 
 if ! cmp -s "$tmp/truth_gated" "$tmp/catalog_required"; then
 	printf '%s\n' 'catalog confirmation=user_required differs from Contract SafetySpec + metadata runtime_gate truth' >&2
-	printf '%s\n' 'declare cmdcore Safety.Confirmation or update migration-only metadata runtime_gate, then regenerate schema' >&2
+	printf '%s\n' 'declare corecmd Safety.Confirmation or update migration-only metadata runtime_gate, then regenerate schema' >&2
 	diff -u "$tmp/truth_gated" "$tmp/catalog_required" || true
 	exit 1
 fi
@@ -74,7 +74,7 @@ jq -r --slurpfile catalog "$catalog" '
   | .value as $gate
   | $tools[$canonical] as $tool
   | select($tool != null)
-  | select($tool.field_provenance.confirmation.source != "cmdcore.contract")
+  | select($tool.field_provenance.confirmation.source != "corecmd.contract")
   | select(
       if $gate == "none" then
         $tool.confirmation != "not_required" or $tool.risk == "high" or $tool.effect == "destructive"

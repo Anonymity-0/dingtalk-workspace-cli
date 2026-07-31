@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
@@ -66,6 +67,32 @@ func newDingCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(dingMessageSendCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "以企业机器人发送应用内/短信/电话 DING",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "ding", RPCName: "send_ding_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "以企业机器人发送应用内/短信/电话 DING",
+				UseWhen:      []string{"需要用企业机器人向指定 userId 发送应用内、短信或电话 DING"},
+				AvoidWhen: []string{
+					"普通聊天消息用 chat message send / send-by-bot",
+					"需要用户身份 DING 时不要用本命令（机器人身份）",
+					"短信/电话有成本，用户未确认前不要发 call/sms",
+				},
+				Examples: []string{
+					"dws ding message send --robot-code <ROBOT_CODE> --users userId1,userId2 --content \"请查看\" --format json",
+					"dws ding message send --robot-code <ROBOT_CODE> --type call --users userId1 --content \"紧急告警\" --format json",
+				},
+			},
+		},
+	})
 
 	dingMessageRecallCmd := &cobra.Command{
 		Use:     "recall",
@@ -88,6 +115,25 @@ func newDingCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(dingMessageRecallCmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "撤回已发送的机器人 DING",
+			Interface: &LeafInterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "ding", RPCName: "recall_ding_message",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "撤回已发送的机器人 DING",
+				UseWhen:      []string{"已知 openDingId 与同一 robot-code，需要撤回机器人 DING"},
+				AvoidWhen:    []string{"需要以用户身份撤回 DING 时不要使用本命令"},
+				Examples:     []string{"dws ding message recall --robot-code <ROBOT_CODE> --id <OPEN_DING_ID> --format json"},
+			},
+		},
+	})
 
 	dingMessageListCmd := &cobra.Command{
 		Use:   "list",

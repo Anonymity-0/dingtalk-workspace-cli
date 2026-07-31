@@ -26,7 +26,7 @@ func TestAnnotateRuntimeRiskEmbedsContractMarker(t *testing.T) {
 	if !ok || got != "write" {
 		t.Fatalf("RuntimeContractRisk = %q %v", got, ok)
 	}
-	if cmd.Annotations[runtimeSchemaContractAnnotation] != "cmdcore" {
+	if cmd.Annotations[runtimeSchemaContractAnnotation] != "command" {
 		t.Fatalf("contract marker = %q", cmd.Annotations[runtimeSchemaContractAnnotation])
 	}
 	AnnotateRuntimeRisk(cmd, "")
@@ -67,7 +67,7 @@ func TestAnnotateRuntimeGateDeclareOrAnnotate(t *testing.T) {
 	if !HasDeclaredOrAnnotatedConfirmation(cmd) {
 		t.Fatal("annotated gate must satisfy declare-OR-annotate")
 	}
-	if cmd.Annotations[runtimeSchemaContractAnnotation] != "cmdcore" {
+	if cmd.Annotations[runtimeSchemaContractAnnotation] != "command" {
 		t.Fatalf("contract marker = %q", cmd.Annotations[runtimeSchemaContractAnnotation])
 	}
 }
@@ -78,7 +78,7 @@ func TestApplyContractGateToSafety(t *testing.T) {
 	if got.Confirmation != "user_required" {
 		t.Fatalf("gate must force user_required, got %#v", got)
 	}
-	if got.Effect != "write" || got.EffectSource != "cmdcore.contract_gate" {
+	if got.Effect != "write" || got.EffectSource != "corecmd.contract_gate" {
 		t.Fatalf("gate effect overlay = %#v", got)
 	}
 	if got.Risk != "medium" {

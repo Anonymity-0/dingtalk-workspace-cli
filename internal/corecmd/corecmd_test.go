@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmdcore
+package corecmd
 
 import (
 	"errors"
@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// cmdcore is a shared base package: it must be fully covered by its own direct
+// command is a shared base package: it must be fully covered by its own direct
 // tests rather than relying on cross-package coverpkg from its consumers, so the
 // per-package coverage CI job (which runs without -coverpkg) sees it covered.
 
@@ -641,7 +641,7 @@ func TestCrossPlatformCoverageConfirmSafety(t *testing.T) {
 	if err := ConfirmSafety(dry, testWriteSafety()); err != nil {
 		t.Fatal("--dry-run must bypass")
 	}
-	// interactive accept / decline
+	// interactive accept / decline (SetIn buffers count as readable answers)
 	for _, answer := range []string{"yes\n", "y\n", "YES\n"} {
 		if err := ConfirmSafety(newSafetyCmd(answer), testWriteSafety()); err != nil {
 			t.Fatalf("answer %q must confirm, got %v", answer, err)
@@ -664,7 +664,8 @@ func TestCrossPlatformCoverageConfirmSafety(t *testing.T) {
 func TestCrossPlatformCoverageConfirmSafetySuppressesPromptOffTerminal(t *testing.T) {
 	// Non-terminal stdin (buffer/pipe/EOF): the interactive prompt line must
 	// not pollute stderr — the structured error carries the semantics. Piped
-	// answers still confirm.
+	// answers still confirm for general ConfirmSafety (Sheet uses an outer
+	// --yes-only gate instead).
 	var stderr strings.Builder
 	cmd := newTestCommand()
 	cmd.PersistentFlags().Bool("yes", false, "")
@@ -776,7 +777,7 @@ func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
 	var gotArgs map[string]any
 	postMounted := false
 
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:     "route",
 		Short:   "S",
 		Long:    "L",
@@ -816,7 +817,7 @@ func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
 	if cmd.Annotations["dws.schema.constraints"] == "" {
 		t.Fatal("schema constraints not projected")
 	}
-	if cmd.Annotations["dws.schema.contract"] != "cmdcore" {
+	if cmd.Annotations["dws.schema.contract"] != "command" {
 		t.Fatalf("contract embed marker = %q", cmd.Annotations["dws.schema.contract"])
 	}
 	if got := cmd.Flags().Lookup("a").Annotations["dws.schema.property"]; len(got) == 0 || got[0] != "aKey" {
@@ -839,7 +840,7 @@ func TestCrossPlatformCoverageNewCommandRunEEscapeHatch(t *testing.T) {
 	// RunE bypasses the whole generated pipeline: the declared Required flag is
 	// left unset, so had the framework body run it would have failed validation.
 	ran := false
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:   "escape",
 		Flags: []FlagSpec{{Name: "x", Usage: "X", Required: true}},
 		RunE: func(*cobra.Command, []string) error {
@@ -862,7 +863,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 	// required failure stops before Validate/Dispatch
 	validated := false
 	dispatched := false
-	spec := CommandSpec{
+	spec := Spec{
 		Use:   "gate",
 		Flags: []FlagSpec{{Name: "need", Usage: "N", Required: true}, {Name: "other", Usage: "O"}},
 		Constraints: []Constraint{
@@ -877,7 +878,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 			return nil
 		},
 	}
-	cmd := NewCommand(spec)
+	cmd := New(spec)
 	cmd.SetArgs(nil)
 	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "need") {
 		t.Fatalf("required err = %v", err)
@@ -888,7 +889,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 
 	// constraint failure stops before Validate/Dispatch
 	validated, dispatched = false, false
-	cmd = NewCommand(spec)
+	cmd = New(spec)
 	cmd.SetArgs([]string{"--need", "a", "--other", "b"})
 	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "互斥") {
 		t.Fatalf("constraint err = %v", err)
@@ -900,7 +901,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 	// Validate hook failure stops before Dispatch
 	boom := errors.New("validate boom")
 	dispatched = false
-	cmd = NewCommand(CommandSpec{
+	cmd = New(Spec{
 		Use:      "hook",
 		Flags:    []FlagSpec{{Name: "x", Usage: "X"}},
 		Validate: func(*cobra.Command, []string) error { return boom },
@@ -919,7 +920,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 
 	// BuildArgs failure stops before Dispatch
 	dispatched = false
-	cmd = NewCommand(CommandSpec{
+	cmd = New(Spec{
 		Use:   "args",
 		Flags: []FlagSpec{{Name: "y", Usage: "Y", Transform: func(string) (any, error) { return nil, boom }}},
 		Invoke: func(*Ctx, map[string]any) error {
@@ -938,7 +939,7 @@ func TestCrossPlatformCoverageNewCommandStopsOnFailures(t *testing.T) {
 
 func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
 	dispatched := false
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:    "risky",
 		Safety: testDestructiveSafety(),
 		Flags:  []FlagSpec{{Name: "x", Usage: "X"}},
@@ -963,7 +964,7 @@ func TestCrossPlatformCoverageNewCommandDeclineCancels(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.T) {
-	mustPanic := func(name string, spec CommandSpec, needle string) {
+	mustPanic := func(name string, spec Spec, needle string) {
 		t.Helper()
 		defer func() {
 			r := recover()
@@ -974,23 +975,23 @@ func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.
 				t.Fatalf("%s: panic = %v, want %q", name, r, needle)
 			}
 		}()
-		NewCommand(spec)
+		New(spec)
 	}
 	flags := []FlagSpec{{Name: "x", Usage: "X"}}
 
 	// Zero dispatchers: a spec with no runnable body must never reach run time,
 	// where it would have prompted for confirmation and then exited 0 doing nothing.
-	mustPanic("no dispatcher", CommandSpec{Use: "bare", Safety: testDestructiveSafety(), Flags: flags},
+	mustPanic("no dispatcher", Spec{Use: "bare", Safety: testDestructiveSafety(), Flags: flags},
 		"must declare exactly one of RunE/Invoke/Orchestrate, got 0")
 
 	// Two competing dispatchers are equally a programming error.
-	mustPanic("two dispatchers", CommandSpec{
+	mustPanic("two dispatchers", Spec{
 		Use:         "both",
 		Flags:       flags,
 		Invoke:      func(*Ctx, map[string]any) error { return nil },
 		Orchestrate: func(*Ctx) error { return nil },
 	}, "got 2")
-	mustPanic("runE plus invoke", CommandSpec{
+	mustPanic("runE plus invoke", Spec{
 		Use:    "both2",
 		Flags:  flags,
 		RunE:   func(*cobra.Command, []string) error { return nil },
@@ -999,7 +1000,7 @@ func TestCrossPlatformCoverageNewCommandRequiresExactlyOneDispatcher(t *testing.
 
 	// ConfirmFirst without a user_required confirmation orders a gate that
 	// does not exist.
-	mustPanic("confirmFirst without confirmation", CommandSpec{
+	mustPanic("confirmFirst without confirmation", Spec{
 		Use:          "guarded",
 		Flags:        flags,
 		ConfirmFirst: true,
@@ -1020,7 +1021,7 @@ func TestCrossPlatformCoverageNewCommandOrchestrateDispatch(t *testing.T) {
 	}
 	t.Setenv("DWS_CMDCORE_ORCH_ENV", "from-env")
 	t.Setenv("DWS_CMDCORE_ORCH_BADINT", "not-a-number")
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use: "orch",
 		Flags: []FlagSpec{
 			{Name: "name", Usage: "N", Aliases: []string{"n-alias"}},
@@ -1086,7 +1087,7 @@ func TestCrossPlatformCoverageNewCommandOrchestrateDispatch(t *testing.T) {
 func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing.T) {
 	ran := false
 	build := func() *cobra.Command {
-		cmd := NewCommand(CommandSpec{
+		cmd := New(Spec{
 			Use:         "risky-orch",
 			Safety:      testDestructiveSafety(),
 			Flags:       []FlagSpec{{Name: "x", Usage: "X"}},
@@ -1121,7 +1122,7 @@ func TestCrossPlatformCoverageNewCommandOrchestrateHonorsConfirmation(t *testing
 }
 
 func TestNewCommandEmbedsContractFlagsWithoutLegacyRiskAnnotation(t *testing.T) {
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:    "wipe",
 		Safety: testDestructiveSafety(),
 		Flags: []FlagSpec{
@@ -1131,7 +1132,7 @@ func TestNewCommandEmbedsContractFlagsWithoutLegacyRiskAnnotation(t *testing.T) 
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
 	if _, ok := cmd.Annotations["dws.schema.risk"]; ok {
-		t.Fatal("cmdcore must not emit the legacy dws.schema.risk annotation")
+		t.Fatal("command must not emit the legacy dws.schema.risk annotation")
 	}
 	id := cmd.Flags().Lookup("id")
 	if id.Annotations["dws.schema.required"][0] != "true" {
@@ -1144,14 +1145,14 @@ func TestNewCommandEmbedsContractFlagsWithoutLegacyRiskAnnotation(t *testing.T) 
 		t.Fatalf("count type = %#v", cmd.Flags().Lookup("count").Annotations["dws.schema.type"])
 	}
 	// Empty Safety must not stamp the removed Risk annotation.
-	plain := NewCommand(CommandSpec{
+	plain := New(Spec{
 		Use:    "list",
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
 	if _, ok := plain.Annotations["dws.schema.risk"]; ok {
 		t.Fatal("empty Safety must not embed dws.schema.risk")
 	}
-	if plain.Annotations["dws.schema.contract"] != "cmdcore" {
+	if plain.Annotations["dws.schema.contract"] != "command" {
 		t.Fatal("contract marker still required when Safety empty")
 	}
 }
@@ -1199,7 +1200,7 @@ func TestBuildArgsIntArgDefaultFloor(t *testing.T) {
 
 func TestNewCommandMergesConstParams(t *testing.T) {
 	var got map[string]any
-	cmd := NewCommand(CommandSpec{
+	cmd := New(Spec{
 		Use:         "pub",
 		Flags:       []FlagSpec{{Name: "id", Usage: "ID", Bind: "versionId", Trim: true}},
 		ConstParams: map[string]any{"precheckOnly": false},
