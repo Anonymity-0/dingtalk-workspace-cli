@@ -35,17 +35,15 @@ func maxUnixSocketPath(goos string) int {
 }
 
 // IPCEndpoint returns the bus IPC endpoint for one identity: a Named Pipe
-// name on Windows, otherwise bus.sock inside workDir.
+// name on Windows, otherwise a deterministic Unix socket under os.TempDir.
 //
-// The canonical Unix location is <workDir>/bus.sock, but workDir derives
-// from the config dir, which can be arbitrarily deep (e.g. dwssb sandboxes
-// use ~/.dwssb/sandboxes/<name>/config/...). When the canonical path would
-// exceed the OS sun_path limit, the socket falls back to a short
-// deterministic path under os.TempDir keyed by a hash of workDir, so every
-// process (consume parent, forked _bus child, status/stop tooling) that
-// derives the endpoint from the same workDir agrees on the location.
-// bus.lock / bus.meta / bus.log always stay in workDir — only the socket
-// moves.
+// Unix sockets must live on a local filesystem that supports bind(2).
+// Config directories may reside on NFS, CSI, FUSE, or other shared mounts
+// that reject Unix socket creation with ENOTSUPP. Keeping the socket under
+// os.TempDir also guarantees a short path. The name is keyed by a hash of
+// workDir so every process (consume parent, forked _bus child, status/stop
+// tooling) that derives the endpoint from the same workDir agrees on the
+// location. bus.lock / bus.meta / bus.log always stay in workDir.
 //
 // This is the single source of truth for endpoint derivation; the cobra
 // layer and busctl must not re-implement the shape.
@@ -59,10 +57,6 @@ func ipcEndpointForOS(goos, workDir, editionName string, sourceKind SourceKind, 
 	}
 	if goos == "windows" {
 		return `\\.\pipe\dws-event-` + editionName + "-" + string(sourceKind) + "-" + identityHash
-	}
-	sock := filepath.Join(workDir, "bus.sock")
-	if len(sock) <= maxUnixSocketPath(goos) {
-		return sock
 	}
 	return filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash(workDir)+".sock")
 }

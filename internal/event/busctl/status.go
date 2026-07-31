@@ -69,8 +69,7 @@ type BusEntry struct {
 
 // IPCEndpoint returns the IPC endpoint for this entry. Delegates to
 // dwsevent.IPCEndpoint so status/stop dial exactly where consume and the
-// bus daemon bound (including the short-path fallback when WorkDir is too
-// deep for sun_path).
+// bus daemon bound (a local temp path on Unix and a named pipe on Windows).
 func (e BusEntry) IPCEndpoint() string {
 	hash := e.ClientIDHash
 	if e.IdentityHash != "" {

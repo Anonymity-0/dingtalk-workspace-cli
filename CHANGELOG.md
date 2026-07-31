@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Fixed
+
+- **Event bus sockets on shared filesystems** — Unix event buses now place their local IPC socket under the system temporary directory while retaining locks, metadata, logs, and subscription state in the configured Workdir. This prevents `dws event consume` from failing with `bind: errno 524` when `~/.dws` is hosted on NFS, CSI, FUSE, or another filesystem that does not support Unix Domain Sockets.
+
 ## [1.0.56-beta.2] - 2026-07-30
 
 This beta adds PRs #831 and #835 on top of v1.0.56-beta.1. It separates

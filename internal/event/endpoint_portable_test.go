@@ -14,6 +14,7 @@
 package event
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -33,7 +34,7 @@ func TestCrossPlatformCoverageEndpointPortableCoverageEdges(t *testing.T) {
 	if got := ipcEndpointForOS("windows", "ignored", "open", "", "hash"); got != `\\.\pipe\dws-event-open-app_stream-hash` {
 		t.Fatalf("Windows endpoint = %q", got)
 	}
-	if got := ipcEndpointForOS("darwin", "short", "open", SourceKindPersonalStream, "hash"); got != filepath.Join("short", "bus.sock") {
+	if got := ipcEndpointForOS("darwin", "short", "open", SourceKindPersonalStream, "hash"); got != filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash("short")+".sock") {
 		t.Fatalf("short Unix endpoint = %q", got)
 	}
 	if got := ipcEndpointForOS("darwin", strings.Repeat("x", 200), "open", SourceKindAppStream, "hash"); !strings.Contains(got, "dws-evt-") {

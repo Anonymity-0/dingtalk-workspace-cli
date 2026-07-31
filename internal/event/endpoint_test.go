@@ -31,7 +31,7 @@ func TestEndpointPlatformVariants(t *testing.T) {
 		t.Fatalf("Windows pipe = %q", pipe)
 	}
 	short := ipcEndpointForOS("darwin", "/tmp/events", "open", SourceKindPersonalStream, "hash")
-	if short != filepath.Join("/tmp/events", "bus.sock") {
+	if short != filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash("/tmp/events")+".sock") {
 		t.Fatalf("short Unix endpoint = %q", short)
 	}
 	long := ipcEndpointForOS("darwin", "/"+strings.Repeat("deep/", 40), "open", SourceKindAppStream, "hash")
@@ -40,16 +40,19 @@ func TestEndpointPlatformVariants(t *testing.T) {
 	}
 }
 
-func TestIPCEndpointShortWorkDirUsesCanonicalPath(t *testing.T) {
+func TestIPCEndpointShortWorkDirUsesLocalTempDir(t *testing.T) {
 	workDir := "/tmp/dws/events/open/app_stream/aabbccdd00112233"
 	got := IPCEndpoint(workDir, "open", SourceKindAppStream, "aabbccdd00112233")
-	want := filepath.Join(workDir, "bus.sock")
+	want := filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash(workDir)+".sock")
 	if got != want {
 		t.Fatalf("IPCEndpoint = %q, want %q", got, want)
 	}
+	if strings.HasPrefix(got, workDir) {
+		t.Fatalf("IPCEndpoint = %q, want endpoint outside workDir", got)
+	}
 }
 
-func TestIPCEndpointLongWorkDirFallsBackUnderTempDir(t *testing.T) {
+func TestIPCEndpointLongWorkDirUsesLocalTempDir(t *testing.T) {
 	// Mirrors the dwssb sandbox layout that produced a 111-byte socket
 	// path — over macOS's 103-byte usable sun_path budget.
 	workDir := "/Users/zhengyubai/.dwssb/sandboxes/event-subscribe/config/events/open/personal_stream/3928ce0fb4860a52"
