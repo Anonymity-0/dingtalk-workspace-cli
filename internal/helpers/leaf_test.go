@@ -412,6 +412,60 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 	}
 }
 
+func TestDeclareLeafMetadataValidateRunsBeforeConfirmSafety(t *testing.T) {
+	// RFC §5.1 / §5.6: local validation must precede Risk confirmation.
+	ran := false
+	cmd := &cobra.Command{
+		Use: "mutate",
+		RunE: func(*cobra.Command, []string) error {
+			ran = true
+			return nil
+		},
+	}
+	cmd.Flags().Bool("yes", false, "")
+	cmd.Flags().Bool("dry-run", false, "")
+	cmd.Flags().String("id", "", "")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(c *cobra.Command, args []string) error {
+			id, _ := c.Flags().GetString("id")
+			if strings.TrimSpace(id) == "" {
+				return fmt.Errorf("flag --id is required")
+			}
+			return nil
+		},
+		Schema: LeafSchema{
+			Description: "test mutate",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "test fixture for Validate-before-ConfirmSafety",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "test mutate",
+				UseWhen:      []string{"test"},
+				AvoidWhen:    []string{"never"},
+				Examples:     []string{"dws mutate --id x --yes"},
+			},
+		},
+	})
+	cmd.SetIn(strings.NewReader(""))
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "flag --id is required") {
+		t.Fatalf("Execute() error = %v, want Validate failure before confirmation", err)
+	}
+	if strings.Contains(err.Error(), "confirmation_required") || strings.Contains(err.Error(), "需要用户确认") {
+		t.Fatalf("Validate must win over ConfirmSafety, got %v", err)
+	}
+	if ran {
+		t.Fatal("RunE must not run when Validate fails")
+	}
+}
+
 func TestLeafPostMountApplied(t *testing.T) {
 	// PostMount 在 flag 注册后执行，用于设置 Args/annotation 等。
 	spec := LeafSpec{

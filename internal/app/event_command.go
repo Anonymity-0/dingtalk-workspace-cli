@@ -32,7 +32,6 @@ import (
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/busctl"
@@ -1111,38 +1110,21 @@ func newEventStopCommand() *cobra.Command {
 		Args:              cobra.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(c *cobra.Command, args []string) error {
+			// Local validation runs in DeclareLeafMetadata Validate (PreRunE)
+			// before ConfirmSafety. Confirmation is the framework wrap.
 			as, err := eventNormalizeAs(asIdentity)
 			if err != nil {
 				return err
 			}
 			if as == "user" {
 				opts.SubscribeID = firstArg(args)
-				hasSubscribeID := strings.TrimSpace(opts.SubscribeID) != ""
-				if hasSubscribeID && opts.All {
-					return fmt.Errorf("event stop --as user: subscribe_id and --all are mutually exclusive")
-				}
-				if !hasSubscribeID && !opts.All {
-					return fmt.Errorf("event stop --as user: subscribe_id is required unless --all is set")
-				}
 				if eventStopDryRun(c) {
 					return writeEventStopDryRun(c, as, opts)
 				}
-				if !eventStopConfirmed(c) {
-					return eventStopConfirmationRequired("event stop 会取消个人事件订阅并停止本地消费")
-				}
 				return eventRunPersonalStop(c, opts)
-			}
-			if err := rejectChangedFlags(c, "user", "all", "personal-event-base-url", "stream-source-id"); err != nil {
-				return fmt.Errorf("event stop: %w", err)
-			}
-			if len(args) > 0 {
-				return fmt.Errorf("event stop: subscribe_id is only supported with --as user")
 			}
 			if eventStopDryRun(c) {
 				return writeEventStopDryRun(c, as, opts)
-			}
-			if !eventStopConfirmed(c) {
-				return eventStopConfirmationRequired("event stop 会停止事件消费")
 			}
 			configDir := defaultConfigDir()
 			clientID, _, _, _, err := eventResolveAppCredentials(configDir)
@@ -1181,6 +1163,30 @@ func newEventStopCommand() *cobra.Command {
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
+		Validate: func(c *cobra.Command, args []string) error {
+			as, err := eventNormalizeAs(asIdentity)
+			if err != nil {
+				return err
+			}
+			if as == "user" {
+				subscribeID := firstArg(args)
+				hasSubscribeID := strings.TrimSpace(subscribeID) != ""
+				if hasSubscribeID && opts.All {
+					return fmt.Errorf("event stop --as user: subscribe_id and --all are mutually exclusive")
+				}
+				if !hasSubscribeID && !opts.All {
+					return fmt.Errorf("event stop --as user: subscribe_id is required unless --all is set")
+				}
+				return nil
+			}
+			if err := rejectChangedFlags(c, "user", "all", "personal-event-base-url", "stream-source-id"); err != nil {
+				return fmt.Errorf("event stop: %w", err)
+			}
+			if len(args) > 0 {
+				return fmt.Errorf("event stop: subscribe_id is only supported with --as user")
+			}
+			return nil
+		},
 		Schema: helpers.LeafSchema{
 			Description: "取消个人事件订阅并停止对应本地消费",
 			DryRun:      &helpers.LeafDryRunDecl{PreviewKind: "request", RemoteReads: false},
@@ -1205,20 +1211,6 @@ func newEventStopCommand() *cobra.Command {
 func eventStopDryRun(cmd *cobra.Command) bool {
 	value, _ := cmd.Flags().GetBool("dry-run")
 	return value
-}
-
-func eventStopConfirmed(cmd *cobra.Command) bool {
-	value, _ := cmd.Flags().GetBool("yes")
-	return value
-}
-
-func eventStopConfirmationRequired(action string) error {
-	return apperrors.NewValidation(
-		action+"；请先使用 --dry-run 预览，确认后加 --yes 执行",
-		apperrors.WithReason("confirmation_required"),
-		apperrors.WithHint("先以相同参数加 --dry-run 预览；获得用户确认后改用 --yes 执行"),
-		apperrors.WithActions("使用 --dry-run 生成预览", "获得用户确认后使用 --yes 执行"),
-	)
 }
 
 func writeEventStopDryRun(cmd *cobra.Command, identity string, opts personalStopOptions) error {

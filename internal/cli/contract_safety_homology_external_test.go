@@ -150,6 +150,17 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 		byGate[r.gate]++
 	}
 	t.Logf("user_required Safety homology OK: %d leaves gates=%v", checked, byGate)
+
+	// Sheet transitional dual gate: every Sheet --yes-only protect marker must
+	// also carry DeclareLeafMetadata ConfirmSafety. A bare sheet_protect leaf
+	// would mean the outer guard was dropped from the homology pair (or the
+	// contract wrap never installed), silently widening authorization.
+	if bare := byGate["sheet_protect"]; bare != 0 {
+		t.Fatalf("transitional Sheet dual gate broken: %d leaf(ves) have sheet_protect without declare_leaf_confirm", bare)
+	}
+	if dual := byGate["declare_leaf+sheet_marker"]; dual == 0 {
+		t.Fatal("expected declare_leaf+sheet_marker leaves for Sheet transitional dual confirmation gate")
+	}
 }
 
 func probeConfirmationGate(leaf *cobra.Command) error {

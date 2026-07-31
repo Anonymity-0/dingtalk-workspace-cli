@@ -55,6 +55,12 @@ func TestDeclareLeafMetadataRejectsExecutionSurface(t *testing.T) {
 	mustPanic("empty schema", func() {
 		DeclareLeafMetadata(cmd, LeafSpec{})
 	})
+	// Validate is the one execution hook allowed in metadata mode (PreRunE,
+	// before ConfirmSafety). It must not panic.
+	DeclareLeafMetadata(&cobra.Command{Use: "y", Short: "y", RunE: func(*cobra.Command, []string) error { return nil }}, LeafSpec{
+		Schema: schema,
+		Validate: func(*cobra.Command, []string) error { return nil },
+	})
 }
 
 func TestDeclareLeafMetadataDoesNotRewriteRunE(t *testing.T) {

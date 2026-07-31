@@ -344,6 +344,15 @@ const sheetMutationConfirmationGuardAnnotation = "dws.sheet.confirmation-guard"
 // When DeclareLeafMetadata already wrapped ConfirmSafety, this outer guard
 // still runs first: without --yes it fails closed before ConfirmSafety can
 // read stdin; with --yes both layers bypass. No double prompt.
+//
+// Transitional dual gate: these leaves currently have two runtime confirmation
+// sources (outer requireSheetMutationConfirmation + inner ConfirmSafety from
+// DeclareLeafMetadata). Both honor --yes today, so behavior is correct, but
+// the confirmation fact is not yet single-sourced. Do not remove the outer
+// guard without proving ConfirmSafety alone keeps the --yes-only Sheet policy
+// (see TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety and
+// the declare_leaf+sheet_marker assertion in
+// TestUserRequiredSafetyHomologyWithRuntimeGate).
 func protectSheetMutationCommand(cmd *cobra.Command, operation, targetHint string) {
 	if cmd == nil {
 		panic("protect sheet mutation command: nil command")

@@ -2190,6 +2190,10 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
+		Validate: func(cmd *cobra.Command, args []string) error {
+			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
+			return err
+		},
 		Schema: LeafSchema{
 			Description: "开启文件的互联网公开发布",
 			Interface: &LeafInterfaceDecl{
@@ -2236,6 +2240,10 @@ func newDriveCommand() *cobra.Command {
 		Safety: cli.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(cmd *cobra.Command, args []string) error {
+			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
+			return err
 		},
 		Schema: LeafSchema{
 			Description: "关闭文件的互联网公开发布",

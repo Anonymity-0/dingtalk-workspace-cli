@@ -34,8 +34,9 @@ const contractConfirmSafetyAnnotation = "dws.contract.confirm_safety"
 //   - 完全托管模式 NewLeafCommand：声明 + 执行都归 corecmd（flag 注册、
 //     参数投影、ConfirmSafety、派发）。新命令默认走此模式。
 //   - 声明元数据模式 DeclareLeafMetadata：声明 Safety + Schema（AttachSchema），
-//     不注册 flag、不接管参数投影；当 Safety.Confirmation=user_required 时用
-//     **同一份** SafetySpec 包一层 ConfirmSafety，保证执行门禁与 Catalog 同源。
+//     不注册 flag、不接管参数投影；可选 Validate 挂到 PreRunE（确认前）。
+//     当 Safety.Confirmation=user_required 时用**同一份** SafetySpec 包一层
+//     ConfirmSafety（在 PreRunE 之后），保证执行门禁与 Catalog 同源。
 //     用于执行体必须冻结的既有命令补声明，是迁移态。
 //
 // 每个 API 各自声明：
@@ -185,13 +186,17 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 }
 
 // DeclareLeafMetadata 是命令框架的「声明元数据模式」：把 LeafSpec 的声明面
-// （Safety + Schema）挂到既有命令上——不注册 flag、不接管参数投影。当
-// Safety.Confirmation 为 user_required 时，用同一份 SafetySpec 包装 ConfirmSafety，
-// 使执行门禁与 Catalog 契约同源；其余执行逻辑保持原 RunE。
+// （Safety + Schema）挂到既有命令上——不注册 flag、不接管参数投影。可选的
+// Validate 挂到 PreRunE，保证本地可判定校验发生在 ConfirmSafety 之前（RFC §5.1 /
+// §5.6）。当 Safety.Confirmation 为 user_required 时，用同一份 SafetySpec 包装
+// ConfirmSafety，使执行门禁与 Catalog 契约同源；其余执行逻辑保持原 RunE。
 //
-// 该模式是迁移态而非终态：命令具备条件时应升级为 NewLeafCommand。传入任何
-// 执行面字段（Flags/Constraints/ConstParams/Call/RunE/Validate/PostMount）
-// 或空 Schema 会 panic，防止误用成半接管。
+// user_required 命令若把缺参/互斥/可用性等本地校验写在 RunE 内，会被外层
+// ConfirmSafety 抢先；应把这些校验挪到 Validate（或升级为 NewLeafCommand）。
+//
+// 该模式是迁移态而非终态：命令具备条件时应升级为 NewLeafCommand。传入
+// Flags/Constraints/ConstParams/Call/RunE/PostMount 或空 Schema 会 panic，
+// 防止误用成半接管（Validate 是唯一允许的执行钩子）。
 func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 	if cmd == nil {
 		panic("DeclareLeafMetadata: cmd is nil")
@@ -212,9 +217,6 @@ func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 	if spec.RunE != nil {
 		panic(fmt.Sprintf("DeclareLeafMetadata(%q): RunE must be nil (metadata-only mode)", name))
 	}
-	if spec.Validate != nil {
-		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Validate must be nil (metadata-only mode)", name))
-	}
 	if spec.PostMount != nil {
 		panic(fmt.Sprintf("DeclareLeafMetadata(%q): PostMount must be nil (metadata-only mode)", name))
 	}
@@ -228,14 +230,39 @@ func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Schema is required", name))
 	}
 	corecmd.AttachSchema(cmd, spec.Safety, spec.Schema, cmd.Short, cmd.Long)
+	if spec.Validate != nil {
+		installContractValidate(cmd, spec.Validate)
+	}
 	if strings.TrimSpace(spec.Safety.Confirmation) == "user_required" {
 		installContractConfirmSafety(cmd, spec.Safety)
 	}
 	return cmd
 }
 
+// installContractValidate chains Validate onto PreRunE so it runs before any
+// RunE wrapper (ConfirmSafety / sheet --yes-only). Idempotent per command:
+// a second call chains after the previous PreRunE.
+func installContractValidate(cmd *cobra.Command, validate func(*cobra.Command, []string) error) {
+	if cmd == nil {
+		panic("installContractValidate: cmd is nil")
+	}
+	if validate == nil {
+		panic(fmt.Sprintf("installContractValidate(%q): Validate is nil", cmd.Name()))
+	}
+	prev := cmd.PreRunE
+	cmd.PreRunE = func(c *cobra.Command, args []string) error {
+		if prev != nil {
+			if err := prev(c, args); err != nil {
+				return err
+			}
+		}
+		return validate(c, args)
+	}
+}
+
 // installContractConfirmSafety wraps cmd.RunE with ConfirmSafety using the
-// same SafetySpec already published via AttachSchema. Idempotent.
+// same SafetySpec already published via AttachSchema. Runs after PreRunE
+// (including DeclareLeafMetadata Validate). Idempotent.
 func installContractConfirmSafety(cmd *cobra.Command, safety cli.SafetySpec) {
 	if cmd == nil {
 		panic("installContractConfirmSafety: cmd is nil")

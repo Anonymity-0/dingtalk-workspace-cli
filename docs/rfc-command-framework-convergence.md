@@ -314,14 +314,14 @@ Definition（仅声明；不可编译）
 | 模式 | 入口 | 声明面 | 执行面 | 适用 |
 |---|---|---|---|---|
 | **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Schema 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
-| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Schema`（经 `AttachSchema`） | **不**注册 flag、**不**接管参数投影；`user_required` 时用同一 Safety 包 `ConfirmSafety` | 既有命令补声明且执行体必须冻结 |
+| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Schema`（经 `AttachSchema`） | **不**注册 flag、**不**接管参数投影；可选 `Validate`→PreRunE；`user_required` 时用同一 Safety 包 `ConfirmSafety`（在 PreRunE 之后） | 既有命令补声明且执行体必须冻结 |
 
 选用规则：
 
 1. 新命令默认走完全托管模式。
 2. 既有命令要补 Agent Schema、但执行面暂时不能迁入 LeafSpec → 声明元数据模式；声明必须写在命令字面量旁（与完全托管同一作者点），禁止旁路 generated map。
 3. 声明元数据模式是**迁移态**：具备条件后应升级为完全托管；不得用它绕开「业务 flag 必须声明」的框架纪律。
-4. `DeclareLeafMetadata` 传入 Flags/Call/RunE 等执行面字段直接 panic，防止半接管。
+4. `DeclareLeafMetadata` 传入 Flags/Call/RunE/PostMount 等执行面字段直接 panic，防止半接管；**唯一允许的执行钩子是 `Validate`**（挂 PreRunE），用于把本地可判定校验保持在 Risk 确认之前（§5.1 / §5.6）。`user_required` 且校验仍写在 `RunE` 内会导致确认抢先——应挪到 `Validate` 或升级为完全托管。
 
 #### 5.0.3 与目标 `Contract` 的对应
 
