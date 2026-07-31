@@ -314,7 +314,7 @@ Definition（仅声明；不可编译）
 | 模式 | 入口 | 声明面 | 执行面 | 适用 |
 |---|---|---|---|---|
 | **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Schema 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
-| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Schema`（经 `AttachSchema`） | **不**注册 flag、**不**接管参数投影；可选 `Validate`→PreRunE；`user_required` 时用同一 Safety 包 `ConfirmSafety`（在 PreRunE 之后） | 既有命令补声明且执行体必须冻结 |
+| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Schema`（经 `AttachSchema`） | **不**注册 flag、**不**接管参数投影；可选 `Validate`→PreRunE；`user_required` 时用同一 Safety 包 `ConfirmSafety`（有 Validate：PreRunE 后立即确认；无 Validate：推迟到首次 `CallTool`，以便 RunE 内缺参校验先跑） | 既有命令补声明且执行体必须冻结 |
 
 选用规则：
 

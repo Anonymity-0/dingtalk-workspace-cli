@@ -14,6 +14,7 @@
 package helpers
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -23,7 +24,21 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
+
+type deferConfirmTestCaller struct {
+	calls int
+}
+
+func (c *deferConfirmTestCaller) CallTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+	c.calls++
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{}`}}}, nil
+}
+func (*deferConfirmTestCaller) Format() string { return "json" }
+func (*deferConfirmTestCaller) DryRun() bool   { return false }
+func (*deferConfirmTestCaller) Fields() string { return "" }
+func (*deferConfirmTestCaller) JQ() string     { return "" }
 
 func leafTestSpec() LeafSpec {
 	return LeafSpec{
@@ -359,6 +374,8 @@ func TestLeafCommandCallDispatch(t *testing.T) {
 }
 
 func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
+	// With Validate: confirm runs at RunE entry (after PreRunE), so inner
+	// must not execute without --yes.
 	called := false
 	cmd := &cobra.Command{
 		Use: "delete",
@@ -374,6 +391,7 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
+		Validate: func(*cobra.Command, []string) error { return nil },
 		Schema: LeafSchema{
 			Description: "test delete",
 			Interface: &LeafInterfaceDecl{
@@ -388,8 +406,8 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 			},
 		},
 	})
-	if !HasContractConfirmSafety(cmd) {
-		t.Fatal("expected contract ConfirmSafety annotation")
+	if !HasContractConfirmSafety(cmd) || !HasContractValidate(cmd) {
+		t.Fatal("expected contract ConfirmSafety + Validate annotations")
 	}
 	cmd.SetIn(strings.NewReader(""))
 	cmd.SetOut(io.Discard)
@@ -409,6 +427,72 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("inner RunE must run after --yes")
+	}
+}
+
+func TestDeclareLeafMetadataDefersConfirmUntilCallTool(t *testing.T) {
+	// Without Validate: RunE-local checks run before ConfirmSafety; the gate
+	// fires on the first MCP CallTool.
+	prev := deps
+	t.Cleanup(func() { deps = prev })
+	concrete := &deferConfirmTestCaller{}
+	InitDeps(concrete)
+	deps.Out.w = io.Discard
+
+	cmd := &cobra.Command{
+		Use: "delete",
+		RunE: func(c *cobra.Command, args []string) error {
+			id, _ := c.Flags().GetString("id")
+			if strings.TrimSpace(id) == "" {
+				return fmt.Errorf("flag --id is required")
+			}
+			_, err := deps.Caller.CallTool(c.Context(), "test", "delete_thing", map[string]any{"id": id})
+			return err
+		},
+	}
+	cmd.Flags().Bool("yes", false, "")
+	cmd.Flags().Bool("dry-run", false, "")
+	cmd.Flags().String("id", "", "")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: cli.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Schema: LeafSchema{
+			Description: "test delete",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "test fixture for deferred ConfirmSafety",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "test delete",
+				UseWhen:      []string{"test"},
+				AvoidWhen:    []string{"never"},
+				Examples:     []string{"dws delete --id x --yes"},
+			},
+		},
+	})
+	cmd.SetIn(strings.NewReader(""))
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "flag --id is required") {
+		t.Fatalf("missing id: %v, want RunE validation before confirm", err)
+	}
+	if concrete.calls != 0 {
+		t.Fatalf("CallTool calls = %d, want 0 when validation fails", concrete.calls)
+	}
+
+	if err := cmd.Flags().Set("id", "x"); err != nil {
+		t.Fatal(err)
+	}
+	err = cmd.Execute()
+	if err == nil || (!strings.Contains(err.Error(), "confirmation_required") && !strings.Contains(err.Error(), "需要用户确认")) {
+		t.Fatalf("valid args without --yes: %v, want confirmation_required", err)
+	}
+	if concrete.calls != 0 {
+		t.Fatalf("CallTool calls = %d, want 0 before confirmation", concrete.calls)
 	}
 }
 
