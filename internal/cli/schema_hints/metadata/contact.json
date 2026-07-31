@@ -9,14 +9,6 @@
   },
   "tools": {
     "contact.add_employee": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "not_required",
-      "idempotency": "non_idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps employee identity and decoded department JSON to contact/add_employee, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "org-user-name": {
           "property": "orgUserName",
@@ -32,19 +24,11 @@
           "interface_type": "array"
         }
       },
-      "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+      "reviewed": true,
       "cli_path": "contact user invite",
-      "runtime_gate": "none"
+      "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate."
     },
     "contact.exclusive_account_create": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "not_required",
-      "idempotency": "non_idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps enterprise-account flags to contact/exclusive_account_create, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "org-user-name": {
           "property": "orgUserName",
@@ -73,14 +57,11 @@
           "interface_type": "boolean"
         }
       },
-      "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+      "reviewed": true,
       "cli_path": "contact account create",
-      "runtime_gate": "none"
+      "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate."
     },
     "contact.get_authorized_emp_rosterInfo": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true,
       "parameters": {
         "fields": {
           "required": false
@@ -89,55 +70,11 @@
           "required": false
         }
       },
-      "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope.",
+      "reviewed": true,
       "cli_path": "contact user profile get",
-      "runtime_gate": "none",
-      "confirmation": "not_required"
-    },
-    "contact.get_current_user_profile": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.get_dept_info_by_dept_id": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.get_dept_members_by_deptId": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.get_sub_depts_by_dept_id": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.get_user_info_by_user_ids": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.list_authorized_roster_fields": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.list_my_followings": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
+      "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope."
     },
     "contact.org_create": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "not_required",
-      "idempotency": "non_idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps organization and creator names to contact/org_create, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "org-name": {
           "property": "orgName",
@@ -148,39 +85,11 @@
           "required": true
         }
       },
-      "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
+      "reviewed": true,
       "cli_path": "contact org create",
-      "runtime_gate": "none"
-    },
-    "contact.query_dismission_employee_list": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.search_contact_by_key_word": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.search_dept_by_keyword": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
-    "contact.search_user_by_mobile": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
+      "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate."
     },
     "contact.department_create": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "user_required",
-      "idempotency": "non_idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps department creation flags to contact/department_create, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "name": {
           "property": "deptName",
@@ -211,19 +120,11 @@
           "interface_type": "boolean"
         }
       },
-      "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
+      "reviewed": true,
       "cli_path": "contact dept create",
-      "runtime_gate": "confirm_dangerous"
+      "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create."
     },
     "contact.department_update": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "user_required",
-      "idempotency": "unknown",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps department update flags to contact/department_update, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "dept": {
           "property": "deptId",
@@ -274,19 +175,11 @@
           "interface_type": "integer"
         }
       },
-      "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+      "reviewed": true,
       "cli_path": "contact dept update",
-      "runtime_gate": "confirm_dangerous"
+      "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update."
     },
     "contact.employee_update": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "user_required",
-      "idempotency": "unknown",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps employee update flags to contact/employee_update, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "user-id": {
           "property": "userId",
@@ -314,19 +207,11 @@
           "required": false
         }
       },
-      "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+      "reviewed": true,
       "cli_path": "contact user update",
-      "runtime_gate": "confirm_dangerous"
+      "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update."
     },
     "contact.exclusive_account_user_update": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "user_required",
-      "idempotency": "unknown",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps enterprise-account update flags to contact/exclusive_account_user_update, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "user-id": {
           "property": "userId",
@@ -362,19 +247,11 @@
           "required": false
         }
       },
-      "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+      "reviewed": true,
       "cli_path": "contact account update",
-      "runtime_gate": "confirm_dangerous"
+      "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update."
     },
     "contact.self_user_profile_update": {
-      "effect": "write",
-      "risk": "medium",
-      "confirmation": "user_required",
-      "idempotency": "unknown",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed unpinned remote adapter: the executable CLI maps self-profile update flags to contact/self_user_profile_update, which is absent from the pinned MCP metadata snapshot.",
-      "reviewed": true,
       "parameters": {
         "nick": {
           "property": "nick",
@@ -385,191 +262,9 @@
           "required": false
         }
       },
-      "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
+      "reviewed": true,
       "cli_path": "contact user update-self",
-      "runtime_gate": "confirm_dangerous"
-    },
-    "contact.shortcut_list_followings": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +list-followings",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_search_user": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +search-user",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_search_mobile": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +search-mobile",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_list_roles": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +list-roles",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_list_role_members": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +list-role-members",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_list_sub_depts": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +list-sub-depts",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_list_dept_members": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +list-dept-members",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_by_mobile": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +by-mobile",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_dept_members": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +dept-members",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_lookup": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +lookup",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_org": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +org",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_resolve_dept": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +resolve-dept",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_team": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +team",
-      "runtime_gate": "none"
-    },
-    "contact.shortcut_me": {
-      "effect": "read",
-      "risk": "low",
-      "confirmation": "not_required",
-      "idempotency": "idempotent",
-      "interface_mode": "composite",
-      "availability": "available",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
-      "reviewed": true,
-      "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate and composite interface without inventing a direct MCP identity.",
-      "cli_path": "contact +me",
-      "runtime_gate": "none"
+      "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user."
     }
   }
 }

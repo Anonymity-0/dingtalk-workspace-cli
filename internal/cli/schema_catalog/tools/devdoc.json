@@ -2,25 +2,12 @@
   "product": "devdoc",
   "tools": {
     "devdoc.search_open_platform_docs_rag": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "CommandRegistry:canonical_path=devdoc.search_open_platform_docs_rag",
-        "Skill:skills/mono/references/products/devdoc.md",
-        "cobra-help:dws devdoc article search",
-        "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.devdoc.prod.json#devdoc.search_open_platform_docs",
-        "internal/cli/schema_command_registry.json#devdoc.search_open_platform_docs_rag",
-        "internal/cli/schema_hints/imported/wukong.json",
-        "internal/cli/schema_hints/metadata/devdoc.json",
-        "internal/cli/schema_hints/selection/devdoc.json",
-        "internal/cli/schema_mcp_metadata.json#tools.devdoc.search_open_platform_docs_rag",
-        "live-dws-schema:devdoc.search_open_platform_docs_rag",
-        "skills/mono/references/products/devdoc.md",
-        "skills/mono/references/products/simple.md",
-        "structured-hint:internal/cli/schema_hints/imported/wukong.json#devdoc.search_open_platform_docs_rag",
-        "structured-hint:internal/cli/schema_hints/selection-review.json#devdoc.search_open_platform_docs_rag"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
-      "agent_summary_source": "dws-agent-selection/devdoc",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
@@ -38,10 +25,10 @@
           ]
         ]
       },
-      "description": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。",
+      "description": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
       "display": "开放平台文档搜索",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws devdoc article search --query \"OAuth2 接入\" --format json",
         "dws devdoc article search --query \"errcode 40078\" --format json"
@@ -50,58 +37,58 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "value": "available"
-            },
-            {
-              "precedence": "mcp_fallback",
-              "selected": false,
-              "source": "internal/cli/schema_mcp_metadata.json#tools.devdoc.search_open_platform_docs_rag.interface_ref",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
                 "要执行开放平台应用配置变更时用 dev"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
             "要执行开放平台应用配置变更时用 dev"
@@ -110,100 +97,94 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "devdoc article search",
-              "value": "devdoc.search_open_platform_docs_rag"
-            },
-            {
-              "precedence": "reviewed_manual",
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
-              "selected": false,
-              "source": "reviewed_manual_hint",
-              "source_ref": "devdoc article search",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "devdoc.search_open_platform_docs_rag"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "devdoc article search",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "devdoc.search_open_platform_docs_rag"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "value": "not_required"
-            },
-            {
-              "precedence": "inference_or_default",
-              "selected": false,
-              "source": "risk-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
-            },
-            {
-              "precedence": "mcp_metadata",
-              "selected": false,
-              "source": "mcp_metadata",
-              "value": "根据关键词搜索钉钉开放平台的开发文档，返回匹配的文档条目列表，包含标题、摘要、文档链接和相关标签。搜索结果按相关性排序。适用于开发者在集成或调试过程中快速查找 API 说明、接入指南、错误码解释等技术资料。"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "command-verb",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "read"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "command-verb",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "read"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws devdoc article search --query \"OAuth2 接入\" --format json",
                 "dws devdoc article search --query \"errcode 40078\" --format json"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws devdoc article search --query \"OAuth2 接入\" --format json",
             "dws devdoc article search --query \"errcode 40078\" --format json"
@@ -212,60 +193,58 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "idempotent"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "value": "mcp"
-            },
-            {
-              "precedence": "mcp_fallback",
-              "selected": false,
-              "source": "internal/cli/schema_mcp_metadata.json#tools.devdoc.search_open_platform_docs_rag.interface_ref",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "mcp"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "mcp"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "imported",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/imported/wukong.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": {
                 "product_id": "devdoc",
                 "rpc_name": "search_open_platform_docs"
               }
-            },
-            {
-              "precedence": "mcp_fallback",
-              "selected": false,
-              "source": "internal/cli/schema_mcp_metadata.json#tools.devdoc.search_open_platform_docs_rag.interface_ref",
-              "value": "devdoc.search_open_platform_docs"
             }
           ],
-          "precedence": "imported",
-          "resolution": "highest_precedence",
-          "source": "internal/cli/schema_hints/imported/wukong.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": {
             "product_id": "devdoc",
             "rpc_name": "search_open_platform_docs"
@@ -274,90 +253,93 @@
         "metadata_source": {
           "candidates": [
             {
-              "precedence": "derived_resolution",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "metadata_source_resolution",
-              "value": "embedded-mcp-metadata"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
             }
           ],
-          "precedence": "derived_resolution",
-          "resolution": "highest_precedence",
-          "source": "metadata_source_resolution",
-          "value": "embedded-mcp-metadata"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "low"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "搜索开放平台文档"
-            },
-            {
-              "precedence": "mcp_metadata",
-              "selected": false,
-              "source": "mcp_metadata",
-              "value": "search_open_platform_docs"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "搜索开放平台文档"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"
           ]
@@ -372,7 +354,7 @@
         "rpc_name": "search_open_platform_docs"
       },
       "is_alias": false,
-      "metadata_source": "embedded-mcp-metadata",
+      "metadata_source": "cmdcore.contract",
       "name": "search_open_platform_docs_rag",
       "parameter_count": 3,
       "parameters": {
@@ -389,12 +371,6 @@
                   "value": "页码，默认 1"
                 },
                 {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": "分页页码"
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -405,26 +381,6 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "页码，默认 1"
-            },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": true,
-                  "source": "mcp_metadata",
-                  "value": "number"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "mcp_metadata",
-              "resolution": "highest_precedence",
-              "source": "mcp_metadata",
-              "value": "number"
             },
             "property": {
               "candidates": [
@@ -489,8 +445,6 @@
               "value": "string"
             }
           },
-          "interface_description": "分页页码",
-          "interface_type": "number",
           "property": "page",
           "required": false,
           "type": "string"
@@ -505,12 +459,6 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "搜索关键词 (必填)"
-                },
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": "搜索关键词"
                 },
                 {
                   "precedence": "default",
@@ -560,12 +508,6 @@
                   "value": false
                 },
                 {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": true
-                },
-                {
                   "precedence": "inference",
                   "selected": false,
                   "source": "usage_required_inference",
@@ -613,7 +555,6 @@
               "value": "string"
             }
           },
-          "interface_description": "搜索关键词",
           "property": "keyword",
           "required": false,
           "type": "string"
@@ -631,12 +572,6 @@
                   "value": "每页数量，默认 10"
                 },
                 {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": "分页大小"
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -647,26 +582,6 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页数量，默认 10"
-            },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": true,
-                  "source": "mcp_metadata",
-                  "value": "number"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "mcp_metadata",
-              "resolution": "highest_precedence",
-              "source": "mcp_metadata",
-              "value": "number"
             },
             "property": {
               "candidates": [
@@ -731,8 +646,6 @@
               "value": "string"
             }
           },
-          "interface_description": "分页大小",
-          "interface_type": "number",
           "property": "size",
           "required": false,
           "type": "string"

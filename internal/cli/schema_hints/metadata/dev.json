@@ -7,29 +7,5 @@
     "channel": "open-source",
     "reviewed": true
   },
-  "tools": {
-    "dev.connect_status": {
-      "interface_mode": "local",
-      "availability": "available",
-      "interface_reason": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-      "reviewed": true
-    },
-    "dev.connect_stop": {
-      "effect": "write",
-      "risk": "medium",
-      "interface_mode": "local",
-      "availability": "available",
-      "interface_reason": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-      "reviewed": true
-    },
-    "dev.search_open_platform_docs_rag": {
-      "interface_ref": {
-        "product_id": "devdoc",
-        "rpc_name": "search_open_platform_docs"
-      },
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    }
-  }
+  "tools": {}
 }

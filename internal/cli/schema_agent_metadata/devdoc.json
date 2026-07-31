@@ -3,7 +3,7 @@
   "tools": {
     "devdoc article search": {
       "agent_summary": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
-      "agent_summary_source": "dws-agent-selection/devdoc",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
@@ -11,7 +11,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws devdoc article search --query \"OAuth2 接入\" --format json",
         "dws devdoc article search --query \"errcode 40078\" --format json"
@@ -19,33 +19,29 @@
       "field_provenance": {
         "agent_summary": {
           "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "available",
@@ -60,36 +56,32 @@
             "搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
             "要执行开放平台应用配置变更时用 dev"
           ],
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "搜索用户业务文档用 drive/wiki/doc，不要用 devdoc",
                 "要执行开放平台应用配置变更时用 dev"
               ],
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
           "candidates": [
             {
               "value": "not_required",
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "not_required",
@@ -101,15 +93,21 @@
         },
         "effect": {
           "value": "read",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "read",
               "source": "command-verb",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -118,50 +116,52 @@
             "dws devdoc article search --query \"OAuth2 接入\" --format json",
             "dws devdoc article search --query \"errcode 40078\" --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws devdoc article search --query \"OAuth2 接入\" --format json",
                 "dws devdoc article search --query \"errcode 40078\" --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "idempotent",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
           "candidates": [
             {
               "value": "mcp",
-              "source": "internal/cli/schema_hints/metadata/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "mcp",
@@ -173,15 +173,21 @@
         },
         "interface_ref": {
           "value": "devdoc.search_open_platform_docs",
-          "source": "internal/cli/schema_hints/imported/wukong.json",
-          "precedence": "imported",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "devdoc.search_open_platform_docs",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "devdoc.search_open_platform_docs",
               "source": "internal/cli/schema_hints/imported/wukong.json",
               "precedence": "imported",
-              "selected": true
+              "selected": false
             },
             {
               "value": "devdoc.search_open_platform_docs",
@@ -193,38 +199,42 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword.",
           "candidates": [
+            {
+              "value": true,
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/devdoc.json",
               "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword."
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
-              "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "review_reason": "Search text may be supplied as positional keyword or public --query; hidden --keyword remains a runtime compatibility alias and is intentionally not published as a parameter. The versioned binding owns query -\u003e keyword."
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "low",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -232,19 +242,17 @@
           "value": [
             "查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"
           ],
-          "source": "internal/cli/schema_hints/selection/devdoc.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"
               ],
-              "source": "internal/cli/schema_hints/selection/devdoc.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -258,20 +266,13 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "CommandRegistry:canonical_path=devdoc.search_open_platform_docs_rag",
-        "Skill:skills/mono/references/products/devdoc.md",
-        "cobra-help:dws devdoc article search",
+        "cmdcore.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.devdoc.prod.json#devdoc.search_open_platform_docs",
-        "internal/cli/schema_command_registry.json#devdoc.search_open_platform_docs_rag",
         "internal/cli/schema_hints/imported/wukong.json",
         "internal/cli/schema_hints/metadata/devdoc.json",
-        "internal/cli/schema_hints/selection/devdoc.json",
         "internal/cli/schema_mcp_metadata.json#tools.devdoc.search_open_platform_docs_rag",
-        "live-dws-schema:devdoc.search_open_platform_docs_rag",
         "skills/mono/references/products/devdoc.md",
-        "skills/mono/references/products/simple.md",
-        "structured-hint:internal/cli/schema_hints/imported/wukong.json#devdoc.search_open_platform_docs_rag",
-        "structured-hint:internal/cli/schema_hints/selection-review.json#devdoc.search_open_platform_docs_rag"
+        "skills/mono/references/products/simple.md"
       ],
       "use_when": [
         "查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"

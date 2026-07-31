@@ -1355,18 +1355,12 @@
       ]
     },
     "dev.connect_status": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws dev connect status",
-        "internal/cli/schema_command_registry.json#dev.connect_status",
-        "internal/cli/schema_hints/metadata/dev.json",
-        "internal/cli/schema_hints/selection/dev.json",
-        "live-dws-schema:dev.connect_status#FAILED",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "查看后台连接器守护进程状态",
-      "agent_summary_source": "dws-agent-selection/dev",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要停止守护进程时用 dev connect stop"
@@ -1383,10 +1377,10 @@
           ]
         ]
       },
-      "description": "查看连接器健康状态（healthy/degraded/down，pid、收发活动、日志路径；--json 供外部托管消费）",
+      "description": "查看后台连接器守护进程状态",
       "display": "开放平台开发者能力",
       "effect": "write",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev connect status --unified-app-id \u003cunifiedAppId\u003e --json"
       ],
@@ -1394,51 +1388,57 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "查看后台连接器守护进程状态"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "查看后台连接器守护进程状态"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "要停止守护进程时用 dev connect stop"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "要停止守护进程时用 dev connect stop"
           ]
@@ -1446,77 +1446,93 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "dev connect status",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "dev.connect_status"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "dev connect status",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "dev.connect_status"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "risk-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "risk-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "查看连接器健康状态（healthy/degraded/down，pid、收发活动、日志路径；--json 供外部托管消费）"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "查看后台连接器守护进程状态"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "查看连接器健康状态（healthy/degraded/down，pid、收发活动、日志路径；--json 供外部托管消费）"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "查看后台连接器守护进程状态"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "command-verb",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "write"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "command-verb",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "write"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws dev connect status --unified-app-id \u003cunifiedAppId\u003e --json"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws dev connect status --unified-app-id \u003cunifiedAppId\u003e --json"
           ]
@@ -1524,132 +1540,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "unknown"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "unknown"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "local"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode local forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode local forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "medium"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "查看连接器健康状态（healthy/degraded/down，pid、收发活动、日志路径；--json 供外部托管消费）"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "查看连接器健康状态（healthy/degraded/down，pid、收发活动、日志路径；--json 供外部托管消费）"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "需要确认本地 connect 守护进程是否在跑、pid/日志路径"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "需要确认本地 connect 守护进程是否在跑、pid/日志路径"
           ]
@@ -1661,6 +1710,7 @@
       "interface_mode": "local",
       "interface_reason": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "connect_status",
       "parameter_count": 3,
       "parameters": {
@@ -1941,18 +1991,12 @@
       ]
     },
     "dev.connect_stop": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws dev connect stop",
-        "internal/cli/schema_command_registry.json#dev.connect_stop",
-        "internal/cli/schema_hints/metadata/dev.json",
-        "internal/cli/schema_hints/selection/dev.json",
-        "live-dws-schema:dev.connect_stop#FAILED",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "优雅停止后台连接器守护进程",
-      "agent_summary_source": "dws-agent-selection/dev",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只想查看状态时用 dev connect status"
@@ -1969,10 +2013,10 @@
           ]
         ]
       },
-      "description": "优雅停止后台连接器守护进程（释放单实例锁与 Stream 连接）",
+      "description": "优雅停止后台连接器守护进程",
       "display": "开放平台开发者能力",
       "effect": "write",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev connect stop --unified-app-id \u003cunifiedAppId\u003e"
       ],
@@ -1980,51 +2024,57 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "优雅停止后台连接器守护进程"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "优雅停止后台连接器守护进程"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "只想查看状态时用 dev connect status"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "只想查看状态时用 dev connect status"
           ]
@@ -2032,85 +2082,93 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "dev connect stop",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "dev.connect_stop"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "dev connect stop",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "dev.connect_stop"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "risk-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "risk-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "优雅停止后台连接器守护进程（释放单实例锁与 Stream 连接）"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "优雅停止后台连接器守护进程"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "优雅停止后台连接器守护进程（释放单实例锁与 Stream 连接）"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "优雅停止后台连接器守护进程"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "value": "write"
-            },
-            {
-              "precedence": "inference_or_default",
-              "selected": false,
-              "source": "command-verb",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "write"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "write"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws dev connect stop --unified-app-id \u003cunifiedAppId\u003e"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws dev connect stop --unified-app-id \u003cunifiedAppId\u003e"
           ]
@@ -2118,140 +2176,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "unknown"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "unknown"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "local"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode local forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode local forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "value": "medium"
-            },
-            {
-              "precedence": "inference_or_default",
-              "selected": false,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "medium"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "优雅停止后台连接器守护进程（释放单实例锁与 Stream 连接）"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "优雅停止后台连接器守护进程（释放单实例锁与 Stream 连接）"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "用户明确要求停止本地 Stream/连接器守护进程"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "用户明确要求停止本地 Stream/连接器守护进程"
           ]
@@ -2263,6 +2346,7 @@
       "interface_mode": "local",
       "interface_reason": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "connect_stop",
       "parameter_count": 2,
       "parameters": {
@@ -17424,17 +17508,12 @@
       ]
     },
     "dev.search_open_platform_docs_rag": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws dev doc search",
-        "internal/cli/schema_command_registry.json#dev.search_open_platform_docs_rag",
-        "internal/cli/schema_hints/metadata/dev.json",
-        "internal/cli/schema_hints/selection/dev.json",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "通过 dev 兼容入口搜索开放平台文档",
-      "agent_summary_source": "dws-agent-selection/dev",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "常规开放平台文档检索优先使用可用的 devdoc article search"
@@ -17451,10 +17530,10 @@
           ]
         ]
       },
-      "description": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。",
+      "description": "通过 dev 兼容入口搜索开放平台文档",
       "display": "开放平台开发者能力",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev doc search --query \"MCP\" --size 10"
       ],
@@ -17462,51 +17541,57 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "通过 dev 兼容入口搜索开放平台文档"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "通过 dev 兼容入口搜索开放平台文档"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "常规开放平台文档检索优先使用可用的 devdoc article search"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "常规开放平台文档检索优先使用可用的 devdoc article search"
           ]
@@ -17514,83 +17599,93 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "dev doc search",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "dev.search_open_platform_docs_rag"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "dev doc search",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "dev.search_open_platform_docs_rag"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "risk-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "risk-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
-            },
-            {
-              "precedence": "mcp_metadata",
-              "selected": false,
-              "source": "mcp_metadata",
-              "value": "根据关键词搜索钉钉开放平台的开发文档，返回匹配的文档条目列表，包含标题、摘要、文档链接和相关标签。搜索结果按相关性排序。适用于开发者在集成或调试过程中快速查找 API 说明、接入指南、错误码解释等技术资料。"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "通过 dev 兼容入口搜索开放平台文档"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "通过 dev 兼容入口搜索开放平台文档"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "command-verb",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "read"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "command-verb",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "read"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws dev doc search --query \"MCP\" --size 10"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws dev doc search --query \"MCP\" --size 10"
           ]
@@ -17598,50 +17693,58 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "idempotent"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "mcp"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "mcp"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": {
                 "product_id": "devdoc",
                 "rpc_name": "search_open_platform_docs"
               }
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": {
             "product_id": "devdoc",
             "rpc_name": "search_open_platform_docs"
@@ -17650,90 +17753,93 @@
         "metadata_source": {
           "candidates": [
             {
-              "precedence": "derived_resolution",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "metadata_source_resolution",
-              "value": "embedded-mcp-metadata"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
             }
           ],
-          "precedence": "derived_resolution",
-          "resolution": "highest_precedence",
-          "source": "metadata_source_resolution",
-          "value": "embedded-mcp-metadata"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "low"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "搜索开放平台文档"
-            },
-            {
-              "precedence": "mcp_metadata",
-              "selected": false,
-              "source": "mcp_metadata",
-              "value": "search_open_platform_docs"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "搜索开放平台文档"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "明确需要验证或使用 dev doc search 入口时"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
-          "source": "internal/cli/schema_hints/selection/dev.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "明确需要验证或使用 dev doc search 入口时"
           ]
@@ -17748,7 +17854,7 @@
         "rpc_name": "search_open_platform_docs"
       },
       "is_alias": false,
-      "metadata_source": "embedded-mcp-metadata",
+      "metadata_source": "cmdcore.contract",
       "name": "search_open_platform_docs_rag",
       "parameter_count": 3,
       "parameters": {
@@ -17765,12 +17871,6 @@
                   "value": "页码，默认 1"
                 },
                 {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": "分页页码"
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -17781,26 +17881,6 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "页码，默认 1"
-            },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": true,
-                  "source": "mcp_metadata",
-                  "value": "number"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "mcp_metadata",
-              "resolution": "highest_precedence",
-              "source": "mcp_metadata",
-              "value": "number"
             },
             "property": {
               "candidates": [
@@ -17865,8 +17945,6 @@
               "value": "string"
             }
           },
-          "interface_description": "分页页码",
-          "interface_type": "number",
           "property": "page",
           "required": false,
           "type": "string"
@@ -17881,12 +17959,6 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "搜索关键词 (必填)"
-                },
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": "搜索关键词"
                 },
                 {
                   "precedence": "default",
@@ -17927,12 +17999,6 @@
                   "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
-                },
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": true
                 },
                 {
                   "precedence": "inference",
@@ -17981,7 +18047,6 @@
               "value": "string"
             }
           },
-          "interface_description": "搜索关键词",
           "property": "keyword",
           "required": false,
           "type": "string"
@@ -17999,12 +18064,6 @@
                   "value": "每页数量，默认 10"
                 },
                 {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
-                  "value": "分页大小"
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -18015,26 +18074,6 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页数量，默认 10"
-            },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": true,
-                  "source": "mcp_metadata",
-                  "value": "number"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "mcp_metadata",
-              "resolution": "highest_precedence",
-              "source": "mcp_metadata",
-              "value": "number"
             },
             "property": {
               "candidates": [
@@ -18099,8 +18138,6 @@
               "value": "string"
             }
           },
-          "interface_description": "分页大小",
-          "interface_type": "number",
           "property": "size",
           "required": false,
           "type": "string"

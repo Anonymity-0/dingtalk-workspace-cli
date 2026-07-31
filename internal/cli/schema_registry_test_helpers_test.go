@@ -78,6 +78,15 @@ func schemaRegistryForTestWithMetadata(root *cobra.Command, agent embeddedAgentM
 	if err != nil {
 		return SchemaRegistry{}, err
 	}
+	// Fixture-driven tests exercise the legacy agent-metadata overlay path.
+	// Clear bind-time migrated hint attaches so injected fixtures remain
+	// authoritative for the commands under test.
+	for _, command := range bound.Commands {
+		ClearRuntimeContractFinalForTest(command.PrimaryCommand)
+		for _, alias := range command.AliasCommands {
+			ClearRuntimeContractFinalForTest(alias.Command)
+		}
+	}
 	return assembleSchemaRegistryFromBound(bound, runtimeSchemaMetadataSources{Agent: agent, MCP: mcp})
 }
 

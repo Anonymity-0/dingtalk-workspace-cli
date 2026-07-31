@@ -8,15 +8,7 @@
     "reviewed": true
   },
   "tools": {
-    "aisearch.enterprise_person_search": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    },
     "aisearch.search_enterprise": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true,
       "parameters": {
         "queries": {
           "required": false
@@ -25,15 +17,9 @@
           "required": false
         }
       },
-      "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
+      "reviewed": true,
       "cli_path": "aisearch enterprise",
-      "runtime_gate": "none",
-      "confirmation": "not_required"
-    },
-    "aisearch.search_enterprise_behavior": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
+      "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
     }
   }
 }

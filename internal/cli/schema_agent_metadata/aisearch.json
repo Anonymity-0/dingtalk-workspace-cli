@@ -3,7 +3,7 @@
   "tools": {
     "aisearch behavior": {
       "agent_summary": "搜索发送/创建/分享/编辑/接收等明确行为记录",
-      "agent_summary_source": "dws-agent-selection/aisearch",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只按主题找内容本身时用 aisearch enterprise",
@@ -11,7 +11,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws aisearch behavior --types mail --behavior-type send --direction \"我-\u003e汐峰\" --format json",
         "dws aisearch behavior --queries \"智能化方案\" --types document --behavior-type create --format json"
@@ -19,33 +19,29 @@
       "field_provenance": {
         "agent_summary": {
           "value": "搜索发送/创建/分享/编辑/接收等明确行为记录",
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "搜索发送/创建/分享/编辑/接收等明确行为记录",
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "available",
@@ -60,48 +56,58 @@
             "只按主题找内容本身时用 aisearch enterprise",
             "没有行为动作词时不要选用本工具"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "只按主题找内容本身时用 aisearch enterprise",
                 "没有行为动作词时不要选用本工具"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "not_required",
               "source": "risk-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "effect": {
           "value": "read",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "read",
               "source": "command-verb",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -110,50 +116,52 @@
             "dws aisearch behavior --types mail --behavior-type send --direction \"我-\u003e汐峰\" --format json",
             "dws aisearch behavior --queries \"智能化方案\" --types document --behavior-type create --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws aisearch behavior --types mail --behavior-type send --direction \"我-\u003e汐峰\" --format json",
                 "dws aisearch behavior --queries \"智能化方案\" --types document --behavior-type create --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "idempotent",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed",
           "candidates": [
             {
               "value": "mcp",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "mcp",
@@ -165,52 +173,61 @@
         },
         "interface_ref": {
           "value": "aisearch.search_enterprise_behavior",
-          "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise_behavior.interface_ref",
-          "precedence": "mcp_fallback",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "aisearch.search_enterprise_behavior",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "aisearch.search_enterprise_behavior",
               "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise_behavior.interface_ref",
               "precedence": "mcp_fallback",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise_behavior",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "low",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -218,19 +235,17 @@
           "value": [
             "用户明确问我/某人发过、发给、收到、创建、分享、编辑过什么"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "用户明确问我/某人发过、发给、收到、创建、分享、编辑过什么"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -244,13 +259,8 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "Cobra help: dws aisearch behavior --help",
-        "internal/cli/schema_command_registry.json",
-        "internal/cli/schema_command_registry.json#aisearch.search_enterprise_behavior",
-        "internal/cli/schema_hints/metadata/aisearch.json",
-        "internal/cli/schema_hints/selection/aisearch.json",
+        "cmdcore.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise_behavior",
-        "live-dws-schema:aisearch.search_enterprise_behavior",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/aisearch.md"
       ],
@@ -260,7 +270,7 @@
     },
     "aisearch enterprise": {
       "agent_summary": "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
-      "agent_summary_source": "dws-agent-selection/aisearch",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "问“我发给谁/谁发给我/我创建过”等行为追溯时用 aisearch behavior",
@@ -269,7 +279,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws aisearch enterprise --queries \"智能化方案\" --types document --format json",
         "dws aisearch enterprise --queries \"OKR\" --types mail --time-range \"最近\" --format json"
@@ -277,33 +287,29 @@
       "field_provenance": {
         "agent_summary": {
           "value": "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "available",
@@ -319,10 +325,9 @@
             "企业找人时用 aisearch person",
             "已知具体资源 ID 要读写时改用对应产品命令"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
@@ -330,26 +335,23 @@
                 "企业找人时用 aisearch person",
                 "已知具体资源 ID 要读写时改用对应产品命令"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
           "candidates": [
             {
               "value": "not_required",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "not_required",
@@ -361,15 +363,21 @@
         },
         "effect": {
           "value": "read",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "read",
               "source": "command-verb",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -378,50 +386,52 @@
             "dws aisearch enterprise --queries \"智能化方案\" --types document --format json",
             "dws aisearch enterprise --queries \"OKR\" --types mail --time-range \"最近\" --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws aisearch enterprise --queries \"智能化方案\" --types document --format json",
                 "dws aisearch enterprise --queries \"OKR\" --types mail --time-range \"最近\" --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "idempotent",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
           "candidates": [
             {
               "value": "mcp",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "mcp",
@@ -433,52 +443,62 @@
         },
         "interface_ref": {
           "value": "aisearch.search_enterprise",
-          "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise.interface_ref",
-          "precedence": "mcp_fallback",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "aisearch.search_enterprise",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "aisearch.search_enterprise",
               "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise.interface_ref",
               "precedence": "mcp_fallback",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
           "candidates": [
+            {
+              "value": true,
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/aisearch.json",
               "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "low",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -487,20 +507,18 @@
             "按主题找资料、方案、文档、消息、邮件等内容，且关注“有什么内容”",
             "用户显式给出时间词或类型词时分别映射到 --time-range / --types"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "按主题找资料、方案、文档、消息、邮件等内容，且关注“有什么内容”",
                 "用户显式给出时间词或类型词时分别映射到 --time-range / --types"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -514,13 +532,9 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "Cobra help: dws aisearch enterprise --help",
-        "internal/cli/schema_command_registry.json",
-        "internal/cli/schema_command_registry.json#aisearch.search_enterprise",
+        "cmdcore.SchemaDecl",
         "internal/cli/schema_hints/metadata/aisearch.json",
-        "internal/cli/schema_hints/selection/aisearch.json",
         "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise",
-        "live-dws-schema:aisearch.search_enterprise",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/aisearch.md"
       ],
@@ -531,7 +545,7 @@
     },
     "aisearch person": {
       "agent_summary": "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
-      "agent_summary_source": "dws-agent-selection/aisearch",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "已有 userId 只需详情时用 contact user get",
@@ -540,7 +554,7 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws aisearch person --keyword \"张三\" --dimension name --format json",
         "dws aisearch person --keyword \"五道\" --dimension supervisor --format json"
@@ -548,33 +562,29 @@
       "field_provenance": {
         "agent_summary": {
           "value": "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "available",
@@ -590,10 +600,9 @@
             "精确通讯录关键词搜同事/好友且不涉及职责语义时可用 contact user search",
             "搜企业知识内容时用 aisearch enterprise；搜行为记录时用 aisearch behavior"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
@@ -601,38 +610,49 @@
                 "精确通讯录关键词搜同事/好友且不涉及职责语义时可用 contact user search",
                 "搜企业知识内容时用 aisearch enterprise；搜行为记录时用 aisearch behavior"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "not_required",
               "source": "risk-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "effect": {
           "value": "read",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "read",
               "source": "command-verb",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -641,50 +661,52 @@
             "dws aisearch person --keyword \"张三\" --dimension name --format json",
             "dws aisearch person --keyword \"五道\" --dimension supervisor --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws aisearch person --keyword \"张三\" --dimension name --format json",
                 "dws aisearch person --keyword \"五道\" --dimension supervisor --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "idempotent",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed",
           "candidates": [
             {
               "value": "mcp",
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "mcp",
@@ -696,52 +718,61 @@
         },
         "interface_ref": {
           "value": "aisearch.enterprise_person_search",
-          "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.enterprise_person_search.interface_ref",
-          "precedence": "mcp_fallback",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "aisearch.enterprise_person_search",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "aisearch.enterprise_person_search",
               "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.enterprise_person_search.interface_ref",
               "precedence": "mcp_fallback",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/aisearch marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.enterprise_person_search",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "low",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -750,20 +781,18 @@
             "找人、谁负责某事、查上级/下级、按手机号或工号定位人员",
             "需要把维度词映射到 --dimension，关键词只保留目标实体"
           ],
-          "source": "internal/cli/schema_hints/selection/aisearch.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "找人、谁负责某事、查上级/下级、按手机号或工号定位人员",
                 "需要把维度词映射到 --dimension，关键词只保留目标实体"
               ],
-              "source": "internal/cli/schema_hints/selection/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -777,13 +806,8 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "Cobra help: dws aisearch person --help",
-        "internal/cli/schema_command_registry.json",
-        "internal/cli/schema_command_registry.json#aisearch.enterprise_person_search",
-        "internal/cli/schema_hints/metadata/aisearch.json",
-        "internal/cli/schema_hints/selection/aisearch.json",
+        "cmdcore.SchemaDecl",
         "internal/cli/schema_mcp_metadata.json#tools.aisearch.enterprise_person_search",
-        "live-dws-schema:aisearch.enterprise_person_search",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/aisearch.md",
         "skills/mono/references/products/mail.md"

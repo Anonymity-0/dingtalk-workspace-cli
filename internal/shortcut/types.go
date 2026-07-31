@@ -25,6 +25,11 @@
 // dynamically-discovered MCP leaf commands and from hand-written helper commands.
 package shortcut
 
+import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
+)
+
 // Risk classifies the side effect of running a shortcut. It drives whether a
 // confirmation prompt is required before execution (see internal/safety).
 type Risk string
@@ -137,7 +142,15 @@ type Shortcut struct {
 	// long description) and in `dws shortcut list`.
 	Intent string
 	// Risk classifies the side effect; defaults to RiskRead when empty.
+	// Kept as the runtime confirmation source when Safety is empty.
 	Risk Risk
+	// Safety is an optional explicit Schema/runtime safety declaration. When
+	// non-empty it overrides Risk expansion in FromShortcut; otherwise Risk
+	// still drives ConfirmSafety so existing Execute bodies stay unchanged.
+	Safety cli.SafetySpec
+	// Schema is the final Agent Schema overlay (selection/interface/dry-run).
+	// Empty keeps the legacy hints path until the command is migrated.
+	Schema cmdcore.SchemaDecl
 	// Flags are the command-specific flags. Global flags are injected separately.
 	Flags []Flag
 	// Constraints publish and enforce relationships that individual flags cannot

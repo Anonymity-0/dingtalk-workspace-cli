@@ -7,11 +7,5 @@
     "channel": "open-source",
     "reviewed": true
   },
-  "tools": {
-    "live.get_my_lives": {
-      "interface_mode": "mcp",
-      "availability": "available",
-      "reviewed": true
-    }
-  }
+  "tools": {}
 }

@@ -2,17 +2,12 @@
   "product": "mcp",
   "tools": {
     "mcp.url_get": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws mcp url get --help",
-        "internal/app/mcp_url_command.go",
-        "internal/cli/schema_command_registry.json#mcp.url_get",
-        "internal/cli/schema_hints/metadata/mcp.json",
-        "internal/cli/schema_hints/selection/mcp.json",
-        "pkg/edition/default.go#openSupplementServers"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
-      "agent_summary_source": "dws-agent-selection/mcp",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只是查询 DWS 已公开命令或参数时使用 dws schema",
@@ -22,10 +17,10 @@
       "cli_name": "get",
       "cli_path": "mcp url get",
       "confirmation": "not_required",
-      "description": "输入 MCP 市场 mcpId，返回以当前用户和组织身份访问该 MCP 的 Streamable HTTP 服务地址。\n\n安全提示：返回的 mcpURL 和 mcpJSON 可能包含身份凭据，仅限个人使用，请勿分享到群聊、文档、邮件、代码仓库或日志。",
+      "description": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
       "display": "管理 MCP 服务连接信息",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws mcp url get 10043 --format json"
       ],
@@ -33,52 +28,58 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
-          "source": "internal/cli/schema_hints/selection/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "只是查询 DWS 已公开命令或参数时使用 dws schema",
                 "用户要求把返回的凭据 URL 发送到群聊、文档、邮件、日志或代码仓库时不要执行或传播"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
-          "source": "internal/cli/schema_hints/selection/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "只是查询 DWS 已公开命令或参数时使用 dws schema",
             "用户要求把返回的凭据 URL 发送到群聊、文档、邮件、日志或代码仓库时不要执行或传播"
@@ -87,81 +88,93 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "mcp url get",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "mcp.url_get"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "mcp url get",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "mcp.url_get"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "输入 MCP 市场 mcpId，返回以当前用户和组织身份访问该 MCP 的 Streamable HTTP 服务地址。\n\n安全提示：返回的 mcpURL 和 mcpJSON 可能包含身份凭据，仅限个人使用，请勿分享到群聊、文档、邮件、代码仓库或日志。"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "输入 MCP 市场 mcpId，返回以当前用户和组织身份访问该 MCP 的 Streamable HTTP 服务地址。\n\n安全提示：返回的 mcpURL 和 mcpJSON 可能包含身份凭据，仅限个人使用，请勿分享到群聊、文档、邮件、代码仓库或日志。"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "read"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "read"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws mcp url get 10043 --format json"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
-          "source": "internal/cli/schema_hints/selection/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws mcp url get 10043 --format json"
           ]
@@ -169,136 +182,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "idempotent"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "composite"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "composite"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "Reviewed unpinned remote adapter: the public CLI wrapper calls the helper-only mcp-meta/get_mcp_server_url endpoint, which is intentionally absent from the public product catalog and pinned MCP metadata."
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "Reviewed unpinned remote adapter: the public CLI wrapper calls the helper-only mcp-meta/get_mcp_server_url endpoint, which is intentionally absent from the public product catalog and pinned MCP metadata."
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "medium"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Expose the reviewed MCP URL resolver through the public CLI and Agent Schema while preserving the helper endpoint as a non-product supplemental server. The returned URL contains user- and organization-scoped credentials and must be treated as sensitive output.",
-          "source": "internal/cli/schema_hints/metadata/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "按 mcpId 获取 MCP 的 Streamable HTTP 服务地址"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "按 mcpId 获取 MCP 的 Streamable HTTP 服务地址"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/mcp.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "已知钉钉 MCP 市场 mcpId，需要获得当前身份可用的 Streamable HTTP 连接地址"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
-          "source": "internal/cli/schema_hints/selection/mcp.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "已知钉钉 MCP 市场 mcpId，需要获得当前身份可用的 Streamable HTTP 连接地址"
           ]
@@ -310,6 +352,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: the public CLI wrapper calls the helper-only mcp-meta/get_mcp_server_url endpoint, which is intentionally absent from the public product catalog and pinned MCP metadata.",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "url_get",
       "parameter_count": 0,
       "parameters": {},

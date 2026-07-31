@@ -458,14 +458,14 @@ func TestPromptingWritesRequireUserConfirmation(t *testing.T) {
 		"sheet.delete_pivot_table": "medium",
 	}
 	wantSources := map[string]string{
-		"attendance.class_create":  "internal/cli/schema_hints/metadata/attendance.json",
-		"attendance.class_update":  "internal/cli/schema_hints/metadata/attendance.json",
-		"doc.delete_comment":       "internal/cli/schema_hints/metadata/doc.json",
-		"doc.version_revert":       "internal/cli/schema_hints/metadata/doc.json",
-		"drive.publish_set":        "internal/cli/schema_hints/metadata/drive.json",
-		"drive.publish_unset":      "internal/cli/schema_hints/metadata/drive.json",
-		"sheet.chart_delete":       "internal/cli/schema_hints/metadata/sheet.json",
-		"sheet.delete_pivot_table": "internal/cli/schema_hints/metadata/sheet.json",
+		"attendance.class_create":  "cmdcore.contract",
+		"attendance.class_update":  "cmdcore.contract",
+		"doc.delete_comment":       "cmdcore.contract",
+		"doc.version_revert":       "cmdcore.contract",
+		"drive.publish_set":        "cmdcore.contract",
+		"drive.publish_unset":      "cmdcore.contract",
+		"sheet.chart_delete":       "cmdcore.contract",
+		"sheet.delete_pivot_table": "cmdcore.contract",
 	}
 	canonicals := make([]string, 0, len(wantEffects))
 	for canonical := range wantEffects {

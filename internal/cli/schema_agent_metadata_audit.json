@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "source_hash": "sha256:b35ce9152531d2cb8dc0fab57bdd2adc526055667df88379000ce88bd2ed0c2c",
+  "source_hash": "sha256:dc81f9a6bf1c4137d03f3b0aa7d2b17fcd72c5defdfc10ad26ee4911c4257098",
   "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
   "source_files": 160,
   "hint_files": 54,
   "hint_products": 43,
-  "hint_tools": 1780,
+  "hint_tools": 221,
   "interface_metadata": {
     "source": "mcp-tools-list+cli-registry",
     "revision": "4574f7022c32cf4c033e9b7b4156e2fec815fed8",
@@ -13,8 +13,8 @@
     "source_tools": 419,
     "surface_tools": 414,
     "eligible_summaries": 413,
-    "applied_summaries": 0,
-    "preserved_summaries": 413,
+    "applied_summaries": 268,
+    "preserved_summaries": 145,
     "rejected_tools": [
       "chat.unread_message_conversation_list"
     ],
@@ -36,8 +36,8 @@
     "tools_with_avoid_when": 845,
     "tools_with_examples": 845,
     "tools_with_interface_mode": 845,
-    "unmatched_skill_tools": 122,
-    "unreviewed_skill_tools": 11
+    "unmatched_skill_tools": 118,
+    "unreviewed_skill_tools": 7
   },
   "source_products": [
     "agoal",
@@ -90,18 +90,6 @@
   "unmatched_references": [
     {
       "tool_path": "chat.get_group_members"
-    },
-    {
-      "tool_path": "devdoc.devdoc_rag_pretest"
-    },
-    {
-      "tool_path": "devdoc.search_dingtalk_open_docs"
-    },
-    {
-      "tool_path": "devdoc.search_open_error_code_rag"
-    },
-    {
-      "tool_path": "devdoc.search_open_platform_docs"
     },
     {
       "tool_path": "doc",

@@ -3,7 +3,7 @@
   "tools": {
     "event consume": {
       "agent_summary": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
-      "agent_summary_source": "dws-agent-selection/event",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只查历史聊天记录时用 chat 查询命令",
@@ -11,7 +11,7 @@
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
         "dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson"
@@ -19,33 +19,29 @@
       "field_provenance": {
         "agent_summary": {
           "value": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -54,52 +50,46 @@
             "只查历史聊天记录时用 chat 查询命令",
             "只看事件目录/字段时用 event list / event schema"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "只查历史聊天记录时用 chat 查询命令",
                 "只看事件目录/字段时用 event list / event schema"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "not_required",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "effect": {
           "value": "write",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "write",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -108,82 +98,74 @@
             "dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
             "dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
                 "dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "non_idempotent",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "non_idempotent",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_mode": {
           "value": "composite",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "composite",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
             }
@@ -191,40 +173,29 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "medium",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "medium",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -237,10 +208,9 @@
             "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
             "同一目标、同一过滤条件需要同时监听多个兼容事件"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
@@ -251,10 +221,9 @@
                 "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
                 "同一目标、同一过滤条件需要同时监听多个兼容事件"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -265,13 +234,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cobra-help:dws event consume",
-        "cobra-help:dws event consume --help",
-        "internal/cli/schema_command_registry.json#event.consume",
-        "internal/cli/schema_hints/metadata/event.json",
-        "internal/cli/schema_hints/selection/event.json",
-        "live-dws-schema:event.consume#FAILED",
-        "skills/mono/SKILL.md",
+        "cmdcore.SchemaDecl",
         "skills/mono/references/products/event.md"
       ],
       "use_when": [
@@ -285,7 +248,7 @@
     },
     "event list": {
       "agent_summary": "列出支持的个人事件目录与状态说明",
-      "agent_summary_source": "dws-agent-selection/event",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "已知 event_key 要看 payload 字段时用 event schema",
@@ -293,40 +256,36 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws event list --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "列出支持的个人事件目录与状态说明",
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "列出支持的个人事件目录与状态说明",
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -335,52 +294,46 @@
             "已知 event_key 要看 payload 字段时用 event schema",
             "要开始监听时用 event consume"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "已知 event_key 要看 payload 字段时用 event schema",
                 "要开始监听时用 event consume"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "not_required",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "effect": {
           "value": "read",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "read",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -388,81 +341,73 @@
           "value": [
             "dws event list --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws event list --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_mode": {
           "value": "local",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "local",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "命令读取 CLI 内置的个人事件目录，不绑定 pinned MCP RPC",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "命令读取 CLI 内置的个人事件目录，不绑定 pinned MCP RPC",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
             }
@@ -470,40 +415,29 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "low",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -511,19 +445,17 @@
           "value": [
             "尚不知道可用 event_key，需要先盘点个人事件目录"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "尚不知道可用 event_key，需要先盘点个人事件目录"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -534,13 +466,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cobra-help:dws event list --help",
-        "internal/cli/schema_command_registry.json#event.list",
-        "internal/cli/schema_hints/metadata/event.json",
-        "internal/cli/schema_hints/selection/event.json",
-        "live-dws-schema:event.list#FAILED",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/event.md"
+        "cmdcore.SchemaDecl"
       ],
       "use_when": [
         "尚不知道可用 event_key，需要先盘点个人事件目录"
@@ -548,7 +474,7 @@
     },
     "event schema": {
       "agent_summary": "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
-      "agent_summary_source": "dws-agent-selection/event",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "查询 CLI 命令参数契约时用顶层 dws schema",
@@ -556,40 +482,36 @@
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws event schema user_im_message_receive_at --flatten --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -598,52 +520,46 @@
             "查询 CLI 命令参数契约时用顶层 dws schema",
             "要实际收事件时用 event consume"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "查询 CLI 命令参数契约时用顶层 dws schema",
                 "要实际收事件时用 event consume"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "not_required",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "effect": {
           "value": "read",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "read",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -651,81 +567,73 @@
           "value": [
             "dws event schema user_im_message_receive_at --flatten --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws event schema user_im_message_receive_at --flatten --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_mode": {
           "value": "local",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "local",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
             }
@@ -733,40 +641,29 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "low",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -774,19 +671,17 @@
           "value": [
             "已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -797,12 +692,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cobra-help:dws event schema --help",
-        "internal/cli/schema_command_registry.json#event.schema",
-        "internal/cli/schema_hints/metadata/event.json",
-        "internal/cli/schema_hints/selection/event.json",
-        "live-dws-schema:event.schema#FAILED",
-        "skills/mono/SKILL.md",
+        "cmdcore.SchemaDecl",
         "skills/mono/references/products/event.md"
       ],
       "use_when": [
@@ -811,47 +701,43 @@
     },
     "event status": {
       "agent_summary": "查看个人事件订阅、本地 bus 与消费进程状态",
-      "agent_summary_source": "dws-agent-selection/event",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "取消订阅用 event stop；列事件目录用 event list"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws event status --format json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查看个人事件订阅、本地 bus 与消费进程状态",
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "查看个人事件订阅、本地 bus 与消费进程状态",
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -859,35 +745,31 @@
           "value": [
             "取消订阅用 event stop；列事件目录用 event list"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "取消订阅用 event stop；列事件目录用 event list"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "not_required",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "not_required",
@@ -899,17 +781,15 @@
         },
         "effect": {
           "value": "read",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "read",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "read",
@@ -923,35 +803,31 @@
           "value": [
             "dws event status --format json"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws event status --format json"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "idempotent",
@@ -963,47 +839,43 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "composite",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
             }
@@ -1011,40 +883,29 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/event marks this tool as reviewed",
           "candidates": [
             {
               "value": "low",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/event marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "low",
@@ -1058,19 +919,17 @@
           "value": [
             "需要确认订阅是否活跃、bus/consume 是否仍在运行"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "需要确认订阅是否活跃、bus/consume 是否仍在运行"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -1081,12 +940,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cobra-help:dws event status --help",
-        "internal/cli/schema_command_registry.json#event.status",
-        "internal/cli/schema_hints/metadata/event.json",
-        "internal/cli/schema_hints/selection/event.json",
-        "live-dws-schema:event.status#FAILED",
-        "skills/mono/SKILL.md",
+        "cmdcore.SchemaDecl",
         "skills/mono/references/products/event.md"
       ],
       "use_when": [
@@ -1095,7 +949,7 @@
     },
     "event stop": {
       "agent_summary": "取消个人事件订阅并停止对应本地消费",
-      "agent_summary_source": "dws-agent-selection/event",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只需检查状态时用 event status",
@@ -1103,40 +957,36 @@
       ],
       "confirmation": "user_required",
       "effect": "destructive",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws event stop SUBSCRIBE_ID --dry-run"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "取消个人事件订阅并停止对应本地消费",
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "取消个人事件订阅并停止对应本地消费",
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -1145,36 +995,32 @@
             "只需检查状态时用 event status",
             "目标订阅不明确或用户未确认时不要停止"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "只需检查状态时用 event status",
                 "目标订阅不明确或用户未确认时不要停止"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "user_required",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "user_required",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "not_required",
@@ -1186,17 +1032,15 @@
         },
         "effect": {
           "value": "destructive",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "destructive",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "write",
@@ -1210,35 +1054,31 @@
           "value": [
             "dws event stop SUBSCRIBE_ID --dry-run"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws event stop SUBSCRIBE_ID --dry-run"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "unknown",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "unknown",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "unknown",
@@ -1250,47 +1090,43 @@
         },
         "interface_mode": {
           "value": "composite",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "composite",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
             }
@@ -1298,40 +1134,29 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "high",
-          "source": "internal/cli/schema_hints/metadata/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate.",
           "candidates": [
             {
               "value": "high",
-              "source": "internal/cli/schema_hints/metadata/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "Runtime already requires --yes (or --dry-run preview) before cancelling subscriptions / stopping the bus; align Schema safety and runtime_gate with that gate."
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "medium",
@@ -1345,19 +1170,17 @@
           "value": [
             "用户明确要求取消已知 subscribe_id（或清理全部）并停止消费"
           ],
-          "source": "internal/cli/schema_hints/selection/event.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "用户明确要求取消已知 subscribe_id（或清理全部）并停止消费"
               ],
-              "source": "internal/cli/schema_hints/selection/event.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -1368,13 +1191,7 @@
       "reviewed": true,
       "risk": "high",
       "source_refs": [
-        "cobra-help:dws event stop --help",
-        "internal/cli/schema_command_registry.json#event.stop",
-        "internal/cli/schema_hints/metadata/event.json",
-        "internal/cli/schema_hints/selection/event.json",
-        "live-dws-schema:event.stop#FAILED",
-        "note:examples-omit-yes-use-dry-run-first",
-        "skills/mono/SKILL.md",
+        "cmdcore.SchemaDecl",
         "skills/mono/references/products/event.md"
       ],
       "use_when": [

@@ -26,30 +26,8 @@ type dryRunCapabilityGroup struct {
 // CI executes each selected example and compares the observed preview kind to
 // this reviewed declaration.
 var reviewedDryRunCapabilityGroups = []dryRunCapabilityGroup{
-	{PreviewKind: DryRunPreviewRequest, CanonicalPaths: []string{
-		"event.stop",
-	}},
-	{PreviewKind: DryRunPreviewPlan, CanonicalPaths: []string{
-		"chat.download_media",
-		"doc.download_file",
-		"doc.import_get",
-		"doc.media_insert",
-		"doc.query_export_job",
-		"doc.upload",
-		"drive.download_file",
-		"drive.upload",
-		"markdown.create",
-		"markdown.fetch",
-		"markdown.overwrite",
-		"markdown.patch",
-		"sheet.filter_view_get_criteria",
-		"sheet.filter_view_info",
-		"sheet.filter_view_list_criteria",
-		"sheet.media_upload",
-		"sheet.submit_export_job",
-		"sheet.write_image",
-		"todo.add_todo_attachment",
-	}},
+	// Declared tools publish dry_run from schemaHintDecls / LeafSpec Schema.
+	// Manual entries remain only for tools that cannot yet declare ContractFinal.
 }
 
 var reviewedDryRunCapabilitiesLazy struct {

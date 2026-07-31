@@ -7,29 +7,7 @@
     "channel": "open-source",
     "reviewed": true
   },
-  "tools": {
-    "mcp.url_get": {
-      "agent_summary": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
-      "use_when": [
-        "已知钉钉 MCP 市场 mcpId，需要获得当前身份可用的 Streamable HTTP 连接地址"
-      ],
-      "avoid_when": [
-        "只是查询 DWS 已公开命令或参数时使用 dws schema",
-        "用户要求把返回的凭据 URL 发送到群聊、文档、邮件、日志或代码仓库时不要执行或传播"
-      ],
-      "examples": [
-        "dws mcp url get 10043 --format json"
-      ],
-      "reviewed": true,
-      "review_reason": "正式公开 MCP URL 解析命令的 Agent 选型文案，并明确凭据 URL 只能返回给当前用户、不得二次传播。",
-      "source_refs": [
-        "internal/cli/schema_command_registry.json#mcp.url_get",
-        "cobra-help:dws mcp url get --help",
-        "internal/app/mcp_url_command.go",
-        "pkg/edition/default.go#openSupplementServers"
-      ]
-    }
-  },
+  "tools": {},
   "products": {
     "mcp": {
       "agent_summary": "解析和管理当前身份可用的 MCP 服务连接信息",

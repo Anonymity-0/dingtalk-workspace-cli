@@ -22,17 +22,18 @@ type finalSchemaSafetyWant struct {
 }
 
 func TestReviewedMutationSafetyReachesFinalSchema(t *testing.T) {
+	const declared = "contract_final"
 	wants := []finalSchemaSafetyWant{
-		{canonical: "aitable.form_field_hide", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "idempotent"},
-		{canonical: "chat.dismiss_group", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "drive.recycle_restore", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown"},
-		{canonical: "minutes.create_speaker_summary", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown"},
-		{canonical: "sheet.clear_range", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "sheet.batch_update", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "sheet.range_batch_clear", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown"},
-		{canonical: "sheet.group_dimension", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown"},
-		{canonical: "sheet.sort_filter", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown"},
-		{canonical: "sheet.ungroup_dimension", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown"},
+		{canonical: "aitable.form_field_hide", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "idempotent", provenance: declared},
+		{canonical: "chat.dismiss_group", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "drive.recycle_restore", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
+		{canonical: "minutes.create_speaker_summary", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
+		{canonical: "sheet.clear_range", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "sheet.batch_update", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "sheet.range_batch_clear", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "sheet.group_dimension", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
+		{canonical: "sheet.sort_filter", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
+		{canonical: "sheet.ungroup_dimension", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
 	}
 	assertFinalSchemaSafety(t, wants)
 }

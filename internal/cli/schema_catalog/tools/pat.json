@@ -2,23 +2,12 @@
   "product": "pat",
   "tools": {
     "pat.batch_grant": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "CommandRegistry:canonical_path=pat.batch_grant",
-        "Skill:skills/mono/references/products/pat.md",
-        "cobra-help:dws pat chmod",
-        "helper:internal/pat/chmod.go#typed_yes",
-        "internal/cli/schema_command_registry.json#pat.batch_grant",
-        "internal/cli/schema_hints/metadata/pat.json",
-        "internal/cli/schema_hints/selection/pat.json",
-        "internal/cli/schema_mcp_metadata.json#tools.pat.batch_grant",
-        "live-dws-schema:pat.batch_grant#FAILED",
-        "pinned-mcp:pat.batch_grant",
-        "skills/mono/references/products/pat.md",
-        "structured-hint:internal/cli/schema_hints/selection-review.json#pat.batch_grant"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
-      "agent_summary_source": "dws-agent-selection/pat",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "普通 OAuth 登录用 auth，不要用 pat",
@@ -41,10 +30,10 @@
           ]
         ]
       },
-      "description": "授予指定 scope 的操作权限。\n\nscope 格式: \u003cproduct\u003e.\u003centity\u003e:\u003cpermission\u003e\n  例: aitable.record:query  chat.message:list  calendar.event:get\n\ngrantType 规则:\n  once       一次性，执行一次后自动失效\n  session    当前会话有效，需要 --session-id\n  permanent  永久有效（默认）\n\n批量授权:\n  dws pat chmod 支持一次传多个 scope 直接批量授予。\n  也支持 --products / --product 按产品编码批量展开 scope 模板，\n  --domains / --domain 按产品域批量展开 scope 模板，\n  --recommend 使用服务端推荐 scope 集合。\n  使用产品 / 域 / 推荐集合时，CLI 会先生成 batch plan，确认\n  selected / skipped / pending，再对 selected scopes 执行 batch grant；\n  --dry-run 只返回授权计划，不写入授权。真正执行批量授权必须显式\n  添加 --yes；未加 --yes 时 CLI 会阻断并提示 agent 先确认。\n\nagentCode 配置:\n  可通过 --agentCode 或 DINGTALK_DWS_AGENTCODE\n  指定；未传 agentCode 时，CLI 会省略该字段并由服务端默认兜底。",
+      "description": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
       "display": "行为授权管理",
       "effect": "write",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
       ],
@@ -52,48 +41,47 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "available"
-            },
-            {
-              "precedence": "mcp_fallback",
-              "selected": false,
-              "source": "internal/cli/schema_mcp_metadata.json#tools.pat.batch_grant.interface_ref",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "普通 OAuth 登录用 auth，不要用 pat",
                 "授权产品、grant-type 或 session-id 未明确时不要执行写入",
@@ -101,10 +89,11 @@
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "普通 OAuth 登录用 auth，不要用 pat",
             "授权产品、grant-type 或 session-id 未明确时不要执行写入",
@@ -114,114 +103,93 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "pat chmod",
-              "value": "pat.batch_grant"
-            },
-            {
-              "precedence": "native_annotation",
-              "selected": false,
-              "source": "native_annotation",
-              "source_ref": "hardcoded:pat",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "pat.batch_grant"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "pat chmod",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "pat.batch_grant"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "user_required"
-            },
-            {
-              "precedence": "skill",
-              "review_reason": "Skill command comment explicitly marks the operation as risky",
-              "selected": false,
-              "source": "skills/mono/references/products/pat.md",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "user_required"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "user_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "授予指定 scope 的操作权限。\n\nscope 格式: \u003cproduct\u003e.\u003centity\u003e:\u003cpermission\u003e\n  例: aitable.record:query  chat.message:list  calendar.event:get\n\ngrantType 规则:\n  once       一次性，执行一次后自动失效\n  session    当前会话有效，需要 --session-id\n  permanent  永久有效（默认）\n\n批量授权:\n  dws pat chmod 支持一次传多个 scope 直接批量授予。\n  也支持 --products / --product 按产品编码批量展开 scope 模板，\n  --domains / --domain 按产品域批量展开 scope 模板，\n  --recommend 使用服务端推荐 scope 集合。\n  使用产品 / 域 / 推荐集合时，CLI 会先生成 batch plan，确认\n  selected / skipped / pending，再对 selected scopes 执行 batch grant；\n  --dry-run 只返回授权计划，不写入授权。真正执行批量授权必须显式\n  添加 --yes；未加 --yes 时 CLI 会阻断并提示 agent 先确认。\n\nagentCode 配置:\n  可通过 --agentCode 或 DINGTALK_DWS_AGENTCODE\n  指定；未传 agentCode 时，CLI 会省略该字段并由服务端默认兜底。"
-            },
-            {
-              "precedence": "mcp_metadata",
-              "selected": false,
-              "source": "mcp_metadata",
-              "value": "按可信上下文为当前用户执行 PAT 批量授权，支持 dryRun 和 pending flow。"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "授予指定 scope 的操作权限。\n\nscope 格式: \u003cproduct\u003e.\u003centity\u003e:\u003cpermission\u003e\n  例: aitable.record:query  chat.message:list  calendar.event:get\n\ngrantType 规则:\n  once       一次性，执行一次后自动失效\n  session    当前会话有效，需要 --session-id\n  permanent  永久有效（默认）\n\n批量授权:\n  dws pat chmod 支持一次传多个 scope 直接批量授予。\n  也支持 --products / --product 按产品编码批量展开 scope 模板，\n  --domains / --domain 按产品域批量展开 scope 模板，\n  --recommend 使用服务端推荐 scope 集合。\n  使用产品 / 域 / 推荐集合时，CLI 会先生成 batch plan，确认\n  selected / skipped / pending，再对 selected scopes 执行 batch grant；\n  --dry-run 只返回授权计划，不写入授权。真正执行批量授权必须显式\n  添加 --yes；未加 --yes 时 CLI 会阻断并提示 agent 先确认。\n\nagentCode 配置:\n  可通过 --agentCode 或 DINGTALK_DWS_AGENTCODE\n  指定；未传 agentCode 时，CLI 会省略该字段并由服务端默认兜底。"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "write"
-            },
-            {
-              "precedence": "skill",
-              "review_reason": "Skill command comment explicitly marks the operation as risky",
-              "selected": false,
-              "source": "skills/mono/references/products/pat.md",
-              "value": "write"
-            },
-            {
-              "precedence": "inference_or_default",
-              "selected": false,
-              "source": "command-verb",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "write"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "write"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws pat chmod --products calendar,aitable --grant-type session --session-id \u003cSESSION_ID\u003e --dry-run --format json"
           ]
@@ -229,62 +197,58 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "unknown"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "unknown"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "mcp"
-            },
-            {
-              "precedence": "mcp_fallback",
-              "selected": false,
-              "source": "internal/cli/schema_mcp_metadata.json#tools.pat.batch_grant.interface_ref",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "mcp"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "mcp"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": {
                 "product_id": "pat",
                 "rpc_name": "pat.batch_grant"
               }
-            },
-            {
-              "precedence": "mcp_fallback",
-              "selected": false,
-              "source": "internal/cli/schema_mcp_metadata.json#tools.pat.batch_grant.interface_ref",
-              "value": "pat.pat.batch_grant"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": {
             "product_id": "pat",
             "rpc_name": "pat.batch_grant"
@@ -293,100 +257,94 @@
         "metadata_source": {
           "candidates": [
             {
-              "precedence": "derived_resolution",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "metadata_source_resolution",
-              "value": "embedded-mcp-metadata"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
             }
           ],
-          "precedence": "derived_resolution",
-          "resolution": "highest_precedence",
-          "source": "metadata_source_resolution",
-          "value": "embedded-mcp-metadata"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "high"
-            },
-            {
-              "precedence": "skill",
-              "review_reason": "Skill command comment explicitly marks the operation as risky",
-              "selected": false,
-              "source": "skills/mono/references/products/pat.md",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "high"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "high"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "授予指定权限"
-            },
-            {
-              "precedence": "mcp_metadata",
-              "selected": false,
-              "source": "mcp_metadata",
-              "value": "批量授权"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "授予指定权限"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "命令提示缺少行为授权，需要按产品或 scope 批量授权",
                 "先 --dry-run 查看 selected/skipped/pending，用户确认后再执行"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "命令提示缺少行为授权，需要按产品或 scope 批量授权",
             "先 --dry-run 查看 selected/skipped/pending，用户确认后再执行"
@@ -401,7 +359,7 @@
         "rpc_name": "pat.batch_grant"
       },
       "is_alias": false,
-      "metadata_source": "embedded-mcp-metadata",
+      "metadata_source": "cmdcore.contract",
       "name": "batch_grant",
       "parameter_count": 8,
       "parameters": {
@@ -724,16 +682,6 @@
                   "precedence": "native_annotation",
                   "selected": true,
                   "source": "native_annotation",
-                  "value": [
-                    "once",
-                    "session",
-                    "permanent"
-                  ]
-                },
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": false,
-                  "source": "mcp_metadata",
                   "value": [
                     "once",
                     "session",
@@ -1154,42 +1102,30 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": true,
-                  "source": "tool_schema_hint",
-                  "value": false
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
-              "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": true,
-                  "source": "tool_schema_hint",
-                  "value": "grant-type is session"
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "default",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
-              "value": "grant-type is session"
+              "source": "default",
+              "value": ""
             },
             "type": {
               "candidates": [
@@ -1208,7 +1144,6 @@
           },
           "property": "sessionId",
           "required": false,
-          "required_when": "grant-type is session",
           "type": "string"
         }
       },
@@ -1235,20 +1170,12 @@
       ]
     },
     "pat.browser_policy": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "CommandRegistry:canonical_path=pat.browser_policy",
-        "Skill:skills/mono/references/products/pat.md",
-        "cobra-help:dws pat browser-policy",
-        "internal/cli/schema_command_registry.json#pat.browser_policy",
-        "internal/cli/schema_hints/metadata/pat.json",
-        "internal/cli/schema_hints/selection/pat.json",
-        "live-dws-schema:pat.browser_policy#FAILED",
-        "skills/mono/references/products/pat.md",
-        "structured-hint:internal/cli/schema_hints/selection-review.json#pat.browser_policy"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "配置 PAT 授权流程是否允许打开本地浏览器",
-      "agent_summary_source": "dws-agent-selection/pat",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
@@ -1257,10 +1184,10 @@
       "cli_name": "browser-policy",
       "cli_path": "pat browser-policy",
       "confirmation": "not_required",
-      "description": "配置 PAT 授权时是否打开浏览器",
+      "description": "配置 PAT 授权流程是否允许打开本地浏览器",
       "display": "行为授权管理",
       "effect": "write",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws pat browser-policy --enabled --format json",
         "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
@@ -1269,51 +1196,57 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "配置 PAT 授权流程是否允许打开本地浏览器"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "配置 PAT 授权流程是否允许打开本地浏览器"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"
           ]
@@ -1321,86 +1254,94 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "pat browser-policy",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "pat.browser_policy"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "pat browser-policy",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "pat.browser_policy"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "risk-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "risk-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "配置 PAT 授权时是否打开浏览器"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "配置 PAT 授权流程是否允许打开本地浏览器"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "配置 PAT 授权时是否打开浏览器"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "配置 PAT 授权流程是否允许打开本地浏览器"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "write"
-            },
-            {
-              "precedence": "inference_or_default",
-              "selected": false,
-              "source": "command-verb",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "write"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "write"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws pat browser-policy --enabled --format json",
                 "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws pat browser-policy --enabled --format json",
             "dws pat browser-policy --enabled=false --agentCode \u003cAGENT_CODE\u003e --format json"
@@ -1409,140 +1350,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "inference_or_default",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "unknown"
             }
           ],
-          "precedence": "inference_or_default",
-          "resolution": "highest_precedence",
-          "source": "effect-default",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "unknown"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "local"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode local forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode local forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/pat.json",
-              "value": "medium"
-            },
-            {
-              "precedence": "inference_or_default",
-              "selected": false,
-              "source": "effect-default",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "medium"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/pat marks this tool as reviewed",
-          "source": "internal/cli/schema_hints/metadata/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "配置 PAT 授权时是否打开浏览器"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "配置 PAT 授权时是否打开浏览器"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/pat.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/pat.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"
           ]
@@ -1553,6 +1519,7 @@
       "interface_mode": "local",
       "interface_reason": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "browser_policy",
       "parameter_count": 2,
       "parameters": {

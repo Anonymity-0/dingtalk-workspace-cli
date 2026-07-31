@@ -119,7 +119,14 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 		t.Fatalf("source = %q, want reviewed_command_registry", got)
 	}
 	identity := schemaMap(leaf["field_provenance"])["canonical_path"]
-	if identity["source"] != "reviewed_command_registry" || identity["precedence"] != "command_registry" {
+	// Migrated ContractFinal tools stamp identity provenance as contract_final
+	// pass-through while the registry remains the path index; accept either.
+	switch identity["precedence"] {
+	case "command_registry", "contract_final":
+	default:
+		t.Fatalf("canonical identity provenance = %#v", identity)
+	}
+	if identity["precedence"] == "command_registry" && identity["source"] != "reviewed_command_registry" {
 		t.Fatalf("canonical identity provenance = %#v", identity)
 	}
 	parameters := schemaMap(leaf["parameters"])

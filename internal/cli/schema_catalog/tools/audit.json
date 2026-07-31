@@ -2,16 +2,12 @@
   "product": "audit",
   "tools": {
     "audit.export": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws audit export --help",
-        "internal/app/audit_command.go",
-        "internal/cli/schema_command_registry.json#audit.export",
-        "internal/cli/schema_hints/metadata/audit.json",
-        "internal/cli/schema_hints/selection/audit.json"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
-      "agent_summary_source": "dws-agent-selection/audit",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只看最近几条用 audit tail",
@@ -21,10 +17,10 @@
       "cli_name": "export",
       "cli_path": "audit export",
       "confirmation": "not_required",
-      "description": "导出审计日志",
+      "description": "按日期范围导出本地操作审计日志（jsonl 或 csv）",
       "display": "操作审计日志管理",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws audit export --format jsonl",
         "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
@@ -33,52 +29,58 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "只看最近几条用 audit tail",
                 "只校验哈希链完整性用 audit verify"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "只看最近几条用 audit tail",
             "只校验哈希链完整性用 audit verify"
@@ -87,82 +89,94 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "audit export",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "audit.export"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "audit export",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "audit.export"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "导出审计日志"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "导出审计日志"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "按日期范围导出本地操作审计日志（jsonl 或 csv）"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "read"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "read"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws audit export --format jsonl",
                 "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws audit export --format jsonl",
             "dws audit export --since 2026-07-01 --until 2026-07-14 --format csv"
@@ -171,136 +185,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "idempotent"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "local"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode local forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode local forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log export from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "low"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log export from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "导出审计日志"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "导出审计日志"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读导出，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"
           ]
@@ -311,6 +354,7 @@
       "interface_mode": "local",
       "interface_reason": "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "export",
       "parameter_count": 3,
       "parameters": {
@@ -586,16 +630,12 @@
       ]
     },
     "audit.tail": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws audit tail --help",
-        "internal/app/audit_command.go",
-        "internal/cli/schema_command_registry.json#audit.tail",
-        "internal/cli/schema_hints/metadata/audit.json",
-        "internal/cli/schema_hints/selection/audit.json"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "查看本地操作审计日志最近 N 条记录",
-      "agent_summary_source": "dws-agent-selection/audit",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "需要按日期范围整段导出用 audit export",
@@ -605,10 +645,10 @@
       "cli_name": "tail",
       "cli_path": "audit tail",
       "confirmation": "not_required",
-      "description": "查看最近的审计记录",
+      "description": "查看本地操作审计日志最近 N 条记录",
       "display": "操作审计日志管理",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws audit tail",
         "dws audit tail --lines 50"
@@ -617,52 +657,58 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "查看本地操作审计日志最近 N 条记录"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "查看本地操作审计日志最近 N 条记录"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "需要按日期范围整段导出用 audit export",
                 "需要校验哈希链用 audit verify"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "需要按日期范围整段导出用 audit export",
             "需要校验哈希链用 audit verify"
@@ -671,82 +717,94 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "audit tail",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "audit.tail"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "audit tail",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "audit.tail"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "查看最近的审计记录"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "查看本地操作审计日志最近 N 条记录"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "查看最近的审计记录"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "查看本地操作审计日志最近 N 条记录"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "read"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "read"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws audit tail",
                 "dws audit tail --lines 50"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws audit tail",
             "dws audit tail --lines 50"
@@ -755,136 +813,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "idempotent"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "local"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode local forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode local forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit log tail from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "low"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit log tail from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "查看最近的审计记录"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "查看最近的审计记录"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "需要快速查看最近写入的审计记录（默认最近 20 条）"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读查看，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "需要快速查看最近写入的审计记录（默认最近 20 条）"
           ]
@@ -895,6 +982,7 @@
       "interface_mode": "local",
       "interface_reason": "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "tail",
       "parameter_count": 1,
       "parameters": {
@@ -1002,16 +1090,12 @@
       ]
     },
     "audit.verify": {
-      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_metadata_source": "cmdcore.contract",
       "agent_source_refs": [
-        "cobra-help:dws audit verify --help",
-        "internal/app/audit_command.go",
-        "internal/cli/schema_command_registry.json#audit.verify",
-        "internal/cli/schema_hints/metadata/audit.json",
-        "internal/cli/schema_hints/selection/audit.json"
+        "cmdcore.SchemaDecl"
       ],
       "agent_summary": "校验本地审计日志文件的哈希链完整性",
-      "agent_summary_source": "dws-agent-selection/audit",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只浏览或导出日志内容时用 audit tail / audit export"
@@ -1020,10 +1104,10 @@
       "cli_name": "verify",
       "cli_path": "audit verify",
       "confirmation": "not_required",
-      "description": "校验审计日志哈希链完整性",
+      "description": "校验本地审计日志文件的哈希链完整性",
       "display": "操作审计日志管理",
       "effect": "read",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws audit verify",
         "dws audit verify --file /path/to/audit.jsonl"
@@ -1032,51 +1116,57 @@
         "agent_summary": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "校验本地审计日志文件的哈希链完整性"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "校验本地审计日志文件的哈希链完整性"
         },
         "availability": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "available"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "available"
         },
         "avoid_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "只浏览或导出日志内容时用 audit tail / audit export"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "只浏览或导出日志内容时用 audit tail / audit export"
           ]
@@ -1084,82 +1174,94 @@
         "canonical_path": {
           "candidates": [
             {
-              "precedence": "command_registry",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "reviewed_command_registry",
-              "source_ref": "audit verify",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "audit.verify"
             }
           ],
-          "precedence": "command_registry",
-          "resolution": "registry_identity",
-          "source": "reviewed_command_registry",
-          "source_ref": "audit verify",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "audit.verify"
         },
         "confirmation": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "not_required"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
-              "value": "校验审计日志哈希链完整性"
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "校验本地审计日志文件的哈希链完整性"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
-          "value": "校验审计日志哈希链完整性"
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "校验本地审计日志文件的哈希链完整性"
         },
         "effect": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "read"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "read"
         },
         "examples": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "dws audit verify",
                 "dws audit verify --file /path/to/audit.jsonl"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "dws audit verify",
             "dws audit verify --file /path/to/audit.jsonl"
@@ -1168,136 +1270,165 @@
         "idempotency": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "idempotent"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "idempotent"
         },
         "interface_mode": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "local"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "local"
         },
         "interface_reason": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC"
         },
         "interface_ref": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "final interface mode local forbids a direct MCP interface_ref",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": null
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "interface_disposition_matrix",
-          "review_reason": "final interface mode local forbids a direct MCP interface_ref",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": null
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
+              "selected": true,
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
+              "value": "cmdcore.contract"
+            }
+          ],
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
+          "value": "cmdcore.contract"
         },
         "reviewed": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
-              "value": true
-            },
-            {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
-              "selected": false,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": true
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": true
         },
         "risk": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/metadata/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "low"
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "Local audit hash-chain verify from #555; no remote RPC.",
-          "source": "internal/cli/schema_hints/metadata/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "cobra_help",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "cobra_help",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": "校验审计日志哈希链完整性"
             }
           ],
-          "precedence": "cobra_help",
-          "resolution": "highest_precedence",
-          "source": "cobra_help",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": "校验审计日志哈希链完整性"
         },
         "use_when": {
           "candidates": [
             {
-              "precedence": "reviewed_explicit",
-              "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
+              "precedence": "contract_final",
+              "review_reason": "Contract final Schema pass-through",
               "selected": true,
-              "source": "internal/cli/schema_hints/selection/audit.json",
+              "source": "cmdcore.contract",
+              "source_ref": "cmdcore.SchemaDecl",
               "value": [
                 "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"
               ]
             }
           ],
-          "precedence": "reviewed_explicit",
-          "resolution": "highest_precedence",
-          "review_reason": "纳入 #555 公开 audit leaf 的 Agent 选型文案；本地只读校验，示例不含 --yes。",
-          "source": "internal/cli/schema_hints/selection/audit.json",
+          "precedence": "contract_final",
+          "resolution": "contract_pass_through",
+          "review_reason": "Contract final Schema pass-through",
+          "source": "cmdcore.contract",
+          "source_ref": "cmdcore.SchemaDecl",
           "value": [
             "怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"
           ]
@@ -1308,6 +1439,7 @@
       "interface_mode": "local",
       "interface_reason": "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
       "is_alias": false,
+      "metadata_source": "cmdcore.contract",
       "name": "verify",
       "parameter_count": 1,
       "parameters": {

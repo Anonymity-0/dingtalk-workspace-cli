@@ -7,70 +7,7 @@
     "channel": "open-source",
     "reviewed": true
   },
-  "tools": {
-    "dev.connect_status": {
-      "agent_summary": "查看后台连接器守护进程状态",
-      "use_when": [
-        "需要确认本地 connect 守护进程是否在跑、pid/日志路径"
-      ],
-      "avoid_when": [
-        "要停止守护进程时用 dev connect stop"
-      ],
-      "examples": [
-        "dws dev connect status --unified-app-id <unifiedAppId> --json"
-      ],
-      "reviewed": true,
-      "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-      "source_refs": [
-        "internal/cli/schema_command_registry.json#dev.connect_status",
-        "cobra-help:dws dev connect status",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md",
-        "live-dws-schema:dev.connect_status#FAILED"
-      ]
-    },
-    "dev.connect_stop": {
-      "agent_summary": "优雅停止后台连接器守护进程",
-      "use_when": [
-        "用户明确要求停止本地 Stream/连接器守护进程"
-      ],
-      "avoid_when": [
-        "只想查看状态时用 dev connect status"
-      ],
-      "examples": [
-        "dws dev connect stop --unified-app-id <unifiedAppId>"
-      ],
-      "reviewed": true,
-      "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
-      "source_refs": [
-        "internal/cli/schema_command_registry.json#dev.connect_stop",
-        "cobra-help:dws dev connect stop",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md",
-        "live-dws-schema:dev.connect_stop#FAILED"
-      ]
-    },
-    "dev.search_open_platform_docs_rag": {
-      "agent_summary": "通过 dev 兼容入口搜索开放平台文档",
-      "use_when": [
-        "明确需要验证或使用 dev doc search 入口时"
-      ],
-      "avoid_when": [
-        "常规开放平台文档检索优先使用可用的 devdoc article search"
-      ],
-      "examples": [
-        "dws dev doc search --query \"MCP\" --size 10"
-      ],
-      "reviewed": true,
-      "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
-      "source_refs": [
-        "internal/cli/schema_command_registry.json#dev.search_open_platform_docs_rag",
-        "cobra-help:dws dev doc search",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md"
-      ]
-    }
-  },
+  "tools": {},
   "products": {
     "dev": {
       "agent_summary": "管理开放平台应用、权限、机器人、版本发布与本地连接器",

@@ -7512,47 +7512,43 @@
     },
     "dev connect status": {
       "agent_summary": "查看后台连接器守护进程状态",
-      "agent_summary_source": "dws-agent-selection/dev",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "要停止守护进程时用 dev connect stop"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev connect status --unified-app-id \u003cunifiedAppId\u003e --json"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "查看后台连接器守护进程状态",
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "查看后台连接器守护进程状态",
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -7560,47 +7556,57 @@
           "value": [
             "要停止守护进程时用 dev connect stop"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "要停止守护进程时用 dev connect stop"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "not_required",
               "source": "risk-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "effect": {
           "value": "write",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "write",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "write",
               "source": "command-verb",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -7608,79 +7614,79 @@
           "value": [
             "dws dev connect status --unified-app-id \u003cunifiedAppId\u003e --json"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws dev connect status --unified-app-id \u003cunifiedAppId\u003e --json"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "unknown",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "unknown",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
           "value": "local",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "local",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
             }
@@ -7688,38 +7694,35 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "medium",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "medium",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "medium",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
@@ -7727,19 +7730,17 @@
           "value": [
             "需要确认本地 connect 守护进程是否在跑、pid/日志路径"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "需要确认本地 connect 守护进程是否在跑、pid/日志路径"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -7750,12 +7751,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cobra-help:dws dev connect status",
-        "internal/cli/schema_command_registry.json#dev.connect_status",
-        "internal/cli/schema_hints/metadata/dev.json",
-        "internal/cli/schema_hints/selection/dev.json",
-        "live-dws-schema:dev.connect_status#FAILED",
-        "skills/mono/SKILL.md",
+        "cmdcore.SchemaDecl",
         "skills/mono/references/products/dev.md"
       ],
       "use_when": [
@@ -7764,47 +7760,43 @@
     },
     "dev connect stop": {
       "agent_summary": "优雅停止后台连接器守护进程",
-      "agent_summary_source": "dws-agent-selection/dev",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "只想查看状态时用 dev connect status"
       ],
       "confirmation": "not_required",
       "effect": "write",
-      "effect_source": "agent-hint",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev connect stop --unified-app-id \u003cunifiedAppId\u003e"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "优雅停止后台连接器守护进程",
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": "优雅停止后台连接器守护进程",
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -7812,49 +7804,51 @@
           "value": [
             "只想查看状态时用 dev connect status"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "只想查看状态时用 dev connect status"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "not_required",
               "source": "risk-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "effect": {
           "value": "write",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "write",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "write",
@@ -7868,79 +7862,79 @@
           "value": [
             "dws dev connect stop --unified-app-id \u003cunifiedAppId\u003e"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "dws dev connect stop --unified-app-id \u003cunifiedAppId\u003e"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "unknown",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "unknown",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
+            },
+            {
+              "value": "unknown",
               "source": "effect-default",
               "precedence": "inference_or_default",
-              "selected": true
+              "selected": false
             }
           ]
         },
         "interface_mode": {
           "value": "local",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "local",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_reason": {
           "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": null,
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "interface_disposition_matrix",
           "review_reason": "final interface mode local forbids a direct MCP interface_ref",
           "candidates": [
             {
               "value": null,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true,
               "review_reason": "final interface mode local forbids a direct MCP interface_ref"
             }
@@ -7948,40 +7942,29 @@
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "medium",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "medium",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             },
             {
               "value": "medium",
@@ -7995,19 +7978,17 @@
           "value": [
             "用户明确要求停止本地 Stream/连接器守护进程"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
           "candidates": [
             {
               "value": [
                 "用户明确要求停止本地 Stream/连接器守护进程"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -8018,12 +7999,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "cobra-help:dws dev connect stop",
-        "internal/cli/schema_command_registry.json#dev.connect_stop",
-        "internal/cli/schema_hints/metadata/dev.json",
-        "internal/cli/schema_hints/selection/dev.json",
-        "live-dws-schema:dev.connect_stop#FAILED",
-        "skills/mono/SKILL.md",
+        "cmdcore.SchemaDecl",
         "skills/mono/references/products/dev.md"
       ],
       "use_when": [
@@ -8032,47 +8008,43 @@
     },
     "dev doc search": {
       "agent_summary": "通过 dev 兼容入口搜索开放平台文档",
-      "agent_summary_source": "dws-agent-selection/dev",
+      "agent_summary_source": "cmdcore.SchemaDecl",
       "availability": "available",
       "avoid_when": [
         "常规开放平台文档检索优先使用可用的 devdoc article search"
       ],
       "confirmation": "not_required",
       "effect": "read",
-      "effect_source": "command-verb",
+      "effect_source": "cmdcore.contract",
       "examples": [
         "dws dev doc search --query \"MCP\" --size 10"
       ],
       "field_provenance": {
         "agent_summary": {
           "value": "通过 dev 兼容入口搜索开放平台文档",
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
           "candidates": [
             {
               "value": "通过 dev 兼容入口搜索开放平台文档",
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "availability": {
           "value": "available",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "available",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
@@ -8080,46 +8052,44 @@
           "value": [
             "常规开放平台文档检索优先使用可用的 devdoc article search"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
           "candidates": [
             {
               "value": [
                 "常规开放平台文档检索优先使用可用的 devdoc article search"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "confirmation": {
           "value": "not_required",
-          "source": "risk-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "not_required",
-              "source": "risk-default",
-              "precedence": "inference_or_default",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true
             }
           ]
         },
         "effect": {
           "value": "read",
-          "source": "command-verb",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "read",
-              "source": "command-verb",
-              "precedence": "inference_or_default",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true
             }
           ]
@@ -8128,101 +8098,86 @@
           "value": [
             "dws dev doc search --query \"MCP\" --size 10"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
           "candidates": [
             {
               "value": [
                 "dws dev doc search --query \"MCP\" --size 10"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "idempotency": {
           "value": "idempotent",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "idempotent",
-              "source": "effect-default",
-              "precedence": "inference_or_default",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true
             }
           ]
         },
         "interface_mode": {
           "value": "mcp",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "mcp",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "interface_ref": {
           "value": "devdoc.search_open_platform_docs",
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": "devdoc.search_open_platform_docs",
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "reviewed": {
           "value": true,
-          "source": "internal/cli/schema_hints/metadata/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "dws-tool-metadata/dev marks this tool as reviewed",
           "candidates": [
             {
               "value": true,
-              "source": "internal/cli/schema_hints/metadata/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "dws-tool-metadata/dev marks this tool as reviewed"
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         },
         "risk": {
           "value": "low",
-          "source": "effect-default",
-          "precedence": "inference_or_default",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
               "value": "low",
-              "source": "effect-default",
-              "precedence": "inference_or_default",
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
               "selected": true
             }
           ]
@@ -8231,19 +8186,17 @@
           "value": [
             "明确需要验证或使用 dev doc search 入口时"
           ],
-          "source": "internal/cli/schema_hints/selection/dev.json",
-          "precedence": "reviewed_explicit",
+          "source": "cmdcore.contract",
+          "precedence": "contract_final",
           "resolution": "highest_precedence",
-          "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
           "candidates": [
             {
               "value": [
                 "明确需要验证或使用 dev doc search 入口时"
               ],
-              "source": "internal/cli/schema_hints/selection/dev.json",
-              "precedence": "reviewed_explicit",
-              "selected": true,
-              "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。"
+              "source": "cmdcore.contract",
+              "precedence": "contract_final",
+              "selected": true
             }
           ]
         }
@@ -8257,12 +8210,7 @@
       "reviewed": true,
       "risk": "low",
       "source_refs": [
-        "cobra-help:dws dev doc search",
-        "internal/cli/schema_command_registry.json#dev.search_open_platform_docs_rag",
-        "internal/cli/schema_hints/metadata/dev.json",
-        "internal/cli/schema_hints/selection/dev.json",
-        "skills/mono/SKILL.md",
-        "skills/mono/references/products/dev.md"
+        "cmdcore.SchemaDecl"
       ],
       "use_when": [
         "明确需要验证或使用 dev doc search 入口时"

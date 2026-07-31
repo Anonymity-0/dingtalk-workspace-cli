@@ -1096,14 +1096,30 @@ func embedContractIntoSchema(cmd *cobra.Command, spec CommandSpec) {
 // embedSchemaDecl does a light runtime write: only when SchemaDecl is authored,
 // convert once and RegisterRuntimeContractFinal.
 func embedSchemaDecl(cmd *cobra.Command, spec CommandSpec) {
-	schema := spec.Schema
-	if schema.empty() {
+	if spec.Schema.empty() {
 		return
 	}
+	AttachSchema(cmd, spec.Safety, spec.Schema, spec.Short, spec.Long)
+}
+
+// AttachSchema registers a ContractFinal Schema overlay on an existing leaf
+// without replacing its RunE/Execute body. Used to migrate reviewed hint facts
+// onto helpers while keeping execution substance frozen. Overwrites any prior
+// ContractFinal on cmd (catalog/agent metadata source); does not alter an
+// already-installed ConfirmSafety closure.
+func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, short, long string) {
+	if cmd == nil || schema.empty() {
+		return
+	}
+	// Reuse NewCommand's completeness rules so bind-time attaches cannot ship
+	// a partial declaration that would only fail in generated artifacts.
+	validateSchemaDecl(CommandSpec{Use: cmd.Name(), Safety: safety, Schema: schema})
+	validateSafetySpec(CommandSpec{Use: cmd.Name(), Safety: safety})
+
 	payload := cli.ContractFinalPayload{
-		Title:       firstNonEmpty(schema.Title, spec.Short),
-		Description: firstNonEmpty(schema.Description, spec.Long),
-		Safety:      schemaSafetyFromDecl(spec.Safety),
+		Title:       firstNonEmpty(schema.Title, short),
+		Description: firstNonEmpty(schema.Description, long),
+		Safety:      schemaSafetyFromDecl(safety),
 	}
 	if n := len(schema.Positionals); n > 0 {
 		payload.Positionals = make([]cli.RuntimeSchemaPositional, n)

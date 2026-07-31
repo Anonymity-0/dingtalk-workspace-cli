@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
-	"strings"
 	"testing"
 )
 
@@ -119,11 +118,11 @@ func TestReviewedRoutedInterfacesReachFinalSchema(t *testing.T) {
 					t.Errorf("missing %s provenance", field)
 					continue
 				}
-				if got := schemaContractString(entry["precedence"]); got != "reviewed_explicit" {
-					t.Errorf("%s provenance precedence = %q, want reviewed_explicit", field, got)
+				if got := schemaContractString(entry["precedence"]); got != "contract_final" {
+					t.Errorf("%s provenance precedence = %q, want contract_final", field, got)
 				}
-				if got := schemaContractString(entry["source"]); !strings.HasSuffix(got, test.sourceSuffix) {
-					t.Errorf("%s provenance source = %q, want suffix %q", field, got, test.sourceSuffix)
+				if got := schemaContractString(entry["source"]); got != "cmdcore.contract" {
+					t.Errorf("%s provenance source = %q, want cmdcore.contract", field, got)
 				}
 			}
 			if got := provenance["interface_ref"]["value"]; got != nil {
@@ -174,11 +173,11 @@ func TestViewGetWrappersUsePinnedGetViewsInterface(t *testing.T) {
 		provenance := schemaContractMap(tool["field_provenance"])
 		for _, field := range []string{"interface_mode", "availability", "interface_ref"} {
 			entry := provenance[field]
-			if got := schemaContractString(entry["precedence"]); got != "reviewed_explicit" {
-				t.Errorf("%s %s precedence = %q, want reviewed_explicit", canonical, field, got)
+			if got := schemaContractString(entry["precedence"]); got != "contract_final" {
+				t.Errorf("%s %s precedence = %q, want contract_final", canonical, field, got)
 			}
-			if got := schemaContractString(entry["source"]); !strings.Contains(got, "internal/cli/schema_hints/metadata/") {
-				t.Errorf("%s %s source = %q, want reviewed interface disposition source", canonical, field, got)
+			if got := schemaContractString(entry["source"]); got != "cmdcore.contract" {
+				t.Errorf("%s %s source = %q, want cmdcore.contract", canonical, field, got)
 			}
 		}
 	}
@@ -202,29 +201,10 @@ func TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface(t *testing.T) {
 		return value
 	}
 	runtimeSurface := load("../cli/schema_hints/runtime-surface-completeness.json")
-	legacyDispositionKeys := load("../cli/schema_hints/zz-interface-disposition-review.json").Tools
-	dispositions := hintFile{Source: map[string]any{"reviewed": true}, Tools: map[string]map[string]any{}}
-	for _, product := range []string{
-		"attendance", "aitable", "chat", "drive", "event", "sheet", "wiki", "doc", "mail", "todo", "calendar", "conference", "contact", "dev", "devdoc", "ding", "live", "minutes", "oa", "pat", "report", "aisearch",
-	} {
-		path := "../cli/schema_hints/metadata/" + product + ".json"
-		if _, err := os.Stat(path); err != nil {
-			continue
-		}
-		file := load(path)
-		for canonical, hint := range file.Tools {
-			if _, ok := legacyDispositionKeys[canonical]; !ok {
-				continue
-			}
-			trimmed := map[string]any{}
-			for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
-				if value, exists := hint[field]; exists {
-					trimmed[field] = value
-				}
-			}
-			dispositions.Tools[canonical] = trimmed
-		}
-	}
+	// After hints→declarations migration, disposition facts live in compiled
+	// ContractFinal (cmdcore.contract). zz-interface-disposition-review.json
+	// remains the audit key set + expected values for this gate.
+	dispositions := load("../cli/schema_hints/zz-interface-disposition-review.json")
 	if dispositions.Source["reviewed"] != true {
 		t.Fatalf("interface disposition source reviewed = %#v, want true", dispositions.Source["reviewed"])
 	}
@@ -314,11 +294,11 @@ func TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface(t *testing.T) {
 		}
 		for _, field := range fields {
 			entry := provenance[field]
-			if got := schemaContractString(entry["precedence"]); got != "reviewed_explicit" {
-				t.Errorf("%s final %s precedence = %q, want reviewed_explicit", canonical, field, got)
+			if got := schemaContractString(entry["precedence"]); got != "contract_final" {
+				t.Errorf("%s final %s precedence = %q, want contract_final", canonical, field, got)
 			}
-			if got := schemaContractString(entry["source"]); !strings.Contains(got, "internal/cli/schema_hints/metadata/") {
-				t.Errorf("%s final %s source = %q, want reviewed disposition source", canonical, field, got)
+			if got := schemaContractString(entry["source"]); got != "cmdcore.contract" {
+				t.Errorf("%s final %s source = %q, want cmdcore.contract", canonical, field, got)
 			}
 		}
 	}

@@ -159,6 +159,14 @@ func BindEffectiveCommandRegistry(root *cobra.Command, effective EffectiveComman
 		for _, alias := range item.Aliases {
 			bound.ByCLIPath[alias] = item
 		}
+		// Migrate reviewed hint facts onto undeclared leaves without replacing
+		// their Execute/RunE bodies. Already-declared ContractFinal (e.g. LeafSpec
+		// Schema) wins and is left untouched — execution stays the control variable.
+		if !HasRuntimeContractFinal(item.PrimaryCommand) {
+			if decl, ok := lookupSchemaHintDecl(item.CanonicalPath); ok {
+				attachSchemaHintDecl(item.PrimaryCommand, decl)
+			}
+		}
 		// Index Contract-declared dry_run capabilities at bind time: every
 		// process that resolves the command tree gets the reviewed set, not
 		// only processes that also run Schema assembly.

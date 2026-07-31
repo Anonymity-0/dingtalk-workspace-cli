@@ -28,10 +28,14 @@ import (
 // hooks because they own MCP orchestration, while cmdcore owns command/flag
 // construction, declarative validation, Schema annotations and confirmation.
 //
-// Shortcut.Risk intentionally remains a legacy declaration for this migration
-// stage. shortcutSafetySpec expands it once into the existing Schema safety
-// model; removing Risk is a separate catalog migration after live convergence.
+// Shortcut.Risk remains the legacy runtime confirmation source when Safety is
+// empty. Explicit Safety overrides Risk expansion; Schema is pass-through into
+// ContractFinal when authored.
 func FromShortcut(s Shortcut) cmdcore.CommandSpec {
+	safety := s.Safety
+	if !safetySpecDeclared(safety) {
+		safety = shortcutSafetySpec(s.risk())
+	}
 	return cmdcore.CommandSpec{
 		Use:     s.Command,
 		Short:   s.Description,
@@ -42,7 +46,8 @@ func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 		Long:        shortcutIntentProse(s),
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
-		Safety:      shortcutSafetySpec(s.risk()),
+		Safety:      safety,
+		Schema:      s.Schema,
 		// Preserve the shipped Shortcut Catalog provenance: Cobra remains the
 		// source for type/default/usage, while cmdcore adds Required/Enum/rules.
 		ParameterProjection: cmdcore.ProjectCobraParameters,
@@ -58,6 +63,13 @@ func FromShortcut(s Shortcut) cmdcore.CommandSpec {
 			return s.Execute(&RuntimeContext{cmd: c.Command(), shortcut: s})
 		},
 	}
+}
+
+func safetySpecDeclared(safety cli.SafetySpec) bool {
+	return strings.TrimSpace(safety.Effect) != "" ||
+		strings.TrimSpace(safety.Risk) != "" ||
+		strings.TrimSpace(safety.Confirmation) != "" ||
+		strings.TrimSpace(safety.Idempotency) != ""
 }
 
 func shortcutExamples(tips []string) string {

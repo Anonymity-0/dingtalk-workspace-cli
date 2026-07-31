@@ -102,11 +102,16 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 		provenance := schemaMap(tool["field_provenance"])
 		for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
 			entry := provenance[field]
-			if schemaString(entry["precedence"]) != "reviewed_explicit" {
-				t.Errorf("%s local %s precedence = %q, want reviewed_explicit", canonical, field, schemaString(entry["precedence"]))
+			prec := schemaString(entry["precedence"])
+			if prec != "reviewed_explicit" && prec != "contract_final" {
+				t.Errorf("%s local %s precedence = %q, want reviewed_explicit or contract_final", canonical, field, prec)
 			}
-			if source := schemaString(entry["source"]); !strings.Contains(source, "internal/cli/schema_hints/metadata/") {
+			source := schemaString(entry["source"])
+			if prec == "reviewed_explicit" && !strings.Contains(source, "internal/cli/schema_hints/metadata/") {
 				t.Errorf("%s local %s source = %q, want metadata/", canonical, field, source)
+			}
+			if prec == "contract_final" && source != "cmdcore.contract" {
+				t.Errorf("%s local %s source = %q, want cmdcore.contract", canonical, field, source)
 			}
 		}
 	}
