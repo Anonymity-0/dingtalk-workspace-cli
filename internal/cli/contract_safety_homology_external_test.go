@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -161,6 +162,44 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 	if dual := byGate["declare_leaf+sheet_marker"]; dual == 0 {
 		t.Fatal("expected declare_leaf+sheet_marker leaves for Sheet transitional dual confirmation gate")
 	}
+
+	// DeclareLeafMetadata user_required leaves must expose a local-check gate
+	// before confirmation: Validate, Cobra MarkFlagRequired, or CallTool-defer
+	// mode. Bare confirm-before-RunE with none of these is the RFC §5.1 inversion.
+	var orderFails []row
+	for _, r := range okRows {
+		if r.gate != "declare_leaf_confirm" && r.gate != "declare_leaf+sheet_marker" {
+			continue
+		}
+		leaf := boundByCanon[r.canonical].PrimaryCommand
+		if helpers.HasContractValidate(leaf) || helpers.HasContractConfirmDeferred(leaf) || hasCobraRequiredFlag(leaf) {
+			continue
+		}
+		orderFails = append(orderFails, row{r.canonical, r.cliPath, r.gate,
+			"declare user_required needs Validate, MarkFlagRequired, or CallTool-defer confirm"})
+	}
+	if len(orderFails) != 0 {
+		for _, f := range orderFails {
+			t.Errorf("%s (%s): %s", f.canonical, f.cliPath, f.detail)
+		}
+		t.Fatalf("confirm/validate order invariant failed: %d declare user_required leaf(ves)", len(orderFails))
+	}
+}
+
+func hasCobraRequiredFlag(cmd *cobra.Command) bool {
+	if cmd == nil {
+		return false
+	}
+	required := false
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f != nil && f.Annotations != nil {
+			// cobra MarkFlagRequired sets this annotation.
+			if _, ok := f.Annotations[cobra.BashCompOneRequiredFlag]; ok {
+				required = true
+			}
+		}
+	})
+	return required
 }
 
 func probeConfirmationGate(leaf *cobra.Command) error {

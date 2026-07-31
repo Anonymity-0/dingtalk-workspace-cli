@@ -30,9 +30,14 @@ import (
 const contractConfirmSafetyAnnotation = "dws.contract.confirm_safety"
 
 // contractValidateAnnotation marks leaves that installed DeclareLeafMetadata
-// Validate on PreRunE. Those use confirm-after-Validate (immediate RunE wrap)
-// instead of deferring ConfirmSafety to the first MCP CallTool.
+// Validate. Validate runs inside the same RunE wrapper as ConfirmSafety (not
+// PreRunE), so direct RunE / proxySubCmd call sites cannot skip it.
 const contractValidateAnnotation = "dws.contract.validate"
+
+// contractConfirmDeferredAnnotation marks user_required leaves that defer
+// ConfirmSafety to the first deps.Caller.CallTool (no Validate). Local-checkable
+// commands without an MCP caller must use Validate instead.
+const contractConfirmDeferredAnnotation = "dws.contract.confirm_deferred"
 
 // leaf.go 是叶子命令的统一构建框架（命令框架的 Leaf 门面）。
 //
@@ -194,16 +199,15 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 
 // DeclareLeafMetadata 是命令框架的「声明元数据模式」：把 LeafSpec 的声明面
 // （Safety + Schema）挂到既有命令上——不注册 flag、不接管参数投影。可选的
-// Validate 挂到 PreRunE，保证本地可判定校验发生在 ConfirmSafety 之前（RFC §5.1 /
-// §5.6）。当 Safety.Confirmation 为 user_required 时，用同一份 SafetySpec 包装
-// ConfirmSafety，使执行门禁与 Catalog 契约同源；其余执行逻辑保持原 RunE。
+// Validate 与 ConfirmSafety 同挂在 RunE 包装器内（Validate 在前），保证
+// 本地可判定校验发生在确认之前（RFC §5.1 / §5.6），且直接调 RunE /
+// proxySubCmd 委派不会跳过校验。
 //
 // user_required 确认时机：
-//   - 提供 Validate：PreRunE 校验 → RunE 入口 ConfirmSafety → 原 RunE
-//     （本地副作用命令，如 event stop）
+//   - 提供 Validate：Validate → ConfirmSafety → 原 RunE（本地副作用命令）
 //   - 未提供 Validate：原 RunE 先跑（含缺参校验），ConfirmSafety 推迟到
-//     首次 deps.Caller.CallTool（MCP 副作用）之前；若 RunE 成功且从未
-//     CallTool，则在返回前补一次 ConfirmSafety
+//     首次 deps.Caller.CallTool；若无 Caller 可挂门禁，则回退为
+//     ConfirmSafety → 原 RunE（此类命令应补 Validate，见同源门禁）
 //
 // 该模式是迁移态而非终态：命令具备条件时应升级为 NewLeafCommand。传入
 // Flags/Constraints/ConstParams/Call/RunE/PostMount 或空 Schema 会 panic，
@@ -241,94 +245,77 @@ func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Schema is required", name))
 	}
 	corecmd.AttachSchema(cmd, spec.Safety, spec.Schema, cmd.Short, cmd.Long)
+
+	confirm := strings.TrimSpace(spec.Safety.Confirmation) == "user_required"
+	if spec.Validate == nil && !confirm {
+		return cmd
+	}
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	rt := &contractRuntime{validate: spec.Validate, confirm: confirm}
+	if confirm {
+		rt.safety = spec.Safety
+		cmd.Annotations[contractConfirmSafetyAnnotation] = "true"
+		if spec.Validate == nil {
+			cmd.Annotations[contractConfirmDeferredAnnotation] = "true"
+		}
+	}
 	if spec.Validate != nil {
-		installContractValidate(cmd, spec.Validate)
+		cmd.Annotations[contractValidateAnnotation] = "true"
 	}
-	if strings.TrimSpace(spec.Safety.Confirmation) == "user_required" {
-		installContractConfirmSafety(cmd, spec.Safety)
-	}
+	storeContractRuntime(cmd, rt)
+	installContractRunEPipeline(cmd, rt)
 	return cmd
 }
 
-// installContractValidate chains Validate onto PreRunE so it runs before any
-// RunE wrapper (ConfirmSafety / sheet --yes-only). Idempotent per command:
-// a second call chains after the previous PreRunE.
-func installContractValidate(cmd *cobra.Command, validate func(*cobra.Command, []string) error) {
-	if cmd == nil {
-		panic("installContractValidate: cmd is nil")
-	}
-	if validate == nil {
-		panic(fmt.Sprintf("installContractValidate(%q): Validate is nil", cmd.Name()))
-	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	cmd.Annotations[contractValidateAnnotation] = "true"
-	prev := cmd.PreRunE
-	cmd.PreRunE = func(c *cobra.Command, args []string) error {
-		if prev != nil {
-			if err := prev(c, args); err != nil {
-				return err
-			}
-		}
-		return validate(c, args)
-	}
-}
-
-// installContractConfirmSafety wraps cmd.RunE so Catalog Safety and the
-// executable gate stay homologous. Idempotent.
-//
-// When DeclareLeafMetadata Validate is present, ConfirmSafety runs at RunE
-// entry (after PreRunE). Otherwise confirmation is deferred to the first
-// deps.Caller.CallTool so RunE-local required/互斥 checks run first (RFC §5.1).
-func installContractConfirmSafety(cmd *cobra.Command, safety cli.SafetySpec) {
-	if cmd == nil {
-		panic("installContractConfirmSafety: cmd is nil")
-	}
-	if HasContractConfirmSafety(cmd) {
-		return
+// installContractRunEPipeline wraps RunE so Validate and ConfirmSafety share
+// one layer (Validate first). Idempotent for the confirm annotation.
+func installContractRunEPipeline(cmd *cobra.Command, rt *contractRuntime) {
+	if cmd == nil || rt == nil {
+		panic("installContractRunEPipeline: nil cmd/runtime")
 	}
 	inner := cmd.RunE
 	if inner == nil {
-		panic(fmt.Sprintf("installContractConfirmSafety(%q): RunE is nil", cmd.Name()))
-	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	cmd.Annotations[contractConfirmSafetyAnnotation] = "true"
-	if HasContractValidate(cmd) {
-		cmd.RunE = func(c *cobra.Command, args []string) error {
-			if !(deps != nil && deps.Caller != nil && deps.Caller.DryRun()) {
-				if err := corecmd.ConfirmSafety(c, safety); err != nil {
-					return err
-				}
-			}
-			return inner(c, args)
-		}
-		return
+		panic(fmt.Sprintf("installContractRunEPipeline(%q): RunE is nil", cmd.Name()))
 	}
 	cmd.RunE = func(c *cobra.Command, args []string) error {
+		if rt.validate != nil {
+			if err := rt.validate(c, args); err != nil {
+				return err
+			}
+		}
+		if !rt.confirm {
+			return inner(c, args)
+		}
 		if deps != nil && deps.Caller != nil && deps.Caller.DryRun() {
 			return inner(c, args)
 		}
+		if rt.validate != nil {
+			// Local-checkable validation already passed; confirm then execute.
+			if err := corecmd.ConfirmSafety(c, rt.safety); err != nil {
+				return err
+			}
+			return inner(c, args)
+		}
+		// No Validate: defer confirm to first deps.Caller.CallTool so RunE-local
+		// mustFlag checks can fail first. Without a caller, fall back to
+		// confirm-then-run (commands on this path should add Validate).
 		if deps == nil || deps.Caller == nil {
-			// No MCP caller to hang the gate on — confirm before RunE.
-			if err := corecmd.ConfirmSafety(c, safety); err != nil {
+			if err := corecmd.ConfirmSafety(c, rt.safety); err != nil {
 				return err
 			}
 			return inner(c, args)
 		}
 		prev := deps.Caller
-		gate := &contractConfirmCaller{inner: prev, cmd: c, safety: safety}
+		gate := &contractConfirmCaller{inner: prev, cmd: c, safety: rt.safety}
 		deps.Caller = wrapContractConfirmCaller(gate, prev)
 		defer func() { deps.Caller = prev }()
 		if err := inner(c, args); err != nil {
 			return err
 		}
 		if !gate.confirmed {
-			// RunE succeeded without CallTool (local-only / no-op). Confirm
-			// before declaring success so user_required cannot be skipped.
-			return corecmd.ConfirmSafety(c, safety)
+			return corecmd.ConfirmSafety(c, rt.safety)
 		}
 		return nil
 	}
@@ -382,10 +369,16 @@ func HasContractConfirmSafety(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Annotations != nil && cmd.Annotations[contractConfirmSafetyAnnotation] == "true"
 }
 
-// HasContractValidate reports whether DeclareLeafMetadata installed a PreRunE
-// Validate hook (confirm-after-Validate mode).
+// HasContractValidate reports whether DeclareLeafMetadata installed a Validate
+// hook (confirm-after-Validate mode on the RunE wrapper).
 func HasContractValidate(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Annotations != nil && cmd.Annotations[contractValidateAnnotation] == "true"
+}
+
+// HasContractConfirmDeferred reports whether ConfirmSafety is deferred to the
+// first deps.Caller.CallTool (no Validate on the leaf).
+func HasContractConfirmDeferred(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Annotations != nil && cmd.Annotations[contractConfirmDeferredAnnotation] == "true"
 }
 
 // FromLeafSpec 把 LeafSpec 归一为统一的 corecmd.Spec。契约字段

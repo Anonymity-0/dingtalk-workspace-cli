@@ -442,8 +442,21 @@ func TestCrossPlatformCoverageChmodCommandRemainingBranches(t *testing.T) {
 
 	run := func(c edition.ToolCaller, args ...string) error {
 		command := newChmodCommand(c)
-		command.SetArgs(args)
-		return command.Execute()
+		root := &cobra.Command{Use: "dws"}
+		root.PersistentFlags().Bool("yes", false, "")
+		root.PersistentFlags().Bool("dry-run", false, "")
+		root.AddCommand(command)
+		// Catalog user_required: pass --dry-run when the caller is dry-run,
+		// otherwise --yes so ConfirmSafety does not mask the branch under test.
+		if c != nil && c.DryRun() {
+			args = append([]string{"chmod", "--dry-run"}, args...)
+		} else {
+			args = append([]string{"chmod", "--yes"}, args...)
+		}
+		root.SetArgs(args)
+		root.SilenceErrors = true
+		root.SilenceUsage = true
+		return root.Execute()
 	}
 	dryError := &patEdgeCaller{dryRun: true, errs: []error{errors.New("plan failed")}}
 	if err := run(dryError, "--recommend"); err == nil {

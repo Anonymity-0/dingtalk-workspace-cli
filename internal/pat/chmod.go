@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"io"
 	"os"
 	"regexp"
@@ -31,6 +30,7 @@ import (
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -295,14 +295,6 @@ agentCode 配置:
 				sessionID = resolveSessionIDFromEnv()
 			}
 
-			if !validGrantTypes[grantType] {
-				return fmt.Errorf("invalid --grant-type %q, must be one of: once, session, permanent", grantType)
-			}
-
-			if grantType == "session" && sessionID == "" {
-				return fmt.Errorf("--session-id is required when --grant-type is session\n  hint: dws pat chmod <scope> --grant-type session --session-id <id>")
-			}
-
 			if c != nil && c.DryRun() {
 				if usesPlan {
 					planArgs := buildBatchPlanArgs(scopes, productCodes, recommend, grantType, agentCode, sessionID, true)
@@ -431,6 +423,24 @@ agentCode 配置:
 		Safety: cli.SafetySpec{
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(cmd *cobra.Command, args []string) error {
+			productCodes := collectChmodProductCodes(productFlags, productsFlag, domainFlags, domainsFlag)
+			if len(args) == 0 && !recommend && len(productCodes) == 0 {
+				return fmt.Errorf("accepts 1 arg(s), received 0")
+			}
+			grantType, _ := cmd.Flags().GetString("grant-type")
+			if !validGrantTypes[grantType] {
+				return fmt.Errorf("invalid --grant-type %q, must be one of: once, session, permanent", grantType)
+			}
+			sessionID, _ := cmd.Flags().GetString("session-id")
+			if sessionID == "" {
+				sessionID = resolveSessionIDFromEnv()
+			}
+			if grantType == "session" && sessionID == "" {
+				return fmt.Errorf("--session-id is required when --grant-type is session\n  hint: dws pat chmod <scope> --grant-type session --session-id <id>")
+			}
+			return nil
 		},
 		Schema: helpers.LeafSchema{
 			Description: "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
