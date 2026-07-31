@@ -39,29 +39,30 @@ func TestReviewedMutationSafetyReachesFinalSchema(t *testing.T) {
 }
 
 func TestDevAppWriteGuardRequiresFinalSchemaConfirmation(t *testing.T) {
-	// devapp 全树已声明化：provenance 为 contract_final；风险按可逆性分级
-	// （可逆写 medium / 难撤回 high-write / 删除与发布 destructive）。
+	// devapp 全树已声明化：provenance 为 contract_final；effect/risk 逐字
+	// 保持 merge-base 评审值（写操作一律 high，publish 为 write/high），
+	// 重分级需要独立的契约变更 PR。
 	const declared = "contract_final"
 	wants := []finalSchemaSafetyWant{
-		{canonical: "dev.add_dev_app_members", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.apply_dev_app_permissions", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.add_dev_app_members", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.apply_dev_app_permissions", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "dev.create_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "dev.create_dev_app_version", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "dev.delete_dev_app", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.disable_dev_app", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.disable_dev_app_robot", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.enable_dev_app", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.enable_dev_app_robot", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.publish_dev_app_version", effect: "destructive", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.remove_dev_app_members", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.remove_dev_app_permissions", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.set_extension_robot_config", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.set_extension_webapp_config", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.disable_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.disable_dev_app_robot", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.enable_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.enable_dev_app_robot", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.publish_dev_app_version", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.remove_dev_app_members", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.remove_dev_app_permissions", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.set_extension_robot_config", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.set_extension_webapp_config", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "dev.submit_robot_create_task", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.subscribe_dev_app_events", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.unsubscribe_dev_app_events", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.update_dev_app", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
-		{canonical: "dev.update_dev_app_security_config", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.subscribe_dev_app_events", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.unsubscribe_dev_app_events", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.update_dev_app", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
+		{canonical: "dev.update_dev_app_security_config", effect: "write", risk: "high", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 	}
 	assertFinalSchemaSafety(t, wants)
 }
