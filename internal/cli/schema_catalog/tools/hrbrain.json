@@ -956,7 +956,7 @@
       "cli_name": "labels",
       "cli_path": "hrbrain profile labels",
       "confirmation": "not_required",
-      "description": "根据员工工号列表获取员工标签",
+      "description": "根据员工工号列表获取员工标签。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -1066,7 +1066,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "根据员工工号列表获取员工标签"
+              "value": "根据员工工号列表获取员工标签。"
             }
           ],
           "precedence": "contract_final",
@@ -1074,7 +1074,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "根据员工工号列表获取员工标签"
+          "value": "根据员工工号列表获取员工标签。"
         },
         "effect": {
           "candidates": [
@@ -1526,7 +1526,7 @@
       "cli_name": "metadata",
       "cli_path": "hrbrain profile metadata",
       "confirmation": "not_required",
-      "description": "查询员工档案元数据结构，用于构造档案数据查询参数",
+      "description": "查询指定员工档案的元数据结构，用于构造 query_profile_data 的 dataQueries 参数。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -1636,7 +1636,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询员工档案元数据结构，用于构造档案数据查询参数"
+              "value": "查询指定员工档案的元数据结构，用于构造 query_profile_data 的 dataQueries 参数。"
             }
           ],
           "precedence": "contract_final",
@@ -1644,7 +1644,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询员工档案元数据结构，用于构造档案数据查询参数"
+          "value": "查询指定员工档案的元数据结构，用于构造 query_profile_data 的 dataQueries 参数。"
         },
         "effect": {
           "candidates": [
@@ -1996,7 +1996,7 @@
       "cli_name": "fields",
       "cli_path": "hrbrain search fields",
       "confirmation": "not_required",
-      "description": "获取当前操作人有权限使用的高级搜索字段与操作符列表",
+      "description": "获取当前操作人有权限使用的高级搜索字段列表，用于构造 employees-structured 的参数。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2106,7 +2106,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取当前操作人有权限使用的高级搜索字段与操作符列表"
+              "value": "获取当前操作人有权限使用的高级搜索字段列表，用于构造 employees-structured 的参数。"
             }
           ],
           "precedence": "contract_final",
@@ -2114,7 +2114,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取当前操作人有权限使用的高级搜索字段与操作符列表"
+          "value": "获取当前操作人有权限使用的高级搜索字段列表，用于构造 employees-structured 的参数。"
         },
         "effect": {
           "candidates": [
@@ -2359,7 +2359,7 @@
       "cli_name": "detail",
       "cli_path": "hrbrain talent-pool detail",
       "confirmation": "not_required",
-      "description": "根据人才池编码获取人才池详细信息",
+      "description": "根据人才池编码获取人才池详细信息。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2469,7 +2469,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "根据人才池编码获取人才池详细信息"
+              "value": "根据人才池编码获取人才池详细信息。"
             }
           ],
           "precedence": "contract_final",
@@ -2477,7 +2477,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "根据人才池编码获取人才池详细信息"
+          "value": "根据人才池编码获取人才池详细信息。"
         },
         "effect": {
           "candidates": [
@@ -2830,7 +2830,7 @@
       "cli_name": "employees",
       "cli_path": "hrbrain talent-pool employees",
       "confirmation": "not_required",
-      "description": "查询指定人才池内的人员列表",
+      "description": "查询指定人才池内的人员列表。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2942,7 +2942,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询指定人才池内的人员列表"
+              "value": "查询指定人才池内的人员列表。"
             }
           ],
           "precedence": "contract_final",
@@ -2950,7 +2950,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询指定人才池内的人员列表"
+          "value": "查询指定人才池内的人员列表。"
         },
         "effect": {
           "candidates": [
@@ -3517,7 +3517,7 @@
       "cli_name": "list",
       "cli_path": "hrbrain talent-pool list",
       "confirmation": "not_required",
-      "description": "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
+      "description": "查询人才池列表，支持按名称关键词、类型、创建人、标签等条件筛选。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -3630,7 +3630,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选"
+              "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签等条件筛选。"
             }
           ],
           "precedence": "contract_final",
@@ -3638,7 +3638,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选"
+          "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签等条件筛选。"
         },
         "effect": {
           "candidates": [
@@ -4501,7 +4501,7 @@
       "cli_name": "query",
       "cli_path": "hrbrain profile query",
       "confirmation": "not_required",
-      "description": "按模块批量查询员工档案数据",
+      "description": "按模块维度批量查询员工档案数据。\n--data-queries 为 JSON 数组，每个元素包含:\n  modelCode — 档案模块编码\n  fields    — 要查询的字段编码列表",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -4613,7 +4613,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按模块批量查询员工档案数据"
+              "value": "按模块维度批量查询员工档案数据。\n--data-queries 为 JSON 数组，每个元素包含:\n  modelCode — 档案模块编码\n  fields    — 要查询的字段编码列表"
             }
           ],
           "precedence": "contract_final",
@@ -4621,7 +4621,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按模块批量查询员工档案数据"
+          "value": "按模块维度批量查询员工档案数据。\n--data-queries 为 JSON 数组，每个元素包含:\n  modelCode — 档案模块编码\n  fields    — 要查询的字段编码列表"
         },
         "effect": {
           "candidates": [
@@ -5080,7 +5080,7 @@
       "cli_name": "employees",
       "cli_path": "hrbrain search employees",
       "confirmation": "not_required",
-      "description": "按关键词、部门、职务、职级、人才池等条件搜索员工",
+      "description": "按关键词、部门、职务、职级、人才池等条件搜索人员。",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -5193,7 +5193,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按关键词、部门、职务、职级、人才池等条件搜索员工"
+              "value": "按关键词、部门、职务、职级、人才池等条件搜索人员。"
             }
           ],
           "precedence": "contract_final",
@@ -5201,7 +5201,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按关键词、部门、职务、职级、人才池等条件搜索员工"
+          "value": "按关键词、部门、职务、职级、人才池等条件搜索人员。"
         },
         "effect": {
           "candidates": [
@@ -6164,7 +6164,7 @@
       "cli_name": "employees-structured",
       "cli_path": "hrbrain search employees-structured",
       "confirmation": "not_required",
-      "description": "使用高级条件表达式（originJson）搜索员工",
+      "description": "使用高级条件（originJson 表达式）搜索人员。\n建议先调用 \"dws hrbrain search fields\" 获取有权限的字段与操作符列表。\n--origin-json 为 JSON 字符串，例如:\n  {\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}\n--fields 为 JSON 数组，例如:\n  [{\"label\":\"姓名\",\"value\":\"name\"}]\n--order-by 为逗号分隔的排序字段列表 (可选)",
       "display": "组织大脑：人才池、员工档案与人才搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -6276,7 +6276,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "使用高级条件表达式（originJson）搜索员工"
+              "value": "使用高级条件（originJson 表达式）搜索人员。\n建议先调用 \"dws hrbrain search fields\" 获取有权限的字段与操作符列表。\n--origin-json 为 JSON 字符串，例如:\n  {\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}\n--fields 为 JSON 数组，例如:\n  [{\"label\":\"姓名\",\"value\":\"name\"}]\n--order-by 为逗号分隔的排序字段列表 (可选)"
             }
           ],
           "precedence": "contract_final",
@@ -6284,7 +6284,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "使用高级条件表达式（originJson）搜索员工"
+          "value": "使用高级条件（originJson 表达式）搜索人员。\n建议先调用 \"dws hrbrain search fields\" 获取有权限的字段与操作符列表。\n--origin-json 为 JSON 字符串，例如:\n  {\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}\n--fields 为 JSON 数组，例如:\n  [{\"label\":\"姓名\",\"value\":\"name\"}]\n--order-by 为逗号分隔的排序字段列表 (可选)"
         },
         "effect": {
           "candidates": [

@@ -32,7 +32,7 @@ command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 
 ### 1.1 硬规则：声明 = 最终数据源（Schema 透传）
 
-受管命令进入 Schema 的叶子数据由 **Contract 声明**定义最终值；框架（`NewCommand`）做**类型转换**并注册，Schema 组装**透传**，不得：
+受管命令进入 Schema 的叶子数据由 **Contract 声明**定义最终值；框架（`corecmd.New`）做**类型转换**并注册，Schema 组装**透传**，不得：
 
 - 把声明序列化成 JSON 注解再解析；
 - 在声明体系里再挂「评审字段」并行权威；
@@ -48,7 +48,7 @@ command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 
 ### 1.2 声明（declare）：写什么、写在哪、投影到哪
 
-**定义**：声明 = 在 Contract 结构体的**数据字段**上写出事实；`NewCommand` 据此注册 cobra、渲染 help、写入 `dws.schema.*`。钩子闭包（`Validate` / `Call` / `PostMount` / `RunE`）里的逻辑**不算**声明——即使行为正确，也不能单靠钩子让 Schema/help「猜出」该事实。
+**定义**：声明 = 在 Contract 结构体的**数据字段**上写出事实；`corecmd.New` 据此注册 cobra、渲染 help、写入 `dws.schema.*`。钩子闭包（`Validate` / `Call` / `PostMount` / `RunE`）里的逻辑**不算**声明——即使行为正确，也不能单靠钩子让 Schema/help「猜出」该事实。
 
 命令框架边界与今日/目标对应见 RFC [`rfc-command-framework-convergence.md`](rfc-command-framework-convergence.md) **§5.0**（框架上的「声明」定义）；本节给字段级表与示例。
 

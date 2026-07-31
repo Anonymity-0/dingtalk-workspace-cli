@@ -957,13 +957,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -999,7 +999,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -1205,13 +1205,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -1247,7 +1247,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -1701,13 +1701,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -1743,7 +1743,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -1949,13 +1949,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -1991,7 +1991,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -2678,13 +2678,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -2714,7 +2714,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl"
       ],
@@ -3124,13 +3124,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -3160,7 +3160,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl"
       ],
@@ -3365,13 +3365,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -3407,7 +3407,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -3861,13 +3861,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -3903,7 +3903,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -4109,13 +4109,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -4151,7 +4151,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -4357,13 +4357,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -4399,7 +4399,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -4605,13 +4605,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -4647,7 +4647,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -5579,13 +5579,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -5615,7 +5615,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl"
       ],
@@ -5820,13 +5820,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -5862,7 +5862,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
         "skills/mono/references/products/dev.md"
@@ -6574,7 +6574,7 @@
         "含高敏权限但尚未确认时不要正式发布"
       ],
       "confirmation": "user_required",
-      "effect": "destructive",
+      "effect": "write",
       "effect_source": "corecmd.contract",
       "examples": [
         "dws dev app version publish --unified-app-id \u003cunifiedAppId\u003e --version-id \u003cversionId\u003e --dry-run --format json"
@@ -6649,13 +6649,13 @@
           ]
         },
         "effect": {
-          "value": "destructive",
+          "value": "write",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "destructive",
+              "value": "write",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -7243,13 +7243,13 @@
           ]
         },
         "risk": {
-          "value": "medium",
+          "value": "high",
           "source": "corecmd.contract",
           "precedence": "contract_final",
           "resolution": "highest_precedence",
           "candidates": [
             {
-              "value": "medium",
+              "value": "high",
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
@@ -7279,7 +7279,7 @@
       "interface_mode": "composite",
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl"
       ],

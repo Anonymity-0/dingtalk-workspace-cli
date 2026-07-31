@@ -75,7 +75,7 @@ func TestRuntimeToolSpecFromContractFinalPassThrough(t *testing.T) {
 		Command:        cmd,
 		Source:         "test",
 	}
-	spec, err := runtimeToolSpecFromContractFinal(entry, mustFinal(t, cmd))
+	spec, err := runtimeToolSpecFromContractFinal(entry, mustFinal(t, cmd), runtimeSchemaMetadataSources{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestRuntimeToolSpecFromContractFinalIdentityMismatchFails(t *testing.T) {
 		"wrong aliases":        {Aliases: []string{"dev rm"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := runtimeToolSpecFromContractFinal(entry, ContractFinalPayload{Identity: &id})
+			_, err := runtimeToolSpecFromContractFinal(entry, ContractFinalPayload{Identity: &id}, runtimeSchemaMetadataSources{})
 			if err == nil {
 				t.Fatal("declared identity conflicting with bound entry must fail assembly")
 			}
@@ -128,7 +128,7 @@ func TestRuntimeToolSpecFromContractFinalIdentityMismatchFails(t *testing.T) {
 		CanonicalPath: "dev.create_thing", CLIPath: "dev create",
 		PrimaryCLIPath: "dev create", Source: "test",
 	}}
-	if _, err := runtimeToolSpecFromContractFinal(entry, consistent); err != nil {
+	if _, err := runtimeToolSpecFromContractFinal(entry, consistent, runtimeSchemaMetadataSources{}); err != nil {
 		t.Fatalf("declared identity matching bound entry must pass: %v", err)
 	}
 }
@@ -142,7 +142,7 @@ func TestRuntimeToolSpecFromContractFinalRejectsReviewedSelection(t *testing.T) 
 	}
 	_, err := runtimeToolSpecFromContractFinal(entry, ContractFinalPayload{
 		Selection: &SelectionSpec{AgentSummary: "sum", Reviewed: &reviewed},
-	})
+	}, runtimeSchemaMetadataSources{})
 	if err == nil {
 		t.Fatal("declaration payload carrying Reviewed must fail assembly (reviewed is legacy-path only)")
 	}

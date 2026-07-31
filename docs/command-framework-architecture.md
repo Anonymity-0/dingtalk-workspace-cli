@@ -244,11 +244,11 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 
 | 文件 | 职责 |
 |------|------|
-| `internal/corecmd/command.go` | 核心类型 + NewCommand 构建器 + 运行时管线 |
+| `internal/corecmd/corecmd.go` | 核心类型 + `New` 构建器 + 运行时管线 |
 | `internal/corecmd/schema_decl.go` | SchemaDecl 载荷类型 + 声明完整性守卫 |
 | `internal/helpers/leaf.go` | LeafSpec 门面：`NewLeafCommand`（完全托管）+ `DeclareLeafMetadata`（声明元数据） |
 | `internal/shortcut/adapter.go` | FromShortcut 完整映射与 Risk 兼容边界 |
-| `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 command |
+| `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 `corecmd.New(FromShortcut(s))` |
 
 ## Schema 投影
 

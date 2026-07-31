@@ -384,34 +384,29 @@ func New(spec Spec) *cobra.Command {
 	if spec.PostMount != nil {
 		spec.PostMount(cmd)
 	}
+	if spec.ConfirmFirst {
+		if cmd.Annotations == nil {
+			cmd.Annotations = map[string]string{}
+		}
+		cmd.Annotations[ConfirmFirstAnnotation] = "true"
+	}
 	if spec.RunE != nil {
 		cmd.RunE = func(cmd *cobra.Command, args []string) error {
-			if err := ConfirmSafety(cmd, spec.Safety); err != nil {
+			if err := runDeclaredPreflight(cmd, args, spec); err != nil {
 				return err
+			}
+			if !spec.ConfirmFirst {
+				if err := ConfirmSafety(cmd, spec.Safety); err != nil {
+					return err
+				}
 			}
 			return spec.RunE(cmd, args)
 		}
 		return cmd
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if spec.ConfirmFirst {
-			if err := ConfirmSafety(cmd, spec.Safety); err != nil {
-				return err
-			}
-		}
-		if err := ValidateRequired(cmd, spec.Flags); err != nil {
+		if err := runDeclaredPreflight(cmd, args, spec); err != nil {
 			return err
-		}
-		if err := ValidateEnums(cmd, spec.Flags); err != nil {
-			return err
-		}
-		if err := ValidateConstraints(cmd, spec.Flags, spec.Constraints); err != nil {
-			return err
-		}
-		if spec.Validate != nil {
-			if err := spec.Validate(cmd, args); err != nil {
-				return err
-			}
 		}
 		ctx := newCtx(cmd, args, spec.Flags)
 		if spec.Orchestrate != nil {
@@ -437,6 +432,45 @@ func New(spec Spec) *cobra.Command {
 		return spec.Invoke(ctx, toolArgs)
 	}
 	return cmd
+}
+
+// ConfirmFirstAnnotation marks commands whose Spec declared ConfirmFirst. The
+// delivery gate reads it to tell a declared guard-first command apart from an
+// accidental confirm-before-validate inversion: guard-first is only legitimate
+// when the declaration says so.
+const ConfirmFirstAnnotation = "dws.contract.confirm_first"
+
+// HasDeclaredConfirmFirst reports whether cmd was built from a Spec that
+// declared ConfirmFirst.
+func HasDeclaredConfirmFirst(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Annotations != nil && cmd.Annotations[ConfirmFirstAnnotation] == "true"
+}
+
+// runDeclaredPreflight runs the checks the Spec itself declares, in the one
+// order both dispatch paths share. ConfirmFirst is the declared opt-out for
+// legacy guard-first commands: those confirm before parameter completeness is
+// known. Keeping this in one function is deliberate — when the RunE escape
+// hatch carried its own copy it silently dropped every declared check, so a
+// spec could publish Required flags that nothing enforced.
+func runDeclaredPreflight(cmd *cobra.Command, args []string, spec Spec) error {
+	if spec.ConfirmFirst {
+		if err := ConfirmSafety(cmd, spec.Safety); err != nil {
+			return err
+		}
+	}
+	if err := ValidateRequired(cmd, spec.Flags); err != nil {
+		return err
+	}
+	if err := ValidateEnums(cmd, spec.Flags); err != nil {
+		return err
+	}
+	if err := ValidateConstraints(cmd, spec.Flags, spec.Constraints); err != nil {
+		return err
+	}
+	if spec.Validate != nil {
+		return spec.Validate(cmd, args)
+	}
+	return nil
 }
 
 // validateDispatchDecl enforces "exactly one dispatcher" at build time. Like
@@ -1020,14 +1054,19 @@ func confirmationRequiredError(operation string) error {
 
 // BoolFlag robustly reads a bool flag that may live on the command, its
 // inherited flags, or the root's persistent flags (e.g. root-injected global
-// --yes / --dry-run). Returns the first flagset that resolves the name.
+// --yes / --dry-run).
+//
+// It ORs across flagsets, matching confirmationBypass. Returning the first
+// resolving flagset instead let a leaf-local --dry-run (default false) shadow a
+// root persistent --dry-run=true, so confirmation could be bypassed as a dry run
+// while Ctx.DryRun() reported false — a real write with no confirmation.
 func BoolFlag(cmd *cobra.Command, name string) bool {
 	if cmd == nil {
 		return false
 	}
 	for _, get := range boolFlagGetters(cmd) {
-		if v, err := get(name); err == nil {
-			return v
+		if v, err := get(name); err == nil && v {
+			return true
 		}
 	}
 	return false
@@ -1143,8 +1182,12 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 	validateSafetySpec(Spec{Use: cmd.Name(), Safety: safety})
 
 	payload := cli.ContractFinalPayload{
-		Title:       firstNonEmpty(schema.Title, short),
-		Description: firstNonEmpty(schema.Description, long),
+		Title: firstNonEmpty(schema.Title, short),
+		// Cobra Long wins over the declared Description when the command authored
+		// one: Schema.Description is mandatory for every declaration, so letting it
+		// win silently replaced each leaf's full Agent-facing help with a one-line
+		// restatement. The declaration still supplies leaves that have no Long.
+		Description: firstNonEmpty(long, schema.Description),
 		Safety:      schemaSafetyFromDecl(safety),
 	}
 	if n := len(schema.Positionals); n > 0 {

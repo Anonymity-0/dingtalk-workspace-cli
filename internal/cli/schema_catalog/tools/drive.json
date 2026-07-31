@@ -18,7 +18,7 @@
       "cli_name": "add",
       "cli_path": "drive permission add",
       "confirmation": "not_required",
-      "description": "为文档空间节点添加协作成员并授予指定角色",
+      "description": "为文档空间节点添加协作成员并授予指定角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -132,7 +132,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "为文档空间节点添加协作成员并授予指定角色"
+              "value": "为文档空间节点添加协作成员并授予指定角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER"
             }
           ],
           "precedence": "contract_final",
@@ -140,7 +140,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "为文档空间节点添加协作成员并授予指定角色"
+          "value": "为文档空间节点添加协作成员并授予指定角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER"
         },
         "effect": {
           "candidates": [
@@ -364,6 +364,12 @@
                   "value": "目标节点 ID 或 URL (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标节点的 nodeId（文档、文件夹或文件），可通过 list_nodes 工具获取。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -398,8 +404,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -410,9 +422,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -444,6 +456,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标节点的 nodeId（文档、文件夹或文件），可通过 list_nodes 工具获取。",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -458,6 +471,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "角色: MANAGER / EDITOR / DOWNLOADER / READER (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "授予成员的角色，取值：MANAGER、EDITOR、DOWNLOADER、READER。"
                 },
                 {
                   "precedence": "default",
@@ -494,8 +513,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -506,9 +531,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -540,6 +565,7 @@
               "value": "string"
             }
           },
+          "interface_description": "授予成员的角色，取值：MANAGER、EDITOR、DOWNLOADER、READER。",
           "property": "roleId",
           "required": true,
           "type": "string"
@@ -556,6 +582,12 @@
                   "value": "用户 userId 列表，逗号分隔 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "被授权的用户 userId 列表（钉钉 staffId / 外部 userId 格式，由钉钉开放平台体系下颁发；通常为数字字符串），至少包含一个 userId，单次最多 30 个。如果你只有 unionId，请先调用钉钉开放平台「根据 unionId 获取 userId」接口换取 userId。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -566,6 +598,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "用户 userId 列表，逗号分隔 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -590,8 +642,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -602,9 +660,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -636,6 +694,8 @@
               "value": "string"
             }
           },
+          "interface_description": "被授权的用户 userId 列表（钉钉 staffId / 外部 userId 格式，由钉钉开放平台体系下颁发；通常为数字字符串），至少包含一个 userId，单次最多 30 个。如果你只有 unionId，请先调用钉钉开放平台「根据 unionId 获取 userId」接口换取 userId。",
+          "interface_type": "array",
           "property": "userIds",
           "required": true,
           "type": "string"
@@ -650,6 +710,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "知识库 ID (选填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。"
                 },
                 {
                   "precedence": "default",
@@ -726,6 +792,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。",
           "property": "workspaceId",
           "required": false,
           "type": "string"
@@ -758,7 +825,7 @@
       "cli_name": "apply",
       "cli_path": "drive permission apply",
       "confirmation": "user_required",
-      "description": "向审批人发起文档权限申请（会真实通知审批人）",
+      "description": "向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。\n\n注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -868,7 +935,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "向审批人发起文档权限申请（会真实通知审批人）"
+              "value": "向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。\n\n注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。"
             }
           ],
           "precedence": "contract_final",
@@ -876,7 +943,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "向审批人发起文档权限申请（会真实通知审批人）"
+          "value": "向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。\n\n注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。"
         },
         "effect": {
           "candidates": [
@@ -1943,6 +2010,12 @@
                   "value": "文件名（含扩展名），须与 get_upload_info 时一致 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件名（含扩展名），须与 get_upload_info 时传入的 fileName 一致"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1971,8 +2044,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1983,9 +2062,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2017,6 +2096,7 @@
               "value": "string"
             }
           },
+          "interface_description": "文件名（含扩展名），须与 get_upload_info 时传入的 fileName 一致",
           "property": "fileName",
           "required": true,
           "type": "string"
@@ -2048,6 +2128,12 @@
                   "value": "文件大小（字节），须与 get_upload_info 时一致 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件大小（字节），须与 get_upload_info 时传入的 fileSize 一致，用于完整性校验"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2058,6 +2144,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "文件大小（字节），须与 get_upload_info 时一致 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -2128,6 +2234,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "文件大小（字节），须与 get_upload_info 时传入的 fileSize 一致，用于完整性校验",
+          "interface_type": "number",
           "property": "fileSize",
           "required": true,
           "type": "integer"
@@ -2142,6 +2250,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "父节点 ID (dentryUuid)，不传则提交到根目录 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "父节点 ID（dentryUuid 格式）。不传则提交到空间根目录。须与 get_upload_info 时传入的 parentId 一致"
                 },
                 {
                   "precedence": "default",
@@ -2218,6 +2332,7 @@
               "value": "string"
             }
           },
+          "interface_description": "父节点 ID（dentryUuid 格式）。不传则提交到空间根目录。须与 get_upload_info 时传入的 parentId 一致",
           "property": "parentId",
           "required": false,
           "type": "string"
@@ -2232,6 +2347,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "空间 ID，不传则使用「我的文件」 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标空间 ID。不传时后端自动使用当前用户「我的文件」对应的 spaceId"
                 },
                 {
                   "precedence": "default",
@@ -2302,6 +2423,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标空间 ID。不传时后端自动使用当前用户「我的文件」对应的 spaceId",
           "property": "spaceId",
           "required": false,
           "type": "string"
@@ -2316,6 +2438,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "上传 ID，来自 get_upload_info 返回的 uploadId (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "上传 ID，来自 get_upload_info 返回的 uploadId"
                 },
                 {
                   "precedence": "default",
@@ -2346,8 +2474,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2358,9 +2492,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2392,6 +2526,7 @@
               "value": "string"
             }
           },
+          "interface_description": "上传 ID，来自 get_upload_info 返回的 uploadId",
           "property": "uploadId",
           "required": true,
           "type": "string"
@@ -2426,7 +2561,7 @@
       "cli_name": "copy",
       "cli_path": "drive copy",
       "confirmation": "not_required",
-      "description": "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）",
+      "description": "将文档空间中的文档或文件复制到指定文件夹或知识库。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n不传 --folder 时复制到 --workspace 根目录；都不传则默认到\"我的文档\"。\n\n权限要求: 对源文档有\"阅读\"权限，且对目标文件夹有\"编辑\"权限。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -2543,7 +2678,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）"
+              "value": "将文档空间中的文档或文件复制到指定文件夹或知识库。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n不传 --folder 时复制到 --workspace 根目录；都不传则默认到\"我的文档\"。\n\n权限要求: 对源文档有\"阅读\"权限，且对目标文件夹有\"编辑\"权限。"
             }
           ],
           "precedence": "contract_final",
@@ -2551,7 +2686,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）"
+          "value": "将文档空间中的文档或文件复制到指定文件夹或知识库。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n不传 --folder 时复制到 --workspace 根目录；都不传则默认到\"我的文档\"。\n\n权限要求: 对源文档有\"阅读\"权限，且对目标文件夹有\"编辑\"权限。"
         },
         "effect": {
           "candidates": [
@@ -2782,6 +2917,12 @@
                   "value": "目标文件夹 nodeId"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标文件夹的 dentryUuid（32 位字母数字字符串），复制后的节点将放置在此文件夹下。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2856,6 +2997,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标文件夹的 dentryUuid（32 位字母数字字符串），复制后的节点将放置在此文件夹下。",
           "property": "targetFolderId",
           "required": false,
           "type": "string"
@@ -2870,6 +3012,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "文档/文件 ID 或 URL (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要复制的节点标识，支持以下格式：\\n1. 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}\\n2. dentryUuid（32 位字母数字字符串）"
                 },
                 {
                   "precedence": "default",
@@ -2906,8 +3054,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2918,9 +3072,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2952,6 +3106,7 @@
               "value": "string"
             }
           },
+          "interface_description": "要复制的节点标识，支持以下格式：\\n1. 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}\\n2. dentryUuid（32 位字母数字字符串）",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -2966,6 +3121,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "目标知识库 ID"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。当 targetFolderId 不传时，复制到该知识库的根目录下。与 targetFolderId 至少传一个。"
                 },
                 {
                   "precedence": "default",
@@ -3042,6 +3203,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。当 targetFolderId 不传时，复制到该知识库的根目录下。与 targetFolderId 至少传一个。",
           "property": "workspaceId",
           "required": false,
           "type": "string"
@@ -3424,6 +3586,12 @@
                   "value": "父节点 ID (dentryUuid)，不传则在空间根目录下创建 (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "父节点 ID（dentryUuid 格式）。不传则在空间根目录下创建"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3498,6 +3666,7 @@
               "value": "string"
             }
           },
+          "interface_description": "父节点 ID（dentryUuid 格式）。不传则在空间根目录下创建",
           "property": "parentId",
           "required": false,
           "type": "string"
@@ -3512,6 +3681,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "文件夹名称，最长 50 字符 (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件夹名称，最长 50 个字符"
                 },
                 {
                   "precedence": "default",
@@ -3542,8 +3717,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3554,9 +3735,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -3588,6 +3769,7 @@
               "value": "string"
             }
           },
+          "interface_description": "文件夹名称，最长 50 个字符",
           "property": "name",
           "required": true,
           "type": "string"
@@ -3602,6 +3784,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "目标空间 ID，不传则使用「我的文件」 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "空间 ID。绝大多数情况下不需要传，后端自动使用当前用户默认空间 spaceId"
                 },
                 {
                   "precedence": "default",
@@ -3672,6 +3860,7 @@
               "value": "string"
             }
           },
+          "interface_description": "空间 ID。绝大多数情况下不需要传，后端自动使用当前用户默认空间 spaceId",
           "property": "spaceId",
           "required": false,
           "type": "string"
@@ -3705,7 +3894,7 @@
       "cli_name": "shortcut",
       "cli_path": "drive shortcut",
       "confirmation": "not_required",
-      "description": "为钉盘或文档空间中的现有节点创建快捷方式。",
+      "description": "为指定源节点创建快捷方式，并放置到目标文件夹或知识库。\n\n通过 --node 指定源节点。--folder 和 --workspace 均为可选；都不传时由服务端选择默认位置。\n若同时指定，--folder 是目标文件夹，--workspace 用于指定其所属知识库。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -3818,7 +4007,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "为钉盘或文档空间中的现有节点创建快捷方式。"
+              "value": "为指定源节点创建快捷方式，并放置到目标文件夹或知识库。\n\n通过 --node 指定源节点。--folder 和 --workspace 均为可选；都不传时由服务端选择默认位置。\n若同时指定，--folder 是目标文件夹，--workspace 用于指定其所属知识库。"
             }
           ],
           "precedence": "contract_final",
@@ -3826,7 +4015,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "为钉盘或文档空间中的现有节点创建快捷方式。"
+          "value": "为指定源节点创建快捷方式，并放置到目标文件夹或知识库。\n\n通过 --node 指定源节点。--folder 和 --workspace 均为可选；都不传时由服务端选择默认位置。\n若同时指定，--folder 是目标文件夹，--workspace 用于指定其所属知识库。"
         },
         "effect": {
           "candidates": [
@@ -4351,7 +4540,7 @@
       "cli_name": "delete",
       "cli_path": "drive delete",
       "confirmation": "user_required",
-      "description": "将钉盘中的文件或文件夹移入回收站",
+      "description": "将钉盘中的文件或文件夹移入回收站。\n\n注意: 这是一个危险操作，文件将被移入回收站。执行前需要确认，或传入 --yes 跳过确认。\n--node 对应 drive list 返回的 fileId 字段（即 dentryUuid）。\n\n权限要求: 对文档有\"管理\"权限。",
       "display": "钉盘文件管理",
       "effect": "destructive",
       "effect_source": "corecmd.contract",
@@ -4465,7 +4654,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "将钉盘中的文件或文件夹移入回收站"
+              "value": "将钉盘中的文件或文件夹移入回收站。\n\n注意: 这是一个危险操作，文件将被移入回收站。执行前需要确认，或传入 --yes 跳过确认。\n--node 对应 drive list 返回的 fileId 字段（即 dentryUuid）。\n\n权限要求: 对文档有\"管理\"权限。"
             }
           ],
           "precedence": "contract_final",
@@ -4473,7 +4662,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "将钉盘中的文件或文件夹移入回收站"
+          "value": "将钉盘中的文件或文件夹移入回收站。\n\n注意: 这是一个危险操作，文件将被移入回收站。执行前需要确认，或传入 --yes 跳过确认。\n--node 对应 drive list 返回的 fileId 字段（即 dentryUuid）。\n\n权限要求: 对文档有\"管理\"权限。"
         },
         "effect": {
           "candidates": [
@@ -4694,6 +4883,12 @@
                   "value": "文件/文件夹 ID (dentryUuid)，即 drive list 返回的 fileId (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要删除的节点标识，支持以下格式：1) 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}；2) dentryUuid（32 位字母数字字符串）。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -4728,8 +4923,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4740,9 +4941,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -4774,6 +4975,7 @@
               "value": "string"
             }
           },
+          "interface_description": "要删除的节点标识，支持以下格式：1) 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}；2) dentryUuid（32 位字母数字字符串）。",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -4807,7 +5009,7 @@
       "cli_name": "download",
       "cli_path": "drive download",
       "confirmation": "not_required",
-      "description": "下载钉盘或文档空间文件到本地",
+      "description": "下载钉盘中的文件到本地（两步下载流程）。\n\n流程:\n  1. 获取下载 URL 和签名请求头 (download_file)\n  2. HTTP GET 下载文件二进制内容到本地\n\n--output 指定本地保存路径，可以是文件路径或目录。\n如果指定目录，文件名从下载 URL 中自动推断。",
       "display": "钉盘文件管理",
       "dry_run": {
         "preview_kind": "plan"
@@ -4925,7 +5127,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "下载钉盘或文档空间文件到本地"
+              "value": "下载钉盘中的文件到本地（两步下载流程）。\n\n流程:\n  1. 获取下载 URL 和签名请求头 (download_file)\n  2. HTTP GET 下载文件二进制内容到本地\n\n--output 指定本地保存路径，可以是文件路径或目录。\n如果指定目录，文件名从下载 URL 中自动推断。"
             }
           ],
           "precedence": "contract_final",
@@ -4933,7 +5135,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "下载钉盘或文档空间文件到本地"
+          "value": "下载钉盘中的文件到本地（两步下载流程）。\n\n流程:\n  1. 获取下载 URL 和签名请求头 (download_file)\n  2. HTTP GET 下载文件二进制内容到本地\n\n--output 指定本地保存路径，可以是文件路径或目录。\n如果指定目录，文件名从下载 URL 中自动推断。"
         },
         "dry_run": {
           "candidates": [
@@ -5180,6 +5382,12 @@
                   "value": "文件 ID (dentryUuid) (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件 ID（dentryUuid 格式）"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5214,8 +5422,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -5226,9 +5440,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -5260,6 +5474,7 @@
               "value": "string"
             }
           },
+          "interface_description": "文件 ID（dentryUuid 格式）",
           "property": "fileId",
           "required": true,
           "type": "string"
@@ -5373,6 +5588,12 @@
                   "value": "文件所属空间 ID (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件所属空间 ID"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5441,6 +5662,7 @@
               "value": "string"
             }
           },
+          "interface_description": "文件所属空间 ID",
           "property": "spaceId",
           "required": false,
           "type": "string"
@@ -5475,7 +5697,7 @@
       "cli_name": "download-version",
       "cli_path": "drive download-version",
       "confirmation": "not_required",
-      "description": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+      "description": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -5589,7 +5811,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）"
+              "value": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。"
             }
           ],
           "precedence": "contract_final",
@@ -5597,7 +5819,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）"
+          "value": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。"
         },
         "effect": {
           "candidates": [
@@ -6598,7 +6820,7 @@
       "cli_name": "info",
       "cli_path": "drive info",
       "confirmation": "not_required",
-      "description": "获取文件元数据信息",
+      "description": "获取钉盘文件/文件夹的元数据信息。\n\n如果目标文件属于钉钉文档（在线文档/表格/脑图等），会自动跟进调用\n钉钉文档接口获取更准确的文档信息（如真实文档名称），并合并输出。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -6712,7 +6934,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取文件元数据信息"
+              "value": "获取钉盘文件/文件夹的元数据信息。\n\n如果目标文件属于钉钉文档（在线文档/表格/脑图等），会自动跟进调用\n钉钉文档接口获取更准确的文档信息（如真实文档名称），并合并输出。"
             }
           ],
           "precedence": "contract_final",
@@ -6720,7 +6942,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取文件元数据信息"
+          "value": "获取钉盘文件/文件夹的元数据信息。\n\n如果目标文件属于钉钉文档（在线文档/表格/脑图等），会自动跟进调用\n钉钉文档接口获取更准确的文档信息（如真实文档名称），并合并输出。"
         },
         "effect": {
           "candidates": [
@@ -6943,6 +7165,12 @@
                   "value": "节点 ID (dentryUuid) (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "节点 ID（dentryUuid 格式），统一标识文件和文件夹"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6977,8 +7205,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -6989,9 +7223,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -7023,6 +7257,7 @@
               "value": "string"
             }
           },
+          "interface_description": "节点 ID（dentryUuid 格式），统一标识文件和文件夹",
           "property": "fileId",
           "required": true,
           "type": "string"
@@ -7037,6 +7272,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "节点所属空间 ID (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "节点所属空间 ID。可不传，后端自动从 fileId（dentryUuid 格式）中解析出 spaceId"
                 },
                 {
                   "precedence": "default",
@@ -7107,6 +7348,7 @@
               "value": "string"
             }
           },
+          "interface_description": "节点所属空间 ID。可不传，后端自动从 fileId（dentryUuid 格式）中解析出 spaceId",
           "property": "spaceId",
           "required": false,
           "type": "string"
@@ -7140,7 +7382,7 @@
       "cli_name": "stats",
       "cli_path": "drive stats",
       "confirmation": "not_required",
-      "description": "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。",
+      "description": "获取指定节点的统计数据，包括阅读人数、阅读次数、编辑次数、评论数、点赞数、预览次数和下载次数等。\n\n不同文件类型返回的统计维度可能不同。--node 支持节点 ID 或文档 URL。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -7252,7 +7494,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。"
+              "value": "获取指定节点的统计数据，包括阅读人数、阅读次数、编辑次数、评论数、点赞数、预览次数和下载次数等。\n\n不同文件类型返回的统计维度可能不同。--node 支持节点 ID 或文档 URL。"
             }
           ],
           "precedence": "contract_final",
@@ -7260,7 +7502,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。"
+          "value": "获取指定节点的统计数据，包括阅读人数、阅读次数、编辑次数、评论数、点赞数、预览次数和下载次数等。\n\n不同文件类型返回的统计维度可能不同。--node 支持节点 ID 或文档 URL。"
         },
         "effect": {
           "candidates": [
@@ -8862,6 +9104,12 @@
                   "value": "文件名，须包含扩展名，如 报告.pdf (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件名，须包含扩展名，如 报告.pdf。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -8890,8 +9138,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -8902,9 +9156,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -8936,6 +9190,7 @@
               "value": "string"
             }
           },
+          "interface_description": "文件名，须包含扩展名，如 报告.pdf。",
           "property": "fileName",
           "required": true,
           "type": "string"
@@ -8967,6 +9222,12 @@
                   "value": "文件大小（字节）(必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件大小（字节），用于服务端生成上传凭证和后续完整性校验。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -8977,6 +9238,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "文件大小（字节）(必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -8998,6 +9279,12 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_hard_required",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
                   "value": true
                 },
                 {
@@ -9047,6 +9334,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "文件大小（字节），用于服务端生成上传凭证和后续完整性校验。",
+          "interface_type": "number",
           "property": "fileSize",
           "required": true,
           "type": "integer"
@@ -9061,6 +9350,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "父节点 ID (dentryUuid)，不传则上传到空间根目录 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "父节点 ID（dentryUuid 格式）。不传则上传到空间根目录。"
                 },
                 {
                   "precedence": "default",
@@ -9137,6 +9432,7 @@
               "value": "string"
             }
           },
+          "interface_description": "父节点 ID（dentryUuid 格式）。不传则上传到空间根目录。",
           "property": "parentId",
           "required": false,
           "type": "string"
@@ -9151,6 +9447,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "文件 MIME 类型，如 application/pdf，不传则自动推断 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "文件 MIME 类型，如 application/pdf。不传时由服务端根据文件扩展名自动推断。"
                 },
                 {
                   "precedence": "default",
@@ -9221,6 +9523,7 @@
               "value": "string"
             }
           },
+          "interface_description": "文件 MIME 类型，如 application/pdf。不传时由服务端根据文件扩展名自动推断。",
           "property": "mimeType",
           "required": false,
           "type": "string"
@@ -9235,6 +9538,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "目标空间 ID，不传则使用「我的文件」 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标空间 ID。不传时后端自动使用当前用户「我的文件」对应的 spaceId。"
                 },
                 {
                   "precedence": "default",
@@ -9305,6 +9614,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标空间 ID。不传时后端自动使用当前用户「我的文件」对应的 spaceId。",
           "property": "spaceId",
           "required": false,
           "type": "string"
@@ -9338,7 +9648,7 @@
       "cli_name": "list",
       "cli_path": "drive list",
       "confirmation": "not_required",
-      "description": "获取文件/文件夹列表",
+      "description": "列出文件和文件夹。根据参数自动路由到钉盘或文档空间。\n\n路由规则:\n  默认（无 --workspace）       → 列出钉盘「我的文件」\n  --space-id \u003c纯数字\u003e          → 列出钉盘指定空间\n  --workspace \u003c加密string/URL\u003e → 列出文档空间/知识库文件（等同于原 list-docs）\n  --folder \u003cnodeId\u003e            → 列出指定文件夹下的子节点",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -9453,7 +9763,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取文件/文件夹列表"
+              "value": "列出文件和文件夹。根据参数自动路由到钉盘或文档空间。\n\n路由规则:\n  默认（无 --workspace）       → 列出钉盘「我的文件」\n  --space-id \u003c纯数字\u003e          → 列出钉盘指定空间\n  --workspace \u003c加密string/URL\u003e → 列出文档空间/知识库文件（等同于原 list-docs）\n  --folder \u003cnodeId\u003e            → 列出指定文件夹下的子节点"
             }
           ],
           "precedence": "contract_final",
@@ -9461,7 +9771,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取文件/文件夹列表"
+          "value": "列出文件和文件夹。根据参数自动路由到钉盘或文档空间。\n\n路由规则:\n  默认（无 --workspace）       → 列出钉盘「我的文件」\n  --space-id \u003c纯数字\u003e          → 列出钉盘指定空间\n  --workspace \u003c加密string/URL\u003e → 列出文档空间/知识库文件（等同于原 list-docs）\n  --folder \u003cnodeId\u003e            → 列出指定文件夹下的子节点"
         },
         "effect": {
           "candidates": [
@@ -10883,7 +11193,7 @@
       "cli_name": "list",
       "cli_path": "drive permission list",
       "confirmation": "not_required",
-      "description": "查询文档空间节点的协作者列表",
+      "description": "查询文档空间节点的协作者列表。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -10995,7 +11305,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询文档空间节点的协作者列表"
+              "value": "查询文档空间节点的协作者列表。"
             }
           ],
           "precedence": "contract_final",
@@ -11003,7 +11313,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询文档空间节点的协作者列表"
+          "value": "查询文档空间节点的协作者列表。"
         },
         "effect": {
           "candidates": [
@@ -11225,6 +11535,12 @@
                   "value": "按角色过滤: OWNER / MANAGER / EDITOR / DOWNLOADER / READER"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "按角色过滤成员列表，选填。取值：OWNER、MANAGER、EDITOR、DOWNLOADER、READER。不传时返回所有角色的成员。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -11235,6 +11551,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "按角色过滤: OWNER / MANAGER / EDITOR / DOWNLOADER / READER"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -11299,6 +11635,8 @@
               "value": "string"
             }
           },
+          "interface_description": "按角色过滤成员列表，选填。取值：OWNER、MANAGER、EDITOR、DOWNLOADER、READER。不传时返回所有角色的成员。",
+          "interface_type": "array",
           "property": "filterRoleIds",
           "required": false,
           "type": "string"
@@ -11316,6 +11654,12 @@
                   "value": "返回成员数上限，默认 30，最大 200"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "期望返回的最大成员条数，默认 30，最大 200。底层一次性返回全量成员后在内存中按本字段截断；本接口不支持游标翻页，不存在 nextToken。若发生截断（出参 truncated=true），可通过出参 totalCount 感知全量成员数，并通过 filterRoleIds 收窄查询范围。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -11326,6 +11670,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "返回成员数上限，默认 30，最大 200"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -11396,6 +11760,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "期望返回的最大成员条数，默认 30，最大 200。底层一次性返回全量成员后在内存中按本字段截断；本接口不支持游标翻页，不存在 nextToken。若发生截断（出参 truncated=true），可通过出参 totalCount 感知全量成员数，并通过 filterRoleIds 收窄查询范围。",
+          "interface_type": "number",
           "property": "maxResults",
           "required": false,
           "type": "integer"
@@ -11410,6 +11776,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "目标节点 ID 或 URL (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标节点的 nodeId。"
                 },
                 {
                   "precedence": "default",
@@ -11446,8 +11818,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -11458,9 +11836,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -11492,6 +11870,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标节点的 nodeId。",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -11506,6 +11885,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "知识库 ID (选填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。"
                 },
                 {
                   "precedence": "default",
@@ -11582,6 +11967,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。",
           "property": "workspaceId",
           "required": false,
           "type": "string"
@@ -11614,7 +12000,7 @@
       "cli_name": "list-spaces",
       "cli_path": "drive list-spaces",
       "confirmation": "not_required",
-      "description": "兼容查询钉盘空间列表",
+      "description": "⚠️  此命令已迁移到 wiki space list，请使用:\n  dws wiki space list --type orgSpace    # 企业空间\n  dws wiki space list --type mySpace     # 我的文件\n\n列出当前用户可访问的钉盘空间，返回 spaceId、spaceName、rootFolderId 等信息。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -11727,7 +12113,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "兼容查询钉盘空间列表"
+              "value": "⚠️  此命令已迁移到 wiki space list，请使用:\n  dws wiki space list --type orgSpace    # 企业空间\n  dws wiki space list --type mySpace     # 我的文件\n\n列出当前用户可访问的钉盘空间，返回 spaceId、spaceName、rootFolderId 等信息。"
             }
           ],
           "precedence": "contract_final",
@@ -11735,7 +12121,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "兼容查询钉盘空间列表"
+          "value": "⚠️  此命令已迁移到 wiki space list，请使用:\n  dws wiki space list --type orgSpace    # 企业空间\n  dws wiki space list --type mySpace     # 我的文件\n\n列出当前用户可访问的钉盘空间，返回 spaceId、spaceName、rootFolderId 等信息。"
         },
         "effect": {
           "candidates": [
@@ -11958,6 +12344,12 @@
                   "value": "分页游标，仅企业空间支持分页 (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页游标。首次请求不传，后续请求传上一次返回的 nextToken。当 nextToken 为 null 时，表示已获取所有空间。仅 spaceType 为 orgSpace 时有效"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -12032,6 +12424,7 @@
               "value": "string"
             }
           },
+          "interface_description": "分页游标。首次请求不传，后续请求传上一次返回的 nextToken。当 nextToken 为 null 时，表示已获取所有空间。仅 spaceType 为 orgSpace 时有效",
           "property": "nextToken",
           "required": false,
           "type": "string"
@@ -12047,6 +12440,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "每页返回数量 (默认 20，最大 50)，仅 spaceType 为 orgSpace 时有效"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "每页返回数量，默认 20，最大 50。建议根据实际需求调整，较大的值可以减少请求次数，但会增加单次响应的数据量。仅 spaceType 为 orgSpace 时有效"
                 },
                 {
                   "precedence": "default",
@@ -12129,6 +12528,7 @@
               "value": "integer"
             }
           },
+          "interface_description": "每页返回数量，默认 20，最大 50。建议根据实际需求调整，较大的值可以减少请求次数，但会增加单次响应的数据量。仅 spaceType 为 orgSpace 时有效",
           "property": "maxResults",
           "required": false,
           "type": "integer"
@@ -12143,6 +12543,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "空间类型: orgSpace=企业空间(默认), mySpace=我的文件 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "空间类型。可选值：orgSpace（企业空间）、mySpace（我的文件）。不传时默认为 orgSpace"
                 },
                 {
                   "precedence": "default",
@@ -12219,6 +12625,7 @@
               "value": "string"
             }
           },
+          "interface_description": "空间类型。可选值：orgSpace（企业空间）、mySpace（我的文件）。不传时默认为 orgSpace",
           "property": "spaceType",
           "required": false,
           "type": "string"
@@ -12713,7 +13120,7 @@
       "cli_name": "move",
       "cli_path": "drive move",
       "confirmation": "not_required",
-      "description": "将文件或文档移动到目标文件夹或知识库（原位置不再保留）",
+      "description": "将文档空间中的文档或文件移动到指定文件夹或知识库。移动后原位置不再存在。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n\n权限要求: 对源文档有\"管理\"权限，且对目标文件夹有\"编辑\"权限。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -12828,7 +13235,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "将文件或文档移动到目标文件夹或知识库（原位置不再保留）"
+              "value": "将文档空间中的文档或文件移动到指定文件夹或知识库。移动后原位置不再存在。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n\n权限要求: 对源文档有\"管理\"权限，且对目标文件夹有\"编辑\"权限。"
             }
           ],
           "precedence": "contract_final",
@@ -12836,7 +13243,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "将文件或文档移动到目标文件夹或知识库（原位置不再保留）"
+          "value": "将文档空间中的文档或文件移动到指定文件夹或知识库。移动后原位置不再存在。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n\n权限要求: 对源文档有\"管理\"权限，且对目标文件夹有\"编辑\"权限。"
         },
         "effect": {
           "candidates": [
@@ -13063,6 +13470,12 @@
                   "value": "目标文件夹 nodeId"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标文件夹的 dentryUuid（32 位字母数字字符串），节点将被移动到此文件夹下。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -13137,6 +13550,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标文件夹的 dentryUuid（32 位字母数字字符串），节点将被移动到此文件夹下。",
           "property": "targetFolderId",
           "required": false,
           "type": "string"
@@ -13151,6 +13565,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "文档/文件 ID 或 URL (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要移动的节点标识，支持以下格式：\\n1. 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}\\n2. dentryUuid（32 位字母数字字符串）"
                 },
                 {
                   "precedence": "default",
@@ -13187,8 +13607,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -13199,9 +13625,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -13233,6 +13659,7 @@
               "value": "string"
             }
           },
+          "interface_description": "要移动的节点标识，支持以下格式：\\n1. 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}\\n2. dentryUuid（32 位字母数字字符串）",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -13247,6 +13674,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "目标知识库 ID"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。当 targetFolderId 不传时，移动到该知识库的根目录下。如果同时传了 targetFolderId，则以 targetFolderId 为准。"
                 },
                 {
                   "precedence": "default",
@@ -13323,6 +13756,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。当 targetFolderId 不传时，移动到该知识库的根目录下。如果同时传了 targetFolderId，则以 targetFolderId 为准。",
           "property": "workspaceId",
           "required": false,
           "type": "string"
@@ -13357,7 +13791,7 @@
       "cli_name": "remove",
       "cli_path": "drive permission remove",
       "confirmation": "not_required",
-      "description": "从文档空间节点移除协作成员的权限",
+      "description": "从文档空间节点移除协作成员的权限。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -13469,7 +13903,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "从文档空间节点移除协作成员的权限"
+              "value": "从文档空间节点移除协作成员的权限。"
             }
           ],
           "precedence": "contract_final",
@@ -13477,7 +13911,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "从文档空间节点移除协作成员的权限"
+          "value": "从文档空间节点移除协作成员的权限。"
         },
         "effect": {
           "candidates": [
@@ -13699,6 +14133,12 @@
                   "value": "目标节点 ID 或 URL (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标节点的 nodeId（文档、文件夹或文件），可通过 list_nodes 工具获取。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -13733,8 +14173,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -13745,9 +14191,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -13779,6 +14225,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标节点的 nodeId（文档、文件夹或文件），可通过 list_nodes 工具获取。",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -13795,6 +14242,12 @@
                   "value": "用户 userId 列表，逗号分隔 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要移除权限的用户 userId 列表（钉钉 staffId / 外部 userId 格式），至少包含一个 userId，单次最多 30 个。当前 Agent 写操作仅支持移除企业用户权限，故入参直接以扁平的 userId 列表呈现。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -13805,6 +14258,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "用户 userId 列表，逗号分隔 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -13829,8 +14302,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -13841,9 +14320,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -13875,6 +14354,8 @@
               "value": "string"
             }
           },
+          "interface_description": "要移除权限的用户 userId 列表（钉钉 staffId / 外部 userId 格式），至少包含一个 userId，单次最多 30 个。当前 Agent 写操作仅支持移除企业用户权限，故入参直接以扁平的 userId 列表呈现。",
+          "interface_type": "array",
           "property": "userIds",
           "required": true,
           "type": "string"
@@ -13889,6 +14370,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "知识库 ID (选填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。"
                 },
                 {
                   "precedence": "default",
@@ -13965,6 +14452,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。",
           "property": "workspaceId",
           "required": false,
           "type": "string"
@@ -13997,7 +14485,7 @@
       "cli_name": "update",
       "cli_path": "drive permission update",
       "confirmation": "not_required",
-      "description": "更新文档空间节点已有协作者的权限角色",
+      "description": "更新文档空间节点已有协作者的权限角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -14109,7 +14597,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "更新文档空间节点已有协作者的权限角色"
+              "value": "更新文档空间节点已有协作者的权限角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER"
             }
           ],
           "precedence": "contract_final",
@@ -14117,7 +14605,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "更新文档空间节点已有协作者的权限角色"
+          "value": "更新文档空间节点已有协作者的权限角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER"
         },
         "effect": {
           "candidates": [
@@ -14339,6 +14827,12 @@
                   "value": "目标节点 ID 或 URL (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标节点的 nodeId。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -14373,8 +14867,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -14385,9 +14885,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -14419,6 +14919,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标节点的 nodeId。",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -14433,6 +14934,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "新角色: MANAGER / EDITOR / DOWNLOADER / READER (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "变更后的角色，取值：MANAGER、EDITOR、DOWNLOADER、READER。"
                 },
                 {
                   "precedence": "default",
@@ -14469,8 +14976,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -14481,9 +14994,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -14515,6 +15028,7 @@
               "value": "string"
             }
           },
+          "interface_description": "变更后的角色，取值：MANAGER、EDITOR、DOWNLOADER、READER。",
           "property": "roleId",
           "required": true,
           "type": "string"
@@ -14531,6 +15045,12 @@
                   "value": "用户 userId 列表，逗号分隔 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要变更角色的用户 userId 列表（钉钉 staffId / 外部 userId 格式，由钉钉开放平台体系下颁发；通常为数字字符串），至少包含一个 userId，单次最多 30 个。如果你只有 unionId，请先调用钉钉开放平台「根据 unionId 获取 userId」接口换取 userId。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -14541,6 +15061,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "用户 userId 列表，逗号分隔 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -14565,8 +15105,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -14577,9 +15123,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -14611,6 +15157,8 @@
               "value": "string"
             }
           },
+          "interface_description": "要变更角色的用户 userId 列表（钉钉 staffId / 外部 userId 格式，由钉钉开放平台体系下颁发；通常为数字字符串），至少包含一个 userId，单次最多 30 个。如果你只有 unionId，请先调用钉钉开放平台「根据 unionId 获取 userId」接口换取 userId。",
+          "interface_type": "array",
           "property": "userIds",
           "required": true,
           "type": "string"
@@ -14625,6 +15173,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "知识库 ID (选填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。"
                 },
                 {
                   "precedence": "default",
@@ -14701,6 +15255,7 @@
               "value": "string"
             }
           },
+          "interface_description": "目标知识库的标识，选填。仅用于辅助构造返回的 docUrl，业务实际依赖 nodeId 定位节点；支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。",
           "property": "workspaceId",
           "required": false,
           "type": "string"
@@ -14733,7 +15288,7 @@
       "cli_name": "get",
       "cli_path": "drive publish get",
       "confirmation": "not_required",
-      "description": "查询文件当前是否处于互联网公开发布状态",
+      "description": "查询文件当前是否处于互联网公开发布状态，以及公开发布的权限设置。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -14845,7 +15400,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询文件当前是否处于互联网公开发布状态"
+              "value": "查询文件当前是否处于互联网公开发布状态，以及公开发布的权限设置。"
             }
           ],
           "precedence": "contract_final",
@@ -14853,7 +15408,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询文件当前是否处于互联网公开发布状态"
+          "value": "查询文件当前是否处于互联网公开发布状态，以及公开发布的权限设置。"
         },
         "effect": {
           "candidates": [
@@ -15198,7 +15753,7 @@
       "cli_name": "set",
       "cli_path": "drive publish set",
       "confirmation": "user_required",
-      "description": "开启文件的互联网公开发布",
+      "description": "[危险] 将文件设置为互联网公开发布。公开后任何人通过链接即可访问，无需登录钉钉。\n操作者需要是该文件的管理员或拥有者。执行前需要确认，或传入 --yes 跳过确认。\n\n公开权限 (--permission): READER(仅可查看) / DOWNLOADER(可查看和下载，默认) / EDITOR(可编辑)",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -15313,7 +15868,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "开启文件的互联网公开发布"
+              "value": "[危险] 将文件设置为互联网公开发布。公开后任何人通过链接即可访问，无需登录钉钉。\n操作者需要是该文件的管理员或拥有者。执行前需要确认，或传入 --yes 跳过确认。\n\n公开权限 (--permission): READER(仅可查看) / DOWNLOADER(可查看和下载，默认) / EDITOR(可编辑)"
             }
           ],
           "precedence": "contract_final",
@@ -15321,7 +15876,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "开启文件的互联网公开发布"
+          "value": "[危险] 将文件设置为互联网公开发布。公开后任何人通过链接即可访问，无需登录钉钉。\n操作者需要是该文件的管理员或拥有者。执行前需要确认，或传入 --yes 跳过确认。\n\n公开权限 (--permission): READER(仅可查看) / DOWNLOADER(可查看和下载，默认) / EDITOR(可编辑)"
         },
         "effect": {
           "candidates": [
@@ -15764,7 +16319,7 @@
       "cli_name": "unset",
       "cli_path": "drive publish unset",
       "confirmation": "user_required",
-      "description": "关闭文件的互联网公开发布",
+      "description": "[危险] 关闭文件的互联网公开发布。关闭后外部用户将无法再通过链接访问。执行前需要确认，或传入 --yes 跳过确认。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -15876,7 +16431,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "关闭文件的互联网公开发布"
+              "value": "[危险] 关闭文件的互联网公开发布。关闭后外部用户将无法再通过链接访问。执行前需要确认，或传入 --yes 跳过确认。"
             }
           ],
           "precedence": "contract_final",
@@ -15884,7 +16439,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "关闭文件的互联网公开发布"
+          "value": "[危险] 关闭文件的互联网公开发布。关闭后外部用户将无法再通过链接访问。执行前需要确认，或传入 --yes 跳过确认。"
         },
         "effect": {
           "candidates": [
@@ -16689,7 +17244,7 @@
       "cli_name": "recent",
       "cli_path": "drive recent",
       "confirmation": "not_required",
-      "description": "获取当前用户最近访问或编辑过的文档列表",
+      "description": "获取当前用户最近访问或编辑过的文档列表。\n\n支持按文档类型、操作类型、创建人、所属组织过滤。所有过滤条件均为可选，不传则不过滤。\n\n操作类型 (--operate-type):\n  0   最近访问（含打开+编辑）（默认）\n  1   最近编辑\n  不传默认仅返回最近访问(0)\n\n创建人类型 (--creator-type):\n  0   全部 (默认)\n  1   我创建的\n  2   他人创建的",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -16802,7 +17357,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取当前用户最近访问或编辑过的文档列表"
+              "value": "获取当前用户最近访问或编辑过的文档列表。\n\n支持按文档类型、操作类型、创建人、所属组织过滤。所有过滤条件均为可选，不传则不过滤。\n\n操作类型 (--operate-type):\n  0   最近访问（含打开+编辑）（默认）\n  1   最近编辑\n  不传默认仅返回最近访问(0)\n\n创建人类型 (--creator-type):\n  0   全部 (默认)\n  1   我创建的\n  2   他人创建的"
             }
           ],
           "precedence": "contract_final",
@@ -16810,7 +17365,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取当前用户最近访问或编辑过的文档列表"
+          "value": "获取当前用户最近访问或编辑过的文档列表。\n\n支持按文档类型、操作类型、创建人、所属组织过滤。所有过滤条件均为可选，不传则不过滤。\n\n操作类型 (--operate-type):\n  0   最近访问（含打开+编辑）（默认）\n  1   最近编辑\n  不传默认仅返回最近访问(0)\n\n创建人类型 (--creator-type):\n  0   全部 (默认)\n  1   我创建的\n  2   他人创建的"
         },
         "effect": {
           "candidates": [
@@ -18733,7 +19288,7 @@
       "cli_name": "rename",
       "cli_path": "drive rename",
       "confirmation": "not_required",
-      "description": "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
+      "description": "修改文档空间中文档、文件或文件夹的名称。\n实际执行前会读取节点类型和当前扩展名：文件的新名称仅在末尾扩展名与当前扩展名一致时去掉一层，\n避免 report.txt.txt；文件夹和扩展名不匹配的名称保持不变。dry-run 不读取远端元数据，因此保留输入名称。\n\n权限要求: 对文档有\"编辑\"权限。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -18847,7 +19402,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀"
+              "value": "修改文档空间中文档、文件或文件夹的名称。\n实际执行前会读取节点类型和当前扩展名：文件的新名称仅在末尾扩展名与当前扩展名一致时去掉一层，\n避免 report.txt.txt；文件夹和扩展名不匹配的名称保持不变。dry-run 不读取远端元数据，因此保留输入名称。\n\n权限要求: 对文档有\"编辑\"权限。"
             }
           ],
           "precedence": "contract_final",
@@ -18855,7 +19410,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀"
+          "value": "修改文档空间中文档、文件或文件夹的名称。\n实际执行前会读取节点类型和当前扩展名：文件的新名称仅在末尾扩展名与当前扩展名一致时去掉一层，\n避免 report.txt.txt；文件夹和扩展名不匹配的名称保持不变。dry-run 不读取远端元数据，因此保留输入名称。\n\n权限要求: 对文档有\"编辑\"权限。"
         },
         "effect": {
           "candidates": [
@@ -19083,6 +19638,12 @@
                   "value": "新名称 (必填；实际执行时仅去掉与节点当前扩展名完全匹配的一层后缀)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "重命名后的新名称，不能为空，长度不超过 255 个字符。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -19118,8 +19679,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -19130,9 +19697,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -19164,6 +19731,7 @@
               "value": "string"
             }
           },
+          "interface_description": "重命名后的新名称，不能为空，长度不超过 255 个字符。",
           "property": "newName",
           "required": true,
           "type": "string"
@@ -19178,6 +19746,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "文档/文件 ID 或 URL (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要重命名的节点标识，支持以下格式：1) 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}；2) dentryUuid（32 位字母数字字符串）。"
                 },
                 {
                   "precedence": "default",
@@ -19214,8 +19788,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -19226,9 +19806,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -19260,6 +19840,7 @@
               "value": "string"
             }
           },
+          "interface_description": "要重命名的节点标识，支持以下格式：1) 文档/文件夹 URL，如 https://alidocs.dingtalk.com/i/nodes/{dentryUuid}；2) dentryUuid（32 位字母数字字符串）。",
           "property": "nodeId",
           "required": true,
           "type": "string"
@@ -19291,7 +19872,7 @@
       "cli_name": "revert",
       "cli_path": "drive revert",
       "confirmation": "user_required",
-      "description": "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）",
+      "description": "将指定文件回滚到某个历史版本。仅支持普通文件（Word、Excel、PDF、图片等）。\n在线文档请用 dws doc version revert，在线表格请用 dws sheet version revert。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -19401,7 +19982,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）"
+              "value": "将指定文件回滚到某个历史版本。仅支持普通文件（Word、Excel、PDF、图片等）。\n在线文档请用 dws doc version revert，在线表格请用 dws sheet version revert。"
             }
           ],
           "precedence": "contract_final",
@@ -19409,7 +19990,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）"
+          "value": "将指定文件回滚到某个历史版本。仅支持普通文件（Word、Excel、PDF、图片等）。\n在线文档请用 dws doc version revert，在线表格请用 dws sheet version revert。"
         },
         "effect": {
           "candidates": [
@@ -19850,7 +20431,7 @@
       "cli_name": "search",
       "cli_path": "drive search",
       "confirmation": "not_required",
-      "description": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果",
+      "description": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果。\n\n搜索范围 (--target):\n  all   （默认）同时搜钉盘文件与文档空间，聚合返回\n  file  只搜钉盘文件/文件夹，支持 --file-types / --extensions\n  space 只搜钉盘团队空间\n\n如果需要在某个知识库内搜索，请使用 dws wiki node search --workspace \u003cworkspaceId\u003e。\n\n结果中 source 字段区分来源：drive / doc。\n提示：结果按相关性排序，首页未命中时优先调整关键词 / 过滤条件，而非反复翻页。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -19965,7 +20546,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果"
+              "value": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果。\n\n搜索范围 (--target):\n  all   （默认）同时搜钉盘文件与文档空间，聚合返回\n  file  只搜钉盘文件/文件夹，支持 --file-types / --extensions\n  space 只搜钉盘团队空间\n\n如果需要在某个知识库内搜索，请使用 dws wiki node search --workspace \u003cworkspaceId\u003e。\n\n结果中 source 字段区分来源：drive / doc。\n提示：结果按相关性排序，首页未命中时优先调整关键词 / 过滤条件，而非反复翻页。"
             }
           ],
           "precedence": "contract_final",
@@ -19973,7 +20554,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果"
+          "value": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果。\n\n搜索范围 (--target):\n  all   （默认）同时搜钉盘文件与文档空间，聚合返回\n  file  只搜钉盘文件/文件夹，支持 --file-types / --extensions\n  space 只搜钉盘团队空间\n\n如果需要在某个知识库内搜索，请使用 dws wiki node search --workspace \u003cworkspaceId\u003e。\n\n结果中 source 字段区分来源：drive / doc。\n提示：结果按相关性排序，首页未命中时优先调整关键词 / 过滤条件，而非反复翻页。"
         },
         "effect": {
           "candidates": [
@@ -20200,6 +20781,12 @@
                   "value": "创建时间起始 (毫秒时间戳，含)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "创建时间范围的起始时间（毫秒时间戳，含）。仅返回在此时间之后创建的结果。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -20210,6 +20797,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "创建时间起始 (毫秒时间戳，含)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -20274,6 +20881,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "创建时间范围的起始时间（毫秒时间戳，含）。仅返回在此时间之后创建的结果。",
+          "interface_type": "number",
           "property": "createdTimeFrom",
           "required": false,
           "type": "integer"
@@ -20290,6 +20899,12 @@
                   "value": "创建时间截止 (毫秒时间戳，含)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "创建时间范围的截止时间（毫秒时间戳，含）。仅返回在此时间之前创建的结果。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -20300,6 +20915,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "创建时间截止 (毫秒时间戳，含)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -20364,6 +20999,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "创建时间范围的截止时间（毫秒时间戳，含）。仅返回在此时间之前创建的结果。",
+          "interface_type": "number",
           "property": "createdTimeTo",
           "required": false,
           "type": "integer"
@@ -20378,6 +21015,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "按创建者用户 ID 过滤，逗号分隔"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "按创建者过滤，传入用户 uid 列表（纯数字字符串）。仅返回由指定用户创建的结果。"
                 },
                 {
                   "precedence": "default",
@@ -20454,6 +21097,7 @@
               "value": "array"
             }
           },
+          "interface_description": "按创建者过滤，传入用户 uid 列表（纯数字字符串）。仅返回由指定用户创建的结果。",
           "property": "creatorUserIds",
           "required": false,
           "type": "array"
@@ -20468,6 +21112,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "分页游标，从上次返回的 nextCursor 获取 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页游标，从上一次返回结果中获取 nextCursor。首次不传。"
                 },
                 {
                   "precedence": "default",
@@ -20544,6 +21194,7 @@
               "value": "string"
             }
           },
+          "interface_description": "分页游标，从上一次返回结果中获取 nextCursor。首次不传。",
           "property": "pageToken",
           "required": false,
           "type": "string"
@@ -20558,6 +21209,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "按文件扩展名过滤，不含点号，逗号分隔 (如 pdf,docx,adoc)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "按文件扩展名精确过滤，不含点号。仅 searchTarget=file 或 all 时生效。如 [\"pdf\", \"docx\", \"adoc\"]。"
                 },
                 {
                   "precedence": "default",
@@ -20628,6 +21285,7 @@
               "value": "array"
             }
           },
+          "interface_description": "按文件扩展名精确过滤，不含点号。仅 searchTarget=file 或 all 时生效。如 [\"pdf\", \"docx\", \"adoc\"]。",
           "property": "extensions",
           "required": false,
           "type": "array"
@@ -20642,6 +21300,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "按文件内容类型过滤，逗号分隔: alidoc,document,image,video,audio,archive (仅 target=file/all 生效)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "按文件内容类型过滤，仅 searchTarget=file 或 all 时生效。可选值：alidoc（钉钉在线文档）、document（本地文档，如 Word/Excel/PDF）、image（图片）、video（视频）、audio（音频）、archive（压缩包）。不传返回所有类型。如需精确匹配具体格式（如只搜 pdf），请使用 extensions 参数。"
                 },
                 {
                   "precedence": "default",
@@ -20712,6 +21376,7 @@
               "value": "array"
             }
           },
+          "interface_description": "按文件内容类型过滤，仅 searchTarget=file 或 all 时生效。可选值：alidoc（钉钉在线文档）、document（本地文档，如 Word/Excel/PDF）、image（图片）、video（视频）、audio（音频）、archive（压缩包）。不传返回所有类型。如需精确匹配具体格式（如只搜 pdf），请使用 extensions 参数。",
           "property": "fileTypes",
           "required": false,
           "type": "array"
@@ -20728,6 +21393,12 @@
                   "value": "每页返回数量（默认 10，最大 30）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "每页返回的结果数量，默认 10，最大 30。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -20738,6 +21409,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页返回数量（默认 10，最大 30）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -20808,6 +21499,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "每页返回的结果数量，默认 10，最大 30。",
+          "interface_type": "number",
           "property": "pageSize",
           "required": false,
           "type": "integer"
@@ -20824,6 +21517,12 @@
                   "value": "修改时间起始 (毫秒时间戳，含)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "修改时间范围的起始时间（毫秒时间戳，含）。仅返回在此时间之后修改过的结果。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -20834,6 +21533,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "修改时间起始 (毫秒时间戳，含)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -20898,6 +21617,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "修改时间范围的起始时间（毫秒时间戳，含）。仅返回在此时间之后修改过的结果。",
+          "interface_type": "number",
           "property": "modifiedTimeFrom",
           "required": false,
           "type": "integer"
@@ -20914,6 +21635,12 @@
                   "value": "修改时间截止 (毫秒时间戳，含)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "修改时间范围的截止时间（毫秒时间戳，含）。仅返回在此时间之前修改过的结果。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -20924,6 +21651,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "修改时间截止 (毫秒时间戳，含)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -20988,6 +21735,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "修改时间范围的截止时间（毫秒时间戳，含）。仅返回在此时间之前修改过的结果。",
+          "interface_type": "number",
           "property": "modifiedTimeTo",
           "required": false,
           "type": "integer"
@@ -21002,6 +21751,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "搜索关键词 (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "搜索关键词，必填。searchTarget=file 或 all 时匹配文件名和内容；searchTarget=space 时匹配空间名称。"
                 },
                 {
                   "precedence": "default",
@@ -21038,8 +21793,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -21050,9 +21811,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -21084,6 +21845,7 @@
               "value": "string"
             }
           },
+          "interface_description": "搜索关键词，必填。searchTarget=file 或 all 时匹配文件名和内容；searchTarget=space 时匹配空间名称。",
           "property": "keyword",
           "required": true,
           "type": "string"
@@ -21098,6 +21860,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "搜索范围: all(默认,聚合钉盘+文档空间) | file(仅钉盘文件) | space(仅钉盘空间) (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "搜索目标类型，默认 all。可选值：file（文件和文件夹）、space（钉盘空间）、all（全部）。"
                 },
                 {
                   "precedence": "default",
@@ -21180,6 +21948,7 @@
               "value": "string"
             }
           },
+          "interface_description": "搜索目标类型，默认 all。可选值：file（文件和文件夹）、space（钉盘空间）、all（全部）。",
           "property": "searchTarget",
           "required": false,
           "type": "string"
@@ -21213,7 +21982,7 @@
       "cli_name": "+copy",
       "cli_path": "drive +copy",
       "confirmation": "user_required",
-      "description": "复制文件/文档到指定位置",
+      "description": "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -21323,7 +22092,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "复制文件/文档到指定位置"
+              "value": "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。"
             }
           ],
           "precedence": "contract_final",
@@ -21331,7 +22100,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "复制文件/文档到指定位置"
+          "value": "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。"
         },
         "effect": {
           "candidates": [
@@ -21840,7 +22609,7 @@
       "cli_name": "+find-file",
       "cli_path": "drive +find-file",
       "confirmation": "not_required",
-      "description": "按名称关键词搜索钉盘文件并投影关键字段（只读）",
+      "description": "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -21951,7 +22720,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按名称关键词搜索钉盘文件并投影关键字段（只读）"
+              "value": "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。"
             }
           ],
           "precedence": "contract_final",
@@ -21959,7 +22728,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按名称关键词搜索钉盘文件并投影关键字段（只读）"
+          "value": "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。"
         },
         "effect": {
           "candidates": [
@@ -22302,7 +23071,7 @@
       "cli_name": "+info",
       "cli_path": "drive +info",
       "confirmation": "not_required",
-      "description": "获取钉盘文件/文件夹元数据",
+      "description": "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -22412,7 +23181,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取钉盘文件/文件夹元数据"
+              "value": "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。"
             }
           ],
           "precedence": "contract_final",
@@ -22420,7 +23189,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取钉盘文件/文件夹元数据"
+          "value": "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。"
         },
         "effect": {
           "candidates": [
@@ -22845,7 +23614,7 @@
       "cli_name": "+move",
       "cli_path": "drive +move",
       "confirmation": "user_required",
-      "description": "移动文件/文档到指定位置",
+      "description": "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -22955,7 +23724,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "移动文件/文档到指定位置"
+              "value": "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。"
             }
           ],
           "precedence": "contract_final",
@@ -22963,7 +23732,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "移动文件/文档到指定位置"
+          "value": "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。"
         },
         "effect": {
           "candidates": [
@@ -23472,7 +24241,7 @@
       "cli_name": "+recent",
       "cli_path": "drive +recent",
       "confirmation": "not_required",
-      "description": "获取最近访问/编辑的文档列表",
+      "description": "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -23583,7 +24352,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取最近访问/编辑的文档列表"
+              "value": "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。"
             }
           ],
           "precedence": "contract_final",
@@ -23591,7 +24360,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取最近访问/编辑的文档列表"
+          "value": "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。"
         },
         "effect": {
           "candidates": [
@@ -24186,7 +24955,7 @@
       "cli_name": "+search",
       "cli_path": "drive +search",
       "confirmation": "not_required",
-      "description": "搜索钉盘文件",
+      "description": "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -24297,7 +25066,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "搜索钉盘文件"
+              "value": "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。"
             }
           ],
           "precedence": "contract_final",
@@ -24305,7 +25074,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "搜索钉盘文件"
+          "value": "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。"
         },
         "effect": {
           "candidates": [
@@ -25524,7 +26293,7 @@
       "cli_name": "+search-docs",
       "cli_path": "drive +search-docs",
       "confirmation": "not_required",
-      "description": "搜索文档空间文档",
+      "description": "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。",
       "display": "钉盘文件管理",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -25634,7 +26403,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "搜索文档空间文档"
+              "value": "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。"
             }
           ],
           "precedence": "contract_final",
@@ -25642,7 +26411,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "搜索文档空间文档"
+          "value": "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。"
         },
         "effect": {
           "candidates": [
@@ -26067,7 +26836,7 @@
       "cli_name": "transfer-owner",
       "cli_path": "drive permission transfer-owner",
       "confirmation": "user_required",
-      "description": "转交文档或知识库所有者给指定用户（不可逆）",
+      "description": "转交文档或知识库的所有者给指定用户。此操作不可逆，执行前需要确认。\n\n--node 和 --workspace 二选一。转交后原所有者保留角色由 --reserve-role 指定。\n使用 --yes 跳过确认时，--reserve-role 和 --recursive 必须显式指定。",
       "display": "钉盘文件管理",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -26177,7 +26946,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "转交文档或知识库所有者给指定用户（不可逆）"
+              "value": "转交文档或知识库的所有者给指定用户。此操作不可逆，执行前需要确认。\n\n--node 和 --workspace 二选一。转交后原所有者保留角色由 --reserve-role 指定。\n使用 --yes 跳过确认时，--reserve-role 和 --recursive 必须显式指定。"
             }
           ],
           "precedence": "contract_final",
@@ -26185,7 +26954,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "转交文档或知识库所有者给指定用户（不可逆）"
+          "value": "转交文档或知识库的所有者给指定用户。此操作不可逆，执行前需要确认。\n\n--node 和 --workspace 二选一。转交后原所有者保留角色由 --reserve-role 指定。\n使用 --yes 跳过确认时，--reserve-role 和 --recursive 必须显式指定。"
         },
         "effect": {
           "candidates": [
@@ -27356,7 +28125,7 @@
       "cli_name": "upload",
       "cli_path": "drive upload",
       "confirmation": "not_required",
-      "description": "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
+      "description": "将本地文件上传（三步自动完成）。\n\n路由规则:\n  默认（无 --workspace）  → 上传到钉盘（我的文件或指定空间）\n  --workspace \u003cid\u003e        → 上传到文档空间/知识库\n\n流程:\n  1. 获取 OSS 上传凭证\n  2. HTTP PUT 上传文件二进制到 OSS\n  3. 提交文件入库\n\n上传位置: --folder 指定父目录，不传则上传到空间根目录。",
       "display": "钉盘文件管理",
       "dry_run": {
         "preview_kind": "plan"
@@ -27476,7 +28245,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件"
+              "value": "将本地文件上传（三步自动完成）。\n\n路由规则:\n  默认（无 --workspace）  → 上传到钉盘（我的文件或指定空间）\n  --workspace \u003cid\u003e        → 上传到文档空间/知识库\n\n流程:\n  1. 获取 OSS 上传凭证\n  2. HTTP PUT 上传文件二进制到 OSS\n  3. 提交文件入库\n\n上传位置: --folder 指定父目录，不传则上传到空间根目录。"
             }
           ],
           "precedence": "contract_final",
@@ -27484,7 +28253,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件"
+          "value": "将本地文件上传（三步自动完成）。\n\n路由规则:\n  默认（无 --workspace）  → 上传到钉盘（我的文件或指定空间）\n  --workspace \u003cid\u003e        → 上传到文档空间/知识库\n\n流程:\n  1. 获取 OSS 上传凭证\n  2. HTTP PUT 上传文件二进制到 OSS\n  3. 提交文件入库\n\n上传位置: --folder 指定父目录，不传则上传到空间根目录。"
         },
         "dry_run": {
           "candidates": [

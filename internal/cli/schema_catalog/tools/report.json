@@ -28,7 +28,7 @@
           ]
         ]
       },
-      "description": "按模版提交一份新日报",
+      "description": "按模版提交一份日报。--contents 为 JSON 数组，每项需含 key、sort、content、contentType、type，\n与远程 create_report 一致；可先通过 report template list / template get 取得 templateId 与控件定义。\n\n长内容（含中文换行 / Markdown）建议走 --contents-file 避免 shell 引号问题；\n也可用 --contents - 从 stdin 读取。\n提交成功后会自动反查详情，并在返回中追加 dingtalkOpenUrl / dingtalkOpenMarkdownLink 跳转链接字段。",
       "display": "钉钉日志（OA 周报应用 / 日志模版填报）",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -141,7 +141,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按模版提交一份新日报"
+              "value": "按模版提交一份日报。--contents 为 JSON 数组，每项需含 key、sort、content、contentType、type，\n与远程 create_report 一致；可先通过 report template list / template get 取得 templateId 与控件定义。\n\n长内容（含中文换行 / Markdown）建议走 --contents-file 避免 shell 引号问题；\n也可用 --contents - 从 stdin 读取。\n提交成功后会自动反查详情，并在返回中追加 dingtalkOpenUrl / dingtalkOpenMarkdownLink 跳转链接字段。"
             }
           ],
           "precedence": "contract_final",
@@ -149,7 +149,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按模版提交一份新日报"
+          "value": "按模版提交一份日报。--contents 为 JSON 数组，每项需含 key、sort、content、contentType、type，\n与远程 create_report 一致；可先通过 report template list / template get 取得 templateId 与控件定义。\n\n长内容（含中文换行 / Markdown）建议走 --contents-file 避免 shell 引号问题；\n也可用 --contents - 从 stdin 读取。\n提交成功后会自动反查详情，并在返回中追加 dingtalkOpenUrl / dingtalkOpenMarkdownLink 跳转链接字段。"
         },
         "effect": {
           "candidates": [
@@ -374,6 +374,12 @@
                   "value": "日志内容 JSON 数组 (必填，或用 --contents-file)，每项含 key/sort/content/contentType/type；传 - 表示从 stdin 读取"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志内容列表"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -425,6 +431,26 @@
               "source": "typed_parameter_metadata",
               "value": "json"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
+            },
             "property": {
               "candidates": [
                 {
@@ -446,6 +472,12 @@
                   "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "inference",
@@ -495,6 +527,8 @@
             }
           },
           "format": "json",
+          "interface_description": "日志内容列表",
+          "interface_type": "array",
           "property": "contents",
           "required": false,
           "type": "string"
@@ -609,6 +643,12 @@
                   "value": "创建来源标识"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "创建日志的来源，自定义值"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -641,6 +681,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -683,6 +729,7 @@
               "value": "string"
             }
           },
+          "interface_description": "创建日志的来源，自定义值",
           "property": "ddFrom",
           "required": false,
           "type": "string"
@@ -697,6 +744,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日志模版 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要发送哪个日志模板的日志，可通过获取可见日志模板服务获取"
                 },
                 {
                   "precedence": "default",
@@ -727,8 +780,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -739,9 +798,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -773,6 +832,7 @@
               "value": "string"
             }
           },
+          "interface_description": "需要发送哪个日志模板的日志，可通过获取可见日志模板服务获取",
           "property": "templateId",
           "required": true,
           "type": "string"
@@ -787,6 +847,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "是否发送到日志接收人单聊"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "是否发送到日志接收人的单聊"
                 },
                 {
                   "precedence": "default",
@@ -822,6 +888,12 @@
                   "selected": true,
                   "source": "reviewed_manual_hint",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -865,6 +937,7 @@
               "value": "boolean"
             }
           },
+          "interface_description": "是否发送到日志接收人的单聊",
           "property": "toChat",
           "required": false,
           "type": "boolean"
@@ -881,6 +954,12 @@
                   "value": "接收人 userId，逗号分隔 (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "该日志发送到的人员userId列表"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -891,6 +970,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "接收人 userId，逗号分隔 (可选)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -949,6 +1048,8 @@
               "value": "string"
             }
           },
+          "interface_description": "该日志发送到的人员userId列表",
+          "interface_type": "array",
           "property": "toUserIds",
           "required": false,
           "type": "string"
@@ -1683,6 +1784,12 @@
                   "value": "分页游标（默认 0，翻页传返回的 cursor）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "起始游标，从 0 开始，示例值：1734048000000，必填"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1693,6 +1800,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页游标（默认 0，翻页传返回的 cursor）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -1715,6 +1842,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -1757,6 +1890,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "起始游标，从 0 开始，示例值：1734048000000，必填",
+          "interface_type": "number",
           "property": "cursor",
           "required": false,
           "type": "integer"
@@ -1771,6 +1906,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00) (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "结束时间，毫秒时间戳，示例值：1734048000000，必填，与开始时间的间隔不能超过180天"
                 },
                 {
                   "precedence": "default",
@@ -1804,6 +1945,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -1827,8 +1988,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1839,9 +2006,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -1874,6 +2041,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "结束时间，毫秒时间戳，示例值：1734048000000，必填，与开始时间的间隔不能超过180天",
+          "interface_type": "number",
           "property": "endTime",
           "required": true,
           "type": "string"
@@ -1888,6 +2057,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "发送人 staffId 列表，逗号分隔，用于过滤指定发送人的日志"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "发送人的staffId"
                 },
                 {
                   "precedence": "default",
@@ -1958,6 +2133,7 @@
               "value": "array"
             }
           },
+          "interface_description": "发送人的staffId",
           "property": "senderUserIds",
           "required": false,
           "type": "array"
@@ -1975,6 +2151,12 @@
                   "value": "每页条数（默认 20，最大 20）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "每页条数，最大 20，示例值：1734048000000，必填"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1985,6 +2167,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页条数（默认 20，最大 20）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -2007,6 +2209,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -2049,6 +2257,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "每页条数，最大 20，示例值：1734048000000，必填",
+          "interface_type": "number",
           "property": "size",
           "required": false,
           "type": "integer"
@@ -2063,6 +2273,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00) (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "开始时间，毫秒时间戳，示例值：1734048000000，必填，与结束时间的间隔不能超过180天"
                 },
                 {
                   "precedence": "default",
@@ -2096,6 +2312,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -2119,8 +2355,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2131,9 +2373,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2166,6 +2408,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "开始时间，毫秒时间戳，示例值：1734048000000，必填，与结束时间的间隔不能超过180天",
+          "interface_type": "number",
           "property": "startTime",
           "required": true,
           "type": "string"
@@ -2546,6 +2790,12 @@
                   "value": "日志 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志Id，可以从查询当前用户收到的日志列表获取"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2580,8 +2830,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2592,9 +2848,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2626,6 +2882,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日志Id，可以从查询当前用户收到的日志列表获取",
           "property": "report_id",
           "required": true,
           "type": "string"
@@ -3006,6 +3263,12 @@
                   "value": "日志 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志Id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3040,8 +3303,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3052,9 +3321,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -3086,6 +3355,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日志Id",
           "property": "report_id",
           "required": true,
           "type": "string"
@@ -3467,6 +3737,12 @@
                   "value": "分页游标，首次传 0 (默认 0)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页游标，首次传0"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3477,6 +3753,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页游标，首次传 0 (默认 0)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3499,6 +3795,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -3541,6 +3843,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "分页游标，首次传0",
+          "interface_type": "number",
           "property": "cursor",
           "required": false,
           "type": "integer"
@@ -3555,6 +3859,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "创建结束时间 ISO-8601 (默认最近 20 天；服务端单次查询跨度上限 20 天)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志创建的结束时间，毫秒级时间戳格式，示例：1734048000000；注意：开始时间和结束时间跨度不能超过180天"
                 },
                 {
                   "precedence": "default",
@@ -3587,6 +3897,26 @@
               "resolution": "highest_precedence",
               "source": "usage_format_inference",
               "value": "date-time"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3658,6 +3988,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日志创建的结束时间，毫秒级时间戳格式，示例：1734048000000；注意：开始时间和结束时间跨度不能超过180天",
+          "interface_type": "number",
           "property": "endTime",
           "required": false,
           "type": "string"
@@ -3672,6 +4004,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "修改结束时间 ISO-8601 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志修改的结束时间，毫秒级时间戳格式，示例：1734048000000"
                 },
                 {
                   "precedence": "default",
@@ -3704,6 +4042,26 @@
               "resolution": "highest_precedence",
               "source": "usage_format_inference",
               "value": "date-time"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3769,6 +4127,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日志修改的结束时间，毫秒级时间戳格式，示例：1734048000000",
+          "interface_type": "number",
           "property": "modifiedEndTime",
           "required": false,
           "type": "string"
@@ -3783,6 +4143,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "修改开始时间 ISO-8601 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志修改的开始时间，毫秒级时间戳格式，示例：1734048000000"
                 },
                 {
                   "precedence": "default",
@@ -3815,6 +4181,26 @@
               "resolution": "highest_precedence",
               "source": "usage_format_inference",
               "value": "date-time"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3880,6 +4266,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日志修改的开始时间，毫秒级时间戳格式，示例：1734048000000",
+          "interface_type": "number",
           "property": "modifiedStartTime",
           "required": false,
           "type": "string"
@@ -3897,6 +4285,12 @@
                   "value": "每页条数，最大 20 (默认 20)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页大小，最大20"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3907,6 +4301,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页条数，最大 20 (默认 20)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3929,6 +4343,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -3971,6 +4391,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "分页大小，最大20",
+          "interface_type": "number",
           "property": "size",
           "required": false,
           "type": "integer"
@@ -3985,6 +4407,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "创建开始时间 ISO-8601 (默认最近 20 天；服务端单次查询跨度上限 20 天)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志创建的开始时间，毫秒级时间戳格式，示例：1734048000000；注意：开始时间和结束时间跨度不能超过180天"
                 },
                 {
                   "precedence": "default",
@@ -4017,6 +4445,26 @@
               "resolution": "highest_precedence",
               "source": "usage_format_inference",
               "value": "date-time"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -4088,6 +4536,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日志创建的开始时间，毫秒级时间戳格式，示例：1734048000000；注意：开始时间和结束时间跨度不能超过180天",
+          "interface_type": "number",
           "property": "startTime",
           "required": false,
           "type": "string"
@@ -4102,6 +4552,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日志模板名称 (可选，不传查全部)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志模板名称，可不传，查询的是全部日志"
                 },
                 {
                   "precedence": "default",
@@ -4178,6 +4634,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日志模板名称，可不传，查询的是全部日志",
           "property": "report_template_name",
           "required": false,
           "type": "string"
@@ -4555,6 +5012,12 @@
                   "value": "模版名称 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日志模板名称"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -4589,8 +5052,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4601,9 +5070,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -4635,6 +5104,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日志模板名称",
           "property": "report_template_name",
           "required": true,
           "type": "string"
@@ -4666,7 +5136,7 @@
       "cli_name": "+inbox-list",
       "cli_path": "report +inbox-list",
       "confirmation": "not_required",
-      "description": "列出我收到的日报（按时间范围分页）",
+      "description": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。",
       "display": "钉钉日志（OA 周报应用 / 日志模版填报）",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -4776,7 +5246,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出我收到的日报（按时间范围分页）"
+              "value": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
             }
           ],
           "precedence": "contract_final",
@@ -4784,7 +5254,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出我收到的日报（按时间范围分页）"
+          "value": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
         },
         "effect": {
           "candidates": [
@@ -5522,7 +5992,7 @@
       "cli_name": "+outbox-list",
       "cli_path": "report +outbox-list",
       "confirmation": "not_required",
-      "description": "列出我发出的日报（可选时间/模版名过滤）",
+      "description": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。",
       "display": "钉钉日志（OA 周报应用 / 日志模版填报）",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -5633,7 +6103,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出我发出的日报（可选时间/模版名过滤）"
+              "value": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
             }
           ],
           "precedence": "contract_final",
@@ -5641,7 +6111,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出我发出的日报（可选时间/模版名过滤）"
+          "value": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
         },
         "effect": {
           "candidates": [

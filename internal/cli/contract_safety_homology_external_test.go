@@ -4,6 +4,7 @@
 package cli_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -11,11 +12,11 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )
 
@@ -49,9 +50,11 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 	}
 
 	liveByCanon := make(map[string]string) // canonical → confirmation
+	liveToolByCanon := make(map[string]cli.ToolSpec)
 	for _, product := range liveReg.Products {
 		for _, tool := range product.Tools {
 			liveByCanon[tool.Identity.CanonicalPath] = strings.TrimSpace(tool.Safety.Confirmation)
+			liveToolByCanon[tool.Identity.CanonicalPath] = tool
 		}
 	}
 
@@ -163,43 +166,50 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 		t.Fatal("expected declare_leaf+sheet_marker leaves for Sheet transitional dual confirmation gate")
 	}
 
-	// DeclareLeafMetadata user_required leaves must expose a local-check gate
-	// before confirmation: Validate, Cobra MarkFlagRequired, or CallTool-defer
-	// mode. Bare confirm-before-RunE with none of these is the RFC §5.1 inversion.
+	// Confirm/validate order is asserted by behavior, not by a claim of intent:
+	// a "deferred" annotation can still confirm first at runtime. For every
+	// user_required leaf that publishes a required parameter, an argument-less
+	// invocation must report that missing parameter — reaching confirmation
+	// instead is the RFC §5.1 inversion.
+	//
+	// Two forms declare guard-first ordering deliberately and are exempt: a Spec
+	// ConfirmFirst field (the devapp write contract asserted by
+	// TestEveryDevAppWriteCommandRequiresGuard) and the reviewed Sheet
+	// confirmationGuards table, whose wrapper is --yes-only by design. Both are
+	// declarations, not inferences, so the exemption cannot be reached by
+	// accident.
 	var orderFails []row
 	for _, r := range okRows {
-		if r.gate != "declare_leaf_confirm" && r.gate != "declare_leaf+sheet_marker" {
-			continue
-		}
 		leaf := boundByCanon[r.canonical].PrimaryCommand
-		if helpers.HasContractValidate(leaf) || helpers.HasContractConfirmDeferred(leaf) || hasCobraRequiredFlag(leaf) {
+		if leaf == nil || !requiresParameter(liveToolByCanon[r.canonical]) {
 			continue
 		}
-		orderFails = append(orderFails, row{r.canonical, r.cliPath, r.gate,
-			"declare user_required needs Validate, MarkFlagRequired, or CallTool-defer confirm"})
+		if corecmd.HasDeclaredConfirmFirst(leaf) || helpers.HasSheetMutationConfirmationGuard(leaf) {
+			continue
+		}
+		if err := probeConfirmationGate(leaf); isConfirmationGateError(err) {
+			orderFails = append(orderFails, row{r.canonical, r.cliPath, r.gate,
+				fmt.Sprintf("confirms before reporting a missing required parameter: %v", err)})
+		}
 	}
 	if len(orderFails) != 0 {
 		for _, f := range orderFails {
 			t.Errorf("%s (%s): %s", f.canonical, f.cliPath, f.detail)
 		}
-		t.Fatalf("confirm/validate order invariant failed: %d declare user_required leaf(ves)", len(orderFails))
+		t.Fatalf("confirm/validate order invariant failed: %d user_required leaf(ves)", len(orderFails))
 	}
 }
 
-func hasCobraRequiredFlag(cmd *cobra.Command) bool {
-	if cmd == nil {
-		return false
-	}
-	required := false
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if f != nil && f.Annotations != nil {
-			// cobra MarkFlagRequired sets this annotation.
-			if _, ok := f.Annotations[cobra.BashCompOneRequiredFlag]; ok {
-				required = true
-			}
+// requiresParameter reports whether the delivered ToolSpec publishes at least
+// one required parameter, i.e. whether an argument-less invocation is expected
+// to fail validation before anything else.
+func requiresParameter(tool cli.ToolSpec) bool {
+	for _, param := range tool.Parameters {
+		if param.Required || param.CLIRequired {
+			return true
 		}
-	})
-	return required
+	}
+	return false
 }
 
 func probeConfirmationGate(leaf *cobra.Command) error {
@@ -220,13 +230,20 @@ func probeConfirmationGate(leaf *cobra.Command) error {
 	return root.Execute()
 }
 
+// isConfirmationGateError reports whether err is the confirmation gate itself.
+//
+// It classifies on the machine-readable reason rather than on prose: a Sheet
+// destructive leaf's missing-flag error embeds the example
+// "（获得用户确认后加 --yes）", so substring matching reported the confirmation gate
+// for a correct validation error. The decline path is the one case that carries
+// no reason, so it is matched by its exact message.
 func isConfirmationGateError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "confirmation_required") ||
-		strings.Contains(msg, "需要用户确认") ||
-		strings.Contains(msg, "用户取消了操作") ||
-		strings.Contains(msg, "加 --yes")
+	var typed *apperrors.Error
+	if errors.As(err, &typed) && strings.TrimSpace(typed.Reason) == "confirmation_required" {
+		return true
+	}
+	return strings.Contains(err.Error(), "用户取消了操作")
 }

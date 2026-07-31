@@ -342,10 +342,10 @@ const sheetMutationConfirmationGuardAnnotation = "dws.sheet.confirmation-guard"
 // Sheet destructive commands intentionally do NOT honor interactive or piped
 // stdin answers (unlike corecmd.ConfirmSafety). Agent/CI must pass --yes.
 // When DeclareLeafMetadata already wrapped ConfirmSafety, this outer guard
-// still wraps outside that pipeline. It runs ContractValidate first (if any)
-// so missing required flags fail before the Sheet --yes-only prompt; then
-// requireSheetMutationConfirmation; then the inner contract wrap (which may
-// Validate again + ConfirmSafety). With --yes both confirmation layers bypass.
+// still wraps outside that pipeline. Order: ContractValidate (if any) →
+// requireSheetMutationTargets (--node) → requireSheetMutationConfirmation →
+// inner contract wrap. Missing --node fails before the Sheet --yes-only
+// prompt. With --yes both confirmation layers bypass.
 //
 // Transitional dual gate: two runtime confirmation sources (outer Sheet
 // --yes-only + inner ConfirmSafety). Do not remove the outer guard without
@@ -374,11 +374,26 @@ func protectSheetMutationCommand(cmd *cobra.Command, operation, targetHint strin
 				return err
 			}
 		}
+		// Local target checks before the Sheet --yes-only prompt (RFC §5.1).
+		// Most destructive Sheet leaves require --node (with URL/id aliases).
+		if err := requireSheetMutationTargets(cmd); err != nil {
+			return err
+		}
 		if err := requireSheetMutationConfirmation(cmd, operation, targetHint); err != nil {
 			return err
 		}
 		return originalRunE(cmd, args)
 	}
+}
+
+// requireSheetMutationTargets fails closed on missing document identity before
+// any confirmation prompt. Commands without a --node flag are skipped.
+func requireSheetMutationTargets(cmd *cobra.Command) error {
+	if cmd == nil || cmd.Flags().Lookup("node") == nil {
+		return nil
+	}
+	_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+	return err
 }
 
 // HasSheetMutationConfirmationGuard reports whether a Sheet command is

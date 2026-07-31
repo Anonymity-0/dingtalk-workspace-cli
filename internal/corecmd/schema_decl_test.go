@@ -68,7 +68,7 @@ func TestNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
 	if !ok {
 		t.Fatal("expected typed ContractFinal registration")
 	}
-	if final.Title != "Create Title" || final.Description != "Create Desc" {
+	if final.Title != "Create Title" || final.Description != "long" {
 		t.Fatalf("title/desc = %q %q", final.Title, final.Description)
 	}
 	if final.Safety == nil || final.Safety.Confirmation != "user_required" || final.Safety.Idempotency != "retryable" {
@@ -105,6 +105,40 @@ func TestNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
 	}
 	if got := flag.Annotations["x-cli-enum"]; len(got) != 2 {
 		t.Fatalf("enum = %#v", flag.Annotations["x-cli-enum"])
+	}
+}
+
+func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
+	// Long wins when authored; without one the mandatory declaration supplies it.
+	cmd := New(Spec{
+		Use:   "create",
+		Short: "short",
+		Safety: cli.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Schema: SchemaDecl{
+			Title:       "Create Title",
+			Description: "Create Desc",
+			Interface: &InterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "dev", RPCName: "create_thing",
+			},
+			Selection: SelectionDecl{
+				AgentSummary: "summary",
+				UseWhen:      []string{"when create"},
+				AvoidWhen:    []string{"when read"},
+				Examples:     []string{"dws create"},
+			},
+		},
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	})
+	final, ok := cli.RuntimeContractFinal(cmd)
+	if !ok {
+		t.Fatal("expected typed ContractFinal registration")
+	}
+	if final.Description != "Create Desc" {
+		t.Fatalf("description = %q, want the declared fallback", final.Description)
 	}
 }
 

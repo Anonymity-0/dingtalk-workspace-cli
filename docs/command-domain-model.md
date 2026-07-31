@@ -92,7 +92,7 @@ corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ───�
 | **IdentityDecl** | struct | 工具在注册表中的身份标识 |
 | **PositionalDecl** | struct | 有序位置参数声明 |
 | **Ctx** | struct | 执行上下文（类型安全的 flag 读取） |
-| **NewCommand** | func | 统一构建器（声明 → cobra.Command） |
+| **New** | func | 统一构建器（`corecmd.Spec` → `*cobra.Command`） |
 
 ## SafetySpec
 

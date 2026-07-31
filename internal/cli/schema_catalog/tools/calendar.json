@@ -17,7 +17,7 @@
       "cli_name": "add",
       "cli_path": "calendar attachment add",
       "confirmation": "not_required",
-      "description": "为日程添加附件",
+      "description": "为指定日程添加附件。需先用钉盘上传文件得到 fileId，再以 \u003cfileId\u003e:\u003cname\u003e 形式逗号分隔传入。注意：订阅日历下的日程不支持添加附件",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -130,7 +130,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "为日程添加附件"
+              "value": "为指定日程添加附件。需先用钉盘上传文件得到 fileId，再以 \u003cfileId\u003e:\u003cname\u003e 形式逗号分隔传入。注意：订阅日历下的日程不支持添加附件"
             }
           ],
           "precedence": "contract_final",
@@ -138,7 +138,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "为日程添加附件"
+          "value": "为指定日程添加附件。需先用钉盘上传文件得到 fileId，再以 \u003cfileId\u003e:\u003cname\u003e 形式逗号分隔传入。注意：订阅日历下的日程不支持添加附件"
         },
         "effect": {
           "candidates": [
@@ -362,6 +362,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)。注意：订阅日历下的日程不支持添加附件"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示 主日历本"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -436,6 +442,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示 主日历本",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -450,6 +457,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程id"
                 },
                 {
                   "precedence": "default",
@@ -486,8 +499,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -498,9 +517,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -532,6 +551,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程id",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -547,6 +567,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "附件列表，格式 \u003cfileId\u003e:\u003cname\u003e，多项逗号分隔 (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "attachments"
                 },
                 {
                   "precedence": "default",
@@ -600,6 +626,26 @@
               "source": "typed_parameter_metadata",
               "value": "file-id-name-list"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
+            },
             "property": {
               "candidates": [
                 {
@@ -623,8 +669,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -635,9 +687,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -670,6 +722,8 @@
             }
           },
           "format": "file-id-name-list",
+          "interface_description": "attachments",
+          "interface_type": "array",
           "property": "attachments",
           "required": true,
           "type": "string"
@@ -702,7 +756,7 @@
       "cli_name": "add",
       "cli_path": "calendar attendee add",
       "confirmation": "not_required",
-      "description": "添加日程参与人",
+      "description": "添加日程的参会人。注意：订阅日历下的日程无参会人，因此不可添加",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -815,7 +869,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "添加日程参与人"
+              "value": "添加日程的参会人。注意：订阅日历下的日程无参会人，因此不可添加"
             }
           ],
           "precedence": "contract_final",
@@ -823,7 +877,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "添加日程参与人"
+          "value": "添加日程的参会人。注意：订阅日历下的日程无参会人，因此不可添加"
         },
         "effect": {
           "candidates": [
@@ -1047,6 +1101,12 @@
                   "value": "参会人 userId 列表，逗号分隔 (必填，最多500人)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要添加的参与人uid列表。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1057,6 +1117,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "参会人 userId 列表，逗号分隔 (必填，最多500人)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -1081,8 +1161,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1093,9 +1179,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -1127,6 +1213,8 @@
               "value": "string"
             }
           },
+          "interface_description": "需要添加的参与人uid列表。",
+          "interface_type": "array",
           "property": "attendeesToAdd",
           "required": true,
           "type": "string"
@@ -1141,6 +1229,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)。注意：订阅日历下的日程无参会人"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示主日历本。"
                 },
                 {
                   "precedence": "default",
@@ -1223,6 +1317,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示主日历本。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -1237,6 +1332,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值"
                 },
                 {
                   "precedence": "default",
@@ -1273,8 +1374,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1285,9 +1392,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -1319,6 +1426,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -1333,6 +1441,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "参会人可选 (默认必选参会人)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "参会人可选。true - 可选参会人，false - 必选参会人。\n默认值：false"
                 },
                 {
                   "precedence": "default",
@@ -1409,6 +1523,7 @@
               "value": "boolean"
             }
           },
+          "interface_description": "参会人可选。true - 可选参会人，false - 必选参会人。\n默认值：false",
           "property": "optional",
           "required": false,
           "type": "boolean"
@@ -1441,7 +1556,7 @@
       "cli_name": "add",
       "cli_path": "calendar room add",
       "confirmation": "not_required",
-      "description": "为日程预订会议室",
+      "description": "room是会议室，用于线下开会场景。将room加入到日程完成预订",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -1554,7 +1669,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "为日程预订会议室"
+              "value": "room是会议室，用于线下开会场景。将room加入到日程完成预订"
             }
           ],
           "precedence": "contract_final",
@@ -1562,7 +1677,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "为日程预订会议室"
+          "value": "room是会议室，用于线下开会场景。将room加入到日程完成预订"
         },
         "effect": {
           "candidates": [
@@ -1786,6 +1901,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)，注意：订阅日历下的日程不支持添加会议室"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示 主日历本"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1860,6 +1981,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示 主日历本",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -1874,6 +1996,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，调用查询日程列表接口获取id参数值。"
                 },
                 {
                   "precedence": "default",
@@ -1910,8 +2038,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1922,9 +2056,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -1956,6 +2090,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，调用查询日程列表接口获取id参数值。",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -1972,6 +2107,12 @@
                   "value": "会议室 ID 列表 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要预定的会议室roomId列表，可调用查询空闲会议室接口获取，一个日程最多添加5个会议室。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1982,6 +2123,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "会议室 ID 列表 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -2006,8 +2167,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2018,9 +2185,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2052,6 +2219,8 @@
               "value": "string"
             }
           },
+          "interface_description": "需要预定的会议室roomId列表，可调用查询空闲会议室接口获取，一个日程最多添加5个会议室。",
+          "interface_type": "array",
           "property": "roomIds",
           "required": true,
           "type": "string"
@@ -2093,7 +2262,7 @@
           ]
         ]
       },
-      "description": "创建日程",
+      "description": "创建日程。\n\n周期日程说明：--recurrence-* 不是彼此独立的参数。一旦指定任一 --recurrence-* 标志，就必须一次性提供**完整**的循环规则，\n至少包含 --recurrence-type、--recurrence-interval(\u003e0) 与 --recurrence-range-type，否则命令会被拒绝执行。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -2206,7 +2375,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "创建日程"
+              "value": "创建日程。\n\n周期日程说明：--recurrence-* 不是彼此独立的参数。一旦指定任一 --recurrence-* 标志，就必须一次性提供**完整**的循环规则，\n至少包含 --recurrence-type、--recurrence-interval(\u003e0) 与 --recurrence-range-type，否则命令会被拒绝执行。"
             }
           ],
           "precedence": "contract_final",
@@ -2214,7 +2383,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "创建日程"
+          "value": "创建日程。\n\n周期日程说明：--recurrence-* 不是彼此独立的参数。一旦指定任一 --recurrence-* 标志，就必须一次性提供**完整**的循环规则，\n至少包含 --recurrence-type、--recurrence-interval(\u003e0) 与 --recurrence-range-type，否则命令会被拒绝执行。"
         },
         "effect": {
           "candidates": [
@@ -2438,6 +2607,12 @@
                   "value": "参会人 userId 列表，逗号分隔 (最多500人)，日程组织人自动放入参会人列表，无需传入userId"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程参与人userId列表，最多支持500个参与人。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2448,6 +2623,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "参会人 userId 列表，逗号分隔 (最多500人)，日程组织人自动放入参会人列表，无需传入userId"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -2506,6 +2701,8 @@
               "value": "string"
             }
           },
+          "interface_description": "日程参与人userId列表，最多支持500个参与人。",
+          "interface_type": "array",
           "property": "attendees",
           "required": false,
           "type": "string"
@@ -2520,6 +2717,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日历 ID (可选，默认 primary 主日历；指定共享/订阅日历本时填写，可通过 book list 获取)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示在 主日历本下创建日程。"
                 },
                 {
                   "precedence": "default",
@@ -2596,6 +2799,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示在 主日历本下创建日程。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -2610,6 +2814,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程描述 (最大5000字符)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程描述，纯文本类型，最大不超过5000个字符。"
                 },
                 {
                   "precedence": "default",
@@ -2686,6 +2896,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程描述，纯文本类型，最大不超过5000个字符。",
           "property": "description",
           "required": false,
           "type": "string"
@@ -2700,6 +2911,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "结束时间 ISO-8601 (必填，例如 2026-03-10T15:00:00+08:00)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程结束时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。"
                 },
                 {
                   "precedence": "default",
@@ -2756,8 +2973,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2768,9 +2997,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -2803,6 +3032,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日程结束时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。",
           "property": "endDateTime",
           "required": true,
           "type": "string"
@@ -2817,6 +3047,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "此日程的忙碌状态，默认值为busy。busy - 在忙闲视图中，此日程时间段为忙碌; free - 此日程不占用忙闲"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "此日程的忙碌状态，默认值为busy。\nbusy - 在忙闲视图中，此日程时间段为忙碌。\nfree - 此日程不占用忙闲。"
                 },
                 {
                   "precedence": "default",
@@ -2893,6 +3129,7 @@
               "value": "string"
             }
           },
+          "interface_description": "此日程的忙碌状态，默认值为busy。\nbusy - 在忙闲视图中，此日程时间段为忙碌。\nfree - 此日程不占用忙闲。",
           "property": "freeBusy",
           "required": false,
           "type": "string"
@@ -2907,6 +3144,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "地点信息（纯文本备注，如‘3号楼A区’；不等于预订会议室）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "地点信息。"
                 },
                 {
                   "precedence": "default",
@@ -2977,6 +3220,7 @@
               "value": "string"
             }
           },
+          "interface_description": "地点信息。",
           "property": "location",
           "required": false,
           "type": "string"
@@ -2993,6 +3237,12 @@
                   "value": "openDingTalkId 列表，逗号分隔 (与 --attendees 至少传一个)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "openDingTalkId 和attendees至少传一个"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3003,6 +3253,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "openDingTalkId 列表，逗号分隔 (与 --attendees 至少传一个)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -3067,6 +3337,8 @@
               "value": "string"
             }
           },
+          "interface_description": "openDingTalkId 和attendees至少传一个",
+          "interface_type": "array",
           "property": "openDingTalkIds",
           "required": false,
           "type": "string"
@@ -3117,30 +3389,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-range-type is numbered"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-range-type is numbered"
             },
             "type": {
               "candidates": [
@@ -3159,6 +3443,7 @@
           },
           "property": "recurrence.range.numberOfOccurrences",
           "required": false,
+          "required_when": "recurrence-range-type is numbered",
           "type": "integer"
         },
         "recurrence-day-of-month": {
@@ -3207,30 +3492,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-type is absoluteMonthly or absoluteYearly"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-type is absoluteMonthly or absoluteYearly"
             },
             "type": {
               "candidates": [
@@ -3249,6 +3546,7 @@
           },
           "property": "recurrence.pattern.dayOfMonth",
           "required": false,
+          "required_when": "recurrence-type is absoluteMonthly or absoluteYearly",
           "type": "integer"
         },
         "recurrence-days-of-week": {
@@ -3297,30 +3595,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-type is weekly or relativeMonthly"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-type is weekly or relativeMonthly"
             },
             "type": {
               "candidates": [
@@ -3339,6 +3649,7 @@
           },
           "property": "recurrence.pattern.daysOfWeek",
           "required": false,
+          "required_when": "recurrence-type is weekly or relativeMonthly",
           "type": "string"
         },
         "recurrence-end-date": {
@@ -3407,30 +3718,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-range-type is endDate"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-range-type is endDate"
             },
             "type": {
               "candidates": [
@@ -3450,6 +3773,7 @@
           "format": "date-time",
           "property": "recurrence.range.endDate",
           "required": false,
+          "required_when": "recurrence-range-type is endDate",
           "type": "string"
         },
         "recurrence-first-day-of-week": {
@@ -3594,30 +3918,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-type is relativeMonthly"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-type is relativeMonthly"
             },
             "type": {
               "candidates": [
@@ -3636,6 +3972,7 @@
           },
           "property": "recurrence.pattern.index",
           "required": false,
+          "required_when": "recurrence-type is relativeMonthly",
           "type": "string"
         },
         "recurrence-interval": {
@@ -3684,8 +4021,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3696,24 +4039,30 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "tool_schema_hint",
+              "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "any recurrence-* flag is provided"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "any recurrence-* flag is provided"
             },
             "type": {
               "candidates": [
@@ -3731,7 +4080,8 @@
             }
           },
           "property": "recurrence.pattern.interval",
-          "required": true,
+          "required": false,
+          "required_when": "any recurrence-* flag is provided",
           "type": "integer"
         },
         "recurrence-range-type": {
@@ -3780,8 +4130,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3792,24 +4148,30 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "tool_schema_hint",
+              "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "any recurrence-* flag is provided"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "any recurrence-* flag is provided"
             },
             "type": {
               "candidates": [
@@ -3827,7 +4189,8 @@
             }
           },
           "property": "recurrence.range.type",
-          "required": true,
+          "required": false,
+          "required_when": "any recurrence-* flag is provided",
           "type": "string"
         },
         "recurrence-type": {
@@ -3876,8 +4239,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3888,24 +4257,30 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "tool_schema_hint",
+              "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "any recurrence-* flag is provided"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "any recurrence-* flag is provided"
             },
             "type": {
               "candidates": [
@@ -3923,7 +4298,8 @@
             }
           },
           "property": "recurrence.pattern.type",
-          "required": true,
+          "required": false,
+          "required_when": "any recurrence-* flag is provided",
           "type": "string"
         },
         "remind-minutes": {
@@ -3938,6 +4314,12 @@
                   "value": "日程开始前提醒，逗号分隔分钟数 (可选，例如 5,10,15 表示开始前5/10/15分钟提醒；不传则默认15分钟提醒)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "设置日程开始前提醒。默认日程开始前15分钟提醒。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3948,6 +4330,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "日程开始前提醒，逗号分隔分钟数 (可选，例如 5,10,15 表示开始前5/10/15分钟提醒；不传则默认15分钟提醒)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -4018,6 +4420,8 @@
               "value": "string"
             }
           },
+          "interface_description": "设置日程开始前提醒。默认日程开始前15分钟提醒。",
+          "interface_type": "array",
           "property": "reminders",
           "required": false,
           "type": "string"
@@ -4032,6 +4436,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "html格式的富文本类型日程描述，用于复杂内容的展示"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "html格式的富文本类型日程描述，用于复杂内容的展示。"
                 },
                 {
                   "precedence": "default",
@@ -4108,6 +4518,7 @@
               "value": "string"
             }
           },
+          "interface_description": "html格式的富文本类型日程描述，用于复杂内容的展示。",
           "property": "richTextDescription",
           "required": false,
           "type": "string"
@@ -4124,6 +4535,12 @@
                   "value": "会议室 roomId 列表，逗号分隔 (创建时直接预定，roomId 必须来自“room search”返回，若是循环会议，必须设置recurrence-end-date，避免长期预订)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要预定的会议室roomId列表，可调用查询空闲会议室接口获取，先确认会议室在时间段内为空闲状态"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -4134,6 +4551,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "会议室 roomId 列表，逗号分隔 (创建时直接预定，roomId 必须来自“room search”返回，若是循环会议，必须设置recurrence-end-date，避免长期预订)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -4198,6 +4635,8 @@
               "value": "string"
             }
           },
+          "interface_description": "需要预定的会议室roomId列表，可调用查询空闲会议室接口获取，先确认会议室在时间段内为空闲状态",
+          "interface_type": "array",
           "property": "roomIds",
           "required": false,
           "type": "string"
@@ -4212,6 +4651,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (必填，例如 2026-03-10T14:00:00+08:00)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程开始时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。"
                 },
                 {
                   "precedence": "default",
@@ -4268,8 +4713,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4280,9 +4737,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -4315,6 +4772,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日程开始时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。",
           "property": "startDateTime",
           "required": true,
           "type": "string"
@@ -4329,6 +4787,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "时区 IANA 格式 (例如 Asia/Shanghai，默认 Asia/Shanghai)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "IANA Time Zone Database name. 指定日程时区，比如：Asia/Shanghai. 默认值为Asia/Shanghai"
                 },
                 {
                   "precedence": "default",
@@ -4411,6 +4875,7 @@
               "value": "string"
             }
           },
+          "interface_description": "IANA Time Zone Database name. 指定日程时区，比如：Asia/Shanghai. 默认值为Asia/Shanghai",
           "property": "timeZone",
           "required": false,
           "type": "string"
@@ -4425,6 +4890,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程标题 (必填，最大2048字符)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程标题，最大不超过2048个字符。"
                 },
                 {
                   "precedence": "default",
@@ -4461,8 +4932,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4473,9 +4956,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -4507,6 +4990,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程标题，最大不超过2048个字符。",
           "property": "summary",
           "required": true,
           "type": "string"
@@ -4881,6 +5365,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -4955,6 +5445,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -4969,6 +5460,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值。"
                 },
                 {
                   "precedence": "default",
@@ -5005,8 +5502,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -5017,9 +5520,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -5051,6 +5554,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值。",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -5425,6 +5929,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)。注意：订阅日历下的日程无会议室"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示 主日历本"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5499,6 +6009,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示 主日历本",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -5513,6 +6024,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，调用查询日程列表接口获取id参数值。"
                 },
                 {
                   "precedence": "default",
@@ -5549,8 +6066,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -5561,9 +6084,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -5595,6 +6118,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，调用查询日程列表接口获取id参数值。",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -5611,6 +6135,12 @@
                   "value": "会议室 ID 列表 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要删除的会议室roomId列表"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5621,6 +6151,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "会议室 ID 列表 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -5645,8 +6195,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -5657,9 +6213,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -5691,6 +6247,8 @@
               "value": "string"
             }
           },
+          "interface_description": "需要删除的会议室roomId列表",
+          "interface_type": "array",
           "property": "roomIds",
           "required": true,
           "type": "string"
@@ -5723,7 +6281,7 @@
       "cli_name": "get",
       "cli_path": "calendar book get",
       "confirmation": "not_required",
-      "description": "查询指定日历信息",
+      "description": "根据日历id查询指定日历的信息。用户主日历本id固定为 \"primary\"。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -5836,7 +6394,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询指定日历信息"
+              "value": "根据日历id查询指定日历的信息。用户主日历本id固定为 \"primary\"。"
             }
           ],
           "precedence": "contract_final",
@@ -5844,7 +6402,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询指定日历信息"
+          "value": "根据日历id查询指定日历的信息。用户主日历本id固定为 \"primary\"。"
         },
         "effect": {
           "candidates": [
@@ -6068,6 +6626,12 @@
                   "value": "日历 ID (必填，主日历固定为 primary)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6102,8 +6666,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -6114,9 +6684,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -6148,6 +6718,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历id",
           "property": "calendarId",
           "required": true,
           "type": "string"
@@ -6525,6 +7096,12 @@
                   "value": "日历 ID (默认 primary 主日历)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历id。查询指定日历下的日程信息。默认值为primary (主日历)；大部分场景无需传此值，仅当用户要求查询其他日历本时。calendarId可通过\"查询用户日历列表\"获取。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6599,6 +7176,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历id。查询指定日历下的日程信息。默认值为primary (主日历)；大部分场景无需传此值，仅当用户要求查询其他日历本时。calendarId可通过\"查询用户日历列表\"获取。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -6613,6 +7191,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值"
                 },
                 {
                   "precedence": "default",
@@ -6649,8 +7233,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -6661,9 +7251,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -6695,6 +7285,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -6726,7 +7317,7 @@
       "cli_name": "list",
       "cli_path": "calendar attendee list",
       "confirmation": "not_required",
-      "description": "获取日程参与人",
+      "description": "查看日程的参会人列表。注意：订阅日历下的日程无参会人，因此不可查看",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -6836,7 +7427,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取日程参与人"
+              "value": "查看日程的参会人列表。注意：订阅日历下的日程无参会人，因此不可查看"
             }
           ],
           "precedence": "contract_final",
@@ -6844,7 +7435,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取日程参与人"
+          "value": "查看日程的参会人列表。注意：订阅日历下的日程无参会人，因此不可查看"
         },
         "effect": {
           "candidates": [
@@ -7066,6 +7657,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)。注意：订阅日历下的日程无参会人"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示主日历本。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -7146,6 +7743,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示主日历本。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -7160,6 +7758,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值。"
                 },
                 {
                   "precedence": "default",
@@ -7196,8 +7800,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -7208,9 +7818,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -7242,6 +7852,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值。",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -7273,7 +7884,7 @@
       "cli_name": "list",
       "cli_path": "calendar acl list",
       "confirmation": "not_required",
-      "description": "查询主日历访问控制列表",
+      "description": "查询当前用户主日历的访问控制列表——即\"我的日历共享给了哪些人、各自什么权限\"。注意：这不是查日历本列表（那是 book list）。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -7383,7 +7994,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询主日历访问控制列表"
+              "value": "查询当前用户主日历的访问控制列表——即\"我的日历共享给了哪些人、各自什么权限\"。注意：这不是查日历本列表（那是 book list）。"
             }
           ],
           "precedence": "contract_final",
@@ -7391,7 +8002,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询主日历访问控制列表"
+          "value": "查询当前用户主日历的访问控制列表——即\"我的日历共享给了哪些人、各自什么权限\"。注意：这不是查日历本列表（那是 book list）。"
         },
         "effect": {
           "candidates": [
@@ -7628,7 +8239,7 @@
       "cli_name": "list",
       "cli_path": "calendar event list",
       "confirmation": "not_required",
-      "description": "查询当前用户日程列表",
+      "description": "查询当前用户可访问的日程列表。**注意** 不传 --start/--end 时将查询今天的日程（00:00:00 ~ 23:59:59）。\n\t\t**calendar_id**: 不指定calendar_id时，默认查询当前用户主日历下的日程。也可指定calendar_id查询他人共享或者已订阅的日历。calendar_id可通过 dws calendar book list 查询。\n\t\t**权限**：查询共享日历下的日程时，至少要有reader权限。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -7741,7 +8352,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询当前用户日程列表"
+              "value": "查询当前用户可访问的日程列表。**注意** 不传 --start/--end 时将查询今天的日程（00:00:00 ~ 23:59:59）。\n\t\t**calendar_id**: 不指定calendar_id时，默认查询当前用户主日历下的日程。也可指定calendar_id查询他人共享或者已订阅的日历。calendar_id可通过 dws calendar book list 查询。\n\t\t**权限**：查询共享日历下的日程时，至少要有reader权限。"
             }
           ],
           "precedence": "contract_final",
@@ -7749,7 +8360,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询当前用户日程列表"
+          "value": "查询当前用户可访问的日程列表。**注意** 不传 --start/--end 时将查询今天的日程（00:00:00 ~ 23:59:59）。\n\t\t**calendar_id**: 不指定calendar_id时，默认查询当前用户主日历下的日程。也可指定calendar_id查询他人共享或者已订阅的日历。calendar_id可通过 dws calendar book list 查询。\n\t\t**权限**：查询共享日历下的日程时，至少要有reader权限。"
         },
         "effect": {
           "candidates": [
@@ -7973,6 +8584,12 @@
                   "value": "日历 ID (默认 primary 主日历，仅在查询其他日历本时填写)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历id。查询指定日历下的日程信息。默认值为primary (主日历)；大部分场景无需传此值，仅当用户要求查询其他日历本时。calendarId可通过\"查询用户日历列表\"获取。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -8047,6 +8664,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历id。查询指定日历下的日程信息。默认值为primary (主日历)；大部分场景无需传此值，仅当用户要求查询其他日历本时。calendarId可通过\"查询用户日历列表\"获取。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -8061,6 +8679,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "分页游标 (首次查询无需传入，仅翻页时传入上一次返回的 nextCursor)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页游标，可选。首次查询无需传入此值。"
                 },
                 {
                   "precedence": "default",
@@ -8131,6 +8755,7 @@
               "value": "string"
             }
           },
+          "interface_description": "分页游标，可选。首次查询无需传入此值。",
           "property": "cursor",
           "required": false,
           "type": "string"
@@ -8145,6 +8770,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "结束时间 ISO-8601 (例如 2026-03-10T18:00:00+08:00)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程结束时间，时间戳（毫秒级）"
                 },
                 {
                   "precedence": "default",
@@ -8177,6 +8808,26 @@
               "resolution": "highest_precedence",
               "source": "usage_format_inference",
               "value": "date-time"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -8242,6 +8893,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日程结束时间，时间戳（毫秒级）",
+          "interface_type": "number",
           "property": "endTime",
           "required": false,
           "type": "string"
@@ -8258,6 +8911,12 @@
                   "value": "每页返回条数 (默认 100，最大 100)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "一次调用最多返回的日程数量，可选。默认值为100。\n注意：最大值为100，表示每次最多查询100条。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -8268,6 +8927,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页返回条数 (默认 100，最大 100)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -8332,6 +9011,8 @@
               "value": "integer"
             }
           },
+          "interface_description": "一次调用最多返回的日程数量，可选。默认值为100。\n注意：最大值为100，表示每次最多查询100条。",
+          "interface_type": "number",
           "property": "limit",
           "required": false,
           "type": "integer"
@@ -8346,6 +9027,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (例如 2026-03-10T14:00:00+08:00)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程开始时间，时间戳（毫秒级）"
                 },
                 {
                   "precedence": "default",
@@ -8378,6 +9065,26 @@
               "resolution": "highest_precedence",
               "source": "usage_format_inference",
               "value": "date-time"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -8443,6 +9150,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日程开始时间，时间戳（毫秒级）",
+          "interface_type": "number",
           "property": "startTime",
           "required": false,
           "type": "string"
@@ -8475,7 +9184,7 @@
       "cli_name": "list",
       "cli_path": "calendar book list",
       "confirmation": "not_required",
-      "description": "查询用户日历列表",
+      "description": "查询当前用户的所有日历，结果范围：用户自己的日历、已订阅的公共/团队日历、他人共享的日历。主日历 id 固定为 \"primary\"。\n\t\t\t共享日历本中有来自 xxx 的，且权限大于reader，那么通过 event list --calendar-id \u003cxxx的日历本id\u003e 可查到xxx完整的日程安排",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -8587,7 +9296,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户日历列表"
+              "value": "查询当前用户的所有日历，结果范围：用户自己的日历、已订阅的公共/团队日历、他人共享的日历。主日历 id 固定为 \"primary\"。\n\t\t\t共享日历本中有来自 xxx 的，且权限大于reader，那么通过 event list --calendar-id \u003cxxx的日历本id\u003e 可查到xxx完整的日程安排"
             }
           ],
           "precedence": "contract_final",
@@ -8595,7 +9304,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户日历列表"
+          "value": "查询当前用户的所有日历，结果范围：用户自己的日历、已订阅的公共/团队日历、他人共享的日历。主日历 id 固定为 \"primary\"。\n\t\t\t共享日历本中有来自 xxx 的，且权限大于reader，那么通过 event list --calendar-id \u003cxxx的日历本id\u003e 可查到xxx完整的日程安排"
         },
         "effect": {
           "candidates": [
@@ -9174,6 +9883,12 @@
                   "value": "页大小 (可选，不填默认 100，超过 100 按 100 处理)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页大小，不填默认 100。超过100的，按照100来处理"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -9254,6 +9969,7 @@
               "value": "string"
             }
           },
+          "interface_description": "页大小，不填默认 100。超过100的，按照100来处理",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -9268,6 +9984,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "分页起始位置 (可选，不填默认 0)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页开始位置 ，不填默认 0"
                 },
                 {
                   "precedence": "default",
@@ -9350,6 +10072,7 @@
               "value": "string"
             }
           },
+          "interface_description": "分页开始位置 ，不填默认 0",
           "property": "pageIndex",
           "required": false,
           "type": "string"
@@ -9382,7 +10105,7 @@
       "cli_name": "suggest",
       "cli_path": "calendar event suggest",
       "confirmation": "not_required",
-      "description": "建议日程时间",
+      "description": "对于非明确时间或一段时间范围的约会场景，可基于所有参会人的忙闲状态，推荐多个可用的时间块方案，用于解决会议时间协调问题。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -9495,7 +10218,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "建议日程时间"
+              "value": "对于非明确时间或一段时间范围的约会场景，可基于所有参会人的忙闲状态，推荐多个可用的时间块方案，用于解决会议时间协调问题。"
             }
           ],
           "precedence": "contract_final",
@@ -9503,7 +10226,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "建议日程时间"
+          "value": "对于非明确时间或一段时间范围的约会场景，可基于所有参会人的忙闲状态，推荐多个可用的时间块方案，用于解决会议时间协调问题。"
         },
         "effect": {
           "candidates": [
@@ -9727,6 +10450,12 @@
                   "value": "日程持续时间 (分钟，默认30)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程持续时间，单位：分钟。默认为30分钟"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -9807,6 +10536,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程持续时间，单位：分钟。默认为30分钟",
           "property": "durationMinutes",
           "required": false,
           "type": "string"
@@ -9821,6 +10551,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "推荐时间范围结束 ISO-8601 (默认次日18点)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "推荐时间范围：结束时间点\nISO8601 格式，如：2025-12-30T18:00:00+08:00\n默认为次日18点"
                 },
                 {
                   "precedence": "default",
@@ -9918,6 +10654,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "推荐时间范围：结束时间点\nISO8601 格式，如：2025-12-30T18:00:00+08:00\n默认为次日18点",
           "property": "end",
           "required": false,
           "type": "string"
@@ -9932,6 +10669,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "推荐时间范围开始 ISO-8601 (默认当前时间)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "推荐时间范围：开始时间点。\nISO8601 格式，如：2025-12-30T12:00:00+08:00。\n默认为当前时间。"
                 },
                 {
                   "precedence": "default",
@@ -10029,6 +10772,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "推荐时间范围：开始时间点。\nISO8601 格式，如：2025-12-30T12:00:00+08:00。\n默认为当前时间。",
           "property": "start",
           "required": false,
           "type": "string"
@@ -10043,6 +10787,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "时区 IANA 格式 (默认 Asia/Shanghai)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "时区，IANA时区格式。默认为系统时区，即Asia/Shanghai。"
                 },
                 {
                   "precedence": "default",
@@ -10125,6 +10875,7 @@
               "value": "string"
             }
           },
+          "interface_description": "时区，IANA时区格式。默认为系统时区，即Asia/Shanghai。",
           "property": "timeZone",
           "required": false,
           "type": "string"
@@ -10141,6 +10892,12 @@
                   "value": "参会人 userId 列表，逗号分隔"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "attendeeUserIds"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -10151,6 +10908,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "参会人 userId 列表，逗号分隔"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -10215,6 +10992,8 @@
               "value": "string"
             }
           },
+          "interface_description": "attendeeUserIds",
+          "interface_type": "array",
           "property": "attendeeUserIds",
           "required": false,
           "type": "string"
@@ -10247,7 +11026,7 @@
       "cli_name": "search",
       "cli_path": "calendar room search",
       "confirmation": "not_required",
-      "description": "查询空闲或按名搜索会议室",
+      "description": "**搜索会议室** 支持两种模式：\n\n\t\t\t1. **按名称搜索**（仅传 --room-name，不传 --start/--end）：\n\t\t\t   根据会议室名称模糊搜索，返回所有匹配的会议室，不检查可用性。\n\t\t\t   适用于\"找到某个会议室\"的场景。\n\n\t\t\t2. **按时间段搜索可用会议室**（传 --start/--end，或不传任何参数）：\n\t\t\t   查询指定时间段内所有可用的会议室。不传 --start/--end 时默认查询当前时间起 1 小时内的会议室。\n\t\t\t   注意，大部分会议室仅在工作时间可用，如果检索时间不在工作时间可能查不到任何结果。\n\t\t\t   时间约束：start 必须是未来的时间（API 限制：start can not less current time）。\n\t\t\t\t- 若传入的 --start 早于当前时间，CLI 自动修正为 now+1min。\n\t\t\t\t- 若传入的 --end 早于当前时间，视为无效请求返回错误（无法检索过去的时间段）。\n\n\t\t\t使用 --room-name 按会议室名称过滤时，CLI 原样透传给服务端做模糊匹配。调用方（模型/脚本）在传入前应主动精简名称，剔除用户口语里常带的通用后缀（如「会议室」「大会议室」「小会议室」），只保留核心专名，避免因后缀导致匹配不到。例如用户说「永澄亭会议室」时，应传 --room-name 永澄亭。\n\t\t\t如果知道roomId，想查该会议室的预订记录，直接用dws calendar busy search 指令。\n\t\t\t此指令搜索到的会议室结果中，有两个值需要注意：\n\t\t\t\t- customApprovalProcess: true - 表示该会议室设置了自定义审批流程，只能通过客户端完成预订。\n\t\t\t\t- supportRecurring: true - 表示该会议室支持循环预定；false - 表示不支持循环预定，直接加入到循环日程会失败。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -10360,7 +11139,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询空闲或按名搜索会议室"
+              "value": "**搜索会议室** 支持两种模式：\n\n\t\t\t1. **按名称搜索**（仅传 --room-name，不传 --start/--end）：\n\t\t\t   根据会议室名称模糊搜索，返回所有匹配的会议室，不检查可用性。\n\t\t\t   适用于\"找到某个会议室\"的场景。\n\n\t\t\t2. **按时间段搜索可用会议室**（传 --start/--end，或不传任何参数）：\n\t\t\t   查询指定时间段内所有可用的会议室。不传 --start/--end 时默认查询当前时间起 1 小时内的会议室。\n\t\t\t   注意，大部分会议室仅在工作时间可用，如果检索时间不在工作时间可能查不到任何结果。\n\t\t\t   时间约束：start 必须是未来的时间（API 限制：start can not less current time）。\n\t\t\t\t- 若传入的 --start 早于当前时间，CLI 自动修正为 now+1min。\n\t\t\t\t- 若传入的 --end 早于当前时间，视为无效请求返回错误（无法检索过去的时间段）。\n\n\t\t\t使用 --room-name 按会议室名称过滤时，CLI 原样透传给服务端做模糊匹配。调用方（模型/脚本）在传入前应主动精简名称，剔除用户口语里常带的通用后缀（如「会议室」「大会议室」「小会议室」），只保留核心专名，避免因后缀导致匹配不到。例如用户说「永澄亭会议室」时，应传 --room-name 永澄亭。\n\t\t\t如果知道roomId，想查该会议室的预订记录，直接用dws calendar busy search 指令。\n\t\t\t此指令搜索到的会议室结果中，有两个值需要注意：\n\t\t\t\t- customApprovalProcess: true - 表示该会议室设置了自定义审批流程，只能通过客户端完成预订。\n\t\t\t\t- supportRecurring: true - 表示该会议室支持循环预定；false - 表示不支持循环预定，直接加入到循环日程会失败。"
             }
           ],
           "precedence": "contract_final",
@@ -10368,7 +11147,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询空闲或按名搜索会议室"
+          "value": "**搜索会议室** 支持两种模式：\n\n\t\t\t1. **按名称搜索**（仅传 --room-name，不传 --start/--end）：\n\t\t\t   根据会议室名称模糊搜索，返回所有匹配的会议室，不检查可用性。\n\t\t\t   适用于\"找到某个会议室\"的场景。\n\n\t\t\t2. **按时间段搜索可用会议室**（传 --start/--end，或不传任何参数）：\n\t\t\t   查询指定时间段内所有可用的会议室。不传 --start/--end 时默认查询当前时间起 1 小时内的会议室。\n\t\t\t   注意，大部分会议室仅在工作时间可用，如果检索时间不在工作时间可能查不到任何结果。\n\t\t\t   时间约束：start 必须是未来的时间（API 限制：start can not less current time）。\n\t\t\t\t- 若传入的 --start 早于当前时间，CLI 自动修正为 now+1min。\n\t\t\t\t- 若传入的 --end 早于当前时间，视为无效请求返回错误（无法检索过去的时间段）。\n\n\t\t\t使用 --room-name 按会议室名称过滤时，CLI 原样透传给服务端做模糊匹配。调用方（模型/脚本）在传入前应主动精简名称，剔除用户口语里常带的通用后缀（如「会议室」「大会议室」「小会议室」），只保留核心专名，避免因后缀导致匹配不到。例如用户说「永澄亭会议室」时，应传 --room-name 永澄亭。\n\t\t\t如果知道roomId，想查该会议室的预订记录，直接用dws calendar busy search 指令。\n\t\t\t此指令搜索到的会议室结果中，有两个值需要注意：\n\t\t\t\t- customApprovalProcess: true - 表示该会议室设置了自定义审批流程，只能通过客户端完成预订。\n\t\t\t\t- supportRecurring: true - 表示该会议室支持循环预定；false - 表示不支持循环预定，直接加入到循环日程会失败。"
         },
         "effect": {
           "candidates": [
@@ -10592,6 +11371,12 @@
                   "value": "结束时间 ISO-8601 (可选，不传则默认当前时间+1小时，例如 2026-03-10T15:00:00+08:00)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "结束时间，时间戳（毫秒级）"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -10652,6 +11437,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -10693,6 +11484,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "结束时间，时间戳（毫秒级）",
           "property": "endTime",
           "required": false,
           "type": "string"
@@ -10707,6 +11499,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "会议室分组ID（可选，留空查根目录；会议室超100条时先用 list-groups 获取分组再按分组查询）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "会议室分组ID。可选字段。若不填写，则默认查询根目录下的空闲会议室。\n建议使用方式：首次查询时请留空此字段；若因当前企业会议室数量超过100条而返回错误，请先调用分页查询当前企业下的会议室分组列表，再根据具体的分组ID分别查询各分组下的会议室数据。"
                 },
                 {
                   "precedence": "default",
@@ -10777,6 +11575,7 @@
               "value": "string"
             }
           },
+          "interface_description": "会议室分组ID。可选字段。若不填写，则默认查询根目录下的空闲会议室。\n建议使用方式：首次查询时请留空此字段；若因当前企业会议室数量超过100条而返回错误，请先调用分页查询当前企业下的会议室分组列表，再根据具体的分组ID分别查询各分组下的会议室数据。",
           "property": "groupId",
           "required": false,
           "type": "string"
@@ -10791,6 +11590,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "页大小 (可选，不填默认 100，超过 100 按 100 处理)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页大小，不填默认 100。超过100的，按照100来处理"
                 },
                 {
                   "precedence": "default",
@@ -10873,6 +11678,7 @@
               "value": "string"
             }
           },
+          "interface_description": "页大小，不填默认 100。超过100的，按照100来处理",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -10887,6 +11693,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "分页起始位置 (可选，不填默认 0)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页开始位置 ，不填默认 0"
                 },
                 {
                   "precedence": "default",
@@ -10969,6 +11781,7 @@
               "value": "string"
             }
           },
+          "interface_description": "分页开始位置 ，不填默认 0",
           "property": "pageIndex",
           "required": false,
           "type": "string"
@@ -10983,6 +11796,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "按会议室名称过滤（可选，服务端模糊匹配。调用方需先剔除用户口语后缀如「会议室/大会议室/小会议室」，仅传核心专名以提升命中率，例如用户说「永澄亭会议室」应传「永澄亭」）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "会议室名，按会议室名称过滤（可选，服务端模糊匹配。调用方需先剔除用户口语后缀如「会议室/大会议室/小会议室」，仅传核心专名以提升命中率，例如用户说「永澄亭会议室」应传「永澄亭」）"
                 },
                 {
                   "precedence": "default",
@@ -11053,6 +11872,7 @@
               "value": "string"
             }
           },
+          "interface_description": "会议室名，按会议室名称过滤（可选，服务端模糊匹配。调用方需先剔除用户口语后缀如「会议室/大会议室/小会议室」，仅传核心专名以提升命中率，例如用户说「永澄亭会议室」应传「永澄亭」）",
           "property": "roomName",
           "required": false,
           "type": "string"
@@ -11067,6 +11887,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (可选，不传则默认当前时间+1分钟，例如 2026-03-10T14:00:00+08:00)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "开始时间，时间戳（毫秒级）"
                 },
                 {
                   "precedence": "default",
@@ -11129,6 +11955,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -11170,6 +12002,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "开始时间，时间戳（毫秒级）",
           "property": "startTime",
           "required": false,
           "type": "string"
@@ -11209,7 +12042,7 @@
           ]
         ]
       },
-      "description": "查询用户或会议室闲忙",
+      "description": "查询指定用户或会议室在给定时间范围内的闲忙状态。--users 与 --rooms 至少指定其一，也可以同时指定（查询用户+会议室）。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -11320,7 +12153,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户或会议室闲忙"
+              "value": "查询指定用户或会议室在给定时间范围内的闲忙状态。--users 与 --rooms 至少指定其一，也可以同时指定（查询用户+会议室）。"
             }
           ],
           "precedence": "contract_final",
@@ -11328,7 +12161,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户或会议室闲忙"
+          "value": "查询指定用户或会议室在给定时间范围内的闲忙状态。--users 与 --rooms 至少指定其一，也可以同时指定（查询用户+会议室）。"
         },
         "effect": {
           "candidates": [
@@ -11552,6 +12385,12 @@
                   "value": "结束时间 ISO-8601 (必填，例如 2026-03-10T18:00:00+08:00)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "查询的结束时间，时间戳（毫秒级）格式。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -11583,6 +12422,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -11606,8 +12465,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -11618,9 +12483,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -11653,6 +12518,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "查询的结束时间，时间戳（毫秒级）格式。",
+          "interface_type": "number",
           "property": "endTime",
           "required": true,
           "type": "string"
@@ -11669,6 +12536,12 @@
                   "value": "会议室 ID 列表，逗号分隔 (与 --users 至少指定其一，用于查询会议室闲忙)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "待查询的会议室id列表"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -11679,6 +12552,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "会议室 ID 列表，逗号分隔 (与 --users 至少指定其一，用于查询会议室闲忙)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -11749,6 +12642,8 @@
               "value": "string"
             }
           },
+          "interface_description": "待查询的会议室id列表",
+          "interface_type": "array",
           "property": "roomIds",
           "required": false,
           "type": "string"
@@ -11763,6 +12658,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (必填，例如 2026-03-10T14:00:00+08:00)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "查询的开始时间，时间戳（毫秒级）格式。"
                 },
                 {
                   "precedence": "default",
@@ -11796,6 +12697,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -11819,8 +12740,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -11831,9 +12758,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -11866,6 +12793,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "查询的开始时间，时间戳（毫秒级）格式。",
+          "interface_type": "number",
           "property": "startTime",
           "required": true,
           "type": "string"
@@ -11882,6 +12811,12 @@
                   "value": "用户 ID 列表，逗号分隔 (与 --rooms 至少指定其一)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "用户uid列表最大长度 20。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -11892,6 +12827,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "用户 ID 列表，逗号分隔 (与 --rooms 至少指定其一)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -11920,6 +12875,12 @@
                   "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
+                  "source": "tool_schema_hint",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -11962,6 +12923,8 @@
               "value": "string"
             }
           },
+          "interface_description": "用户uid列表最大长度 20。",
+          "interface_type": "array",
           "property": "userIds",
           "required": false,
           "type": "string"
@@ -11994,7 +12957,7 @@
       "cli_name": "delete",
       "cli_path": "calendar attendee delete",
       "confirmation": "not_required",
-      "description": "删除日程参与人",
+      "description": "移除日程的参会人。注意：订阅日历下的日程无参会人，因此不可移除",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -12106,7 +13069,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "删除日程参与人"
+              "value": "移除日程的参会人。注意：订阅日历下的日程无参会人，因此不可移除"
             }
           ],
           "precedence": "contract_final",
@@ -12114,7 +13077,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "删除日程参与人"
+          "value": "移除日程的参会人。注意：订阅日历下的日程无参会人，因此不可移除"
         },
         "effect": {
           "candidates": [
@@ -12336,6 +13299,12 @@
                   "value": "参会人 userId 列表，逗号分隔 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要被删除的日程参与者userId列表。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -12346,6 +13315,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "参会人 userId 列表，逗号分隔 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -12370,8 +13359,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -12382,9 +13377,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -12416,6 +13411,8 @@
               "value": "string"
             }
           },
+          "interface_description": "需要被删除的日程参与者userId列表。",
+          "interface_type": "array",
           "property": "attendeesToRemove",
           "required": true,
           "type": "string"
@@ -12430,6 +13427,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)。注意：订阅日历下的日程无参会人"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示在 主日历本"
                 },
                 {
                   "precedence": "default",
@@ -12512,6 +13515,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示在 主日历本",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -12526,6 +13530,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值。"
                 },
                 {
                   "precedence": "default",
@@ -12562,8 +13572,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -12574,9 +13590,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -12608,6 +13624,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值。",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -12640,7 +13657,7 @@
       "cli_name": "respond",
       "cli_path": "calendar event respond",
       "confirmation": "not_required",
-      "description": "响应日程",
+      "description": "作为日程参会人，设置自己的响应状态（接受、拒绝、暂定）。注意：订阅日历下的日程无参会人，因此不可响应",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -12753,7 +13770,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "响应日程"
+              "value": "作为日程参会人，设置自己的响应状态（接受、拒绝、暂定）。注意：订阅日历下的日程无参会人，因此不可响应"
             }
           ],
           "precedence": "contract_final",
@@ -12761,7 +13778,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "响应日程"
+          "value": "作为日程参会人，设置自己的响应状态（接受、拒绝、暂定）。注意：订阅日历下的日程无参会人，因此不可响应"
         },
         "effect": {
           "candidates": [
@@ -12985,6 +14002,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)，注意：订阅日历下的日程无参会人，因此不可响应"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"，表示 主日历本"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -13059,6 +14082,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"，表示 主日历本",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -13073,6 +14097,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程id"
                 },
                 {
                   "precedence": "default",
@@ -13109,8 +14139,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -13121,9 +14157,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -13155,6 +14191,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程id",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -13175,6 +14212,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "响应状态: needsAction(未操作)|accepted(接受)|declined(拒绝)|tentative(暂定) (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "设置响应状态，可取值和对应说明如下：\n1. needsAction：未操作（默认值）\n2. accepted：接受\n3. declined：拒绝\n4. tentative：暂定"
                 },
                 {
                   "precedence": "default",
@@ -13241,8 +14284,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -13253,9 +14302,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -13287,6 +14336,7 @@
               "value": "string"
             }
           },
+          "interface_description": "设置响应状态，可取值和对应说明如下：\n1. needsAction：未操作（默认值）\n2. accepted：接受\n3. declined：拒绝\n4. tentative：暂定",
           "property": "responseStatus",
           "required": true,
           "type": "string"
@@ -13319,7 +14369,7 @@
       "cli_name": "search",
       "cli_path": "calendar book search",
       "confirmation": "not_required",
-      "description": "搜索日历本列表",
+      "description": "搜索当前用户拥有的日历本，支持按日历本名模糊搜索。获取全部日历请使用 list。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -13432,7 +14482,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "搜索日历本列表"
+              "value": "搜索当前用户拥有的日历本，支持按日历本名模糊搜索。获取全部日历请使用 list。"
             }
           ],
           "precedence": "contract_final",
@@ -13440,7 +14490,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "搜索日历本列表"
+          "value": "搜索当前用户拥有的日历本，支持按日历本名模糊搜索。获取全部日历请使用 list。"
         },
         "effect": {
           "candidates": [
@@ -13664,6 +14714,12 @@
                   "value": "按日历本名称模糊检索 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "按日历本名称模糊检索"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -13698,8 +14754,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -13710,9 +14772,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -13744,6 +14806,7 @@
               "value": "string"
             }
           },
+          "interface_description": "按日历本名称模糊检索",
           "property": "query",
           "required": true,
           "type": "string"
@@ -13775,7 +14838,7 @@
       "cli_name": "+agenda",
       "cli_path": "calendar +agenda",
       "confirmation": "not_required",
-      "description": "查询日程列表（不传时间默认查询今天）",
+      "description": "当你想了解某人（默认自己）在某段时间内的日程安排、看看今天/本周有哪些会时使用；可传 --start/--end 圈定时间范围、--calendar-id 指定日历，返回该区间内的日程列表（含日程 ID，可配合 +get 看详情）。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -13886,7 +14949,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询日程列表（不传时间默认查询今天）"
+              "value": "当你想了解某人（默认自己）在某段时间内的日程安排、看看今天/本周有哪些会时使用；可传 --start/--end 圈定时间范围、--calendar-id 指定日历，返回该区间内的日程列表（含日程 ID，可配合 +get 看详情）。"
             }
           ],
           "precedence": "contract_final",
@@ -13894,7 +14957,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询日程列表（不传时间默认查询今天）"
+          "value": "当你想了解某人（默认自己）在某段时间内的日程安排、看看今天/本周有哪些会时使用；可传 --start/--end 圈定时间范围、--calendar-id 指定日历，返回该区间内的日程列表（含日程 ID，可配合 +get 看详情）。"
         },
         "effect": {
           "candidates": [
@@ -14627,7 +15690,7 @@
       "cli_name": "+attendee-list",
       "cli_path": "calendar +attendee-list",
       "confirmation": "not_required",
-      "description": "查看日程参会人",
+      "description": "当你想知道某个日程都有谁参加、各人的出席响应状态时使用；输入 --event 日程 ID，返回参会人列表（userId 及其接受/拒绝等状态）。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -14737,7 +15800,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查看日程参会人"
+              "value": "当你想知道某个日程都有谁参加、各人的出席响应状态时使用；输入 --event 日程 ID，返回参会人列表（userId 及其接受/拒绝等状态）。"
             }
           ],
           "precedence": "contract_final",
@@ -14745,7 +15808,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查看日程参会人"
+          "value": "当你想知道某个日程都有谁参加、各人的出席响应状态时使用；输入 --event 日程 ID，返回参会人列表（userId 及其接受/拒绝等状态）。"
         },
         "effect": {
           "candidates": [
@@ -15176,7 +16239,7 @@
       "cli_name": "+book",
       "cli_path": "calendar +book",
       "confirmation": "user_required",
-      "description": "创建日程，并可按姓名邀请参会人（自动解析 userId，失败自动回滚删除日程）",
+      "description": "当你想快速排一个会/日程、并顺手把几位同事按姓名拉进来时使用；内部先建日程拿到 eventId，再把每个姓名解析成唯一 userId 批量加为参会人。如果加参会人失败，会自动删除刚建好的日程回滚，避免留下一个没人的空日程。会真实创建日程并发出参会邀请。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -15287,7 +16350,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "创建日程，并可按姓名邀请参会人（自动解析 userId，失败自动回滚删除日程）"
+              "value": "当你想快速排一个会/日程、并顺手把几位同事按姓名拉进来时使用；内部先建日程拿到 eventId，再把每个姓名解析成唯一 userId 批量加为参会人。如果加参会人失败，会自动删除刚建好的日程回滚，避免留下一个没人的空日程。会真实创建日程并发出参会邀请。"
             }
           ],
           "precedence": "contract_final",
@@ -15295,7 +16358,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "创建日程，并可按姓名邀请参会人（自动解析 userId，失败自动回滚删除日程）"
+          "value": "当你想快速排一个会/日程、并顺手把几位同事按姓名拉进来时使用；内部先建日程拿到 eventId，再把每个姓名解析成唯一 userId 批量加为参会人。如果加参会人失败，会自动删除刚建好的日程回滚，避免留下一个没人的空日程。会真实创建日程并发出参会邀请。"
         },
         "effect": {
           "candidates": [
@@ -15914,7 +16977,7 @@
       "cli_name": "+book-list",
       "cli_path": "calendar +book-list",
       "confirmation": "not_required",
-      "description": "查询用户的日历本列表",
+      "description": "当你想知道自己有哪些日历本（主日历、项目日历、订阅日历等）、或需要拿到某个日历的 calendarId 以便在 +agenda/+create 中指定时使用；无需参数，返回全部日历本列表。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -16024,7 +17087,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户的日历本列表"
+              "value": "当你想知道自己有哪些日历本（主日历、项目日历、订阅日历等）、或需要拿到某个日历的 calendarId 以便在 +agenda/+create 中指定时使用；无需参数，返回全部日历本列表。"
             }
           ],
           "precedence": "contract_final",
@@ -16032,7 +17095,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户的日历本列表"
+          "value": "当你想知道自己有哪些日历本（主日历、项目日历、订阅日历等）、或需要拿到某个日历的 calendarId 以便在 +agenda/+create 中指定时使用；无需参数，返回全部日历本列表。"
         },
         "effect": {
           "candidates": [
@@ -16276,7 +17339,7 @@
       "cli_name": "+book-search",
       "cli_path": "calendar +book-search",
       "confirmation": "not_required",
-      "description": "按名称模糊搜索日历本",
+      "description": "当你只记得日历本名字的一部分、想据此找到对应的 calendarId 时使用；输入 --query 名称关键词，返回名称匹配的日历本列表，便于后续在其它命令里指定 --calendar-id。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -16386,7 +17449,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按名称模糊搜索日历本"
+              "value": "当你只记得日历本名字的一部分、想据此找到对应的 calendarId 时使用；输入 --query 名称关键词，返回名称匹配的日历本列表，便于后续在其它命令里指定 --calendar-id。"
             }
           ],
           "precedence": "contract_final",
@@ -16394,7 +17457,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按名称模糊搜索日历本"
+          "value": "当你只记得日历本名字的一部分、想据此找到对应的 calendarId 时使用；输入 --query 名称关键词，返回名称匹配的日历本列表，便于后续在其它命令里指定 --calendar-id。"
         },
         "effect": {
           "candidates": [
@@ -16735,7 +17798,7 @@
       "cli_name": "+cancel-event",
       "cli_path": "calendar +cancel-event",
       "confirmation": "user_required",
-      "description": "取消（删除）一个已有日程（删除前先确认它真实存在）",
+      "description": "当你想取消/删除一个已经存在的日程时使用；内部先用 eventId 拉一次日程详情确认它真实存在并回显标题，再执行删除，避免因 eventId 写错而误删别的日程。如果 eventId 查不到会直接报错，不会盲目删除。这是高危写操作，会真实删除该日程，框架会二次确认。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "destructive",
       "effect_source": "corecmd.contract",
@@ -16845,7 +17908,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "取消（删除）一个已有日程（删除前先确认它真实存在）"
+              "value": "当你想取消/删除一个已经存在的日程时使用；内部先用 eventId 拉一次日程详情确认它真实存在并回显标题，再执行删除，避免因 eventId 写错而误删别的日程。如果 eventId 查不到会直接报错，不会盲目删除。这是高危写操作，会真实删除该日程，框架会二次确认。"
             }
           ],
           "precedence": "contract_final",
@@ -16853,7 +17916,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "取消（删除）一个已有日程（删除前先确认它真实存在）"
+          "value": "当你想取消/删除一个已经存在的日程时使用；内部先用 eventId 拉一次日程详情确认它真实存在并回显标题，再执行删除，避免因 eventId 写错而误删别的日程。如果 eventId 查不到会直接报错，不会盲目删除。这是高危写操作，会真实删除该日程，框架会二次确认。"
         },
         "effect": {
           "candidates": [
@@ -17194,7 +18257,7 @@
       "cli_name": "+conflicts",
       "cli_path": "calendar +conflicts",
       "confirmation": "not_required",
-      "description": "检测我某天日程的时间冲突（重叠/双重预订，默认今天）",
+      "description": "当你想快速知道『我今天（或某天）的日程有没有时间冲突、撞车的会议』时使用；内部自动算出目标日期的时间范围（默认今天，可用 --in-days 指定几天后），列出当天全部日程，再在本地两两比对开始/结束时间，找出所有时间段重叠的日程对并报告。只读操作，不修改任何日程；没有冲突时明确告诉你「无冲突」。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -17305,7 +18368,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "检测我某天日程的时间冲突（重叠/双重预订，默认今天）"
+              "value": "当你想快速知道『我今天（或某天）的日程有没有时间冲突、撞车的会议』时使用；内部自动算出目标日期的时间范围（默认今天，可用 --in-days 指定几天后），列出当天全部日程，再在本地两两比对开始/结束时间，找出所有时间段重叠的日程对并报告。只读操作，不修改任何日程；没有冲突时明确告诉你「无冲突」。"
             }
           ],
           "precedence": "contract_final",
@@ -17313,7 +18376,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "检测我某天日程的时间冲突（重叠/双重预订，默认今天）"
+          "value": "当你想快速知道『我今天（或某天）的日程有没有时间冲突、撞车的会议』时使用；内部自动算出目标日期的时间范围（默认今天，可用 --in-days 指定几天后），列出当天全部日程，再在本地两两比对开始/结束时间，找出所有时间段重叠的日程对并报告。只读操作，不修改任何日程；没有冲突时明确告诉你「无冲突」。"
         },
         "effect": {
           "candidates": [
@@ -17650,7 +18713,7 @@
       "cli_name": "+free",
       "cli_path": "calendar +free",
       "confirmation": "not_required",
-      "description": "按姓名查询某人在指定时间段内的忙闲状态（自动解析 userId）",
+      "description": "当你只知道对方姓名、想知道 TA 在某段时间内是空闲还是被日程占用（比如约会前先看看有没有空）而不想先手动查 userId 时使用；内部先按姓名搜通讯录解析出唯一 userId，姓名匹配到多人时会列出候选让你区分，再按时间范围查询忙闲。只读，不产生任何日程变更。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -17760,7 +18823,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按姓名查询某人在指定时间段内的忙闲状态（自动解析 userId）"
+              "value": "当你只知道对方姓名、想知道 TA 在某段时间内是空闲还是被日程占用（比如约会前先看看有没有空）而不想先手动查 userId 时使用；内部先按姓名搜通讯录解析出唯一 userId，姓名匹配到多人时会列出候选让你区分，再按时间范围查询忙闲。只读，不产生任何日程变更。"
             }
           ],
           "precedence": "contract_final",
@@ -17768,7 +18831,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按姓名查询某人在指定时间段内的忙闲状态（自动解析 userId）"
+          "value": "当你只知道对方姓名、想知道 TA 在某段时间内是空闲还是被日程占用（比如约会前先看看有没有空）而不想先手动查 userId 时使用；内部先按姓名搜通讯录解析出唯一 userId，姓名匹配到多人时会列出候选让你区分，再按时间范围查询忙闲。只读，不产生任何日程变更。"
         },
         "effect": {
           "candidates": [
@@ -18301,7 +19364,7 @@
       "cli_name": "+free-slots",
       "cli_path": "calendar +free-slots",
       "confirmation": "not_required",
-      "description": "找我某天工作时段内的空闲时间段（默认今天 09:00-18:00）",
+      "description": "当你想知道『我今天（或某天）还有哪些时间是空的、可以安排会议/事情』时使用；内部列出目标日期（默认今天，--in-days 指定几天后）的全部日程，合并忙碌时段，再在工作时间范围内（默认 09:00-18:00，可用 --from/--to 指定起止小时）算出所有空闲窗口并给出每段的起止与时长。只读操作，不修改任何日程；用于快速定位可预约的空档。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -18412,7 +19475,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "找我某天工作时段内的空闲时间段（默认今天 09:00-18:00）"
+              "value": "当你想知道『我今天（或某天）还有哪些时间是空的、可以安排会议/事情』时使用；内部列出目标日期（默认今天，--in-days 指定几天后）的全部日程，合并忙碌时段，再在工作时间范围内（默认 09:00-18:00，可用 --from/--to 指定起止小时）算出所有空闲窗口并给出每段的起止与时长。只读操作，不修改任何日程；用于快速定位可预约的空档。"
             }
           ],
           "precedence": "contract_final",
@@ -18420,7 +19483,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "找我某天工作时段内的空闲时间段（默认今天 09:00-18:00）"
+          "value": "当你想知道『我今天（或某天）还有哪些时间是空的、可以安排会议/事情』时使用；内部列出目标日期（默认今天，--in-days 指定几天后）的全部日程，合并忙碌时段，再在工作时间范围内（默认 09:00-18:00，可用 --from/--to 指定起止小时）算出所有空闲窗口并给出每段的起止与时长。只读操作，不修改任何日程；用于快速定位可预约的空档。"
         },
         "effect": {
           "candidates": [
@@ -18945,7 +20008,7 @@
           ]
         ]
       },
-      "description": "查询用户 / 会议室闲忙状态（--users 与 --rooms 至少其一）",
+      "description": "当你要在约会前确认某些人或会议室在指定时间段是否有空、避免冲突时使用；传入 --start/--end 时间段并至少给出 --users 或 --rooms 其一，返回各对象在该区间的忙/闲时段。只看忙闲结果、不看具体日程内容，需要系统给出建议时段可用 +suggestion。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -19055,7 +20118,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户 / 会议室闲忙状态（--users 与 --rooms 至少其一）"
+              "value": "当你要在约会前确认某些人或会议室在指定时间段是否有空、避免冲突时使用；传入 --start/--end 时间段并至少给出 --users 或 --rooms 其一，返回各对象在该区间的忙/闲时段。只看忙闲结果、不看具体日程内容，需要系统给出建议时段可用 +suggestion。"
             }
           ],
           "precedence": "contract_final",
@@ -19063,7 +20126,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户 / 会议室闲忙状态（--users 与 --rooms 至少其一）"
+          "value": "当你要在约会前确认某些人或会议室在指定时间段是否有空、避免冲突时使用；传入 --start/--end 时间段并至少给出 --users 或 --rooms 其一，返回各对象在该区间的忙/闲时段。只看忙闲结果、不看具体日程内容，需要系统给出建议时段可用 +suggestion。"
         },
         "effect": {
           "candidates": [
@@ -19722,7 +20785,7 @@
       "cli_name": "+invite",
       "cli_path": "calendar +invite",
       "confirmation": "user_required",
-      "description": "按姓名把参会人加入已有日程（自动解析 userId 后批量添加）",
+      "description": "当你已经有一个日程（知道 eventId），想按姓名把几位同事拉进来当参会人时使用；内部先把 --with 里每个姓名解析成唯一 userId，再一次性把他们全部加到 --event 指定的日程里。会真实修改日程并发出参会邀请。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -19833,7 +20896,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按姓名把参会人加入已有日程（自动解析 userId 后批量添加）"
+              "value": "当你已经有一个日程（知道 eventId），想按姓名把几位同事拉进来当参会人时使用；内部先把 --with 里每个姓名解析成唯一 userId，再一次性把他们全部加到 --event 指定的日程里。会真实修改日程并发出参会邀请。"
             }
           ],
           "precedence": "contract_final",
@@ -19841,7 +20904,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按姓名把参会人加入已有日程（自动解析 userId 后批量添加）"
+          "value": "当你已经有一个日程（知道 eventId），想按姓名把几位同事拉进来当参会人时使用；内部先把 --with 里每个姓名解析成唯一 userId，再一次性把他们全部加到 --event 指定的日程里。会真实修改日程并发出参会邀请。"
         },
         "effect": {
           "candidates": [
@@ -20280,7 +21343,7 @@
       "cli_name": "+my-free",
       "cli_path": "calendar +my-free",
       "confirmation": "not_required",
-      "description": "查我自己在某时间段的忙闲（默认今天，无需输入姓名）",
+      "description": "当你（或 AI agent）想知道『我自己什么时候有空/忙』、用于安排会议或回复邀约时使用；不用像 +free 那样传别人的姓名——内部自动解析当前用户的 userId，再查其忙闲时段。默认查今天（本地时区 00:00 到次日 00:00），也可用 --start/--end 指定 ISO8601 时间范围。只读操作，只查忙闲、不创建或修改任何日程；返回按时间排列的忙碌时段，空则表示这段时间全空。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -20391,7 +21454,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查我自己在某时间段的忙闲（默认今天，无需输入姓名）"
+              "value": "当你（或 AI agent）想知道『我自己什么时候有空/忙』、用于安排会议或回复邀约时使用；不用像 +free 那样传别人的姓名——内部自动解析当前用户的 userId，再查其忙闲时段。默认查今天（本地时区 00:00 到次日 00:00），也可用 --start/--end 指定 ISO8601 时间范围。只读操作，只查忙闲、不创建或修改任何日程；返回按时间排列的忙碌时段，空则表示这段时间全空。"
             }
           ],
           "precedence": "contract_final",
@@ -20399,7 +21462,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查我自己在某时间段的忙闲（默认今天，无需输入姓名）"
+          "value": "当你（或 AI agent）想知道『我自己什么时候有空/忙』、用于安排会议或回复邀约时使用；不用像 +free 那样传别人的姓名——内部自动解析当前用户的 userId，再查其忙闲时段。默认查今天（本地时区 00:00 到次日 00:00），也可用 --start/--end 指定 ISO8601 时间范围。只读操作，只查忙闲、不创建或修改任何日程；返回按时间排列的忙碌时段，空则表示这段时间全空。"
         },
         "effect": {
           "candidates": [
@@ -20826,7 +21889,7 @@
       "cli_name": "+next-event",
       "cli_path": "calendar +next-event",
       "confirmation": "not_required",
-      "description": "查看接下来最近的一个日程（默认扫描未来 7 天）",
+      "description": "当你只想知道『我下一个日程是什么、什么时候开始』、而不想翻一整份日程列表时使用；内部以当前时间为起点、往后 7 天为范围，拉取主日历下的日程，按开始时间升序挑出最近的那一个并打印摘要（标题、开始/结束时间、地点）。若这 7 天内没有任何日程，会明确提示『近 7 天无日程』。只读，不做任何修改。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -20936,7 +21999,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查看接下来最近的一个日程（默认扫描未来 7 天）"
+              "value": "当你只想知道『我下一个日程是什么、什么时候开始』、而不想翻一整份日程列表时使用；内部以当前时间为起点、往后 7 天为范围，拉取主日历下的日程，按开始时间升序挑出最近的那一个并打印摘要（标题、开始/结束时间、地点）。若这 7 天内没有任何日程，会明确提示『近 7 天无日程』。只读，不做任何修改。"
             }
           ],
           "precedence": "contract_final",
@@ -20944,7 +22007,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查看接下来最近的一个日程（默认扫描未来 7 天）"
+          "value": "当你只想知道『我下一个日程是什么、什么时候开始』、而不想翻一整份日程列表时使用；内部以当前时间为起点、往后 7 天为范围，拉取主日历下的日程，按开始时间升序挑出最近的那一个并打印摘要（标题、开始/结束时间、地点）。若这 7 天内没有任何日程，会明确提示『近 7 天无日程』。只读，不做任何修改。"
         },
         "effect": {
           "candidates": [
@@ -21188,7 +22251,7 @@
       "cli_name": "+reschedule",
       "cli_path": "calendar +reschedule",
       "confirmation": "user_required",
-      "description": "改一个已有日程的时间（只动开始/结束时间，其他字段不变）",
+      "description": "当你想把一个已经存在的日程改到新的时间段、又不想动标题/描述/参会人等其他内容时使用；内部先用 eventId 拉一次日程详情确认它真实存在，再只更新开始和结束时间。如果 eventId 查不到会直接报错，不会误改别的日程。会真实修改该日程的时间。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -21298,7 +22361,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "改一个已有日程的时间（只动开始/结束时间，其他字段不变）"
+              "value": "当你想把一个已经存在的日程改到新的时间段、又不想动标题/描述/参会人等其他内容时使用；内部先用 eventId 拉一次日程详情确认它真实存在，再只更新开始和结束时间。如果 eventId 查不到会直接报错，不会误改别的日程。会真实修改该日程的时间。"
             }
           ],
           "precedence": "contract_final",
@@ -21306,7 +22369,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "改一个已有日程的时间（只动开始/结束时间，其他字段不变）"
+          "value": "当你想把一个已经存在的日程改到新的时间段、又不想动标题/描述/参会人等其他内容时使用；内部先用 eventId 拉一次日程详情确认它真实存在，再只更新开始和结束时间。如果 eventId 查不到会直接报错，不会误改别的日程。会真实修改该日程的时间。"
         },
         "effect": {
           "candidates": [
@@ -21839,7 +22902,7 @@
       "cli_name": "+room-groups",
       "cli_path": "calendar +room-groups",
       "confirmation": "not_required",
-      "description": "会议室分组列表",
+      "description": "当你想按楼层/园区等分组浏览会议室、或需要拿到 groupId 以便在 +room-find 里按分组过滤时使用；返回会议室分组列表，支持 --limit/--page 分页。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -21949,7 +23012,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "会议室分组列表"
+              "value": "当你想按楼层/园区等分组浏览会议室、或需要拿到 groupId 以便在 +room-find 里按分组过滤时使用；返回会议室分组列表，支持 --limit/--page 分页。"
             }
           ],
           "precedence": "contract_final",
@@ -21957,7 +23020,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "会议室分组列表"
+          "value": "当你想按楼层/园区等分组浏览会议室、或需要拿到 groupId 以便在 +room-find 里按分组过滤时使用；返回会议室分组列表，支持 --limit/--page 分页。"
         },
         "effect": {
           "candidates": [
@@ -22370,7 +23433,7 @@
       "cli_name": "+room-search",
       "cli_path": "calendar +room-search",
       "confirmation": "not_required",
-      "description": "按名称模糊搜索会议室（不检查可用性）",
+      "description": "当你只知道会议室名字、想拿到它的 roomId 以便后续预定时使用；输入 --room-name 名称关键词（建议只填核心专名，去掉“会议室”等后缀），返回名称匹配的会议室列表。它只按名字找、不判断该时段是否空闲，查可用性请用 +room-find。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -22480,7 +23543,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按名称模糊搜索会议室（不检查可用性）"
+              "value": "当你只知道会议室名字、想拿到它的 roomId 以便后续预定时使用；输入 --room-name 名称关键词（建议只填核心专名，去掉“会议室”等后缀），返回名称匹配的会议室列表。它只按名字找、不判断该时段是否空闲，查可用性请用 +room-find。"
             }
           ],
           "precedence": "contract_final",
@@ -22488,7 +23551,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按名称模糊搜索会议室（不检查可用性）"
+          "value": "当你只知道会议室名字、想拿到它的 roomId 以便后续预定时使用；输入 --room-name 名称关键词（建议只填核心专名，去掉“会议室”等后缀），返回名称匹配的会议室列表。它只按名字找、不判断该时段是否空闲，查可用性请用 +room-find。"
         },
         "effect": {
           "candidates": [
@@ -22829,7 +23892,7 @@
       "cli_name": "+suggest-time",
       "cli_path": "calendar +suggest-time",
       "confirmation": "not_required",
-      "description": "按姓名解析多位参与者，推荐大家都有空的可开会时间段（自动解析 userId）",
+      "description": "当你想为几个人凑一个大家都空闲的开会时间、但只知道他们的姓名而不想逐个手动查 userId 时使用；内部会把 --with 里的姓名逐个搜通讯录解析成唯一 userId（任何一个没匹配到或匹配到多人都会明确报出来，绝不瞎猜），再基于所有参与者的忙闲，在给定时间范围内推荐若干可用时段。只读，不创建任何日程。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -22940,7 +24003,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按姓名解析多位参与者，推荐大家都有空的可开会时间段（自动解析 userId）"
+              "value": "当你想为几个人凑一个大家都空闲的开会时间、但只知道他们的姓名而不想逐个手动查 userId 时使用；内部会把 --with 里的姓名逐个搜通讯录解析成唯一 userId（任何一个没匹配到或匹配到多人都会明确报出来，绝不瞎猜），再基于所有参与者的忙闲，在给定时间范围内推荐若干可用时段。只读，不创建任何日程。"
             }
           ],
           "precedence": "contract_final",
@@ -22948,7 +24011,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按姓名解析多位参与者，推荐大家都有空的可开会时间段（自动解析 userId）"
+          "value": "当你想为几个人凑一个大家都空闲的开会时间、但只知道他们的姓名而不想逐个手动查 userId 时使用；内部会把 --with 里的姓名逐个搜通讯录解析成唯一 userId（任何一个没匹配到或匹配到多人都会明确报出来，绝不瞎猜），再基于所有参与者的忙闲，在给定时间范围内推荐若干可用时段。只读，不创建任何日程。"
         },
         "effect": {
           "candidates": [
@@ -23567,7 +24630,7 @@
       "cli_name": "+today",
       "cli_path": "calendar +today",
       "confirmation": "not_required",
-      "description": "列出我今天的日程（自动计算今天的起止时间，无需手动填时间范围）",
+      "description": "当你想快速看看『我今天有哪些日程/会议安排』时使用；内部用本地时区自动把时间范围算成今天 00:00 到次日 00:00，转成毫秒时间戳，查询主日历（primary）下今天的全部日程。只读，不会创建或修改任何日程。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -23677,7 +24740,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出我今天的日程（自动计算今天的起止时间，无需手动填时间范围）"
+              "value": "当你想快速看看『我今天有哪些日程/会议安排』时使用；内部用本地时区自动把时间范围算成今天 00:00 到次日 00:00，转成毫秒时间戳，查询主日历（primary）下今天的全部日程。只读，不会创建或修改任何日程。"
             }
           ],
           "precedence": "contract_final",
@@ -23685,7 +24748,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出我今天的日程（自动计算今天的起止时间，无需手动填时间范围）"
+          "value": "当你想快速看看『我今天有哪些日程/会议安排』时使用；内部用本地时区自动把时间范围算成今天 00:00 到次日 00:00，转成毫秒时间戳，查询主日历（primary）下今天的全部日程。只读，不会创建或修改任何日程。"
         },
         "effect": {
           "candidates": [
@@ -23929,7 +24992,7 @@
       "cli_name": "+tomorrow",
       "cli_path": "calendar +tomorrow",
       "confirmation": "not_required",
-      "description": "列出我明天的日程（自动计算明天的起止时间，无需手动填时间范围）",
+      "description": "当你想快速看看『我明天有哪些日程/会议安排』、提前准备时使用；内部用本地时区自动把时间范围算成明天 00:00 到后天 00:00，转成毫秒时间戳，查询主日历（primary）下明天的全部日程，并投影出标题、开始时间、结束时间、地点、eventId。只读，不会创建或修改任何日程。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -24039,7 +25102,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出我明天的日程（自动计算明天的起止时间，无需手动填时间范围）"
+              "value": "当你想快速看看『我明天有哪些日程/会议安排』、提前准备时使用；内部用本地时区自动把时间范围算成明天 00:00 到后天 00:00，转成毫秒时间戳，查询主日历（primary）下明天的全部日程，并投影出标题、开始时间、结束时间、地点、eventId。只读，不会创建或修改任何日程。"
             }
           ],
           "precedence": "contract_final",
@@ -24047,7 +25110,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出我明天的日程（自动计算明天的起止时间，无需手动填时间范围）"
+          "value": "当你想快速看看『我明天有哪些日程/会议安排』、提前准备时使用；内部用本地时区自动把时间范围算成明天 00:00 到后天 00:00，转成毫秒时间戳，查询主日历（primary）下明天的全部日程，并投影出标题、开始时间、结束时间、地点、eventId。只读，不会创建或修改任何日程。"
         },
         "effect": {
           "candidates": [
@@ -24291,7 +25354,7 @@
       "cli_name": "+week",
       "cli_path": "calendar +week",
       "confirmation": "not_required",
-      "description": "列出我本周的日程（自动按周一为周首计算本周起止时间，无需手动填时间范围）",
+      "description": "当你想快速看看『我本周有哪些日程/会议安排』时使用；内部用本地时区、以周一为一周开始，自动把时间范围算成本周一 00:00 到下周一 00:00，转成毫秒时间戳，查询主日历（primary）下本周的全部日程，并投影出标题、开始时间、结束时间、eventId。只读，不会创建或修改任何日程。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -24401,7 +25464,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出我本周的日程（自动按周一为周首计算本周起止时间，无需手动填时间范围）"
+              "value": "当你想快速看看『我本周有哪些日程/会议安排』时使用；内部用本地时区、以周一为一周开始，自动把时间范围算成本周一 00:00 到下周一 00:00，转成毫秒时间戳，查询主日历（primary）下本周的全部日程，并投影出标题、开始时间、结束时间、eventId。只读，不会创建或修改任何日程。"
             }
           ],
           "precedence": "contract_final",
@@ -24409,7 +25472,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出我本周的日程（自动按周一为周首计算本周起止时间，无需手动填时间范围）"
+          "value": "当你想快速看看『我本周有哪些日程/会议安排』时使用；内部用本地时区、以周一为一周开始，自动把时间范围算成本周一 00:00 到下周一 00:00，转成毫秒时间戳，查询主日历（primary）下本周的全部日程，并投影出标题、开始时间、结束时间、eventId。只读，不会创建或修改任何日程。"
         },
         "effect": {
           "candidates": [
@@ -24663,7 +25726,7 @@
           ]
         ]
       },
-      "description": "修改日程",
+      "description": "支持修改标题、描述、时间、地点、忙碌状态等。如需修改会议室，请使用 dws calendar room [add|delete]；如需修改参会人，请使用 dws calendar attendee [add|delete]。\n\n\t\t修改周期日程的循环规则时，--recurrence-* 系列必须整体传入：只传其中一个（比如只改 --recurrence-count）会把循环规则覆盖成不完整的状态。\n\t\t至少包含 --recurrence-type、--recurrence-interval(\u003e0) 与 --recurrence-range-type，否则命令会被拒绝执行。\n\t\t如果只想微调已有周期日程的某一个循环字段，请先通过 dws calendar event get --id \u003cID\u003e 读取现有 recurrence，然后在命令中重新提供完整的 pattern + range 字段集合。",
       "display": "日历日程 / 会议室 / 闲忙",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -24776,7 +25839,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "修改日程"
+              "value": "支持修改标题、描述、时间、地点、忙碌状态等。如需修改会议室，请使用 dws calendar room [add|delete]；如需修改参会人，请使用 dws calendar attendee [add|delete]。\n\n\t\t修改周期日程的循环规则时，--recurrence-* 系列必须整体传入：只传其中一个（比如只改 --recurrence-count）会把循环规则覆盖成不完整的状态。\n\t\t至少包含 --recurrence-type、--recurrence-interval(\u003e0) 与 --recurrence-range-type，否则命令会被拒绝执行。\n\t\t如果只想微调已有周期日程的某一个循环字段，请先通过 dws calendar event get --id \u003cID\u003e 读取现有 recurrence，然后在命令中重新提供完整的 pattern + range 字段集合。"
             }
           ],
           "precedence": "contract_final",
@@ -24784,7 +25847,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "修改日程"
+          "value": "支持修改标题、描述、时间、地点、忙碌状态等。如需修改会议室，请使用 dws calendar room [add|delete]；如需修改参会人，请使用 dws calendar attendee [add|delete]。\n\n\t\t修改周期日程的循环规则时，--recurrence-* 系列必须整体传入：只传其中一个（比如只改 --recurrence-count）会把循环规则覆盖成不完整的状态。\n\t\t至少包含 --recurrence-type、--recurrence-interval(\u003e0) 与 --recurrence-range-type，否则命令会被拒绝执行。\n\t\t如果只想微调已有周期日程的某一个循环字段，请先通过 dws calendar event get --id \u003cID\u003e 读取现有 recurrence，然后在命令中重新提供完整的 pattern + range 字段集合。"
         },
         "effect": {
           "candidates": [
@@ -25008,6 +26071,12 @@
                   "value": "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日历本id，可选，默认值为 \"primary\"。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -25082,6 +26151,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日历本id，可选，默认值为 \"primary\"。",
           "property": "calendarId",
           "required": false,
           "type": "string"
@@ -25096,6 +26166,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "新描述 (最大5000字符)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程描述，最大不超过5000个字符。"
                 },
                 {
                   "precedence": "default",
@@ -25172,6 +26248,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程描述，最大不超过5000个字符。",
           "property": "description",
           "required": false,
           "type": "string"
@@ -25186,6 +26263,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "新结束时间 ISO-8601"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程结束时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。"
                 },
                 {
                   "precedence": "default",
@@ -25283,6 +26366,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日程结束时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。",
           "property": "endDateTime",
           "required": false,
           "type": "string"
@@ -25297,6 +26381,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "修改此日程的忙碌状态，无需修改则不传。busy - 在忙闲视图中，此日程时间段为忙碌; free - 此日程不占用忙闲"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "修改此日程的忙碌状态。busy - 在忙闲视图中，此日程时间段为忙碌。free - 此日程时间段不占用忙闲。"
                 },
                 {
                   "precedence": "default",
@@ -25367,6 +26457,7 @@
               "value": "string"
             }
           },
+          "interface_description": "修改此日程的忙碌状态。busy - 在忙闲视图中，此日程时间段为忙碌。free - 此日程时间段不占用忙闲。",
           "property": "freeBusy",
           "required": false,
           "type": "string"
@@ -25381,6 +26472,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "日程 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值"
                 },
                 {
                   "precedence": "default",
@@ -25417,8 +26514,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -25429,9 +26532,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -25463,6 +26566,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程ID，可调用创建日程接口或查询日程列表接口获取id参数值",
           "property": "eventId",
           "required": true,
           "type": "string"
@@ -25477,6 +26581,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "地点信息（纯文本备注，如‘3号楼A区’；不等于预订会议室）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "地点信息"
                 },
                 {
                   "precedence": "default",
@@ -25547,6 +26657,7 @@
               "value": "string"
             }
           },
+          "interface_description": "地点信息",
           "property": "location",
           "required": false,
           "type": "string"
@@ -25597,30 +26708,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-range-type is numbered"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-range-type is numbered"
             },
             "type": {
               "candidates": [
@@ -25639,6 +26762,7 @@
           },
           "property": "recurrence.range.numberOfOccurrences",
           "required": false,
+          "required_when": "recurrence-range-type is numbered",
           "type": "integer"
         },
         "recurrence-day-of-month": {
@@ -25687,30 +26811,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-type is absoluteMonthly or absoluteYearly"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-type is absoluteMonthly or absoluteYearly"
             },
             "type": {
               "candidates": [
@@ -25729,6 +26865,7 @@
           },
           "property": "recurrence.pattern.dayOfMonth",
           "required": false,
+          "required_when": "recurrence-type is absoluteMonthly or absoluteYearly",
           "type": "integer"
         },
         "recurrence-days-of-week": {
@@ -25777,30 +26914,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-type is weekly or relativeMonthly"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-type is weekly or relativeMonthly"
             },
             "type": {
               "candidates": [
@@ -25819,6 +26968,7 @@
           },
           "property": "recurrence.pattern.daysOfWeek",
           "required": false,
+          "required_when": "recurrence-type is weekly or relativeMonthly",
           "type": "string"
         },
         "recurrence-end-date": {
@@ -25887,30 +27037,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-range-type is endDate"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-range-type is endDate"
             },
             "type": {
               "candidates": [
@@ -25930,6 +27092,7 @@
           "format": "date-time",
           "property": "recurrence.range.endDate",
           "required": false,
+          "required_when": "recurrence-range-type is endDate",
           "type": "string"
         },
         "recurrence-first-day-of-week": {
@@ -26074,30 +27237,42 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "recurrence-type is relativeMonthly"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "recurrence-type is relativeMonthly"
             },
             "type": {
               "candidates": [
@@ -26116,6 +27291,7 @@
           },
           "property": "recurrence.pattern.index",
           "required": false,
+          "required_when": "recurrence-type is relativeMonthly",
           "type": "string"
         },
         "recurrence-interval": {
@@ -26164,8 +27340,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -26176,24 +27358,30 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "tool_schema_hint",
+              "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "any recurrence-* flag is provided"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "any recurrence-* flag is provided"
             },
             "type": {
               "candidates": [
@@ -26211,7 +27399,8 @@
             }
           },
           "property": "recurrence.pattern.interval",
-          "required": true,
+          "required": false,
+          "required_when": "any recurrence-* flag is provided",
           "type": "integer"
         },
         "recurrence-range-type": {
@@ -26260,8 +27449,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -26272,24 +27467,30 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "tool_schema_hint",
+              "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "any recurrence-* flag is provided"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "any recurrence-* flag is provided"
             },
             "type": {
               "candidates": [
@@ -26307,7 +27508,8 @@
             }
           },
           "property": "recurrence.range.type",
-          "required": true,
+          "required": false,
+          "required_when": "any recurrence-* flag is provided",
           "type": "string"
         },
         "recurrence-type": {
@@ -26356,8 +27558,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": false
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -26368,24 +27576,30 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "tool_schema_hint",
+              "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "any recurrence-* flag is provided"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "tool_schema_hint",
+              "value": "any recurrence-* flag is provided"
             },
             "type": {
               "candidates": [
@@ -26403,7 +27617,8 @@
             }
           },
           "property": "recurrence.pattern.type",
-          "required": true,
+          "required": false,
+          "required_when": "any recurrence-* flag is provided",
           "type": "string"
         },
         "rich-text-desc": {
@@ -26416,6 +27631,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "html格式的富文本类型日程描述，用于复杂内容的展示"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "html格式的富文本类型日程描述，用于复杂内容的展示。"
                 },
                 {
                   "precedence": "default",
@@ -26492,6 +27713,7 @@
               "value": "string"
             }
           },
+          "interface_description": "html格式的富文本类型日程描述，用于复杂内容的展示。",
           "property": "richTextDescription",
           "required": false,
           "type": "string"
@@ -26506,6 +27728,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "新开始时间 ISO-8601"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程开始时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。"
                 },
                 {
                   "precedence": "default",
@@ -26603,6 +27831,7 @@
             }
           },
           "format": "date-time",
+          "interface_description": "日程开始时间，格式为ISO-8601的带时区的date-time格式，例如2025-11-14T10:00:00+08:00。",
           "property": "startDateTime",
           "required": false,
           "type": "string"
@@ -26617,6 +27846,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "时区 IANA 格式 (例如 Asia/Shanghai)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "IANA Time Zone Database name. 指定日程时区，比如：Asia/Shanghai. 默认值为Asia/Shanghai"
                 },
                 {
                   "precedence": "default",
@@ -26693,6 +27928,7 @@
               "value": "string"
             }
           },
+          "interface_description": "IANA Time Zone Database name. 指定日程时区，比如：Asia/Shanghai. 默认值为Asia/Shanghai",
           "property": "timeZone",
           "required": false,
           "type": "string"
@@ -26707,6 +27943,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "新标题"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "日程标题，最大不超过2048个字符。"
                 },
                 {
                   "precedence": "default",
@@ -26783,6 +28025,7 @@
               "value": "string"
             }
           },
+          "interface_description": "日程标题，最大不超过2048个字符。",
           "property": "summary",
           "required": false,
           "type": "string"

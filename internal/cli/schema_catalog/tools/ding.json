@@ -356,6 +356,12 @@
                   "value": "DING 消息 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要撤回的钉钉消息ID，可通过发送DING消息接口获取"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -390,8 +396,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -402,9 +414,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -436,6 +448,7 @@
               "value": "string"
             }
           },
+          "interface_description": "要撤回的钉钉消息ID，可通过发送DING消息接口获取",
           "property": "openDingId",
           "required": true,
           "type": "string"
@@ -450,6 +463,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "机器人 ID (必填，或设 DINGTALK_DING_ROBOT_CODE)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "发送钉钉消息的机器人ID，必须与发送消息的机器人为同一个"
                 },
                 {
                   "precedence": "default",
@@ -480,8 +499,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -492,9 +517,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -526,6 +551,7 @@
               "value": "string"
             }
           },
+          "interface_description": "发送钉钉消息的机器人ID，必须与发送消息的机器人为同一个",
           "property": "robotCode",
           "required": true,
           "type": "string"
@@ -559,7 +585,7 @@
       "cli_name": "send",
       "cli_path": "ding message send",
       "confirmation": "not_required",
-      "description": "以企业机器人发送应用内/短信/电话 DING",
+      "description": "发送 DING 消息。类型:\n  app  = 应用内 DING (默认)\n  sms  = 短信 DING (有成本)\n  call = 电话 DING (有成本)",
       "display": "DING 消息 / 发送 / 撤回",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -674,7 +700,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "以企业机器人发送应用内/短信/电话 DING"
+              "value": "发送 DING 消息。类型:\n  app  = 应用内 DING (默认)\n  sms  = 短信 DING (有成本)\n  call = 电话 DING (有成本)"
             }
           ],
           "precedence": "contract_final",
@@ -682,7 +708,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "以企业机器人发送应用内/短信/电话 DING"
+          "value": "发送 DING 消息。类型:\n  app  = 应用内 DING (默认)\n  sms  = 短信 DING (有成本)\n  call = 电话 DING (有成本)"
         },
         "effect": {
           "candidates": [
@@ -906,6 +932,18 @@
                   "value": "消息内容 (必填)"
                 },
                 {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
+                  "source": "tool_schema_hint",
+                  "value": "DING 消息内容。"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "消息内容"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -934,8 +972,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -946,9 +996,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -980,6 +1030,7 @@
               "value": "string"
             }
           },
+          "interface_description": "消息内容",
           "property": "content",
           "required": true,
           "type": "string"
@@ -994,6 +1045,18 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "机器人 ID，发 DING 的机器人编码 (必填，可从 应用管理→机器人 获取，或设 DINGTALK_DING_ROBOT_CODE)"
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
+                  "source": "tool_schema_hint",
+                  "value": "DING 机器人编码。通常来自开放平台或应用机器人配置。"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "机器人Code"
                 },
                 {
                   "precedence": "default",
@@ -1024,8 +1087,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1036,9 +1111,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -1070,6 +1145,7 @@
               "value": "string"
             }
           },
+          "interface_description": "机器人Code",
           "property": "robotCode",
           "required": true,
           "type": "string"
@@ -1087,6 +1163,18 @@
                   "value": "提醒类型: app/sms/call (默认 app)"
                 },
                 {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
+                  "source": "tool_schema_hint",
+                  "value": "提醒类型。CLI 默认使用 app，对应应用内提醒。"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "提醒类型，1：应用内钉钉，2：短信，3：电话"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1097,6 +1185,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "提醒类型: app/sms/call (默认 app)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -1125,6 +1233,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -1167,6 +1281,8 @@
               "value": "string"
             }
           },
+          "interface_description": "提醒类型，1：应用内钉钉，2：短信，3：电话",
+          "interface_type": "number",
           "property": "remindType",
           "required": false,
           "type": "string"
@@ -1183,6 +1299,18 @@
                   "value": "接收人 userId 列表 (必填)"
                 },
                 {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
+                  "source": "tool_schema_hint",
+                  "value": "接收人的 userId 列表。CLI 使用逗号分隔，例如 user1,user2。"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "接收者用户ID列表"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1193,6 +1321,32 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "接收人 userId 列表 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "array"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -1217,8 +1371,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1229,9 +1395,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -1263,6 +1429,8 @@
               "value": "string"
             }
           },
+          "interface_description": "接收者用户ID列表",
+          "interface_type": "array",
           "property": "receiverUserIdList",
           "required": true,
           "type": "string"
@@ -1294,7 +1462,7 @@
       "cli_name": "+list",
       "cli_path": "ding +list",
       "confirmation": "not_required",
-      "description": "查询 DING 消息列表",
+      "description": "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。",
       "display": "DING 消息 / 发送 / 撤回",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -1404,7 +1572,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询 DING 消息列表"
+              "value": "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
             }
           ],
           "precedence": "contract_final",
@@ -1412,7 +1580,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询 DING 消息列表"
+          "value": "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
         },
         "effect": {
           "candidates": [
@@ -1832,7 +2000,7 @@
       "cli_name": "+recall-personal",
       "cli_path": "ding +recall-personal",
       "confirmation": "user_required",
-      "description": "撤回本人发起的 DING",
+      "description": "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。",
       "display": "DING 消息 / 发送 / 撤回",
       "effect": "destructive",
       "effect_source": "corecmd.contract",
@@ -1942,7 +2110,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "撤回本人发起的 DING"
+              "value": "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
             }
           ],
           "precedence": "contract_final",
@@ -1950,7 +2118,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "撤回本人发起的 DING"
+          "value": "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
         },
         "effect": {
           "candidates": [
@@ -2291,7 +2459,7 @@
       "cli_name": "+receiver-status",
       "cli_path": "ding +receiver-status",
       "confirmation": "not_required",
-      "description": "查询 DING 消息接收人已读状态",
+      "description": "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。",
       "display": "DING 消息 / 发送 / 撤回",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2401,7 +2569,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询 DING 消息接收人已读状态"
+              "value": "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
             }
           ],
           "precedence": "contract_final",
@@ -2409,7 +2577,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询 DING 消息接收人已读状态"
+          "value": "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
         },
         "effect": {
           "candidates": [
@@ -2750,7 +2918,7 @@
       "cli_name": "+send-personal",
       "cli_path": "ding +send-personal",
       "confirmation": "user_required",
-      "description": "以本人身份发送 DING 给指定人",
+      "description": "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。",
       "display": "DING 消息 / 发送 / 撤回",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -2860,7 +3028,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "以本人身份发送 DING 给指定人"
+              "value": "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
             }
           ],
           "precedence": "contract_final",
@@ -2868,7 +3036,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "以本人身份发送 DING 给指定人"
+          "value": "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
         },
         "effect": {
           "candidates": [

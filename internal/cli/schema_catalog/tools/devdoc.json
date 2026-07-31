@@ -25,7 +25,7 @@
           ]
         ]
       },
-      "description": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
+      "description": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。",
       "display": "开放平台文档搜索",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -138,7 +138,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）"
+              "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
             }
           ],
           "precedence": "contract_final",
@@ -146,7 +146,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）"
+          "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
         },
         "effect": {
           "candidates": [
@@ -371,6 +371,12 @@
                   "value": "页码，默认 1"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页页码"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -381,6 +387,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "页码，默认 1"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -445,6 +471,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页页码",
+          "interface_type": "number",
           "property": "page",
           "required": false,
           "type": "string"
@@ -459,6 +487,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "搜索关键词 (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "搜索关键词"
                 },
                 {
                   "precedence": "default",
@@ -508,6 +542,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "inference",
                   "selected": false,
                   "source": "usage_required_inference",
@@ -555,6 +595,7 @@
               "value": "string"
             }
           },
+          "interface_description": "搜索关键词",
           "property": "keyword",
           "required": false,
           "type": "string"
@@ -572,6 +613,12 @@
                   "value": "每页数量，默认 10"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页大小"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -582,6 +629,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页数量，默认 10"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -646,6 +713,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页大小",
+          "interface_type": "number",
           "property": "size",
           "required": false,
           "type": "string"

@@ -35,17 +35,6 @@ func (f *fakeDevAppRunner) Run(_ context.Context, inv executor.Invocation) (exec
 	return executor.Result{Invocation: inv, Response: map[string]any{}}, nil
 }
 
-// devAppTestSelection 满足声明完整性构造校验（Schema 声明即最终源，
-// 必须自带完整评审散文）；具体文案与单测断言无关。
-func devAppTestSelection(summary string) LeafSelectionDecl {
-	return LeafSelectionDecl{
-		AgentSummary: summary,
-		UseWhen:      []string{"测试场景"},
-		AvoidWhen:    []string{"非测试场景"},
-		Examples:     []string{"dws dev app get --unified-app-id APP-1"},
-	}
-}
-
 // TestDevAppCredentialsGetLeafDispatchesTrimmedArgs 验证迁移到 LeafSpec 后：
 // toolArgs 键/值/trim 与手写版等价，且 PostMount 设上了 schema 注解与 NoArgs。
 func TestDevAppCredentialsGetLeafDispatchesTrimmedArgs(t *testing.T) {
@@ -240,7 +229,7 @@ func TestDevAppGetLeafDualKey(t *testing.T) {
 	r := &fakeDevAppRunner{}
 	cmd := newDevAppGetCommand(r)
 	if err := cmd.RunE(cmd, nil); err == nil ||
-		!strings.Contains(err.Error(), "请至少指定 --unified-app-id、--app-key 之一") {
+		!strings.Contains(err.Error(), "请传入 --unified-app-id 或 --app-key") {
 		t.Fatalf("err = %v, want 二选一报错", err)
 	}
 	// 只 app-key：params 含 appKey，无 unifiedAppId。
@@ -328,8 +317,8 @@ func TestDevAppUpdateLeaf(t *testing.T) {
 	_ = cmd.Flags().Set("unified-app-id", "APP-U")
 	// 全空：至少一项拦（框架统一约束措辞）。
 	if err := cmd.RunE(cmd, nil); err == nil ||
-		!strings.Contains(err.Error(), "请至少指定 --name、--desc、--icon-media-id 之一") {
-		t.Fatalf("err = %v, want 请至少指定 --name、--desc、--icon-media-id 之一", err)
+		!strings.Contains(err.Error(), "至少提供一项待更新字段：--name、--desc 或 --icon-media-id") {
+		t.Fatalf("err = %v, want 至少提供一项待更新字段：--name、--desc 或 --icon-media-id", err)
 	}
 	_ = cmd.Flags().Set("desc", " 新描述 ")
 	if err := cmd.RunE(cmd, nil); err != nil {
@@ -387,8 +376,8 @@ func TestDevAppSecurityConfigLeaf(t *testing.T) {
 	_ = cmd.Flags().Set("unified-app-id", "APP-S")
 	// 全空：至少一项拦。
 	if err := cmd.RunE(cmd, nil); err == nil ||
-		!strings.Contains(err.Error(), "请至少指定 --ip-whitelist、--redirect-urls、--sso-urls 之一") {
-		t.Fatalf("err = %v, want 请至少指定 --ip-whitelist、--redirect-urls、--sso-urls 之一", err)
+		!strings.Contains(err.Error(), "至少提供一项安全配置：--ip-whitelist、--redirect-urls 或 --sso-urls") {
+		t.Fatalf("err = %v, want 至少提供一项安全配置：--ip-whitelist、--redirect-urls 或 --sso-urls", err)
 	}
 	// 设 ip-whitelist：注入 []string，其余省略。
 	_ = cmd.Flags().Set("ip-whitelist", "10.0.0.1; 10.0.0.2")
@@ -449,8 +438,8 @@ func TestDevAppWebappConfigLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := cmd.RunE(cmd, nil)
-	if err == nil || !strings.Contains(err.Error(), "请至少指定 --h5-page-type、--homepage-url、--pc-homepage-url、--omp-url 之一") {
-		t.Fatalf("err = %v, want 请至少指定 --h5-page-type、--homepage-url、--pc-homepage-url、--omp-url 之一", err)
+	if err == nil || !strings.Contains(err.Error(), "至少提供一项网页应用配置：--h5-page-type、--homepage-url、--pc-homepage-url 或 --omp-url") {
+		t.Fatalf("err = %v, want 至少提供一项网页应用配置：--h5-page-type、--homepage-url、--pc-homepage-url 或 --omp-url", err)
 	}
 
 	// 只设一项：该项入参，其余 OmitEmpty 省略。

@@ -317,7 +317,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -325,7 +325,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -728,7 +728,7 @@
       "primary_cli_path": "dev app member add",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "添加开放平台应用成员",
       "use_when": [
@@ -1051,7 +1051,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -1059,7 +1059,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -1347,7 +1347,7 @@
       "primary_cli_path": "dev app permission add",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "申请开放平台应用权限点",
       "use_when": [
@@ -4927,7 +4927,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -4935,7 +4935,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -5108,7 +5108,7 @@
       "primary_cli_path": "dev app disable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "停用开放平台企业内部应用",
       "use_when": [
@@ -5431,7 +5431,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -5439,7 +5439,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -5612,7 +5612,7 @@
       "primary_cli_path": "dev app robot disable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "停用现有应用的机器人能力",
       "use_when": [
@@ -5935,7 +5935,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -5943,7 +5943,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -6116,7 +6116,7 @@
       "primary_cli_path": "dev app enable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "启用开放平台企业内部应用",
       "use_when": [
@@ -6439,7 +6439,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -6447,7 +6447,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -6620,7 +6620,7 @@
       "primary_cli_path": "dev app robot enable",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "启用现有应用机器人能力（纯启用，无需配置字段）",
       "use_when": [
@@ -6642,14 +6642,6 @@
       "cli_name": "get",
       "cli_path": "dev app get",
       "confirmation": "not_required",
-      "constraints": {
-        "require_one_of": [
-          [
-            "unified-app-id",
-            "app-key"
-          ]
-        ]
-      },
       "description": "查询开放平台企业内部应用详情",
       "display": "开放平台开发者能力",
       "dry_run": {
@@ -7075,14 +7067,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -7093,9 +7079,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -7190,14 +7176,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -7208,9 +7188,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -14831,7 +14811,7 @@
       "dry_run": {
         "preview_kind": "invocation"
       },
-      "effect": "destructive",
+      "effect": "write",
       "effect_source": "corecmd.contract",
       "examples": [
         "dws dev app version publish --unified-app-id \u003cunifiedAppId\u003e --version-id \u003cversionId\u003e --dry-run --format json"
@@ -14981,7 +14961,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "destructive"
+              "value": "write"
             }
           ],
           "precedence": "contract_final",
@@ -14989,7 +14969,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "destructive"
+          "value": "write"
         },
         "examples": {
           "candidates": [
@@ -16470,7 +16450,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -16478,7 +16458,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -16881,7 +16861,7 @@
       "primary_cli_path": "dev app member remove",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "移除开放平台应用成员",
       "use_when": [
@@ -17204,7 +17184,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -17212,7 +17192,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -17500,7 +17480,7 @@
       "primary_cli_path": "dev app permission remove",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "取消开放平台应用权限点",
       "use_when": [
@@ -17530,7 +17510,7 @@
           ]
         ]
       },
-      "description": "通过 dev 兼容入口搜索开放平台文档",
+      "description": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。",
       "display": "开放平台开发者能力",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -17640,7 +17620,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "通过 dev 兼容入口搜索开放平台文档"
+              "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
             }
           ],
           "precedence": "contract_final",
@@ -17648,7 +17628,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "通过 dev 兼容入口搜索开放平台文档"
+          "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
         },
         "effect": {
           "candidates": [
@@ -17871,6 +17851,12 @@
                   "value": "页码，默认 1"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页页码"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -17881,6 +17867,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "页码，默认 1"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -17945,6 +17951,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页页码",
+          "interface_type": "number",
           "property": "page",
           "required": false,
           "type": "string"
@@ -17959,6 +17967,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "搜索关键词 (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "搜索关键词"
                 },
                 {
                   "precedence": "default",
@@ -17999,6 +18013,12 @@
                   "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "inference",
@@ -18047,6 +18067,7 @@
               "value": "string"
             }
           },
+          "interface_description": "搜索关键词",
           "property": "keyword",
           "required": false,
           "type": "string"
@@ -18064,6 +18085,12 @@
                   "value": "每页数量，默认 10"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页大小"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -18074,6 +18101,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页数量，默认 10"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -18138,6 +18185,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页大小",
+          "interface_type": "number",
           "property": "size",
           "required": false,
           "type": "string"
@@ -18479,7 +18528,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -18487,7 +18536,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -19696,6 +19745,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -20077,7 +20132,7 @@
       "primary_cli_path": "dev app robot config",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "创建或更新现有应用的机器人配置（upsert）",
       "use_when": [
@@ -20099,16 +20154,6 @@
       "cli_name": "config",
       "cli_path": "dev app webapp config",
       "confirmation": "user_required",
-      "constraints": {
-        "require_one_of": [
-          [
-            "h5-page-type",
-            "homepage-url",
-            "pc-homepage-url",
-            "omp-url"
-          ]
-        ]
-      },
       "description": "配置网页应用能力",
       "display": "开放平台开发者能力",
       "dry_run": {
@@ -20410,7 +20455,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -20418,7 +20463,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -20531,14 +20576,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -20549,9 +20588,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -20646,14 +20685,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -20664,9 +20697,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -20761,14 +20794,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -20779,9 +20806,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -20876,14 +20903,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -20894,9 +20915,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -21051,7 +21072,7 @@
       "primary_cli_path": "dev app webapp config",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "配置网页应用能力",
       "use_when": [
@@ -22441,7 +22462,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -22449,7 +22470,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -22737,7 +22758,7 @@
       "primary_cli_path": "dev app event subscribe",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "订阅应用事件回调",
       "use_when": [
@@ -23060,7 +23081,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -23068,7 +23089,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -23356,7 +23377,7 @@
       "primary_cli_path": "dev app event unsubscribe",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "取消订阅应用事件",
       "use_when": [
@@ -23378,16 +23399,7 @@
       "cli_name": "update",
       "cli_path": "dev app update",
       "confirmation": "user_required",
-      "constraints": {
-        "require_one_of": [
-          [
-            "name",
-            "desc",
-            "icon-media-id"
-          ]
-        ]
-      },
-      "description": "修改开放平台企业内部应用基础信息",
+      "description": "修改开放平台企业内部应用基础信息：名称、描述或图标至少提供一项。",
       "display": "开放平台开发者能力",
       "dry_run": {
         "preview_kind": "invocation"
@@ -23500,7 +23512,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "修改开放平台企业内部应用基础信息"
+              "value": "修改开放平台企业内部应用基础信息：名称、描述或图标至少提供一项。"
             }
           ],
           "precedence": "contract_final",
@@ -23508,7 +23520,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "修改开放平台企业内部应用基础信息"
+          "value": "修改开放平台企业内部应用基础信息：名称、描述或图标至少提供一项。"
         },
         "dry_run": {
           "candidates": [
@@ -23688,7 +23700,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -23696,7 +23708,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -23809,14 +23821,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -23827,9 +23833,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -23924,14 +23930,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -23942,9 +23942,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -24039,16 +24039,16 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
-                  "precedence": "native_annotation",
+                  "precedence": "tool_schema_hint",
                   "selected": false,
-                  "source": "native_annotation",
-                  "value": false
+                  "source": "tool_schema_hint",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -24057,9 +24057,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -24214,7 +24214,7 @@
       "primary_cli_path": "dev app update",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "修改开放平台企业内部应用基础信息",
       "use_when": [
@@ -24236,15 +24236,6 @@
       "cli_name": "config",
       "cli_path": "dev app security config",
       "confirmation": "user_required",
-      "constraints": {
-        "require_one_of": [
-          [
-            "ip-whitelist",
-            "redirect-urls",
-            "sso-urls"
-          ]
-        ]
-      },
       "description": "更新开放平台应用安全配置",
       "display": "开放平台开发者能力",
       "dry_run": {
@@ -24546,7 +24537,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "medium"
+              "value": "high"
             }
           ],
           "precedence": "contract_final",
@@ -24554,7 +24545,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "medium"
+          "value": "high"
         },
         "title": {
           "candidates": [
@@ -24667,14 +24658,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -24685,9 +24670,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -24782,14 +24767,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -24800,9 +24779,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -24897,14 +24876,8 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": false
                 },
@@ -24915,9 +24888,9 @@
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -25072,7 +25045,7 @@
       "primary_cli_path": "dev app security config",
       "product_id": "dev",
       "reviewed": true,
-      "risk": "medium",
+      "risk": "high",
       "source": "reviewed_command_registry",
       "title": "更新开放平台应用安全配置",
       "use_when": [

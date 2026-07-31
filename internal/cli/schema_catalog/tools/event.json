@@ -25,7 +25,7 @@
           ]
         ]
       },
-      "description": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+      "description": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。",
       "display": "事件订阅 (DingTalk Stream 长连接)",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -138,7 +138,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON"
+              "value": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。"
             }
           ],
           "precedence": "contract_final",
@@ -146,7 +146,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON"
+          "value": "订阅 DingTalk 个人事件并将每条事件以 NDJSON 输出到 stdout。\n\n输出格式（事件流默认 ndjson；显式 -f json/pretty/raw 可覆盖；-f table/csv 对\n事件流无意义会 fallback 到 ndjson）：\n  ndjson  (默认)  一行一对象，适合 jq / 管道处理\n  json            每事件多行美化 JSON（必须配 --max-events 或 --duration）\n  pretty          同 json，未来加颜色\n  raw             仅 SDK 原始 payload，无外层封装\n  compact         单行紧凑 JSON；不传 --flatten 时沿用原 compact processor\n\n数据结构：\n  ndjson/json/pretty 默认保持 transport envelope（type/event_type/data/headers）\n  --flatten          结构化格式输出稳定的顶层业务字段，适合 Agent / 脚本直接消费\n\n默认使用当前 OAuth 登录态自动创建/复用个人订阅并建立个人长连接；非默认组织加\n--profile。连上后 stderr 打就绪行 [event] ready，等它出现再读 stdout；停机用\nSIGTERM、关 stdin，或先用 dws event stop \u003csubscribe_id\u003e --dry-run 预览、确认后加\n--yes，绝不要 kill -9。\n\n可提供多个 event_key。多事件会各自创建订阅和本地 consumer，但共享同一 bus、\n远程连接、输出和 duration/max-events。用户类事件必须共享一个 --user 或\n--open-dingtalk-id，群类事件必须共享一个 --group；用户类与群类不能混用。\n全部 consumer 就绪后 stderr 输出 [event] ready event_count=\u003cn\u003e bus_pid=\u003cpid\u003e。\n--event-types/--filter 只影响本地 bus → consume 这一段投递；普通个人事件消费\n通常不需要设置。"
         },
         "effect": {
           "candidates": [
@@ -2820,7 +2820,7 @@
       "cli_name": "list",
       "cli_path": "event list",
       "confirmation": "not_required",
-      "description": "列出支持的个人事件目录与状态说明",
+      "description": "列出当前支持的个人事件目录。",
       "display": "事件订阅 (DingTalk Stream 长连接)",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2932,7 +2932,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出支持的个人事件目录与状态说明"
+              "value": "列出当前支持的个人事件目录。"
             }
           ],
           "precedence": "contract_final",
@@ -2940,7 +2940,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出支持的个人事件目录与状态说明"
+          "value": "列出当前支持的个人事件目录。"
         },
         "effect": {
           "candidates": [
@@ -4078,7 +4078,7 @@
       "cli_name": "status",
       "cli_path": "event status",
       "confirmation": "not_required",
-      "description": "查看个人事件订阅、本地 bus 与消费进程状态",
+      "description": "显示当前用户个人事件订阅、personal bus 状态和本地 consume 进程。",
       "display": "事件订阅 (DingTalk Stream 长连接)",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -4188,7 +4188,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查看个人事件订阅、本地 bus 与消费进程状态"
+              "value": "显示当前用户个人事件订阅、personal bus 状态和本地 consume 进程。"
             }
           ],
           "precedence": "contract_final",
@@ -4196,7 +4196,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查看个人事件订阅、本地 bus 与消费进程状态"
+          "value": "显示当前用户个人事件订阅、personal bus 状态和本地 consume 进程。"
         },
         "effect": {
           "candidates": [
@@ -4986,7 +4986,7 @@
           ]
         ]
       },
-      "description": "取消个人事件订阅并停止对应本地消费",
+      "description": "取消个人事件订阅并停止本地消费，清理对应本地消费状态，并尝试停止对应前台 consume。\n\n传 subscribe_id 时取消该个人订阅；传 --all 时取消当前身份下本地记录的全部个人订阅。\n取消后如果没有剩余本地个人订阅，会停止 personal bus。",
       "display": "事件订阅 (DingTalk Stream 长连接)",
       "dry_run": {
         "preview_kind": "request"
@@ -5101,7 +5101,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "取消个人事件订阅并停止对应本地消费"
+              "value": "取消个人事件订阅并停止本地消费，清理对应本地消费状态，并尝试停止对应前台 consume。\n\n传 subscribe_id 时取消该个人订阅；传 --all 时取消当前身份下本地记录的全部个人订阅。\n取消后如果没有剩余本地个人订阅，会停止 personal bus。"
             }
           ],
           "precedence": "contract_final",
@@ -5109,7 +5109,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "取消个人事件订阅并停止对应本地消费"
+          "value": "取消个人事件订阅并停止本地消费，清理对应本地消费状态，并尝试停止对应前台 consume。\n\n传 subscribe_id 时取消该个人订阅；传 --all 时取消当前身份下本地记录的全部个人订阅。\n取消后如果没有剩余本地个人订阅，会停止 personal bus。"
         },
         "dry_run": {
           "candidates": [

@@ -184,18 +184,23 @@ func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtim
 
 func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	if final, ok := RuntimeContractFinal(entry.Command); ok {
-		return runtimeToolSpecFromContractFinal(entry, final)
+		return runtimeToolSpecFromContractFinal(entry, final, metadata)
 	}
 	return runtimeToolSpecFromLegacyMetadata(entry, metadata)
 }
 
 // runtimeToolSpecFromContractFinal pass-throughs Contract-authored Schema fields.
-// Declared values are the final data source; hints/registry/MCP do not merge.
-func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFinalPayload) (ToolSpec, error) {
+// Declared values are the final data source; hints/registry text does not merge.
+// Pinned MCP parameter metadata still participates in parameter resolution:
+// interface_type and interface-side required are interface facts the CLI
+// declaration does not own, and dropping them is a published-Schema
+// compatibility break, not a declaration takeover.
+func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)
-	// Parameters: cobra + native Contract annotations only (no hint/MCP merge).
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, nil, nil, constraints)
+	hint := runtimeSchemaHintForEntry(entry)
+	embeddedMeta, _ := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, hint.Parameters, embeddedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
 	}

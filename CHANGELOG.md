@@ -8,7 +8,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Fixed
 
-- **Unified command safety and Shortcut runtime (H0)** — Shortcut leaves now execute through `cmdcore.NewCommand`, sharing the same typed Safety confirmation gate as Leaf commands. EOF / closed stdin returns `confirmation_required`, and interactive `no` returns the existing non-zero cancellation validation error instead of reporting success for an operation that did not run. Pass `--yes` or `--dry-run` to skip the prompt.
+- **Unified command safety and Shortcut runtime (H0)** — Shortcut leaves now execute through `corecmd.New`, sharing the same typed Safety confirmation gate as Leaf commands. EOF / closed stdin returns `confirmation_required`, and interactive `no` returns the existing non-zero cancellation validation error instead of reporting success for an operation that did not run. Pass `--yes` or `--dry-run` to skip the prompt.
 
 ## [1.0.56-beta.2] - 2026-07-30
 

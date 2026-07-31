@@ -250,14 +250,36 @@ func TestLeafArgsOmitsEmptyAndNonPositive(t *testing.T) {
 }
 
 func TestNewLeafCommandCustomRunE(t *testing.T) {
+	// The custom RunE replaces dispatch, not the declared contract.
 	called := false
-	spec := leafTestSpec()
-	spec.RunE = func(cmd *cobra.Command, args []string) error {
-		called = true
-		return nil
+	newSend := func() *cobra.Command {
+		called = false
+		spec := leafTestSpec()
+		spec.RunE = func(cmd *cobra.Command, args []string) error {
+			called = true
+			return nil
+		}
+		return NewLeafCommand(spec)
 	}
-	cmd := NewLeafCommand(spec)
-	if err := cmd.RunE(cmd, nil); err != nil || !called {
+
+	unsatisfied := newSend()
+	err := unsatisfied.RunE(unsatisfied, nil)
+	if err == nil || !strings.Contains(err.Error(), "missing required flag(s)") {
+		t.Fatalf("custom RunE must not bypass declared required flags, got %v", err)
+	}
+	if called {
+		t.Fatal("custom RunE ran despite an unsatisfied declaration")
+	}
+
+	t.Setenv("DWS_LEAF_TEST_TOKEN", "tok")
+	satisfied := newSend()
+	if err := satisfied.Flags().Set("users", "u1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := satisfied.Flags().Set("content", "hello"); err != nil {
+		t.Fatal(err)
+	}
+	if err := satisfied.RunE(satisfied, nil); err != nil || !called {
 		t.Fatalf("custom RunE not used: called=%v err=%v", called, err)
 	}
 }

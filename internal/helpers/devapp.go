@@ -374,8 +374,14 @@ func newDevAppGetCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（与 --app-key 二选一）", Bind: "unifiedAppId", Trim: true, OmitEmpty: true},
 			{Name: "app-key", Usage: "按 appKey/clientId 查询应用详情（与 --unified-app-id 二选一）", Bind: "appKey", Trim: true, OmitEmpty: true},
 		},
-		Constraints: []LeafConstraint{
-			{Kind: LeafAtLeastOne, Flags: []string{"unified-app-id", "app-key"}},
+		// 二选一走 Validate 而非类型化 Constraints：发布 constraints 会改变已
+		// 交付的 Schema 契约（merge-base 为 null），本 PR 承诺零契约变更。
+		// 声明化发布留给独立的契约变更 PR。
+		Validate: func(cmd *cobra.Command, args []string) error {
+			if devAppStringFlag(cmd, "unified-app-id") == "" && devAppStringFlag(cmd, "app-key") == "" {
+				return apperrors.NewValidation("请传入 --unified-app-id 或 --app-key")
+			}
+			return nil
 		},
 		Schema: LeafSchema{
 			Description: "查询开放平台企业内部应用详情",
@@ -442,8 +448,13 @@ func newDevAppUpdateCommand(runner executor.Runner) *cobra.Command {
 			{Name: "desc", Usage: "新的应用描述", Bind: "desc", Trim: true, OmitEmpty: true},
 			{Name: "icon-media-id", Usage: "新的应用图标 mediaId", Bind: "iconMediaId", Trim: true, OmitEmpty: true},
 		},
-		Constraints: []LeafConstraint{
-			{Kind: LeafAtLeastOne, Flags: []string{"name", "desc", "icon-media-id"}},
+		// 至少一项走 Validate 而非类型化 Constraints：零契约变更（见 get 命令注释）。
+		Validate: func(cmd *cobra.Command, args []string) error {
+			if devAppStringFlag(cmd, "name") == "" && devAppStringFlag(cmd, "desc") == "" &&
+				devAppStringFlag(cmd, "icon-media-id") == "" {
+				return apperrors.NewValidation("至少提供一项待更新字段：--name、--desc 或 --icon-media-id")
+			}
+			return nil
 		},
 		Schema: LeafSchema{
 			Description: "修改开放平台企业内部应用基础信息",
@@ -558,6 +569,8 @@ func newDevAppDeleteCommand(runner executor.Runner) *cobra.Command {
 		Example: "  dws dev app delete --unified-app-id UNIFIED_APP_ID --confirm-name 应用名 --yes --format json",
 		Tool:    devAppDeleteTool,
 		Safety:  devAppSafetyDestructive(),
+		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
+		ConfirmFirst: true,
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "confirm-name", Usage: "二次确认：必须与被删应用的名称一致（不可逆操作的防误删）", Bind: "confirmName", Trim: true, OmitEmpty: true},
@@ -688,8 +701,13 @@ func newDevAppWebappConfigCommand(runner executor.Runner) *cobra.Command {
 			{Name: "pc-homepage-url", Usage: "PC 端首页地址", Bind: "pcHomepageUrl", Trim: true, OmitEmpty: true},
 			{Name: "omp-url", Usage: "管理后台地址", Bind: "ompUrl", Trim: true, OmitEmpty: true},
 		},
-		Constraints: []LeafConstraint{
-			{Kind: LeafAtLeastOne, Flags: []string{"h5-page-type", "homepage-url", "pc-homepage-url", "omp-url"}},
+		// 至少一项走 Validate 而非类型化 Constraints：零契约变更（见 get 命令注释）。
+		Validate: func(cmd *cobra.Command, args []string) error {
+			if devAppStringFlag(cmd, "h5-page-type") == "" && devAppStringFlag(cmd, "homepage-url") == "" &&
+				devAppStringFlag(cmd, "pc-homepage-url") == "" && devAppStringFlag(cmd, "omp-url") == "" {
+				return apperrors.NewValidation("至少提供一项网页应用配置：--h5-page-type、--homepage-url、--pc-homepage-url 或 --omp-url")
+			}
+			return nil
 		},
 		Schema: LeafSchema{
 			Description: "配置网页应用能力",
@@ -918,8 +936,14 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 			{Name: "redirect-urls", Usage: "登录重定向 URL，多个用逗号或分号分隔（整组覆盖，非追加）", Bind: "redirectUrls", Trim: true, Transform: transformDevAppListParam},
 			{Name: "sso-urls", Usage: "端内免登地址，多个用逗号或分号分隔（整组覆盖，非追加）", Bind: "ssoUrls", Trim: true, Transform: transformDevAppListParam},
 		},
-		Constraints: []LeafConstraint{
-			{Kind: LeafAtLeastOne, Flags: []string{"ip-whitelist", "redirect-urls", "sso-urls"}},
+		// 至少一项走 Validate 而非类型化 Constraints：零契约变更（见 get 命令注释）。
+		Validate: func(cmd *cobra.Command, args []string) error {
+			if len(parseDevAppListFlag(cmd, "ip-whitelist")) == 0 &&
+				len(parseDevAppListFlag(cmd, "redirect-urls")) == 0 &&
+				len(parseDevAppListFlag(cmd, "sso-urls")) == 0 {
+				return apperrors.NewValidation("至少提供一项安全配置：--ip-whitelist、--redirect-urls 或 --sso-urls")
+			}
+			return nil
 		},
 		Schema: LeafSchema{
 			Description: "更新开放平台应用安全配置",
@@ -1356,7 +1380,7 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 		Short:   "发布指定版本（含高敏权限需 --confirmed-sensitive）",
 		Example: "  dws dev app version publish --unified-app-id UNIFIED_APP_ID --version-id VERSION_ID --dry-run --format json",
 		Tool:    devAppVersionPublishTool,
-		Safety:  devAppSafetyDestructive(),
+		Safety:  devAppSafetyHighWrite(),
 		// devapp 旧版写守卫为 guard-first：确认门先于参数校验。
 		ConfirmFirst: true,
 		Flags: []LeafFlag{
@@ -1469,7 +1493,7 @@ func devAppSafetyRead() cli.SafetySpec {
 
 func devAppSafetyWrite() cli.SafetySpec {
 	return cli.SafetySpec{
-		Effect: "write", Risk: "medium",
+		Effect: "write", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }

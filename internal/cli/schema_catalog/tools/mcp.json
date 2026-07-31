@@ -17,7 +17,7 @@
       "cli_name": "get",
       "cli_path": "mcp url get",
       "confirmation": "not_required",
-      "description": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
+      "description": "输入 MCP 市场 mcpId，返回以当前用户和组织身份访问该 MCP 的 Streamable HTTP 服务地址。\n\n安全提示：返回的 mcpURL 和 mcpJSON 可能包含身份凭据，仅限个人使用，请勿分享到群聊、文档、邮件、代码仓库或日志。",
       "display": "管理 MCP 服务连接信息",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -129,7 +129,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址"
+              "value": "输入 MCP 市场 mcpId，返回以当前用户和组织身份访问该 MCP 的 Streamable HTTP 服务地址。\n\n安全提示：返回的 mcpURL 和 mcpJSON 可能包含身份凭据，仅限个人使用，请勿分享到群聊、文档、邮件、代码仓库或日志。"
             }
           ],
           "precedence": "contract_final",
@@ -137,7 +137,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址"
+          "value": "输入 MCP 市场 mcpId，返回以当前用户和组织身份访问该 MCP 的 Streamable HTTP 服务地址。\n\n安全提示：返回的 mcpURL 和 mcpJSON 可能包含身份凭据，仅限个人使用，请勿分享到群聊、文档、邮件、代码仓库或日志。"
         },
         "effect": {
           "candidates": [

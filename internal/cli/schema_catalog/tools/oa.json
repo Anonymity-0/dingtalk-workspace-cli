@@ -362,6 +362,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批实例Id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -396,8 +402,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -408,9 +420,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -442,6 +454,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批实例Id",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -456,6 +469,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "审批意见 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批意见"
                 },
                 {
                   "precedence": "default",
@@ -526,6 +545,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批意见",
           "property": "remark",
           "required": false,
           "type": "string"
@@ -542,6 +562,12 @@
                   "value": "审批任务 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批任务ID"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -552,6 +578,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "审批任务 ID (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -570,8 +616,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -582,9 +634,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -616,6 +668,8 @@
               "value": "string"
             }
           },
+          "interface_description": "审批任务ID",
+          "interface_type": "number",
           "property": "taskId",
           "required": true,
           "type": "string"
@@ -993,6 +1047,12 @@
                   "value": "评论内容 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "text"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1027,8 +1087,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1039,9 +1105,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -1073,6 +1139,7 @@
               "value": "string"
             }
           },
+          "interface_description": "text",
           "property": "text",
           "required": true,
           "type": "string"
@@ -1087,6 +1154,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "审批实例 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "processInstanceId"
                 },
                 {
                   "precedence": "default",
@@ -1123,8 +1196,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -1135,9 +1214,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -1169,6 +1248,7 @@
               "value": "string"
             }
           },
+          "interface_description": "processInstanceId",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -1547,6 +1627,12 @@
                   "value": "每页大小（可选）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页数"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1557,6 +1643,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页大小（可选）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -1587,6 +1693,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1627,6 +1739,8 @@
               "value": "string"
             }
           },
+          "interface_description": "页数",
+          "interface_type": "number",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -1644,6 +1758,12 @@
                   "value": "分页页码（可选）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页号"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1654,6 +1774,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页页码（可选）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -1684,6 +1824,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1724,6 +1870,8 @@
               "value": "string"
             }
           },
+          "interface_description": "页号",
+          "interface_type": "number",
           "property": "pageNumber",
           "required": false,
           "type": "string"
@@ -1738,6 +1886,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "关键字搜索（可选）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "查询字段"
                 },
                 {
                   "precedence": "default",
@@ -1808,6 +1962,7 @@
               "value": "string"
             }
           },
+          "interface_description": "查询字段",
           "property": "query",
           "required": false,
           "type": "string"
@@ -2186,6 +2341,12 @@
                   "value": "每页大小（可选）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页数"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2196,6 +2357,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页大小（可选）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -2226,6 +2407,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2266,6 +2453,8 @@
               "value": "string"
             }
           },
+          "interface_description": "页数",
+          "interface_type": "number",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -2283,6 +2472,12 @@
                   "value": "分页页码（可选）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页号"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2293,6 +2488,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页页码（可选）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -2323,6 +2538,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2363,6 +2584,8 @@
               "value": "string"
             }
           },
+          "interface_description": "页号",
+          "interface_type": "number",
           "property": "pageNumber",
           "required": false,
           "type": "string"
@@ -2377,6 +2600,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "关键字搜索（可选）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "query"
                 },
                 {
                   "precedence": "default",
@@ -2447,6 +2676,7 @@
               "value": "string"
             }
           },
+          "interface_description": "query",
           "property": "query",
           "required": false,
           "type": "string"
@@ -2824,6 +3054,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批实例Id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2858,8 +3094,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2870,9 +3112,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -2904,6 +3146,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批实例Id",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -3281,6 +3524,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批实例Id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3315,8 +3564,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3327,9 +3582,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -3361,6 +3616,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批实例Id",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -3739,6 +3995,12 @@
                   "value": "每页大小（可选）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页数"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3749,6 +4011,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页大小（可选）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3779,6 +4061,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3819,6 +4107,8 @@
               "value": "string"
             }
           },
+          "interface_description": "页数",
+          "interface_type": "number",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -3836,6 +4126,12 @@
                   "value": "分页页码（可选）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "页号"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3846,6 +4142,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页页码（可选）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -3876,6 +4192,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3916,6 +4238,8 @@
               "value": "string"
             }
           },
+          "interface_description": "页号",
+          "interface_type": "number",
           "property": "pageNumber",
           "required": false,
           "type": "string"
@@ -3930,6 +4254,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "关键字搜索（可选）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "搜索字段"
                 },
                 {
                   "precedence": "default",
@@ -4000,6 +4330,7 @@
               "value": "string"
             }
           },
+          "interface_description": "搜索字段",
           "property": "query",
           "required": false,
           "type": "string"
@@ -4378,6 +4709,12 @@
                   "value": "分页游标，首次传 0"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页查询的分页游标，如果是首次查询，该参数传0，非首次调用，传上次返回的nextToken"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -4388,6 +4725,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页游标，首次传 0"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -4416,6 +4773,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -4458,6 +4821,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页查询的分页游标，如果是首次查询，该参数传0，非首次调用，传上次返回的nextToken",
+          "interface_type": "number",
           "property": "nextToken",
           "required": false,
           "type": "string"
@@ -4472,6 +4837,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00) (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批实例开始时间，Unix时间戳，单位毫秒"
                 },
                 {
                   "precedence": "default",
@@ -4505,6 +4876,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -4528,8 +4919,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4540,9 +4937,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -4575,6 +4972,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "审批实例开始时间，Unix时间戳，单位毫秒",
+          "interface_type": "number",
           "property": "endTime",
           "required": true,
           "type": "string"
@@ -4592,6 +4991,12 @@
                   "value": "每页大小，最大 20"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页查询的每页大小，最大值20"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -4602,6 +5007,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页大小，最大 20"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -4630,6 +5055,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -4672,6 +5103,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页查询的每页大小，最大值20",
+          "interface_type": "number",
           "property": "maxResults",
           "required": false,
           "type": "string"
@@ -4686,6 +5119,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "表单 processCode (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要查询实例列表的表单processCode"
                 },
                 {
                   "precedence": "default",
@@ -4716,8 +5155,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4728,9 +5173,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -4762,6 +5207,7 @@
               "value": "string"
             }
           },
+          "interface_description": "需要查询实例列表的表单processCode",
           "property": "processCode",
           "required": true,
           "type": "string"
@@ -4776,6 +5222,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00) (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批实例开始时间，Unix时间戳，单位毫秒"
                 },
                 {
                   "precedence": "default",
@@ -4809,6 +5261,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -4832,8 +5304,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -4844,9 +5322,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -4879,6 +5357,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "审批实例开始时间，Unix时间戳，单位毫秒",
+          "interface_type": "number",
           "property": "startTime",
           "required": true,
           "type": "string"
@@ -5256,6 +5736,12 @@
                   "value": "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00) (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批单创建时间的结束时间。毫秒时间戳格式，表示时间范围的上限。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5287,6 +5773,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -5310,8 +5816,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -5322,9 +5834,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -5357,6 +5869,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "审批单创建时间的结束时间。毫秒时间戳格式，表示时间范围的上限。",
+          "interface_type": "number",
           "property": "endTime",
           "required": true,
           "type": "string"
@@ -5373,6 +5887,12 @@
                   "value": "每页大小 (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "每页大小"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5383,6 +5903,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页大小 (可选)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -5447,6 +5987,8 @@
               "value": "string"
             }
           },
+          "interface_description": "每页大小",
+          "interface_type": "number",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -5463,6 +6005,12 @@
                   "value": "分页页码 (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页页码，从1开始"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -5473,6 +6021,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页页码 (可选)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -5537,6 +6105,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页页码，从1开始",
+          "interface_type": "number",
           "property": "pageNum",
           "required": false,
           "type": "string"
@@ -5551,6 +6121,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "关键字搜索（可选）"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "query"
                 },
                 {
                   "precedence": "default",
@@ -5621,6 +6197,7 @@
               "value": "string"
             }
           },
+          "interface_description": "query",
           "property": "query",
           "required": false,
           "type": "string"
@@ -5635,6 +6212,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00) (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批单创建时间的开始时间。毫秒时间戳格式，表示时间范围的下限"
                 },
                 {
                   "precedence": "default",
@@ -5668,6 +6251,26 @@
               "source": "usage_format_inference",
               "value": "date-time"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -5691,8 +6294,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -5703,9 +6312,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -5738,6 +6347,8 @@
             }
           },
           "format": "date-time",
+          "interface_description": "审批单创建时间的开始时间。毫秒时间戳格式，表示时间范围的下限",
+          "interface_type": "number",
           "property": "starTime",
           "required": true,
           "type": "string"
@@ -6115,6 +6726,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "待我处理的审批实例Id，可通过list_pending_approvals工具获取"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6149,8 +6766,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -6161,9 +6784,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -6195,6 +6818,7 @@
               "value": "string"
             }
           },
+          "interface_description": "待我处理的审批实例Id，可通过list_pending_approvals工具获取",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -6570,6 +7194,12 @@
                   "value": "分页游标（默认 0，翻页传返回的 cursor）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页游标，首次调用需要传0"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6580,6 +7210,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "分页游标（默认 0，翻页传返回的 cursor）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -6602,6 +7252,12 @@
                   "selected": true,
                   "source": "cobra_nonzero_default",
                   "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -6644,6 +7300,8 @@
               "value": "string"
             }
           },
+          "interface_description": "分页游标，首次调用需要传0",
+          "interface_type": "number",
           "property": "cursor",
           "required": false,
           "type": "string"
@@ -6661,6 +7319,12 @@
                   "value": "每页大小（默认 100，最大 100）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "每页大小，最大值100"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6671,6 +7335,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "每页大小（默认 100，最大 100）"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -6701,6 +7385,12 @@
                   "value": false
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -6741,6 +7431,8 @@
               "value": "string"
             }
           },
+          "interface_description": "每页大小，最大值100",
+          "interface_type": "number",
           "property": "pageSize",
           "required": false,
           "type": "string"
@@ -7118,6 +7810,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "processInstanceId"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -7152,8 +7850,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -7164,9 +7868,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -7198,6 +7902,7 @@
               "value": "string"
             }
           },
+          "interface_description": "processInstanceId",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -7212,6 +7917,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "操作人 ID (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "operatorId"
                 },
                 {
                   "precedence": "default",
@@ -7282,6 +7993,7 @@
               "value": "string"
             }
           },
+          "interface_description": "operatorId",
           "property": "operatorId",
           "required": false,
           "type": "string"
@@ -7298,6 +8010,12 @@
                   "value": "抄送用户 ID 列表，多个用逗号分隔 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "userList"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -7308,6 +8026,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "抄送用户 ID 列表，多个用逗号分隔 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -7332,8 +8070,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -7344,9 +8088,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -7378,6 +8122,8 @@
               "value": "string"
             }
           },
+          "interface_description": "userList",
+          "interface_type": "array",
           "property": "userList",
           "required": true,
           "type": "string"
@@ -7755,6 +8501,12 @@
                   "value": "转交说明 (可选)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "备注信息"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -7823,6 +8575,7 @@
               "value": "string"
             }
           },
+          "interface_description": "备注信息",
           "property": "remark",
           "required": false,
           "type": "string"
@@ -7837,6 +8590,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "审批任务 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批任务ID，必填"
                 },
                 {
                   "precedence": "default",
@@ -7867,8 +8626,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -7879,9 +8644,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -7913,6 +8678,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批任务ID，必填",
           "property": "taskId",
           "required": true,
           "type": "string"
@@ -7927,6 +8693,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "转交目标用户 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "转交目标用户的用户ID"
                 },
                 {
                   "precedence": "default",
@@ -7957,8 +8729,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -7969,9 +8747,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -8003,6 +8781,7 @@
               "value": "string"
             }
           },
+          "interface_description": "转交目标用户的用户ID",
           "property": "toActionerId",
           "required": true,
           "type": "string"
@@ -8380,6 +9159,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批实例Id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -8414,8 +9199,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -8426,9 +9217,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -8460,6 +9251,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批实例Id",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -8474,6 +9266,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "审批意见 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批意见"
                 },
                 {
                   "precedence": "default",
@@ -8544,6 +9342,7 @@
               "value": "string"
             }
           },
+          "interface_description": "审批意见",
           "property": "remark",
           "required": false,
           "type": "string"
@@ -8560,6 +9359,12 @@
                   "value": "审批任务 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "审批任务ID"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -8570,6 +9375,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "审批任务 ID (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -8588,8 +9413,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -8600,9 +9431,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -8634,6 +9465,8 @@
               "value": "string"
             }
           },
+          "interface_description": "审批任务ID",
+          "interface_type": "number",
           "property": "taskId",
           "required": true,
           "type": "string"
@@ -9008,6 +9841,12 @@
                   "value": "审批实例 ID (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "需要撤销的审批实例Id"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -9042,8 +9881,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -9054,9 +9899,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "mcp_metadata",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "mcp_metadata",
               "value": true
             },
             "required_when": {
@@ -9088,6 +9933,7 @@
               "value": "string"
             }
           },
+          "interface_description": "需要撤销的审批实例Id",
           "property": "processInstanceId",
           "required": true,
           "type": "string"
@@ -9102,6 +9948,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "撤销说明 (可选)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "撤销审批的说明"
                 },
                 {
                   "precedence": "default",
@@ -9172,6 +10024,7 @@
               "value": "string"
             }
           },
+          "interface_description": "撤销审批的说明",
           "property": "remark",
           "required": false,
           "type": "string"
@@ -9203,7 +10056,7 @@
       "cli_name": "+list-cc",
       "cli_path": "oa +list-cc",
       "confirmation": "not_required",
-      "description": "获取抄送当前用户的审批单列表",
+      "description": "当你想查看抄送给自己、需要知悉但无需审批的单子时使用；按页码/关键字分页返回抄送我的审批单列表，适合了解与自己相关但不用自己动手处理的审批动态。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -9313,7 +10166,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取抄送当前用户的审批单列表"
+              "value": "当你想查看抄送给自己、需要知悉但无需审批的单子时使用；按页码/关键字分页返回抄送我的审批单列表，适合了解与自己相关但不用自己动手处理的审批动态。"
             }
           ],
           "precedence": "contract_final",
@@ -9321,7 +10174,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取抄送当前用户的审批单列表"
+          "value": "当你想查看抄送给自己、需要知悉但无需审批的单子时使用；按页码/关键字分页返回抄送我的审批单列表，适合了解与自己相关但不用自己动手处理的审批动态。"
         },
         "effect": {
           "candidates": [
@@ -9832,7 +10685,7 @@
       "cli_name": "+list-executed",
       "cli_path": "oa +list-executed",
       "confirmation": "not_required",
-      "description": "获取当前用户已经处理过的审批单列表",
+      "description": "当你想回顾自己历史上审批过（已同意/拒绝等）的单子、做复盘或查找某条已办审批时使用，区别于 +list-pending 的待办；按页码/关键字分页返回我已处理的审批单。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -9942,7 +10795,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取当前用户已经处理过的审批单列表"
+              "value": "当你想回顾自己历史上审批过（已同意/拒绝等）的单子、做复盘或查找某条已办审批时使用，区别于 +list-pending 的待办；按页码/关键字分页返回我已处理的审批单。"
             }
           ],
           "precedence": "contract_final",
@@ -9950,7 +10803,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取当前用户已经处理过的审批单列表"
+          "value": "当你想回顾自己历史上审批过（已同意/拒绝等）的单子、做复盘或查找某条已办审批时使用，区别于 +list-pending 的待办；按页码/关键字分页返回我已处理的审批单。"
         },
         "effect": {
           "candidates": [
@@ -10461,7 +11314,7 @@
       "cli_name": "+list-forms",
       "cli_path": "oa +list-forms",
       "confirmation": "not_required",
-      "description": "获取当前用户可见的审批表单列表",
+      "description": "当你想浏览自己有权限发起哪些审批模板、或需要为 +list-initiated 等操作枚举 processCode 时使用；无需关键字，按游标分页返回当前用户可见的全部审批表单，适合不确定表单名称时先整体看一遍。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -10571,7 +11424,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取当前用户可见的审批表单列表"
+              "value": "当你想浏览自己有权限发起哪些审批模板、或需要为 +list-initiated 等操作枚举 processCode 时使用；无需关键字，按游标分页返回当前用户可见的全部审批表单，适合不确定表单名称时先整体看一遍。"
             }
           ],
           "precedence": "contract_final",
@@ -10579,7 +11432,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取当前用户可见的审批表单列表"
+          "value": "当你想浏览自己有权限发起哪些审批模板、或需要为 +list-initiated 等操作枚举 processCode 时使用；无需关键字，按游标分页返回当前用户可见的全部审批表单，适合不确定表单名称时先整体看一遍。"
         },
         "effect": {
           "candidates": [
@@ -10999,7 +11852,7 @@
       "cli_name": "+list-pending",
       "cli_path": "oa +list-pending",
       "confirmation": "not_required",
-      "description": "查询待我处理的审批（时间范围为 epoch 毫秒）",
+      "description": "当你想知道自己当前有哪些审批还没处理、需要清理审批待办或按时间段/关键字盘点待审批单时使用；传入起止时间（epoch 毫秒，可选关键字与分页），返回待我审批的实例列表，是后续 +get 查详情、+approve/+reject 处理的入口。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -11109,7 +11962,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询待我处理的审批（时间范围为 epoch 毫秒）"
+              "value": "当你想知道自己当前有哪些审批还没处理、需要清理审批待办或按时间段/关键字盘点待审批单时使用；传入起止时间（epoch 毫秒，可选关键字与分页），返回待我审批的实例列表，是后续 +get 查详情、+approve/+reject 处理的入口。"
             }
           ],
           "precedence": "contract_final",
@@ -11117,7 +11970,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询待我处理的审批（时间范围为 epoch 毫秒）"
+          "value": "当你想知道自己当前有哪些审批还没处理、需要清理审批待办或按时间段/关键字盘点待审批单时使用；传入起止时间（epoch 毫秒，可选关键字与分页），返回待我审批的实例列表，是后续 +get 查详情、+approve/+reject 处理的入口。"
         },
         "effect": {
           "candidates": [
@@ -11806,7 +12659,7 @@
       "cli_name": "+list-submitted",
       "cli_path": "oa +list-submitted",
       "confirmation": "not_required",
-      "description": "获取当前用户已发起的审批单列表",
+      "description": "当你想查看自己提交发起的审批单及其审批进度（如某笔报销/请假审到哪一步）时使用；按页码/关键字分页返回我发起的审批单，可据此决定是否 +revoke 撤销或催办。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -11916,7 +12769,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取当前用户已发起的审批单列表"
+              "value": "当你想查看自己提交发起的审批单及其审批进度（如某笔报销/请假审到哪一步）时使用；按页码/关键字分页返回我发起的审批单，可据此决定是否 +revoke 撤销或催办。"
             }
           ],
           "precedence": "contract_final",
@@ -11924,7 +12777,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取当前用户已发起的审批单列表"
+          "value": "当你想查看自己提交发起的审批单及其审批进度（如某笔报销/请假审到哪一步）时使用；按页码/关键字分页返回我发起的审批单，可据此决定是否 +revoke 撤销或催办。"
         },
         "effect": {
           "candidates": [
@@ -12435,7 +13288,7 @@
       "cli_name": "+my-initiated",
       "cli_path": "oa +my-initiated",
       "confirmation": "not_required",
-      "description": "列出我发起（提交）的审批单据",
+      "description": "当你想快速看清自己发起（提交）过哪些 OA 审批单据、方便跟进它们的进展时使用；内部直接拉取当前用户已发起的审批实例列表（等价于 dws oa approval list-submitted），再在本地把每条单据投影成标题、单号(businessId)、状态和审批实例 ID(processInstanceId) 四个关键字段。可用 --query 按关键字过滤、--page/--limit 翻页（默认第 1 页、每页 20 条）。这是纯只读操作，只做列表与本地投影，不会同意、拒绝、撤销或修改任何审批单据；若没有发起过审批则返回空列表。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -12546,7 +13399,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "列出我发起（提交）的审批单据"
+              "value": "当你想快速看清自己发起（提交）过哪些 OA 审批单据、方便跟进它们的进展时使用；内部直接拉取当前用户已发起的审批实例列表（等价于 dws oa approval list-submitted），再在本地把每条单据投影成标题、单号(businessId)、状态和审批实例 ID(processInstanceId) 四个关键字段。可用 --query 按关键字过滤、--page/--limit 翻页（默认第 1 页、每页 20 条）。这是纯只读操作，只做列表与本地投影，不会同意、拒绝、撤销或修改任何审批单据；若没有发起过审批则返回空列表。"
             }
           ],
           "precedence": "contract_final",
@@ -12554,7 +13407,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "列出我发起（提交）的审批单据"
+          "value": "当你想快速看清自己发起（提交）过哪些 OA 审批单据、方便跟进它们的进展时使用；内部直接拉取当前用户已发起的审批实例列表（等价于 dws oa approval list-submitted），再在本地把每条单据投影成标题、单号(businessId)、状态和审批实例 ID(processInstanceId) 四个关键字段。可用 --query 按关键字过滤、--page/--limit 翻页（默认第 1 页、每页 20 条）。这是纯只读操作，只做列表与本地投影，不会同意、拒绝、撤销或修改任何审批单据；若没有发起过审批则返回空列表。"
         },
         "effect": {
           "candidates": [
@@ -13067,7 +13920,7 @@
       "cli_name": "+search-forms",
       "cli_path": "oa +search-forms",
       "confirmation": "not_required",
-      "description": "按关键字模糊搜索当前用户可见的审批表单",
+      "description": "当你已知想找的审批大致名称（如「报销」「请假」）、想快速定位对应表单及其 processCode 时使用，比 +list-forms 全量列举更高效；传入关键字，返回名称或 processCode 匹配的表单，供后续 +list-initiated 按模板查询。",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -13177,7 +14030,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "按关键字模糊搜索当前用户可见的审批表单"
+              "value": "当你已知想找的审批大致名称（如「报销」「请假」）、想快速定位对应表单及其 processCode 时使用，比 +list-forms 全量列举更高效；传入关键字，返回名称或 processCode 匹配的表单，供后续 +list-initiated 按模板查询。"
             }
           ],
           "precedence": "contract_final",
@@ -13185,7 +14038,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "按关键字模糊搜索当前用户可见的审批表单"
+          "value": "当你已知想找的审批大致名称（如「报销」「请假」）、想快速定位对应表单及其 processCode 时使用，比 +list-forms 全量列举更高效；传入关键字，返回名称或 processCode 匹配的表单，供后续 +list-initiated 按模板查询。"
         },
         "effect": {
           "candidates": [

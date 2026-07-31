@@ -714,6 +714,20 @@ func TestCrossPlatformCoverageBoolFlag(t *testing.T) {
 	if !BoolFlag(child, "yes") {
 		t.Fatal("root persistent flag must be visible to the child")
 	}
+	// A leaf-local false must not shadow a root persistent true: BoolFlag and
+	// confirmationBypass must agree, or confirmation is bypassed as a dry run
+	// while Ctx.DryRun() reports false.
+	shadowRoot := &cobra.Command{Use: "root"}
+	shadowRoot.PersistentFlags().Bool("dry-run", true, "")
+	shadowLeaf := &cobra.Command{Use: "leaf"}
+	shadowLeaf.Flags().Bool("dry-run", false, "")
+	shadowRoot.AddCommand(shadowLeaf)
+	if !BoolFlag(shadowLeaf, "dry-run") {
+		t.Fatal("leaf-local default must not shadow root persistent dry-run")
+	}
+	if !confirmationBypass(shadowLeaf) {
+		t.Fatal("confirmationBypass disagrees with BoolFlag")
+	}
 }
 
 // ── schema projection + help ───────────────────────────────────────
@@ -837,25 +851,40 @@ func TestCrossPlatformCoverageNewCommandOrchestration(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageNewCommandRunEEscapeHatch(t *testing.T) {
-	// RunE bypasses the whole generated pipeline: the declared Required flag is
-	// left unset, so had the framework body run it would have failed validation.
+	// The escape hatch replaces the dispatch body, not the declared contract:
+	// a declared Required flag is still enforced and RunE is never entered.
 	ran := false
-	cmd := New(Spec{
-		Use:   "escape",
-		Flags: []FlagSpec{{Name: "x", Usage: "X", Required: true}},
-		RunE: func(*cobra.Command, []string) error {
-			ran = true
-			return nil
-		},
-	})
-	cmd.SilenceErrors = true
-	cmd.SilenceUsage = true
-	cmd.SetArgs(nil)
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("RunE escape hatch must bypass validation, got %v", err)
+	newEscape := func() *cobra.Command {
+		ran = false
+		cmd := New(Spec{
+			Use:   "escape",
+			Flags: []FlagSpec{{Name: "x", Usage: "X", Required: true}},
+			RunE: func(*cobra.Command, []string) error {
+				ran = true
+				return nil
+			},
+		})
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		return cmd
+	}
+
+	missing := newEscape()
+	missing.SetArgs(nil)
+	if err := missing.Execute(); err == nil {
+		t.Fatal("escape hatch must still enforce a declared Required flag")
+	}
+	if ran {
+		t.Fatal("escape hatch RunE ran despite a failed declared check")
+	}
+
+	satisfied := newEscape()
+	satisfied.SetArgs([]string{"--x", "value"})
+	if err := satisfied.Execute(); err != nil {
+		t.Fatalf("escape hatch must run once the declaration is satisfied: %v", err)
 	}
 	if !ran {
-		t.Fatal("RunE escape hatch did not run")
+		t.Fatal("escape hatch did not run")
 	}
 }
 

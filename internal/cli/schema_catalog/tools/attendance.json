@@ -18,7 +18,7 @@
       "cli_name": "get",
       "cli_path": "attendance adjustment get",
       "confirmation": "not_required",
-      "description": "查询单个补卡规则详情",
+      "description": "调用 MCP 工具 get_adjustment_rule_detail，根据补卡规则主键 ID 查询对应的补卡规则详情。\n--adjustment-id 必填。注意：已被删除或被更新覆盖的补卡规则无法查询到。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -133,7 +133,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询单个补卡规则详情"
+              "value": "调用 MCP 工具 get_adjustment_rule_detail，根据补卡规则主键 ID 查询对应的补卡规则详情。\n--adjustment-id 必填。注意：已被删除或被更新覆盖的补卡规则无法查询到。"
             }
           ],
           "precedence": "contract_final",
@@ -141,7 +141,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询单个补卡规则详情"
+          "value": "调用 MCP 工具 get_adjustment_rule_detail，根据补卡规则主键 ID 查询对应的补卡规则详情。\n--adjustment-id 必填。注意：已被删除或被更新覆盖的补卡规则无法查询到。"
         },
         "effect": {
           "candidates": [
@@ -488,7 +488,7 @@
       "cli_name": "search",
       "cli_path": "attendance adjustment search",
       "confirmation": "not_required",
-      "description": "查询补卡规则列表",
+      "description": "根据用户权限查询补卡规则列表，入参封装在 ATRuleQueryParam 对象中。\n  --query  补卡规则名称关键字，模糊搜索（可选）\n  --page   页码（从 1 开始，默认 1）（可选）\n  --limit  每页条数（200 以内，默认 20）（可选）",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -603,7 +603,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询补卡规则列表"
+              "value": "根据用户权限查询补卡规则列表，入参封装在 ATRuleQueryParam 对象中。\n  --query  补卡规则名称关键字，模糊搜索（可选）\n  --page   页码（从 1 开始，默认 1）（可选）\n  --limit  每页条数（200 以内，默认 20）（可选）"
             }
           ],
           "precedence": "contract_final",
@@ -611,7 +611,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询补卡规则列表"
+          "value": "根据用户权限查询补卡规则列表，入参封装在 ATRuleQueryParam 对象中。\n  --query  补卡规则名称关键字，模糊搜索（可选）\n  --page   页码（从 1 开始，默认 1）（可选）\n  --limit  每页条数（200 以内，默认 20）（可选）"
         },
         "effect": {
           "candidates": [
@@ -1164,7 +1164,7 @@
       "cli_name": "list",
       "cli_path": "attendance approve list",
       "confirmation": "not_required",
-      "description": "查询考勤相关审批单记录",
+      "description": "查询指定用户的考勤业务审批单记录（补卡 / 加班 / 请假 / 出差外出）。\n审批类型 --types 支持以下关键词（多个用英文逗号分隔）：\n  - overtime / 加班                                            → bizType=1\n  - trip / travel / business_trip / business-trip / 出差 / 外出  → bizType=2（出差与外出在查询接口合并为同一类，不再细分）\n  - leave / 请假                                                → bizType=3\n  - patch / repair-check / repair_check / 补卡                 → bizType=4\n说明：\n  - 服务端查询接口 bizType=2 同时覆盖出差与外出，传入 trip / travel / 出差 / 外出 任一别名都会返回这两类合并的记录；\n  - 如需在提交入口区分外出（TRAVEL）与出差（OUT），请改用 dws attendance approve templates --type travel|out；\n  - 返回每条记录含：用户 ID、审批标签、审批子类型、审批类型、生效时间、时长、时长单位、流程实例 ID。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -1279,7 +1279,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤相关审批单记录"
+              "value": "查询指定用户的考勤业务审批单记录（补卡 / 加班 / 请假 / 出差外出）。\n审批类型 --types 支持以下关键词（多个用英文逗号分隔）：\n  - overtime / 加班                                            → bizType=1\n  - trip / travel / business_trip / business-trip / 出差 / 外出  → bizType=2（出差与外出在查询接口合并为同一类，不再细分）\n  - leave / 请假                                                → bizType=3\n  - patch / repair-check / repair_check / 补卡                 → bizType=4\n说明：\n  - 服务端查询接口 bizType=2 同时覆盖出差与外出，传入 trip / travel / 出差 / 外出 任一别名都会返回这两类合并的记录；\n  - 如需在提交入口区分外出（TRAVEL）与出差（OUT），请改用 dws attendance approve templates --type travel|out；\n  - 返回每条记录含：用户 ID、审批标签、审批子类型、审批类型、生效时间、时长、时长单位、流程实例 ID。"
             }
           ],
           "precedence": "contract_final",
@@ -1287,7 +1287,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤相关审批单记录"
+          "value": "查询指定用户的考勤业务审批单记录（补卡 / 加班 / 请假 / 出差外出）。\n审批类型 --types 支持以下关键词（多个用英文逗号分隔）：\n  - overtime / 加班                                            → bizType=1\n  - trip / travel / business_trip / business-trip / 出差 / 外出  → bizType=2（出差与外出在查询接口合并为同一类，不再细分）\n  - leave / 请假                                                → bizType=3\n  - patch / repair-check / repair_check / 补卡                 → bizType=4\n说明：\n  - 服务端查询接口 bizType=2 同时覆盖出差与外出，传入 trip / travel / 出差 / 外出 任一别名都会返回这两类合并的记录；\n  - 如需在提交入口区分外出（TRAVEL）与出差（OUT），请改用 dws attendance approve templates --type travel|out；\n  - 返回每条记录含：用户 ID、审批标签、审批子类型、审批类型、生效时间、时长、时长单位、流程实例 ID。"
         },
         "effect": {
           "candidates": [
@@ -1988,7 +1988,7 @@
       "cli_name": "templates",
       "cli_path": "attendance approve templates",
       "confirmation": "not_required",
-      "description": "查询考勤审批模板和提交入口",
+      "description": "当用户需要提交补卡、请假、加班、外出、出差时，查询对应考勤审批表单模板，返回审批提交跳转链接。\n审批类型支持：repair-check/patch/补卡、leave/请假、overtime/加班、travel/外出、out/trip/出差，也支持直接传 REPAIR_CHECK、LEAVE、OVERTIME、TRAVEL、OUT。\n向用户展示提交入口时，不要直接裸露 submitUrl，应使用 Markdown 可点击链接格式：[表单名称](submitUrl)。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2103,7 +2103,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤审批模板和提交入口"
+              "value": "当用户需要提交补卡、请假、加班、外出、出差时，查询对应考勤审批表单模板，返回审批提交跳转链接。\n审批类型支持：repair-check/patch/补卡、leave/请假、overtime/加班、travel/外出、out/trip/出差，也支持直接传 REPAIR_CHECK、LEAVE、OVERTIME、TRAVEL、OUT。\n向用户展示提交入口时，不要直接裸露 submitUrl，应使用 Markdown 可点击链接格式：[表单名称](submitUrl)。"
             }
           ],
           "precedence": "contract_final",
@@ -2111,7 +2111,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤审批模板和提交入口"
+          "value": "当用户需要提交补卡、请假、加班、外出、出差时，查询对应考勤审批表单模板，返回审批提交跳转链接。\n审批类型支持：repair-check/patch/补卡、leave/请假、overtime/加班、travel/外出、out/trip/出差，也支持直接传 REPAIR_CHECK、LEAVE、OVERTIME、TRAVEL、OUT。\n向用户展示提交入口时，不要直接裸露 submitUrl，应使用 Markdown 可点击链接格式：[表单名称](submitUrl)。"
         },
         "effect": {
           "candidates": [
@@ -2458,7 +2458,7 @@
       "cli_name": "list",
       "cli_path": "attendance shift list",
       "confirmation": "not_required",
-      "description": "批量查询员工班次信息",
+      "description": "批量查询多个员工在指定日期的考勤班次信息。\n返回每条记录含：用户 ID、工作日期、打卡类型（OnDuty/OffDuty）、\n计划打卡时间、是否休息日。间隔不超过 7 天，最多 50 人。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -2572,7 +2572,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "批量查询员工班次信息"
+              "value": "批量查询多个员工在指定日期的考勤班次信息。\n返回每条记录含：用户 ID、工作日期、打卡类型（OnDuty/OffDuty）、\n计划打卡时间、是否休息日。间隔不超过 7 天，最多 50 人。"
             }
           ],
           "precedence": "contract_final",
@@ -2580,7 +2580,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "批量查询员工班次信息"
+          "value": "批量查询多个员工在指定日期的考勤班次信息。\n返回每条记录含：用户 ID、工作日期、打卡类型（OnDuty/OffDuty）、\n计划打卡时间、是否休息日。间隔不超过 7 天，最多 50 人。"
         },
         "effect": {
           "candidates": [
@@ -2802,6 +2802,12 @@
                   "value": "结束日期，格式 YYYY-MM-DD (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "结束日期，Unix时间戳，单位毫秒。开始时间和结束时间的间隔不能超过7天。 查询时间限制距今180天内。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -2833,6 +2839,26 @@
               "source": "typed_parameter_metadata",
               "value": "date"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -2856,8 +2882,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2868,9 +2906,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -2903,6 +2941,8 @@
             }
           },
           "format": "date",
+          "interface_description": "结束日期，Unix时间戳，单位毫秒。开始时间和结束时间的间隔不能超过7天。 查询时间限制距今180天内。",
+          "interface_type": "number",
           "property": "toDateTime",
           "required": true,
           "type": "string"
@@ -2917,6 +2957,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "开始日期，格式 YYYY-MM-DD (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "起始日期，Unix时间戳，单位毫秒。 开始时间和结束时间的间隔不能超过7天。 查询时间限制距今180天内。"
                 },
                 {
                   "precedence": "default",
@@ -2950,6 +2996,26 @@
               "source": "typed_parameter_metadata",
               "value": "date"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
             "property": {
               "candidates": [
                 {
@@ -2973,8 +3039,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -2985,9 +3063,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -3020,6 +3098,8 @@
             }
           },
           "format": "date",
+          "interface_description": "起始日期，Unix时间戳，单位毫秒。 开始时间和结束时间的间隔不能超过7天。 查询时间限制距今180天内。",
+          "interface_type": "number",
           "property": "fromDateTime",
           "required": true,
           "type": "string"
@@ -3036,6 +3116,12 @@
                   "value": "用户 ID 列表，逗号分隔，最多 50 个 (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要查询的人员userId列表，多个userId用列表表示，一次最多可传50个。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -3046,6 +3132,32 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "用户 ID 列表，逗号分隔，最多 50 个 (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": "array"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
+              "value": "array"
             },
             "property": {
               "candidates": [
@@ -3070,8 +3182,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -3082,9 +3206,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -3116,6 +3240,8 @@
               "value": "string"
             }
           },
+          "interface_description": "要查询的人员userId列表，多个userId用列表表示，一次最多可传50个。",
+          "interface_type": "array",
           "property": "userIds",
           "required": true,
           "type": "string"
@@ -3149,7 +3275,7 @@
       "cli_name": "boss-check",
       "cli_path": "attendance boss-check",
       "confirmation": "user_required",
-      "description": "管理员修正员工打卡结果",
+      "description": "调用 MCP 工具 boss_check 修改员工打卡记录。管理员可修改打卡时间、打卡结果等信息。\n\n参数说明：\n  --plan-id        排班ID（与 --result-id 二选一）\n                   来源：通过 dws attendance schedule get 获取，返回结果的 id 字段\n                   示例：id: 948964045503 表示某天下班打卡的排班记录ID\n\n  --result-id      打卡结果ID（与 --plan-id 二选一，优先使用）\n                   来源：暂不支持（record get 未返回此字段），建议使用 --plan-id\n\n  --time           新打卡时间，格式 yyyy-MM-dd HH:mm（可选）\n  --result         打卡结果：Normal/TimesResultA/TimesResultB/TimesResultC/TimesResultD/TimesResultE/TimesResultF（可选）\n  --absent-min     缺勤时长（分钟），当 result 为异常状态时需传值（可选）\n  --remark         备注，最长500字符（可选）\n  --user-say-yes   用户已确认，跳过交互式确认提示\n\n打卡结果枚举值：\n  Normal         正常\n  TimesResultA   迟到\n  TimesResultB   早退\n  TimesResultC   缺卡\n  TimesResultD   迟到+早退\n  TimesResultE   缺卡+早退\n  TimesResultF   迟到+缺卡\n\n获取 planId 步骤：\n  1. 查询排班记录：dws attendance schedule get --userIdList USER_ID --workDateBegin DATE --workDateEnd DATE\n  2. 从返回结果中找到对应打卡类型（OnDuty=上班，OffDuty=下班）的 id 字段\n  3. 使用该 id 作为 --plan-id 参数",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -3264,7 +3390,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "管理员修正员工打卡结果"
+              "value": "调用 MCP 工具 boss_check 修改员工打卡记录。管理员可修改打卡时间、打卡结果等信息。\n\n参数说明：\n  --plan-id        排班ID（与 --result-id 二选一）\n                   来源：通过 dws attendance schedule get 获取，返回结果的 id 字段\n                   示例：id: 948964045503 表示某天下班打卡的排班记录ID\n\n  --result-id      打卡结果ID（与 --plan-id 二选一，优先使用）\n                   来源：暂不支持（record get 未返回此字段），建议使用 --plan-id\n\n  --time           新打卡时间，格式 yyyy-MM-dd HH:mm（可选）\n  --result         打卡结果：Normal/TimesResultA/TimesResultB/TimesResultC/TimesResultD/TimesResultE/TimesResultF（可选）\n  --absent-min     缺勤时长（分钟），当 result 为异常状态时需传值（可选）\n  --remark         备注，最长500字符（可选）\n  --user-say-yes   用户已确认，跳过交互式确认提示\n\n打卡结果枚举值：\n  Normal         正常\n  TimesResultA   迟到\n  TimesResultB   早退\n  TimesResultC   缺卡\n  TimesResultD   迟到+早退\n  TimesResultE   缺卡+早退\n  TimesResultF   迟到+缺卡\n\n获取 planId 步骤：\n  1. 查询排班记录：dws attendance schedule get --userIdList USER_ID --workDateBegin DATE --workDateEnd DATE\n  2. 从返回结果中找到对应打卡类型（OnDuty=上班，OffDuty=下班）的 id 字段\n  3. 使用该 id 作为 --plan-id 参数"
             }
           ],
           "precedence": "contract_final",
@@ -3272,7 +3398,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "管理员修正员工打卡结果"
+          "value": "调用 MCP 工具 boss_check 修改员工打卡记录。管理员可修改打卡时间、打卡结果等信息。\n\n参数说明：\n  --plan-id        排班ID（与 --result-id 二选一）\n                   来源：通过 dws attendance schedule get 获取，返回结果的 id 字段\n                   示例：id: 948964045503 表示某天下班打卡的排班记录ID\n\n  --result-id      打卡结果ID（与 --plan-id 二选一，优先使用）\n                   来源：暂不支持（record get 未返回此字段），建议使用 --plan-id\n\n  --time           新打卡时间，格式 yyyy-MM-dd HH:mm（可选）\n  --result         打卡结果：Normal/TimesResultA/TimesResultB/TimesResultC/TimesResultD/TimesResultE/TimesResultF（可选）\n  --absent-min     缺勤时长（分钟），当 result 为异常状态时需传值（可选）\n  --remark         备注，最长500字符（可选）\n  --user-say-yes   用户已确认，跳过交互式确认提示\n\n打卡结果枚举值：\n  Normal         正常\n  TimesResultA   迟到\n  TimesResultB   早退\n  TimesResultC   缺卡\n  TimesResultD   迟到+早退\n  TimesResultE   缺卡+早退\n  TimesResultF   迟到+缺卡\n\n获取 planId 步骤：\n  1. 查询排班记录：dws attendance schedule get --userIdList USER_ID --workDateBegin DATE --workDateEnd DATE\n  2. 从返回结果中找到对应打卡类型（OnDuty=上班，OffDuty=下班）的 id 字段\n  3. 使用该 id 作为 --plan-id 参数"
         },
         "effect": {
           "candidates": [
@@ -3631,16 +3757,22 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
-              "value": false
+              "precedence": "tool_schema_hint",
+              "resolution": "highest_precedence",
+              "source": "tool_schema_hint",
+              "value": true
             },
             "required_when": {
               "candidates": [
@@ -3671,7 +3803,7 @@
               "value": "string"
             }
           },
-          "required": false,
+          "required": true,
           "type": "string"
         },
         "remark": {
@@ -4158,7 +4290,7 @@
       "cli_name": "record",
       "cli_path": "attendance check record",
       "confirmation": "not_required",
-      "description": "查询打卡记录",
+      "description": "查询指定用户的打卡流水记录。\n返回每条记录含：用户 ID、实际打卡时间、打卡地址、打卡经纬度、\n打卡类型（OnDuty/OffDuty）、定位方式（Map/Wifi/etc）。\n时间跨度不超过 1 个月。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -4272,7 +4404,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询打卡记录"
+              "value": "查询指定用户的打卡流水记录。\n返回每条记录含：用户 ID、实际打卡时间、打卡地址、打卡经纬度、\n打卡类型（OnDuty/OffDuty）、定位方式（Map/Wifi/etc）。\n时间跨度不超过 1 个月。"
             }
           ],
           "precedence": "contract_final",
@@ -4280,7 +4412,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询打卡记录"
+          "value": "查询指定用户的打卡流水记录。\n返回每条记录含：用户 ID、实际打卡时间、打卡地址、打卡经纬度、\n打卡类型（OnDuty/OffDuty）、定位方式（Map/Wifi/etc）。\n时间跨度不超过 1 个月。"
         },
         "effect": {
           "candidates": [
@@ -4819,7 +4951,7 @@
       "cli_name": "result",
       "cli_path": "attendance check result",
       "confirmation": "not_required",
-      "description": "查询打卡结果",
+      "description": "查询指定用户的打卡结果记录。\n返回每条记录含：用户 ID、工作日期、时间结果（Normal/Late/Early/Absenteeism/NotSigned）、\n位置结果、计划打卡时间、实际打卡时间、打卡流水 ID。\n时间跨度不超过 1 个月，最多 100 人。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -4933,7 +5065,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询打卡结果"
+              "value": "查询指定用户的打卡结果记录。\n返回每条记录含：用户 ID、工作日期、时间结果（Normal/Late/Early/Absenteeism/NotSigned）、\n位置结果、计划打卡时间、实际打卡时间、打卡流水 ID。\n时间跨度不超过 1 个月，最多 100 人。"
             }
           ],
           "precedence": "contract_final",
@@ -4941,7 +5073,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询打卡结果"
+          "value": "查询指定用户的打卡结果记录。\n返回每条记录含：用户 ID、工作日期、时间结果（Normal/Late/Early/Absenteeism/NotSigned）、\n位置结果、计划打卡时间、实际打卡时间、打卡流水 ID。\n时间跨度不超过 1 个月，最多 100 人。"
         },
         "effect": {
           "candidates": [
@@ -5675,7 +5807,7 @@
       "cli_name": "records",
       "cli_path": "attendance checkin records",
       "confirmation": "not_required",
-      "description": "查询打卡流水记录",
+      "description": "查询指定员工在一段时间内的签到记录。\n权限说明：\n  - Boss / 超级管理员 / 超级子管理员：可查看全公司员工\n  - 子管理员：可查看管理范围内的员工及自己\n  - 部门主管：可查看所管理部门的员工及自己\n  - 普通员工：只能查询自己\n\n日期格式：yyyy-MM-dd HH:mm:ss（如 2026-04-01 09:00:00）",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -5790,7 +5922,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询打卡流水记录"
+              "value": "查询指定员工在一段时间内的签到记录。\n权限说明：\n  - Boss / 超级管理员 / 超级子管理员：可查看全公司员工\n  - 子管理员：可查看管理范围内的员工及自己\n  - 部门主管：可查看所管理部门的员工及自己\n  - 普通员工：只能查询自己\n\n日期格式：yyyy-MM-dd HH:mm:ss（如 2026-04-01 09:00:00）"
             }
           ],
           "precedence": "contract_final",
@@ -5798,7 +5930,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询打卡流水记录"
+          "value": "查询指定员工在一段时间内的签到记录。\n权限说明：\n  - Boss / 超级管理员 / 超级子管理员：可查看全公司员工\n  - 子管理员：可查看管理范围内的员工及自己\n  - 部门主管：可查看所管理部门的员工及自己\n  - 普通员工：只能查询自己\n\n日期格式：yyyy-MM-dd HH:mm:ss（如 2026-04-01 09:00:00）"
         },
         "effect": {
           "candidates": [
@@ -6533,7 +6665,7 @@
       "cli_name": "create",
       "cli_path": "attendance class create",
       "confirmation": "user_required",
-      "description": "创建班次定义",
+      "description": "调用 MCP 工具 create_class_setting，创建一个新的班次。\n--name 和 --sections 必填，其余参数可选。由于保存班次耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于创建班次的说明\n\n常用 flag：\n  --name       班次名称（必填）\n  --owner      班次负责人 userId（可选）\n  --class-vo   完整 TopAtClassVO JSON 字符串（可选，用于传入复杂结构）\n\n当使用 --class-vo 传入完整 JSON 时，--name 和 --owner 仍可覆写 JSON 中的同名字段。\ncheckTime 字段统一使用 \"HH:mm\" 格式（如 \"09:00\"），CLI 自动转换为服务端所需的时间戳。\n\n--class-vo JSON 可用字段说明：\n\n  name       string    班次名称（必填）\n  owner      string    班次负责人 userId\n  sections   []object  班次上下班时间段（必填），支持多段上下班，每段包含 times 数组：\n    - times  []object  每段有且只能有两个对象（上班+下班），每个对象字段：\n        checkType  string   打卡类型：OnDuty（上班）/ OffDuty（下班）（必填）\n        checkTime  string   打卡时间，格式 \"HH:mm\"（必填，如 \"09:00\"、\"17:30\"）\n        across     number   是否跨天：0（不跨天）/ 1（跨天）（必填）\n        freeCheck  bool     是否免打卡\n        beginMin   number   允许最早提前打卡时间（分钟，-1 表示不限制）\n        endMin     number   允许最晚打卡时间（分钟，-1 表示不限制）\n  setting    object    班次其他配置：\n    - seriousLateMinutes      number  晚到多少分钟记为严重迟到\n    - absenteeismLateMinutes  number  晚到多少分钟记为旷工迟到\n    - attendDays              number  本班次记为多少天出勤（支持两位小数）\n    - topRestTimeList         []object  班次休息时间（仅 sections 只有一段上下班时可用，最多 3 段休息时间）：\n        checkType  string  休息类型：OnDuty（开始休息）/ OffDuty（结束休息）\n        checkTime  string  休息时间，格式 \"HH:mm\"（如 \"12:00\"、\"13:00\"）\n        across     number  是否跨天：0/1",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -6647,7 +6779,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "创建班次定义"
+              "value": "调用 MCP 工具 create_class_setting，创建一个新的班次。\n--name 和 --sections 必填，其余参数可选。由于保存班次耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于创建班次的说明\n\n常用 flag：\n  --name       班次名称（必填）\n  --owner      班次负责人 userId（可选）\n  --class-vo   完整 TopAtClassVO JSON 字符串（可选，用于传入复杂结构）\n\n当使用 --class-vo 传入完整 JSON 时，--name 和 --owner 仍可覆写 JSON 中的同名字段。\ncheckTime 字段统一使用 \"HH:mm\" 格式（如 \"09:00\"），CLI 自动转换为服务端所需的时间戳。\n\n--class-vo JSON 可用字段说明：\n\n  name       string    班次名称（必填）\n  owner      string    班次负责人 userId\n  sections   []object  班次上下班时间段（必填），支持多段上下班，每段包含 times 数组：\n    - times  []object  每段有且只能有两个对象（上班+下班），每个对象字段：\n        checkType  string   打卡类型：OnDuty（上班）/ OffDuty（下班）（必填）\n        checkTime  string   打卡时间，格式 \"HH:mm\"（必填，如 \"09:00\"、\"17:30\"）\n        across     number   是否跨天：0（不跨天）/ 1（跨天）（必填）\n        freeCheck  bool     是否免打卡\n        beginMin   number   允许最早提前打卡时间（分钟，-1 表示不限制）\n        endMin     number   允许最晚打卡时间（分钟，-1 表示不限制）\n  setting    object    班次其他配置：\n    - seriousLateMinutes      number  晚到多少分钟记为严重迟到\n    - absenteeismLateMinutes  number  晚到多少分钟记为旷工迟到\n    - attendDays              number  本班次记为多少天出勤（支持两位小数）\n    - topRestTimeList         []object  班次休息时间（仅 sections 只有一段上下班时可用，最多 3 段休息时间）：\n        checkType  string  休息类型：OnDuty（开始休息）/ OffDuty（结束休息）\n        checkTime  string  休息时间，格式 \"HH:mm\"（如 \"12:00\"、\"13:00\"）\n        across     number  是否跨天：0/1"
             }
           ],
           "precedence": "contract_final",
@@ -6655,7 +6787,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "创建班次定义"
+          "value": "调用 MCP 工具 create_class_setting，创建一个新的班次。\n--name 和 --sections 必填，其余参数可选。由于保存班次耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于创建班次的说明\n\n常用 flag：\n  --name       班次名称（必填）\n  --owner      班次负责人 userId（可选）\n  --class-vo   完整 TopAtClassVO JSON 字符串（可选，用于传入复杂结构）\n\n当使用 --class-vo 传入完整 JSON 时，--name 和 --owner 仍可覆写 JSON 中的同名字段。\ncheckTime 字段统一使用 \"HH:mm\" 格式（如 \"09:00\"），CLI 自动转换为服务端所需的时间戳。\n\n--class-vo JSON 可用字段说明：\n\n  name       string    班次名称（必填）\n  owner      string    班次负责人 userId\n  sections   []object  班次上下班时间段（必填），支持多段上下班，每段包含 times 数组：\n    - times  []object  每段有且只能有两个对象（上班+下班），每个对象字段：\n        checkType  string   打卡类型：OnDuty（上班）/ OffDuty（下班）（必填）\n        checkTime  string   打卡时间，格式 \"HH:mm\"（必填，如 \"09:00\"、\"17:30\"）\n        across     number   是否跨天：0（不跨天）/ 1（跨天）（必填）\n        freeCheck  bool     是否免打卡\n        beginMin   number   允许最早提前打卡时间（分钟，-1 表示不限制）\n        endMin     number   允许最晚打卡时间（分钟，-1 表示不限制）\n  setting    object    班次其他配置：\n    - seriousLateMinutes      number  晚到多少分钟记为严重迟到\n    - absenteeismLateMinutes  number  晚到多少分钟记为旷工迟到\n    - attendDays              number  本班次记为多少天出勤（支持两位小数）\n    - topRestTimeList         []object  班次休息时间（仅 sections 只有一段上下班时可用，最多 3 段休息时间）：\n        checkType  string  休息类型：OnDuty（开始休息）/ OffDuty（结束休息）\n        checkTime  string  休息时间，格式 \"HH:mm\"（如 \"12:00\"、\"13:00\"）\n        across     number  是否跨天：0/1"
         },
         "effect": {
           "candidates": [
@@ -7279,7 +7411,7 @@
       "cli_name": "get",
       "cli_path": "attendance class get",
       "confirmation": "not_required",
-      "description": "查询单个班次定义详情",
+      "description": "调用 MCP 工具 get_class_detail，根据班次 ID 查询该班次的详细信息。--class-id 必填。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -7394,7 +7526,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询单个班次定义详情"
+              "value": "调用 MCP 工具 get_class_detail，根据班次 ID 查询该班次的详细信息。--class-id 必填。"
             }
           ],
           "precedence": "contract_final",
@@ -7402,7 +7534,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询单个班次定义详情"
+          "value": "调用 MCP 工具 get_class_detail，根据班次 ID 查询该班次的详细信息。--class-id 必填。"
         },
         "effect": {
           "candidates": [
@@ -7749,7 +7881,7 @@
       "cli_name": "search",
       "cli_path": "attendance class search",
       "confirmation": "not_required",
-      "description": "查询班次定义列表",
+      "description": "查询当前用户有权管理的班次列表（班次定义），支持按名称搜索和类型过滤。\n所有参数均为可选项：\n  --page         页码（从 1 开始，默认 1）\n  --limit        每页条数（最大 200，默认 20）\n  --query        班次名称关键字，模糊搜索\n  --filter-type  班次类型：ALL（全部班次）/ MINE_OWN（我负责的），默认 ALL",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -7864,7 +7996,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询班次定义列表"
+              "value": "查询当前用户有权管理的班次列表（班次定义），支持按名称搜索和类型过滤。\n所有参数均为可选项：\n  --page         页码（从 1 开始，默认 1）\n  --limit        每页条数（最大 200，默认 20）\n  --query        班次名称关键字，模糊搜索\n  --filter-type  班次类型：ALL（全部班次）/ MINE_OWN（我负责的），默认 ALL"
             }
           ],
           "precedence": "contract_final",
@@ -7872,7 +8004,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询班次定义列表"
+          "value": "查询当前用户有权管理的班次列表（班次定义），支持按名称搜索和类型过滤。\n所有参数均为可选项：\n  --page         页码（从 1 开始，默认 1）\n  --limit        每页条数（最大 200，默认 20）\n  --query        班次名称关键字，模糊搜索\n  --filter-type  班次类型：ALL（全部班次）/ MINE_OWN（我负责的），默认 ALL"
         },
         "effect": {
           "candidates": [
@@ -8500,7 +8632,7 @@
       "cli_name": "update",
       "cli_path": "attendance class update",
       "confirmation": "user_required",
-      "description": "更新班次定义",
+      "description": "调用 MCP 工具 update_class_setting，更新一个已有的班次。\n--class-id 必填；其余参数均可选，仅需对要修改的字段进行赋値，未传的字段会自动从已有配置补充。由于保存班次耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新班次的说明\n\n常用 flag：\n  --class-id   班次 ID（必填）\n  --name       班次名称（可选，不传则保持原值）\n  --owner      班次负责人 userId（可选，不传则保持原值）\n  --class-vo   完整 TopAtClassVO JSON 字符串（可选，用于传入复杂结构）\n\n当使用 --class-vo 传入完整 JSON 时，--name 和 --owner 仍可覆写 JSON 中的同名字段。\ncheckTime 字段统一使用 \"HH:mm\" 格式（如 \"09:00\"），CLI 自动转换为服务端所需的时间戳。\n\n--class-vo JSON 可用字段说明：\n\n  name       string    班次名称（可选，不传则保持原值）\n  owner      string    班次负责人 userId（可选，不传则保持原值）\n  sections   []object  班次上下班时间段（可选，不传则保持原值），支持多段上下班，每段包含 times 数组：\n    - times  []object  每段有且只能有两个对象（上班+下班），每个对象字段：\n        checkType  string   打卡类型：OnDuty（上班）/ OffDuty（下班）（必填）\n        checkTime  string   打卡时间，格式 \"HH:mm\"（必填，如 \"09:00\"、\"17:30\"）\n        across     number   是否跨天：0（不跨天）/ 1（跨天）（必填）\n        freeCheck  bool     是否免打卡\n        beginMin   number   允许最早提前打卡时间（分钟，-1 表示不限制）\n        endMin     number   允许最晚打卡时间（分钟，-1 表示不限制）\n  setting    object    班次其他配置：\n    - seriousLateMinutes      number  晚到多少分钟记为严重迟到\n    - absenteeismLateMinutes  number  晚到多少分钟记为旷工迟到\n    - attendDays              number  本班次记为多少天出勤（支持两位小数）\n    - topRestTimeList         []object  班次休息时间（仅 sections 只有一段上下班时可用，最多 3 段休息时间）：\n        checkType  string  休息类型：OnDuty（开始休息）/ OffDuty（结束休息）\n        checkTime  string  休息时间，格式 \"HH:mm\"（如 \"12:00\"、\"13:00\"）\n        across     number  是否跨天：0/1",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -8615,7 +8747,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "更新班次定义"
+              "value": "调用 MCP 工具 update_class_setting，更新一个已有的班次。\n--class-id 必填；其余参数均可选，仅需对要修改的字段进行赋値，未传的字段会自动从已有配置补充。由于保存班次耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新班次的说明\n\n常用 flag：\n  --class-id   班次 ID（必填）\n  --name       班次名称（可选，不传则保持原值）\n  --owner      班次负责人 userId（可选，不传则保持原值）\n  --class-vo   完整 TopAtClassVO JSON 字符串（可选，用于传入复杂结构）\n\n当使用 --class-vo 传入完整 JSON 时，--name 和 --owner 仍可覆写 JSON 中的同名字段。\ncheckTime 字段统一使用 \"HH:mm\" 格式（如 \"09:00\"），CLI 自动转换为服务端所需的时间戳。\n\n--class-vo JSON 可用字段说明：\n\n  name       string    班次名称（可选，不传则保持原值）\n  owner      string    班次负责人 userId（可选，不传则保持原值）\n  sections   []object  班次上下班时间段（可选，不传则保持原值），支持多段上下班，每段包含 times 数组：\n    - times  []object  每段有且只能有两个对象（上班+下班），每个对象字段：\n        checkType  string   打卡类型：OnDuty（上班）/ OffDuty（下班）（必填）\n        checkTime  string   打卡时间，格式 \"HH:mm\"（必填，如 \"09:00\"、\"17:30\"）\n        across     number   是否跨天：0（不跨天）/ 1（跨天）（必填）\n        freeCheck  bool     是否免打卡\n        beginMin   number   允许最早提前打卡时间（分钟，-1 表示不限制）\n        endMin     number   允许最晚打卡时间（分钟，-1 表示不限制）\n  setting    object    班次其他配置：\n    - seriousLateMinutes      number  晚到多少分钟记为严重迟到\n    - absenteeismLateMinutes  number  晚到多少分钟记为旷工迟到\n    - attendDays              number  本班次记为多少天出勤（支持两位小数）\n    - topRestTimeList         []object  班次休息时间（仅 sections 只有一段上下班时可用，最多 3 段休息时间）：\n        checkType  string  休息类型：OnDuty（开始休息）/ OffDuty（结束休息）\n        checkTime  string  休息时间，格式 \"HH:mm\"（如 \"12:00\"、\"13:00\"）\n        across     number  是否跨天：0/1"
             }
           ],
           "precedence": "contract_final",
@@ -8623,7 +8755,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "更新班次定义"
+          "value": "调用 MCP 工具 update_class_setting，更新一个已有的班次。\n--class-id 必填；其余参数均可选，仅需对要修改的字段进行赋値，未传的字段会自动从已有配置补充。由于保存班次耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新班次的说明\n\n常用 flag：\n  --class-id   班次 ID（必填）\n  --name       班次名称（可选，不传则保持原值）\n  --owner      班次负责人 userId（可选，不传则保持原值）\n  --class-vo   完整 TopAtClassVO JSON 字符串（可选，用于传入复杂结构）\n\n当使用 --class-vo 传入完整 JSON 时，--name 和 --owner 仍可覆写 JSON 中的同名字段。\ncheckTime 字段统一使用 \"HH:mm\" 格式（如 \"09:00\"），CLI 自动转换为服务端所需的时间戳。\n\n--class-vo JSON 可用字段说明：\n\n  name       string    班次名称（可选，不传则保持原值）\n  owner      string    班次负责人 userId（可选，不传则保持原值）\n  sections   []object  班次上下班时间段（可选，不传则保持原值），支持多段上下班，每段包含 times 数组：\n    - times  []object  每段有且只能有两个对象（上班+下班），每个对象字段：\n        checkType  string   打卡类型：OnDuty（上班）/ OffDuty（下班）（必填）\n        checkTime  string   打卡时间，格式 \"HH:mm\"（必填，如 \"09:00\"、\"17:30\"）\n        across     number   是否跨天：0（不跨天）/ 1（跨天）（必填）\n        freeCheck  bool     是否免打卡\n        beginMin   number   允许最早提前打卡时间（分钟，-1 表示不限制）\n        endMin     number   允许最晚打卡时间（分钟，-1 表示不限制）\n  setting    object    班次其他配置：\n    - seriousLateMinutes      number  晚到多少分钟记为严重迟到\n    - absenteeismLateMinutes  number  晚到多少分钟记为旷工迟到\n    - attendDays              number  本班次记为多少天出勤（支持两位小数）\n    - topRestTimeList         []object  班次休息时间（仅 sections 只有一段上下班时可用，最多 3 段休息时间）：\n        checkType  string  休息类型：OnDuty（开始休息）/ OffDuty（结束休息）\n        checkTime  string  休息时间，格式 \"HH:mm\"（如 \"12:00\"、\"13:00\"）\n        across     number  是否跨天：0/1"
         },
         "effect": {
           "candidates": [
@@ -9333,7 +9465,7 @@
       "cli_name": "summary",
       "cli_path": "attendance summary",
       "confirmation": "not_required",
-      "description": "查询个人考勤统计摘要",
+      "description": "查询某个人的考勤统计摘要。--user、--date、--stats-type 均必填。\nstatsType 统计类型支持：week（周统计）、month（月统计）。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -9446,7 +9578,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询个人考勤统计摘要"
+              "value": "查询某个人的考勤统计摘要。--user、--date、--stats-type 均必填。\nstatsType 统计类型支持：week（周统计）、month（月统计）。"
             }
           ],
           "precedence": "contract_final",
@@ -9454,7 +9586,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询个人考勤统计摘要"
+          "value": "查询某个人的考勤统计摘要。--user、--date、--stats-type 均必填。\nstatsType 统计类型支持：week（周统计）、month（月统计）。"
         },
         "effect": {
           "candidates": [
@@ -9722,8 +9854,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -9734,9 +9872,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -9819,8 +9957,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -9831,9 +9975,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -9916,8 +10060,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -9928,9 +10078,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -10338,6 +10488,12 @@
                   "value": "查询日期，格式 YYYY-MM-DD (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要查询的日期的Unix时间戳，仅保留日期信息，单位毫秒。"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -10348,6 +10504,26 @@
               "resolution": "highest_precedence",
               "source": "cobra_usage",
               "value": "查询日期，格式 YYYY-MM-DD (必填)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
             },
             "property": {
               "candidates": [
@@ -10372,8 +10548,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -10384,9 +10572,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -10418,6 +10606,8 @@
               "value": "string"
             }
           },
+          "interface_description": "要查询的日期的Unix时间戳，仅保留日期信息，单位毫秒。",
+          "interface_type": "number",
           "property": "workDate",
           "required": true,
           "type": "string"
@@ -10432,6 +10622,12 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "钉钉用户 ID (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "要查询的用户的userId"
                 },
                 {
                   "precedence": "default",
@@ -10468,8 +10664,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -10480,9 +10688,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -10514,6 +10722,7 @@
               "value": "string"
             }
           },
+          "interface_description": "要查询的用户的userId",
           "property": "userId",
           "required": true,
           "type": "string"
@@ -10547,7 +10756,7 @@
       "cli_name": "get",
       "cli_path": "attendance globalsetting get",
       "confirmation": "not_required",
-      "description": "查询企业全局考勤设置",
+      "description": "查询全局规则设置，仅管理员可以调用。\n\n入参字段:\n  --setting-scene  查询设置项，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --scope          必填，必须明确输入 企业、全公司 或 所有人，用于确认本次查询面向全局范围\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -10662,7 +10871,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询企业全局考勤设置"
+              "value": "查询全局规则设置，仅管理员可以调用。\n\n入参字段:\n  --setting-scene  查询设置项，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --scope          必填，必须明确输入 企业、全公司 或 所有人，用于确认本次查询面向全局范围\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。"
             }
           ],
           "precedence": "contract_final",
@@ -10670,7 +10879,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询企业全局考勤设置"
+          "value": "查询全局规则设置，仅管理员可以调用。\n\n入参字段:\n  --setting-scene  查询设置项，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --scope          必填，必须明确输入 企业、全公司 或 所有人，用于确认本次查询面向全局范围\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。"
         },
         "effect": {
           "candidates": [
@@ -11114,7 +11323,7 @@
       "cli_name": "save",
       "cli_path": "attendance globalsetting save",
       "confirmation": "user_required",
-      "description": "更新企业全局考勤设置",
+      "description": "更新保存全局规则设置，仅管理员可以调用。\n\n入参字段:\n  --setting-scene  必填，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --scope          必填，必须明确输入 企业、全公司 或 所有人，用于确认本次更新面向全局范围\n\n按 settingScene 传入对应设置字段，且至少传一个字段：\n  checkRemind:\n    --check-remind-corp\n    --check-remind-pc-corp\n  fastCheck:\n    --fast-check-corp\n  checkResultNotify:\n    --enable-check-cert-push\n  lackRemind:\n    --lack-remind-corp\n  personalAttendStatNotify:\n    --enable-personal-daily-report\n    --enable-personal-weekly-report\n    --enable-personal-weekly-report-card\n    --enable-personal-monthly-report\n  bossAttendStatNotify:\n    --boss-daily-report-type\n    --boss-weekly-report-type\n    --boss-monthly-report-type\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n返回 ServiceResult，result 为 boolean，表示保存是否成功。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -11229,7 +11438,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "更新企业全局考勤设置"
+              "value": "更新保存全局规则设置，仅管理员可以调用。\n\n入参字段:\n  --setting-scene  必填，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --scope          必填，必须明确输入 企业、全公司 或 所有人，用于确认本次更新面向全局范围\n\n按 settingScene 传入对应设置字段，且至少传一个字段：\n  checkRemind:\n    --check-remind-corp\n    --check-remind-pc-corp\n  fastCheck:\n    --fast-check-corp\n  checkResultNotify:\n    --enable-check-cert-push\n  lackRemind:\n    --lack-remind-corp\n  personalAttendStatNotify:\n    --enable-personal-daily-report\n    --enable-personal-weekly-report\n    --enable-personal-weekly-report-card\n    --enable-personal-monthly-report\n  bossAttendStatNotify:\n    --boss-daily-report-type\n    --boss-weekly-report-type\n    --boss-monthly-report-type\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n返回 ServiceResult，result 为 boolean，表示保存是否成功。"
             }
           ],
           "precedence": "contract_final",
@@ -11237,7 +11446,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "更新企业全局考勤设置"
+          "value": "更新保存全局规则设置，仅管理员可以调用。\n\n入参字段:\n  --setting-scene  必填，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --scope          必填，必须明确输入 企业、全公司 或 所有人，用于确认本次更新面向全局范围\n\n按 settingScene 传入对应设置字段，且至少传一个字段：\n  checkRemind:\n    --check-remind-corp\n    --check-remind-pc-corp\n  fastCheck:\n    --fast-check-corp\n  checkResultNotify:\n    --enable-check-cert-push\n  lackRemind:\n    --lack-remind-corp\n  personalAttendStatNotify:\n    --enable-personal-daily-report\n    --enable-personal-weekly-report\n    --enable-personal-weekly-report-card\n    --enable-personal-monthly-report\n  bossAttendStatNotify:\n    --boss-daily-report-type\n    --boss-weekly-report-type\n    --boss-monthly-report-type\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n返回 ServiceResult，result 为 boolean，表示保存是否成功。"
         },
         "effect": {
           "candidates": [
@@ -12864,7 +13073,7 @@
       "cli_name": "create",
       "cli_path": "attendance group create",
       "confirmation": "user_required",
-      "description": "创建考勤组",
+      "description": "调用 MCP 工具 create_group_setting，创建一个新的考勤组。\n--name 和 --type 必填，其余参数可选（未传字段使用默认值）。由于创建考勤组耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于创建考勤组的说明\n\n常用 flag：\n  --name                   考勤组名称（必填）\n  --type                   考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）（必填，显式校验）\n  --owner                  考勤组主负责人 userId（可选）\n  --group-vo               完整 groupVO JSON 字符串（可选，用于传入复杂子对象，会与 --name/--type/--owner 合并）\n\n当使用 --group-vo 传入完整 JSON 时，--name、--type、--owner 仍可覆写 JSON 中的同名字段。\n\n【无条件必填字段】\n  name      string  考勤组名称\n  type      string  考勤组类型：FIXED / TURN / NONE\n\n【条件必填字段（type=FIXED 固定班制时）】\n  workDayClassList    []number  工作日班次列表，不能为空。\n                             一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息。\n                             例如 [0,1279240003,0,0,0,0,0] 表示周一的班次id为1279240003，其余日子都是休息\n  defaultClassId      number   默认班次 ID，不能为 null\n\n条件必填字段通过 --group-vo JSON 传入，CLI 在 --type=FIXED 时会显式校验这些字段。\n\n--group-vo 可用字段说明（与更新考勤组一致，均可选，只需包含要设置的字段）：\n\n【基础信息】\n  id            number    考勤组id（创建时禁止传入，由服务端分配）\n  name          string    考勤组名称（必填）\n  type          string    考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）（必填）\n  owner         string    考勤组主负责人 userId\n  managerList   []string  考勤组子负责人 userId 列表\n  skipHolidays  bool      节假日自动排休（只有固定班制和自由工时考勤组生效）\n  defaultGroup  bool      是否默认考勤组\n  classIds      []number  所选班次 id 列表(只有固定班制和排班制才有班次，自由工时没有)\n\n【打卡范围与定位】\n  trimDistance                      number    定位允许微调距离（米）\n  enablePositionOfGps               bool      打卡是否允许开启 GPS 定位\n  enablePositionOfWifi              bool      是否开启 wifi 定位\n  enablePositionOfBle               bool      是否启用蓝牙定位\n\n  positions      []object  考勤打卡地址列表（地址定位打卡用），每项字段：\n    - title      string    地址标题\n    - address    string    地址详情（完整地址文本）\n    - latitude   number    纬度\n    - longitude  number    经度\n    - offset     number    该地址允许的打卡范围，单位米\n\n  wifis          []object  打卡方式中的 wifi 详情列表，每项字段：\n    - ssid       string    wifi 的 ssid（wifi名称）\n    - macAddr    string    wifi 的 macAddr（MAC 地址）\n    - groupId    number    考勤组id\n\n  bleDeviceVOList  []object  已选择的蓝牙设备列表，每项字段：\n    - name        string    设备名称\n    - deviceUid   number    设备 uid\n    - sn          string    设备 sn 序列号\n    - productType string    对外的设备类型\n    - devServId   number    内部设备类型\n\n【外勤打卡设置】\n  enableOutsideCheck                bool      是否可以外勤打卡\n  enableOutsideCameraCheck          bool      是否开启外勤打卡必须拍照\n  enableOutsideRemark               bool      是否开启外勤打卡必须填写备注\n  enableOutsideApply                bool      是否开启外勤打卡必须审批\n  forbidHideOutSideAddress          bool      禁止隐藏外勤打卡地址的功能，false表示允许用户隐藏外勤打卡地址\n  enableOutSideUpdateNormalCheck    bool      下班时间：允许外勤卡更新内勤卡\n  enableOnDutyNormalUpdateOutsideCheck bool   上班时间：允许内勤卡更新外勤卡\n  outsideCheckApproveMode           string    外勤打卡需审批执行模式：\n                                                NO_NEED_APPROVE（无需审批）\n                                                APPROVE_FIRST（先审批后打卡）\n                                                CHECK_FIRST（先打卡后审批）\n                                                APPROVE_EVERYTIME（每次打卡都需要审批）\n  outSideCheckApplyType             number    外勤审批范围：1（全天外勤打卡）/ 2（上班外勤打卡）/ 3（下班外勤打卡）\n\n【打卡方式】\n  enableCameraCheck    bool      是否开启拍照打卡\n  openCameraCheck      bool      是否开启拍照打卡（与 enableCameraCheck 含义相同）\n  openFaceCheck        bool      是否开启人脸打卡\n  enableFaceStrictMode bool      是否开启人脸严格模式（强制活体检测）\n  enableFaceBeauty     bool      是否开启美颜\n  onlyMachineCheck     bool      只允许考勤机打卡\n  permitMaxBeaconCount number    允许绑定的智点设备数量\n  disableCheckWhenRest bool      休息日打卡需审批（只在固定班制和排班制生效，true表示打卡需要提交审批单）\n\n\n【固定班制设置（FIXED）】\n  defaultClassId              number    固定班制的默认班次 id（type=FIXED 时必填）\n  workDayClassList            []number  固定班制的工作日班次 id 列表，一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息，例如[0,1279240003,0,0,0,0,0]表示周一的班次id为1279240003，其余日子都是休息\n\n【排班制设置（TURN）】\n  disableCheckWithoutSchedule bool      未排班时员工可打卡（true=未排班时禁止打卡）\n  enableEmpSelectClass        bool      未排班时，员工可选班次打卡\n  enableScheduleAutoMatch     bool      未排班时，系统自动匹配班次\n  ----以下是排班制设置排班周期的，非必要，不是所有排班制考勤组都需要设置，不设置就是按照classIds中的班次由管理员自行排班-----\n  cycleDays           number    排班循环天数，支持大小周（14天）\n  startCycleDate      number    用户设置的大小周开始时间（时间戳，毫秒）\n  cycleScheduleList   []object  循环排班设置列表，每项字段：\n    - cycleName  string    周期名字（如\"第一周\"）\n    - groupId    number    考勤组 id\n    - isValid    string    是否有效：Y（有效）/ N（无效）\n    - itemList   []object  排班设置列表，每项字段：\n        - classId    number  班次 id\n        - className  string  班次名称\n        - isValid    string  是否有效（Y/N）\n\n【自由工时设置（NONE）】\n  workDays                    []number  自由工时的工作日，如 [1,2,3,4,5] 表示周一到周五（1=周一，7=周日）\n  freeCheckDayStartMinOffset  number    自由打卡每日开始时间，距离 0 点的分钟数（如 480 表示 08:00 开始）\n  freeCheckCoreTime           number    自由工时考勤组的打卡最短工作时长（分钟）\n  freeCheckDemandWorkMinutes  number    自由工时考勤组要求的打卡时长（分钟）\n\n  freeCheckSettingVO   object  自由工时打卡设置，包含字段：\n    - freeCheckType                    string  自由工时打卡类型：\n                                                 CYCLE（上下班交替打卡）\n                                                 MAX_TIME_UPDATE（最大时间打卡，第一次为上班，后续均为下班卡）\n    - freeWorkDayLackSwitch            bool    自由工时打卡规则：工作日没打卡记为缺卡（true=记缺卡）\n    - freeOnDutyLackMinOffset          number  自由工时打卡规则：上班缺卡生成时间偏移分钟数\n    - freeOffDutyLackMinOffset         number  自由工时打卡规则：下班缺卡生成时间偏移分钟数\n    - delimitOffsetMinutesBetweenDays  number  自由工时前后两天的分割线（距 0 点分钟数，超过此时间则归属第二天）\n    - freeCheckGapVO                   object  自由工时/休息日打卡间隔设置：\n        - onOffCheckGapMinutes  number  上班打卡后，多久才可以打下班卡（分钟）\n        - offOnCheckGapMinutes  number  下班打卡后，多久才可以打上班卡（分钟）\n\n  freeGroupSpecialDayVO   object  自由工时考勤组特殊日期设置，包含字段：\n    - specialOnDutyDays   []number  特殊需要打卡日期的时间戳列表（毫秒，原本休息日需额外打卡的日期）\n    - specialOffDutyDays  []number  特殊无需打卡日期的时间戳列表（毫秒，原本工作日可免打卡的日期）",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -12979,7 +13188,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "创建考勤组"
+              "value": "调用 MCP 工具 create_group_setting，创建一个新的考勤组。\n--name 和 --type 必填，其余参数可选（未传字段使用默认值）。由于创建考勤组耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于创建考勤组的说明\n\n常用 flag：\n  --name                   考勤组名称（必填）\n  --type                   考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）（必填，显式校验）\n  --owner                  考勤组主负责人 userId（可选）\n  --group-vo               完整 groupVO JSON 字符串（可选，用于传入复杂子对象，会与 --name/--type/--owner 合并）\n\n当使用 --group-vo 传入完整 JSON 时，--name、--type、--owner 仍可覆写 JSON 中的同名字段。\n\n【无条件必填字段】\n  name      string  考勤组名称\n  type      string  考勤组类型：FIXED / TURN / NONE\n\n【条件必填字段（type=FIXED 固定班制时）】\n  workDayClassList    []number  工作日班次列表，不能为空。\n                             一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息。\n                             例如 [0,1279240003,0,0,0,0,0] 表示周一的班次id为1279240003，其余日子都是休息\n  defaultClassId      number   默认班次 ID，不能为 null\n\n条件必填字段通过 --group-vo JSON 传入，CLI 在 --type=FIXED 时会显式校验这些字段。\n\n--group-vo 可用字段说明（与更新考勤组一致，均可选，只需包含要设置的字段）：\n\n【基础信息】\n  id            number    考勤组id（创建时禁止传入，由服务端分配）\n  name          string    考勤组名称（必填）\n  type          string    考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）（必填）\n  owner         string    考勤组主负责人 userId\n  managerList   []string  考勤组子负责人 userId 列表\n  skipHolidays  bool      节假日自动排休（只有固定班制和自由工时考勤组生效）\n  defaultGroup  bool      是否默认考勤组\n  classIds      []number  所选班次 id 列表(只有固定班制和排班制才有班次，自由工时没有)\n\n【打卡范围与定位】\n  trimDistance                      number    定位允许微调距离（米）\n  enablePositionOfGps               bool      打卡是否允许开启 GPS 定位\n  enablePositionOfWifi              bool      是否开启 wifi 定位\n  enablePositionOfBle               bool      是否启用蓝牙定位\n\n  positions      []object  考勤打卡地址列表（地址定位打卡用），每项字段：\n    - title      string    地址标题\n    - address    string    地址详情（完整地址文本）\n    - latitude   number    纬度\n    - longitude  number    经度\n    - offset     number    该地址允许的打卡范围，单位米\n\n  wifis          []object  打卡方式中的 wifi 详情列表，每项字段：\n    - ssid       string    wifi 的 ssid（wifi名称）\n    - macAddr    string    wifi 的 macAddr（MAC 地址）\n    - groupId    number    考勤组id\n\n  bleDeviceVOList  []object  已选择的蓝牙设备列表，每项字段：\n    - name        string    设备名称\n    - deviceUid   number    设备 uid\n    - sn          string    设备 sn 序列号\n    - productType string    对外的设备类型\n    - devServId   number    内部设备类型\n\n【外勤打卡设置】\n  enableOutsideCheck                bool      是否可以外勤打卡\n  enableOutsideCameraCheck          bool      是否开启外勤打卡必须拍照\n  enableOutsideRemark               bool      是否开启外勤打卡必须填写备注\n  enableOutsideApply                bool      是否开启外勤打卡必须审批\n  forbidHideOutSideAddress          bool      禁止隐藏外勤打卡地址的功能，false表示允许用户隐藏外勤打卡地址\n  enableOutSideUpdateNormalCheck    bool      下班时间：允许外勤卡更新内勤卡\n  enableOnDutyNormalUpdateOutsideCheck bool   上班时间：允许内勤卡更新外勤卡\n  outsideCheckApproveMode           string    外勤打卡需审批执行模式：\n                                                NO_NEED_APPROVE（无需审批）\n                                                APPROVE_FIRST（先审批后打卡）\n                                                CHECK_FIRST（先打卡后审批）\n                                                APPROVE_EVERYTIME（每次打卡都需要审批）\n  outSideCheckApplyType             number    外勤审批范围：1（全天外勤打卡）/ 2（上班外勤打卡）/ 3（下班外勤打卡）\n\n【打卡方式】\n  enableCameraCheck    bool      是否开启拍照打卡\n  openCameraCheck      bool      是否开启拍照打卡（与 enableCameraCheck 含义相同）\n  openFaceCheck        bool      是否开启人脸打卡\n  enableFaceStrictMode bool      是否开启人脸严格模式（强制活体检测）\n  enableFaceBeauty     bool      是否开启美颜\n  onlyMachineCheck     bool      只允许考勤机打卡\n  permitMaxBeaconCount number    允许绑定的智点设备数量\n  disableCheckWhenRest bool      休息日打卡需审批（只在固定班制和排班制生效，true表示打卡需要提交审批单）\n\n\n【固定班制设置（FIXED）】\n  defaultClassId              number    固定班制的默认班次 id（type=FIXED 时必填）\n  workDayClassList            []number  固定班制的工作日班次 id 列表，一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息，例如[0,1279240003,0,0,0,0,0]表示周一的班次id为1279240003，其余日子都是休息\n\n【排班制设置（TURN）】\n  disableCheckWithoutSchedule bool      未排班时员工可打卡（true=未排班时禁止打卡）\n  enableEmpSelectClass        bool      未排班时，员工可选班次打卡\n  enableScheduleAutoMatch     bool      未排班时，系统自动匹配班次\n  ----以下是排班制设置排班周期的，非必要，不是所有排班制考勤组都需要设置，不设置就是按照classIds中的班次由管理员自行排班-----\n  cycleDays           number    排班循环天数，支持大小周（14天）\n  startCycleDate      number    用户设置的大小周开始时间（时间戳，毫秒）\n  cycleScheduleList   []object  循环排班设置列表，每项字段：\n    - cycleName  string    周期名字（如\"第一周\"）\n    - groupId    number    考勤组 id\n    - isValid    string    是否有效：Y（有效）/ N（无效）\n    - itemList   []object  排班设置列表，每项字段：\n        - classId    number  班次 id\n        - className  string  班次名称\n        - isValid    string  是否有效（Y/N）\n\n【自由工时设置（NONE）】\n  workDays                    []number  自由工时的工作日，如 [1,2,3,4,5] 表示周一到周五（1=周一，7=周日）\n  freeCheckDayStartMinOffset  number    自由打卡每日开始时间，距离 0 点的分钟数（如 480 表示 08:00 开始）\n  freeCheckCoreTime           number    自由工时考勤组的打卡最短工作时长（分钟）\n  freeCheckDemandWorkMinutes  number    自由工时考勤组要求的打卡时长（分钟）\n\n  freeCheckSettingVO   object  自由工时打卡设置，包含字段：\n    - freeCheckType                    string  自由工时打卡类型：\n                                                 CYCLE（上下班交替打卡）\n                                                 MAX_TIME_UPDATE（最大时间打卡，第一次为上班，后续均为下班卡）\n    - freeWorkDayLackSwitch            bool    自由工时打卡规则：工作日没打卡记为缺卡（true=记缺卡）\n    - freeOnDutyLackMinOffset          number  自由工时打卡规则：上班缺卡生成时间偏移分钟数\n    - freeOffDutyLackMinOffset         number  自由工时打卡规则：下班缺卡生成时间偏移分钟数\n    - delimitOffsetMinutesBetweenDays  number  自由工时前后两天的分割线（距 0 点分钟数，超过此时间则归属第二天）\n    - freeCheckGapVO                   object  自由工时/休息日打卡间隔设置：\n        - onOffCheckGapMinutes  number  上班打卡后，多久才可以打下班卡（分钟）\n        - offOnCheckGapMinutes  number  下班打卡后，多久才可以打上班卡（分钟）\n\n  freeGroupSpecialDayVO   object  自由工时考勤组特殊日期设置，包含字段：\n    - specialOnDutyDays   []number  特殊需要打卡日期的时间戳列表（毫秒，原本休息日需额外打卡的日期）\n    - specialOffDutyDays  []number  特殊无需打卡日期的时间戳列表（毫秒，原本工作日可免打卡的日期）"
             }
           ],
           "precedence": "contract_final",
@@ -12987,7 +13196,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "创建考勤组"
+          "value": "调用 MCP 工具 create_group_setting，创建一个新的考勤组。\n--name 和 --type 必填，其余参数可选（未传字段使用默认值）。由于创建考勤组耗时较久，指令需要带上 --timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于创建考勤组的说明\n\n常用 flag：\n  --name                   考勤组名称（必填）\n  --type                   考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）（必填，显式校验）\n  --owner                  考勤组主负责人 userId（可选）\n  --group-vo               完整 groupVO JSON 字符串（可选，用于传入复杂子对象，会与 --name/--type/--owner 合并）\n\n当使用 --group-vo 传入完整 JSON 时，--name、--type、--owner 仍可覆写 JSON 中的同名字段。\n\n【无条件必填字段】\n  name      string  考勤组名称\n  type      string  考勤组类型：FIXED / TURN / NONE\n\n【条件必填字段（type=FIXED 固定班制时）】\n  workDayClassList    []number  工作日班次列表，不能为空。\n                             一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息。\n                             例如 [0,1279240003,0,0,0,0,0] 表示周一的班次id为1279240003，其余日子都是休息\n  defaultClassId      number   默认班次 ID，不能为 null\n\n条件必填字段通过 --group-vo JSON 传入，CLI 在 --type=FIXED 时会显式校验这些字段。\n\n--group-vo 可用字段说明（与更新考勤组一致，均可选，只需包含要设置的字段）：\n\n【基础信息】\n  id            number    考勤组id（创建时禁止传入，由服务端分配）\n  name          string    考勤组名称（必填）\n  type          string    考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）（必填）\n  owner         string    考勤组主负责人 userId\n  managerList   []string  考勤组子负责人 userId 列表\n  skipHolidays  bool      节假日自动排休（只有固定班制和自由工时考勤组生效）\n  defaultGroup  bool      是否默认考勤组\n  classIds      []number  所选班次 id 列表(只有固定班制和排班制才有班次，自由工时没有)\n\n【打卡范围与定位】\n  trimDistance                      number    定位允许微调距离（米）\n  enablePositionOfGps               bool      打卡是否允许开启 GPS 定位\n  enablePositionOfWifi              bool      是否开启 wifi 定位\n  enablePositionOfBle               bool      是否启用蓝牙定位\n\n  positions      []object  考勤打卡地址列表（地址定位打卡用），每项字段：\n    - title      string    地址标题\n    - address    string    地址详情（完整地址文本）\n    - latitude   number    纬度\n    - longitude  number    经度\n    - offset     number    该地址允许的打卡范围，单位米\n\n  wifis          []object  打卡方式中的 wifi 详情列表，每项字段：\n    - ssid       string    wifi 的 ssid（wifi名称）\n    - macAddr    string    wifi 的 macAddr（MAC 地址）\n    - groupId    number    考勤组id\n\n  bleDeviceVOList  []object  已选择的蓝牙设备列表，每项字段：\n    - name        string    设备名称\n    - deviceUid   number    设备 uid\n    - sn          string    设备 sn 序列号\n    - productType string    对外的设备类型\n    - devServId   number    内部设备类型\n\n【外勤打卡设置】\n  enableOutsideCheck                bool      是否可以外勤打卡\n  enableOutsideCameraCheck          bool      是否开启外勤打卡必须拍照\n  enableOutsideRemark               bool      是否开启外勤打卡必须填写备注\n  enableOutsideApply                bool      是否开启外勤打卡必须审批\n  forbidHideOutSideAddress          bool      禁止隐藏外勤打卡地址的功能，false表示允许用户隐藏外勤打卡地址\n  enableOutSideUpdateNormalCheck    bool      下班时间：允许外勤卡更新内勤卡\n  enableOnDutyNormalUpdateOutsideCheck bool   上班时间：允许内勤卡更新外勤卡\n  outsideCheckApproveMode           string    外勤打卡需审批执行模式：\n                                                NO_NEED_APPROVE（无需审批）\n                                                APPROVE_FIRST（先审批后打卡）\n                                                CHECK_FIRST（先打卡后审批）\n                                                APPROVE_EVERYTIME（每次打卡都需要审批）\n  outSideCheckApplyType             number    外勤审批范围：1（全天外勤打卡）/ 2（上班外勤打卡）/ 3（下班外勤打卡）\n\n【打卡方式】\n  enableCameraCheck    bool      是否开启拍照打卡\n  openCameraCheck      bool      是否开启拍照打卡（与 enableCameraCheck 含义相同）\n  openFaceCheck        bool      是否开启人脸打卡\n  enableFaceStrictMode bool      是否开启人脸严格模式（强制活体检测）\n  enableFaceBeauty     bool      是否开启美颜\n  onlyMachineCheck     bool      只允许考勤机打卡\n  permitMaxBeaconCount number    允许绑定的智点设备数量\n  disableCheckWhenRest bool      休息日打卡需审批（只在固定班制和排班制生效，true表示打卡需要提交审批单）\n\n\n【固定班制设置（FIXED）】\n  defaultClassId              number    固定班制的默认班次 id（type=FIXED 时必填）\n  workDayClassList            []number  固定班制的工作日班次 id 列表，一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息，例如[0,1279240003,0,0,0,0,0]表示周一的班次id为1279240003，其余日子都是休息\n\n【排班制设置（TURN）】\n  disableCheckWithoutSchedule bool      未排班时员工可打卡（true=未排班时禁止打卡）\n  enableEmpSelectClass        bool      未排班时，员工可选班次打卡\n  enableScheduleAutoMatch     bool      未排班时，系统自动匹配班次\n  ----以下是排班制设置排班周期的，非必要，不是所有排班制考勤组都需要设置，不设置就是按照classIds中的班次由管理员自行排班-----\n  cycleDays           number    排班循环天数，支持大小周（14天）\n  startCycleDate      number    用户设置的大小周开始时间（时间戳，毫秒）\n  cycleScheduleList   []object  循环排班设置列表，每项字段：\n    - cycleName  string    周期名字（如\"第一周\"）\n    - groupId    number    考勤组 id\n    - isValid    string    是否有效：Y（有效）/ N（无效）\n    - itemList   []object  排班设置列表，每项字段：\n        - classId    number  班次 id\n        - className  string  班次名称\n        - isValid    string  是否有效（Y/N）\n\n【自由工时设置（NONE）】\n  workDays                    []number  自由工时的工作日，如 [1,2,3,4,5] 表示周一到周五（1=周一，7=周日）\n  freeCheckDayStartMinOffset  number    自由打卡每日开始时间，距离 0 点的分钟数（如 480 表示 08:00 开始）\n  freeCheckCoreTime           number    自由工时考勤组的打卡最短工作时长（分钟）\n  freeCheckDemandWorkMinutes  number    自由工时考勤组要求的打卡时长（分钟）\n\n  freeCheckSettingVO   object  自由工时打卡设置，包含字段：\n    - freeCheckType                    string  自由工时打卡类型：\n                                                 CYCLE（上下班交替打卡）\n                                                 MAX_TIME_UPDATE（最大时间打卡，第一次为上班，后续均为下班卡）\n    - freeWorkDayLackSwitch            bool    自由工时打卡规则：工作日没打卡记为缺卡（true=记缺卡）\n    - freeOnDutyLackMinOffset          number  自由工时打卡规则：上班缺卡生成时间偏移分钟数\n    - freeOffDutyLackMinOffset         number  自由工时打卡规则：下班缺卡生成时间偏移分钟数\n    - delimitOffsetMinutesBetweenDays  number  自由工时前后两天的分割线（距 0 点分钟数，超过此时间则归属第二天）\n    - freeCheckGapVO                   object  自由工时/休息日打卡间隔设置：\n        - onOffCheckGapMinutes  number  上班打卡后，多久才可以打下班卡（分钟）\n        - offOnCheckGapMinutes  number  下班打卡后，多久才可以打上班卡（分钟）\n\n  freeGroupSpecialDayVO   object  自由工时考勤组特殊日期设置，包含字段：\n    - specialOnDutyDays   []number  特殊需要打卡日期的时间戳列表（毫秒，原本休息日需额外打卡的日期）\n    - specialOffDutyDays  []number  特殊无需打卡日期的时间戳列表（毫秒，原本工作日可免打卡的日期）"
         },
         "effect": {
           "candidates": [
@@ -13795,7 +14004,7 @@
       "cli_name": "filtered-get",
       "cli_path": "attendance group filtered-get",
       "confirmation": "not_required",
-      "description": "查询考勤组指定字段子集",
+      "description": "调用 MCP 工具 get_group_filtered_detail，根据考勤组 ID 仅返回关心的字段子集，\n强烈建议在仅需查询成员信息、打卡地址、蓝牙、Wifi 时使用，节省查询成本。\n--group-id 必填；四个过滤字段均可选（不传则默认 false，即不查询该字段）。\n  --member    是否查询考勤组成员信息\n  --position  是否查询打卡地址\n  --wifi      是否查询打卡 Wifi\n  --bles      是否查询打卡蓝牙",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -13909,7 +14118,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤组指定字段子集"
+              "value": "调用 MCP 工具 get_group_filtered_detail，根据考勤组 ID 仅返回关心的字段子集，\n强烈建议在仅需查询成员信息、打卡地址、蓝牙、Wifi 时使用，节省查询成本。\n--group-id 必填；四个过滤字段均可选（不传则默认 false，即不查询该字段）。\n  --member    是否查询考勤组成员信息\n  --position  是否查询打卡地址\n  --wifi      是否查询打卡 Wifi\n  --bles      是否查询打卡蓝牙"
             }
           ],
           "precedence": "contract_final",
@@ -13917,7 +14126,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤组指定字段子集"
+          "value": "调用 MCP 工具 get_group_filtered_detail，根据考勤组 ID 仅返回关心的字段子集，\n强烈建议在仅需查询成员信息、打卡地址、蓝牙、Wifi 时使用，节省查询成本。\n--group-id 必填；四个过滤字段均可选（不传则默认 false，即不查询该字段）。\n  --member    是否查询考勤组成员信息\n  --position  是否查询打卡地址\n  --wifi      是否查询打卡 Wifi\n  --bles      是否查询打卡蓝牙"
         },
         "effect": {
           "candidates": [
@@ -14626,7 +14835,7 @@
       "cli_name": "get",
       "cli_path": "attendance group get",
       "confirmation": "not_required",
-      "description": "查询考勤组完整详情",
+      "description": "调用 MCP 工具 get_group_detail，根据考勤组 ID 查询该考勤组的全量信息。\n--group-id 必填。如果只需查询成员、打卡地址、蓝牙、Wifi 子集，请使用 group filtered-get 以节省查询成本。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -14740,7 +14949,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤组完整详情"
+              "value": "调用 MCP 工具 get_group_detail，根据考勤组 ID 查询该考勤组的全量信息。\n--group-id 必填。如果只需查询成员、打卡地址、蓝牙、Wifi 子集，请使用 group filtered-get 以节省查询成本。"
             }
           ],
           "precedence": "contract_final",
@@ -14748,7 +14957,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤组完整详情"
+          "value": "调用 MCP 工具 get_group_detail，根据考勤组 ID 查询该考勤组的全量信息。\n--group-id 必填。如果只需查询成员、打卡地址、蓝牙、Wifi 子集，请使用 group filtered-get 以节省查询成本。"
         },
         "effect": {
           "candidates": [
@@ -15093,7 +15302,7 @@
       "cli_name": "search",
       "cli_path": "attendance group search",
       "confirmation": "not_required",
-      "description": "查询考勤组列表",
+      "description": "根据当前用户的权限和筛选条件获取考勤组简要信息。\nCLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数时补齐 page=1、limit=20，以满足服务端非空对象约束。\n  --query           考勤组名称关键字，模糊搜索\n  --type            考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  --query-position  是否查询地理定位和 Wifi 名称（默认 false）\n  --query-ble       是否查询蓝牙设备列表（默认 false）\n  --page            页码（从 1 开始，默认 1）\n  --limit           每页条数（200 以内，默认 20）",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -15208,7 +15417,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤组列表"
+              "value": "根据当前用户的权限和筛选条件获取考勤组简要信息。\nCLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数时补齐 page=1、limit=20，以满足服务端非空对象约束。\n  --query           考勤组名称关键字，模糊搜索\n  --type            考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  --query-position  是否查询地理定位和 Wifi 名称（默认 false）\n  --query-ble       是否查询蓝牙设备列表（默认 false）\n  --page            页码（从 1 开始，默认 1）\n  --limit           每页条数（200 以内，默认 20）"
             }
           ],
           "precedence": "contract_final",
@@ -15216,7 +15425,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤组列表"
+          "value": "根据当前用户的权限和筛选条件获取考勤组简要信息。\nCLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数时补齐 page=1、limit=20，以满足服务端非空对象约束。\n  --query           考勤组名称关键字，模糊搜索\n  --type            考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  --query-position  是否查询地理定位和 Wifi 名称（默认 false）\n  --query-ble       是否查询蓝牙设备列表（默认 false）\n  --page            页码（从 1 开始，默认 1）\n  --limit           每页条数（200 以内，默认 20）"
         },
         "effect": {
           "candidates": [
@@ -16042,7 +16251,7 @@
       "cli_name": "update",
       "cli_path": "attendance group update",
       "confirmation": "user_required",
-      "description": "更新考勤组配置",
+      "description": "调用 MCP 工具 update_group_setting，更新考勤组配置信息。\n--group-id 必填；其余参数均可选，仅需对要修改的字段进行赋値，未传的字段会自动从已有配置补充。由于保存考勤组耗时较久，指令需要带上--timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新考勤组配置的说明\n\n常用简单字段可直接用 flag 传入；复杂子对象（如打卡地址、wifi、蓝牙设备、循环排班等）请用 --group-vo JSON 字符串传入完整 groupVO 对象覆写。\n\n常用 flag：\n  --name                   考勤组名称\n  --type                   考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  --owner                  考勤组主负责人 userId\n  --classIds               []number  所选班次 id 列表\n  --enable-outside-check   是否允许外勤打卡 (true/false)\n  --group-vo               完整 groupVO JSON 字符串（用于修改复杂子对象，会与其他 flag 合并，重复字段以 flag 为准）\n\n--group-vo 可用字段说明（均可选，只需包含要修改的字段）：\n\n【基础信息】\n  id            number    考勤组id，不随更新变化\n  name          string    考勤组名称\n  type          string    考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  owner         string    考勤组主负责人 userId\n  managerList   []string  考勤组子负责人 userId 列表\n  skipHolidays  bool      节假日自动排休（只有固定班制和自由工时考勤组生效）\n  defaultGroup  bool      是否默认考勤组\n  classIds      []number  所选班次 id 列表(只有固定班制和排班制才有班次，自由工时没有)\n\n【打卡范围与定位】\n  trimDistance                      number    定位允许微调距离（米）\n  enablePositionOfGps               bool      打卡是否允许开启 GPS 定位\n  enablePositionOfWifi              bool      是否开启 wifi 定位\n  enablePositionOfBle               bool      是否启用蓝牙定位\n\n  positions      []object  考勤打卡地址列表（地址定位打卡用），每项字段：\n    - title      string    地址标题\n    - address    string    地址详情（完整地址文本）\n    - latitude   number    纬度\n    - longitude  number    经度\n    - offset     number    该地址允许的打卡范围，单位米\n\n  wifis          []object  打卡方式中的 wifi 详情列表，每项字段：\n    - ssid       string    wifi 的 ssid（wifi名称）\n    - macAddr    string    wifi 的 macAddr（MAC 地址）\n    - groupId    number    考勤组id\n\n  bleDeviceVOList  []object  已选择的蓝牙设备列表，每项字段：\n    - name        string    设备名称\n    - deviceUid   number    设备 uid\n    - sn          string    设备 sn 序列号\n    - productType string    对外的设备类型\n    - devServId   number    内部设备类型\n\n【外勤打卡设置】\n  enableOutsideCheck                bool      是否可以外勤打卡\n  enableOutsideCameraCheck          bool      是否开启外勤打卡必须拍照\n  enableOutsideRemark               bool      是否开启外勤打卡必须填写备注\n  enableOutsideApply                bool      是否开启外勤打卡必须审批\n  forbidHideOutSideAddress          bool      禁止隐藏外勤打卡地址的功能，false表示允许用户隐藏外勤打卡地址\n  enableOutSideUpdateNormalCheck    bool      下班时间：允许外勤卡更新内勤卡\n  enableOnDutyNormalUpdateOutsideCheck bool   上班时间：允许内勤卡更新外勤卡\n  outsideCheckApproveMode           string    外勤打卡需审批执行模式：\n                                                NO_NEED_APPROVE（无需审批）\n                                                APPROVE_FIRST（先审批后打卡）\n                                                CHECK_FIRST（先打卡后审批）\n                                                APPROVE_EVERYTIME（每次打卡都需要审批）\n  outSideCheckApplyType             number    外勤审批范围：1（全天外勤打卡）/ 2（上班外勤打卡）/ 3（下班外勤打卡）\n\n【打卡方式】\n  enableCameraCheck    bool      是否开启拍照打卡\n  openCameraCheck      bool      是否开启拍照打卡（与 enableCameraCheck 含义相同）\n  openFaceCheck        bool      是否开启人脸打卡\n  enableFaceStrictMode bool      是否开启人脸严格模式（强制活体检测）\n  enableFaceBeauty     bool      是否开启美颜\n  onlyMachineCheck     bool      只允许考勤机打卡\n  permitMaxBeaconCount number    允许绑定的智点设备数量\n  disableCheckWhenRest bool      休息日打卡需审批（只在固定班制和排班制生效，true表示打卡需要提交审批单）\n\n\n【固定班制设置（FIXED）】\n  defaultClassId              number    固定班制的默认班次 id\n  workDayClassList            []number  固定班制的工作日班次 id 列表，一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息，例如[0,1279240003,0,0,0,0,0]表示周一的班次id为1279240003，其余日子都是休息\n\n【排班制设置（TURN）】\n  disableCheckWithoutSchedule bool      未排班时员工可打卡（true=未排班时禁止打卡）\n  enableEmpSelectClass        bool      未排班时，员工可选班次打卡\n  enableScheduleAutoMatch     bool      未排班时，系统自动匹配班次\n  ----以下是排班制设置排班周期的，非必要，不是所有排班制考勤组都需要设置，不设置就是按照classIds中的班次由管理员自行排班-----\n  cycleDays           number    排班循环天数，支持大小周（14天）\n  startCycleDate      number    用户设置的大小周开始时间（时间戳，毫秒）\n  cycleScheduleList   []object  循环排班设置列表，每项字段：\n    - cycleName  string    周期名字（如\"第一周\"）\n    - groupId    number    考勤组 id\n    - isValid    string    是否有效：Y（有效）/ N（无效）\n    - itemList   []object  排班设置列表，每项字段：\n        - classId    number  班次 id\n        - className  string  班次名称\n        - isValid    string  是否有效（Y/N）\n\n【自由工时设置（NONE）】\n  workDays                    []number  自由工时的工作日，如 [1,2,3,4,5] 表示周一到周五（1=周一，7=周日）\n  freeCheckDayStartMinOffset  number    自由打卡每日开始时间，距离 0 点的分钟数（如 480 表示 08:00 开始）\n  freeCheckCoreTime           number    自由工时考勤组的打卡最短工作时长（分钟）\n  freeCheckDemandWorkMinutes  number    自由工时考勤组要求的打卡时长（分钟）\n\n  freeCheckSettingVO   object  自由工时打卡设置，包含字段：\n    - freeCheckType                    string  自由工时打卡类型：\n                                                 CYCLE（上下班交替打卡）\n                                                 MAX_TIME_UPDATE（最大时间打卡，第一次为上班，后续均为下班卡）\n    - freeWorkDayLackSwitch            bool    自由工时打卡规则：工作日没打卡记为缺卡（true=记缺卡）\n    - freeOnDutyLackMinOffset          number  自由工时打卡规则：上班缺卡生成时间偏移分钟数\n    - freeOffDutyLackMinOffset         number  自由工时打卡规则：下班缺卡生成时间偏移分钟数\n    - delimitOffsetMinutesBetweenDays  number  自由工时前后两天的分割线（距 0 点分钟数，超过此时间则归属第二天）\n    - freeCheckGapVO                   object  自由工时/休息日打卡间隔设置：\n        - onOffCheckGapMinutes  number  上班打卡后，多久才可以打下班卡（分钟）\n        - offOnCheckGapMinutes  number  下班打卡后，多久才可以打上班卡（分钟）\n\n  freeGroupSpecialDayVO   object  自由工时考勤组特殊日期设置，包含字段：\n    - specialOnDutyDays   []number  特殊需要打卡日期的时间戳列表（毫秒，原本休息日需额外打卡的日期）\n    - specialOffDutyDays  []number  特殊无需打卡日期的时间戳列表（毫秒，原本工作日可免打卡的日期）",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -16157,7 +16366,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "更新考勤组配置"
+              "value": "调用 MCP 工具 update_group_setting，更新考勤组配置信息。\n--group-id 必填；其余参数均可选，仅需对要修改的字段进行赋値，未传的字段会自动从已有配置补充。由于保存考勤组耗时较久，指令需要带上--timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新考勤组配置的说明\n\n常用简单字段可直接用 flag 传入；复杂子对象（如打卡地址、wifi、蓝牙设备、循环排班等）请用 --group-vo JSON 字符串传入完整 groupVO 对象覆写。\n\n常用 flag：\n  --name                   考勤组名称\n  --type                   考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  --owner                  考勤组主负责人 userId\n  --classIds               []number  所选班次 id 列表\n  --enable-outside-check   是否允许外勤打卡 (true/false)\n  --group-vo               完整 groupVO JSON 字符串（用于修改复杂子对象，会与其他 flag 合并，重复字段以 flag 为准）\n\n--group-vo 可用字段说明（均可选，只需包含要修改的字段）：\n\n【基础信息】\n  id            number    考勤组id，不随更新变化\n  name          string    考勤组名称\n  type          string    考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  owner         string    考勤组主负责人 userId\n  managerList   []string  考勤组子负责人 userId 列表\n  skipHolidays  bool      节假日自动排休（只有固定班制和自由工时考勤组生效）\n  defaultGroup  bool      是否默认考勤组\n  classIds      []number  所选班次 id 列表(只有固定班制和排班制才有班次，自由工时没有)\n\n【打卡范围与定位】\n  trimDistance                      number    定位允许微调距离（米）\n  enablePositionOfGps               bool      打卡是否允许开启 GPS 定位\n  enablePositionOfWifi              bool      是否开启 wifi 定位\n  enablePositionOfBle               bool      是否启用蓝牙定位\n\n  positions      []object  考勤打卡地址列表（地址定位打卡用），每项字段：\n    - title      string    地址标题\n    - address    string    地址详情（完整地址文本）\n    - latitude   number    纬度\n    - longitude  number    经度\n    - offset     number    该地址允许的打卡范围，单位米\n\n  wifis          []object  打卡方式中的 wifi 详情列表，每项字段：\n    - ssid       string    wifi 的 ssid（wifi名称）\n    - macAddr    string    wifi 的 macAddr（MAC 地址）\n    - groupId    number    考勤组id\n\n  bleDeviceVOList  []object  已选择的蓝牙设备列表，每项字段：\n    - name        string    设备名称\n    - deviceUid   number    设备 uid\n    - sn          string    设备 sn 序列号\n    - productType string    对外的设备类型\n    - devServId   number    内部设备类型\n\n【外勤打卡设置】\n  enableOutsideCheck                bool      是否可以外勤打卡\n  enableOutsideCameraCheck          bool      是否开启外勤打卡必须拍照\n  enableOutsideRemark               bool      是否开启外勤打卡必须填写备注\n  enableOutsideApply                bool      是否开启外勤打卡必须审批\n  forbidHideOutSideAddress          bool      禁止隐藏外勤打卡地址的功能，false表示允许用户隐藏外勤打卡地址\n  enableOutSideUpdateNormalCheck    bool      下班时间：允许外勤卡更新内勤卡\n  enableOnDutyNormalUpdateOutsideCheck bool   上班时间：允许内勤卡更新外勤卡\n  outsideCheckApproveMode           string    外勤打卡需审批执行模式：\n                                                NO_NEED_APPROVE（无需审批）\n                                                APPROVE_FIRST（先审批后打卡）\n                                                CHECK_FIRST（先打卡后审批）\n                                                APPROVE_EVERYTIME（每次打卡都需要审批）\n  outSideCheckApplyType             number    外勤审批范围：1（全天外勤打卡）/ 2（上班外勤打卡）/ 3（下班外勤打卡）\n\n【打卡方式】\n  enableCameraCheck    bool      是否开启拍照打卡\n  openCameraCheck      bool      是否开启拍照打卡（与 enableCameraCheck 含义相同）\n  openFaceCheck        bool      是否开启人脸打卡\n  enableFaceStrictMode bool      是否开启人脸严格模式（强制活体检测）\n  enableFaceBeauty     bool      是否开启美颜\n  onlyMachineCheck     bool      只允许考勤机打卡\n  permitMaxBeaconCount number    允许绑定的智点设备数量\n  disableCheckWhenRest bool      休息日打卡需审批（只在固定班制和排班制生效，true表示打卡需要提交审批单）\n\n\n【固定班制设置（FIXED）】\n  defaultClassId              number    固定班制的默认班次 id\n  workDayClassList            []number  固定班制的工作日班次 id 列表，一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息，例如[0,1279240003,0,0,0,0,0]表示周一的班次id为1279240003，其余日子都是休息\n\n【排班制设置（TURN）】\n  disableCheckWithoutSchedule bool      未排班时员工可打卡（true=未排班时禁止打卡）\n  enableEmpSelectClass        bool      未排班时，员工可选班次打卡\n  enableScheduleAutoMatch     bool      未排班时，系统自动匹配班次\n  ----以下是排班制设置排班周期的，非必要，不是所有排班制考勤组都需要设置，不设置就是按照classIds中的班次由管理员自行排班-----\n  cycleDays           number    排班循环天数，支持大小周（14天）\n  startCycleDate      number    用户设置的大小周开始时间（时间戳，毫秒）\n  cycleScheduleList   []object  循环排班设置列表，每项字段：\n    - cycleName  string    周期名字（如\"第一周\"）\n    - groupId    number    考勤组 id\n    - isValid    string    是否有效：Y（有效）/ N（无效）\n    - itemList   []object  排班设置列表，每项字段：\n        - classId    number  班次 id\n        - className  string  班次名称\n        - isValid    string  是否有效（Y/N）\n\n【自由工时设置（NONE）】\n  workDays                    []number  自由工时的工作日，如 [1,2,3,4,5] 表示周一到周五（1=周一，7=周日）\n  freeCheckDayStartMinOffset  number    自由打卡每日开始时间，距离 0 点的分钟数（如 480 表示 08:00 开始）\n  freeCheckCoreTime           number    自由工时考勤组的打卡最短工作时长（分钟）\n  freeCheckDemandWorkMinutes  number    自由工时考勤组要求的打卡时长（分钟）\n\n  freeCheckSettingVO   object  自由工时打卡设置，包含字段：\n    - freeCheckType                    string  自由工时打卡类型：\n                                                 CYCLE（上下班交替打卡）\n                                                 MAX_TIME_UPDATE（最大时间打卡，第一次为上班，后续均为下班卡）\n    - freeWorkDayLackSwitch            bool    自由工时打卡规则：工作日没打卡记为缺卡（true=记缺卡）\n    - freeOnDutyLackMinOffset          number  自由工时打卡规则：上班缺卡生成时间偏移分钟数\n    - freeOffDutyLackMinOffset         number  自由工时打卡规则：下班缺卡生成时间偏移分钟数\n    - delimitOffsetMinutesBetweenDays  number  自由工时前后两天的分割线（距 0 点分钟数，超过此时间则归属第二天）\n    - freeCheckGapVO                   object  自由工时/休息日打卡间隔设置：\n        - onOffCheckGapMinutes  number  上班打卡后，多久才可以打下班卡（分钟）\n        - offOnCheckGapMinutes  number  下班打卡后，多久才可以打上班卡（分钟）\n\n  freeGroupSpecialDayVO   object  自由工时考勤组特殊日期设置，包含字段：\n    - specialOnDutyDays   []number  特殊需要打卡日期的时间戳列表（毫秒，原本休息日需额外打卡的日期）\n    - specialOffDutyDays  []number  特殊无需打卡日期的时间戳列表（毫秒，原本工作日可免打卡的日期）"
             }
           ],
           "precedence": "contract_final",
@@ -16165,7 +16374,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "更新考勤组配置"
+          "value": "调用 MCP 工具 update_group_setting，更新考勤组配置信息。\n--group-id 必填；其余参数均可选，仅需对要修改的字段进行赋値，未传的字段会自动从已有配置补充。由于保存考勤组耗时较久，指令需要带上--timeout 10\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新考勤组配置的说明\n\n常用简单字段可直接用 flag 传入；复杂子对象（如打卡地址、wifi、蓝牙设备、循环排班等）请用 --group-vo JSON 字符串传入完整 groupVO 对象覆写。\n\n常用 flag：\n  --name                   考勤组名称\n  --type                   考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  --owner                  考勤组主负责人 userId\n  --classIds               []number  所选班次 id 列表\n  --enable-outside-check   是否允许外勤打卡 (true/false)\n  --group-vo               完整 groupVO JSON 字符串（用于修改复杂子对象，会与其他 flag 合并，重复字段以 flag 为准）\n\n--group-vo 可用字段说明（均可选，只需包含要修改的字段）：\n\n【基础信息】\n  id            number    考勤组id，不随更新变化\n  name          string    考勤组名称\n  type          string    考勤组类型：FIXED（固定班制）/ TURN（排班制）/ NONE（自由工时）\n  owner         string    考勤组主负责人 userId\n  managerList   []string  考勤组子负责人 userId 列表\n  skipHolidays  bool      节假日自动排休（只有固定班制和自由工时考勤组生效）\n  defaultGroup  bool      是否默认考勤组\n  classIds      []number  所选班次 id 列表(只有固定班制和排班制才有班次，自由工时没有)\n\n【打卡范围与定位】\n  trimDistance                      number    定位允许微调距离（米）\n  enablePositionOfGps               bool      打卡是否允许开启 GPS 定位\n  enablePositionOfWifi              bool      是否开启 wifi 定位\n  enablePositionOfBle               bool      是否启用蓝牙定位\n\n  positions      []object  考勤打卡地址列表（地址定位打卡用），每项字段：\n    - title      string    地址标题\n    - address    string    地址详情（完整地址文本）\n    - latitude   number    纬度\n    - longitude  number    经度\n    - offset     number    该地址允许的打卡范围，单位米\n\n  wifis          []object  打卡方式中的 wifi 详情列表，每项字段：\n    - ssid       string    wifi 的 ssid（wifi名称）\n    - macAddr    string    wifi 的 macAddr（MAC 地址）\n    - groupId    number    考勤组id\n\n  bleDeviceVOList  []object  已选择的蓝牙设备列表，每项字段：\n    - name        string    设备名称\n    - deviceUid   number    设备 uid\n    - sn          string    设备 sn 序列号\n    - productType string    对外的设备类型\n    - devServId   number    内部设备类型\n\n【外勤打卡设置】\n  enableOutsideCheck                bool      是否可以外勤打卡\n  enableOutsideCameraCheck          bool      是否开启外勤打卡必须拍照\n  enableOutsideRemark               bool      是否开启外勤打卡必须填写备注\n  enableOutsideApply                bool      是否开启外勤打卡必须审批\n  forbidHideOutSideAddress          bool      禁止隐藏外勤打卡地址的功能，false表示允许用户隐藏外勤打卡地址\n  enableOutSideUpdateNormalCheck    bool      下班时间：允许外勤卡更新内勤卡\n  enableOnDutyNormalUpdateOutsideCheck bool   上班时间：允许内勤卡更新外勤卡\n  outsideCheckApproveMode           string    外勤打卡需审批执行模式：\n                                                NO_NEED_APPROVE（无需审批）\n                                                APPROVE_FIRST（先审批后打卡）\n                                                CHECK_FIRST（先打卡后审批）\n                                                APPROVE_EVERYTIME（每次打卡都需要审批）\n  outSideCheckApplyType             number    外勤审批范围：1（全天外勤打卡）/ 2（上班外勤打卡）/ 3（下班外勤打卡）\n\n【打卡方式】\n  enableCameraCheck    bool      是否开启拍照打卡\n  openCameraCheck      bool      是否开启拍照打卡（与 enableCameraCheck 含义相同）\n  openFaceCheck        bool      是否开启人脸打卡\n  enableFaceStrictMode bool      是否开启人脸严格模式（强制活体检测）\n  enableFaceBeauty     bool      是否开启美颜\n  onlyMachineCheck     bool      只允许考勤机打卡\n  permitMaxBeaconCount number    允许绑定的智点设备数量\n  disableCheckWhenRest bool      休息日打卡需审批（只在固定班制和排班制生效，true表示打卡需要提交审批单）\n\n\n【固定班制设置（FIXED）】\n  defaultClassId              number    固定班制的默认班次 id\n  workDayClassList            []number  固定班制的工作日班次 id 列表，一共7个值，分别代表周日到周六每天的班次id，为0表示当天休息，例如[0,1279240003,0,0,0,0,0]表示周一的班次id为1279240003，其余日子都是休息\n\n【排班制设置（TURN）】\n  disableCheckWithoutSchedule bool      未排班时员工可打卡（true=未排班时禁止打卡）\n  enableEmpSelectClass        bool      未排班时，员工可选班次打卡\n  enableScheduleAutoMatch     bool      未排班时，系统自动匹配班次\n  ----以下是排班制设置排班周期的，非必要，不是所有排班制考勤组都需要设置，不设置就是按照classIds中的班次由管理员自行排班-----\n  cycleDays           number    排班循环天数，支持大小周（14天）\n  startCycleDate      number    用户设置的大小周开始时间（时间戳，毫秒）\n  cycleScheduleList   []object  循环排班设置列表，每项字段：\n    - cycleName  string    周期名字（如\"第一周\"）\n    - groupId    number    考勤组 id\n    - isValid    string    是否有效：Y（有效）/ N（无效）\n    - itemList   []object  排班设置列表，每项字段：\n        - classId    number  班次 id\n        - className  string  班次名称\n        - isValid    string  是否有效（Y/N）\n\n【自由工时设置（NONE）】\n  workDays                    []number  自由工时的工作日，如 [1,2,3,4,5] 表示周一到周五（1=周一，7=周日）\n  freeCheckDayStartMinOffset  number    自由打卡每日开始时间，距离 0 点的分钟数（如 480 表示 08:00 开始）\n  freeCheckCoreTime           number    自由工时考勤组的打卡最短工作时长（分钟）\n  freeCheckDemandWorkMinutes  number    自由工时考勤组要求的打卡时长（分钟）\n\n  freeCheckSettingVO   object  自由工时打卡设置，包含字段：\n    - freeCheckType                    string  自由工时打卡类型：\n                                                 CYCLE（上下班交替打卡）\n                                                 MAX_TIME_UPDATE（最大时间打卡，第一次为上班，后续均为下班卡）\n    - freeWorkDayLackSwitch            bool    自由工时打卡规则：工作日没打卡记为缺卡（true=记缺卡）\n    - freeOnDutyLackMinOffset          number  自由工时打卡规则：上班缺卡生成时间偏移分钟数\n    - freeOffDutyLackMinOffset         number  自由工时打卡规则：下班缺卡生成时间偏移分钟数\n    - delimitOffsetMinutesBetweenDays  number  自由工时前后两天的分割线（距 0 点分钟数，超过此时间则归属第二天）\n    - freeCheckGapVO                   object  自由工时/休息日打卡间隔设置：\n        - onOffCheckGapMinutes  number  上班打卡后，多久才可以打下班卡（分钟）\n        - offOnCheckGapMinutes  number  下班打卡后，多久才可以打上班卡（分钟）\n\n  freeGroupSpecialDayVO   object  自由工时考勤组特殊日期设置，包含字段：\n    - specialOnDutyDays   []number  特殊需要打卡日期的时间戳列表（毫秒，原本休息日需额外打卡的日期）\n    - specialOffDutyDays  []number  特殊无需打卡日期的时间戳列表（毫秒，原本工作日可免打卡的日期）"
         },
         "effect": {
           "candidates": [
@@ -17149,7 +17358,7 @@
       "cli_name": "update-members",
       "cli_path": "attendance group update-members",
       "confirmation": "user_required",
-      "description": "增删考勤组成员",
+      "description": "调用 MCP 工具 update_group_member，对指定考勤组的成员进行增删操作。\n--group-id 必填；所有成员/部门参数均可选，但至少需要传一个变更项。由于保存考勤组耗时较久，指令需要带上--timeout 10\n每次调用各参数最多传 20 个 ID。\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新考勤组成员的说明\n  --add-users           添加考勤人员 userId 列表，逗号分隔\n  --remove-users        删除考勤人员 userId 列表，逗号分隔\n  --add-extra-users     添加无需考勤的人员 userId 列表，逗号分隔\n  --remove-extra-users  删除无需考勤的成员 userId 列表，逗号分隔\n  --add-depts           添加考勤部门 ID 列表，逗号分隔，若要添加全公司，根部门id为-1\n  --remove-depts        删除考勤部门 ID 列表，逗号分隔，全公司根部门id为-1",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -17264,7 +17473,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "增删考勤组成员"
+              "value": "调用 MCP 工具 update_group_member，对指定考勤组的成员进行增删操作。\n--group-id 必填；所有成员/部门参数均可选，但至少需要传一个变更项。由于保存考勤组耗时较久，指令需要带上--timeout 10\n每次调用各参数最多传 20 个 ID。\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新考勤组成员的说明\n  --add-users           添加考勤人员 userId 列表，逗号分隔\n  --remove-users        删除考勤人员 userId 列表，逗号分隔\n  --add-extra-users     添加无需考勤的人员 userId 列表，逗号分隔\n  --remove-extra-users  删除无需考勤的成员 userId 列表，逗号分隔\n  --add-depts           添加考勤部门 ID 列表，逗号分隔，若要添加全公司，根部门id为-1\n  --remove-depts        删除考勤部门 ID 列表，逗号分隔，全公司根部门id为-1"
             }
           ],
           "precedence": "contract_final",
@@ -17272,7 +17481,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "增删考勤组成员"
+          "value": "调用 MCP 工具 update_group_member，对指定考勤组的成员进行增删操作。\n--group-id 必填；所有成员/部门参数均可选，但至少需要传一个变更项。由于保存考勤组耗时较久，指令需要带上--timeout 10\n每次调用各参数最多传 20 个 ID。\n--yes 需要用户二次确认之后才允许带入，参考attendance.md中对于更新考勤组成员的说明\n  --add-users           添加考勤人员 userId 列表，逗号分隔\n  --remove-users        删除考勤人员 userId 列表，逗号分隔\n  --add-extra-users     添加无需考勤的人员 userId 列表，逗号分隔\n  --remove-extra-users  删除无需考勤的成员 userId 列表，逗号分隔\n  --add-depts           添加考勤部门 ID 列表，逗号分隔，若要添加全公司，根部门id为-1\n  --remove-depts        删除考勤部门 ID 列表，逗号分隔，全公司根部门id为-1"
         },
         "effect": {
           "candidates": [
@@ -18256,7 +18465,7 @@
       "cli_name": "get",
       "cli_path": "attendance overtime get",
       "confirmation": "not_required",
-      "description": "查询单个加班规则详情",
+      "description": "调用 MCP 工具 get_overtime_rule_detail，根据加班规则主键 ID 查询对应的加班规则详情。\n--overtime-id 必填。已被删除或更新覆盖的加班规则也可以查到。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -18371,7 +18580,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询单个加班规则详情"
+              "value": "调用 MCP 工具 get_overtime_rule_detail，根据加班规则主键 ID 查询对应的加班规则详情。\n--overtime-id 必填。已被删除或更新覆盖的加班规则也可以查到。"
             }
           ],
           "precedence": "contract_final",
@@ -18379,7 +18588,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询单个加班规则详情"
+          "value": "调用 MCP 工具 get_overtime_rule_detail，根据加班规则主键 ID 查询对应的加班规则详情。\n--overtime-id 必填。已被删除或更新覆盖的加班规则也可以查到。"
         },
         "effect": {
           "candidates": [
@@ -18726,7 +18935,7 @@
       "cli_name": "search",
       "cli_path": "attendance overtime search",
       "confirmation": "not_required",
-      "description": "查询加班规则列表",
+      "description": "根据用户权限查询加班规则列表，入参封装在 ATRuleQueryParam 对象中。\n  --query  加班规则名称关键字，模糊搜索（可选）\n  --page   页码（从 1 开始，默认 1）（可选）\n  --limit  每页条数（200 以内，默认 20）（可选）",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -18841,7 +19050,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询加班规则列表"
+              "value": "根据用户权限查询加班规则列表，入参封装在 ATRuleQueryParam 对象中。\n  --query  加班规则名称关键字，模糊搜索（可选）\n  --page   页码（从 1 开始，默认 1）（可选）\n  --limit  每页条数（200 以内，默认 20）（可选）"
             }
           ],
           "precedence": "contract_final",
@@ -18849,7 +19058,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询加班规则列表"
+          "value": "根据用户权限查询加班规则列表，入参封装在 ATRuleQueryParam 对象中。\n  --query  加班规则名称关键字，模糊搜索（可选）\n  --page   页码（从 1 开始，默认 1）（可选）\n  --limit  每页条数（200 以内，默认 20）（可选）"
         },
         "effect": {
           "candidates": [
@@ -19401,7 +19610,7 @@
       "cli_name": "rules",
       "cli_path": "attendance rules",
       "confirmation": "not_required",
-      "description": "查询考勤组与考勤规则",
+      "description": "调用 MCP 工具 query_attendance_group_or_rules 查询考勤组/考勤规则。\n例如：我属于哪个考勤组、打卡范围是什么、弹性工时怎么算。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -19514,7 +19723,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤组与考勤规则"
+              "value": "调用 MCP 工具 query_attendance_group_or_rules 查询考勤组/考勤规则。\n例如：我属于哪个考勤组、打卡范围是什么、弹性工时怎么算。"
             }
           ],
           "precedence": "contract_final",
@@ -19522,7 +19731,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤组与考勤规则"
+          "value": "调用 MCP 工具 query_attendance_group_or_rules 查询考勤组/考勤规则。\n例如：我属于哪个考勤组、打卡范围是什么、弹性工时怎么算。"
         },
         "effect": {
           "candidates": [
@@ -19745,6 +19954,12 @@
                   "value": "考勤日期，格式 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss (必填)"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "考勤日期 格式：yyyy-MM-dd HH:mm:ss"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -19773,8 +19988,20 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "tool_schema_hint",
                   "selected": true,
+                  "source": "tool_schema_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "usage_required_inference",
                   "value": true
                 },
@@ -19785,9 +20012,9 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "tool_schema_hint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
+              "source": "tool_schema_hint",
               "value": true
             },
             "required_when": {
@@ -19819,6 +20046,7 @@
               "value": "string"
             }
           },
+          "interface_description": "考勤日期 格式：yyyy-MM-dd HH:mm:ss",
           "property": "date",
           "required": true,
           "type": "string"
@@ -19852,7 +20080,7 @@
       "cli_name": "columns",
       "cli_path": "attendance report columns",
       "confirmation": "not_required",
-      "description": "查询可查看的考勤报表字段",
+      "description": "根据操作者的列权限，过滤并返回其有权查看的考勤字段列表。\n操作者必须是管理员，否则返回权限错误。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -19966,7 +20194,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询可查看的考勤报表字段"
+              "value": "根据操作者的列权限，过滤并返回其有权查看的考勤字段列表。\n操作者必须是管理员，否则返回权限错误。"
             }
           ],
           "precedence": "contract_final",
@@ -19974,7 +20202,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询可查看的考勤报表字段"
+          "value": "根据操作者的列权限，过滤并返回其有权查看的考勤字段列表。\n操作者必须是管理员，否则返回权限错误。"
         },
         "effect": {
           "candidates": [
@@ -20221,7 +20449,7 @@
       "cli_name": "query-data",
       "cli_path": "attendance report query-data",
       "confirmation": "not_required",
-      "description": "查询考勤报表数据",
+      "description": "根据字段查询考勤数据，含列权限过滤和用户查看权限校验。\n--columns 为字段 ID 列表（逗号分隔），可通过 dws attendance report columns 获取。\n--users 最多 20 人，传入userId，--start 到 --end 不超过 32 天。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -20336,7 +20564,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询考勤报表数据"
+              "value": "根据字段查询考勤数据，含列权限过滤和用户查看权限校验。\n--columns 为字段 ID 列表（逗号分隔），可通过 dws attendance report columns 获取。\n--users 最多 20 人，传入userId，--start 到 --end 不超过 32 天。"
             }
           ],
           "precedence": "contract_final",
@@ -20344,7 +20572,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询考勤报表数据"
+          "value": "根据字段查询考勤数据，含列权限过滤和用户查看权限校验。\n--columns 为字段 ID 列表（逗号分隔），可通过 dws attendance report columns 获取。\n--users 最多 20 人，传入userId，--start 到 --end 不超过 32 天。"
         },
         "effect": {
           "candidates": [
@@ -20982,7 +21210,7 @@
       "cli_name": "query-leave",
       "cli_path": "attendance report query-leave",
       "confirmation": "not_required",
-      "description": "查询假期报表数据",
+      "description": "查询用户假期数据，含用户查看权限校验。\n--leave-names 为假期类型名称列表（逗号分隔），不传则查询所有假期类型。\n--users 最多 20 人，传入userId，--start 到 --end 不超过 32 天。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -21097,7 +21325,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询假期报表数据"
+              "value": "查询用户假期数据，含用户查看权限校验。\n--leave-names 为假期类型名称列表（逗号分隔），不传则查询所有假期类型。\n--users 最多 20 人，传入userId，--start 到 --end 不超过 32 天。"
             }
           ],
           "precedence": "contract_final",
@@ -21105,7 +21333,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询假期报表数据"
+          "value": "查询用户假期数据，含用户查看权限校验。\n--leave-names 为假期类型名称列表（逗号分隔），不传则查询所有假期类型。\n--users 最多 20 人，传入userId，--start 到 --end 不超过 32 天。"
         },
         "effect": {
           "candidates": [
@@ -21737,7 +21965,7 @@
       "cli_name": "get",
       "cli_path": "attendance schedule get",
       "confirmation": "not_required",
-      "description": "查询员工排班记录",
+      "description": "获取指定用户在一段时间内的排班记录。\n返回每条记录包含 userId、classId、workDate、className、checkBeginTime、checkEndTime 等字段。\n\n日期格式支持：\n  - YYYY-MM-DD（如 2026-04-01）\n  - YYYY-MM-DD HH:mm:ss（如 2026-04-01 09:00:00）\n\n示例：\n  dws attendance schedule get --users user001,user002 --start 2026-04-01 --end 2026-04-30",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -21851,7 +22079,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询员工排班记录"
+              "value": "获取指定用户在一段时间内的排班记录。\n返回每条记录包含 userId、classId、workDate、className、checkBeginTime、checkEndTime 等字段。\n\n日期格式支持：\n  - YYYY-MM-DD（如 2026-04-01）\n  - YYYY-MM-DD HH:mm:ss（如 2026-04-01 09:00:00）\n\n示例：\n  dws attendance schedule get --users user001,user002 --start 2026-04-01 --end 2026-04-30"
             }
           ],
           "precedence": "contract_final",
@@ -21859,7 +22087,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询员工排班记录"
+          "value": "获取指定用户在一段时间内的排班记录。\n返回每条记录包含 userId、classId、workDate、className、checkBeginTime、checkEndTime 等字段。\n\n日期格式支持：\n  - YYYY-MM-DD（如 2026-04-01）\n  - YYYY-MM-DD HH:mm:ss（如 2026-04-01 09:00:00）\n\n示例：\n  dws attendance schedule get --users user001,user002 --start 2026-04-01 --end 2026-04-30"
         },
         "effect": {
           "candidates": [
@@ -22398,7 +22626,7 @@
       "cli_name": "import",
       "cli_path": "attendance schedule import",
       "confirmation": "user_required",
-      "description": "导入排班制考勤组排班记录",
+      "description": "为排班制考勤组导入排班记录。传入 JSON 数组格式排班数据，\n每条记录必填字段：\n  - userId:    用户ID（必填）\n  - workDate:  排班日期，格式 yyyy-MM-dd HH:mm:ss（必填）\n  - classId:   班次ID（必填）\n  - isRest:    是否为排休，取值 Y/N（必填）\n\n示例：\n  dws attendance schedule import --groupId 123456 \\\n    --scheduleVOS '[{\"userId\":\"user001\",\"workDate\":\"2026-04-22 09:00:00\",\"classId\":123,\"isRest\":\"N\"}]' \\\n    --user-say-yes",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -22512,7 +22740,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "导入排班制考勤组排班记录"
+              "value": "为排班制考勤组导入排班记录。传入 JSON 数组格式排班数据，\n每条记录必填字段：\n  - userId:    用户ID（必填）\n  - workDate:  排班日期，格式 yyyy-MM-dd HH:mm:ss（必填）\n  - classId:   班次ID（必填）\n  - isRest:    是否为排休，取值 Y/N（必填）\n\n示例：\n  dws attendance schedule import --groupId 123456 \\\n    --scheduleVOS '[{\"userId\":\"user001\",\"workDate\":\"2026-04-22 09:00:00\",\"classId\":123,\"isRest\":\"N\"}]' \\\n    --user-say-yes"
             }
           ],
           "precedence": "contract_final",
@@ -22520,7 +22748,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "导入排班制考勤组排班记录"
+          "value": "为排班制考勤组导入排班记录。传入 JSON 数组格式排班数据，\n每条记录必填字段：\n  - userId:    用户ID（必填）\n  - workDate:  排班日期，格式 yyyy-MM-dd HH:mm:ss（必填）\n  - classId:   班次ID（必填）\n  - isRest:    是否为排休，取值 Y/N（必填）\n\n示例：\n  dws attendance schedule import --groupId 123456 \\\n    --scheduleVOS '[{\"userId\":\"user001\",\"workDate\":\"2026-04-22 09:00:00\",\"classId\":123,\"isRest\":\"N\"}]' \\\n    --user-say-yes"
         },
         "effect": {
           "candidates": [
@@ -23053,7 +23281,7 @@
       "cli_name": "get",
       "cli_path": "attendance selfsetting get",
       "confirmation": "not_required",
-      "description": "查询个人考勤设置",
+      "description": "查询个人规则设置，包括打卡提醒、极速打卡、打卡结果通知、缺卡提醒、个人考勤统计通知、团队考勤统计通知等设置项。\n\n入参字段:\n  --setting-scene  查询设置项，枚举值包括：\n                   checkRemind（打卡提醒）\n                   fastCheck（极速打卡）\n                   checkResultNotify（打卡结果通知）\n                   lackRemind（缺卡提醒）\n                   personalAttendStatNotify（个人考勤统计通知）\n                   bossAttendStatNotify（团队考勤统计通知）\n  --user           必填，查询用户 ID，对应 MCP 参数 userId\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n\n出参字段说明:\n  顶层返回 ServiceResult:\n    success  请求是否成功\n    code     请求结果码\n    message  请求结果说明\n    result   个人规则设置结果；服务端可能根据 --setting-scene 仅返回对应设置项相关字段\n\n  result 通用字段:\n    corpId  企业 ID\n    userId  用户 ID\n\n  settingScene=checkRemind（打卡提醒）相关字段:\n    checkRemindSetting                 DING 提醒渠道设置\n    checkRemindSetting.onDutyRemind    上班打卡提醒设置，包含 openRemind、remindMinutes(负数标识几分钟前提醒，正数几分钟后提醒)\n    checkRemindSetting.offDutyRemind   下班打卡提醒设置，包含 openRemind、remindMinutes(负数标识几分钟前提醒，正数几分钟后提醒)\n    checkRemindUserOnDuty              工作通知渠道：用户个人上班打卡提醒开关\n    checkRemindUserOffDuty             工作通知渠道：用户个人下班打卡提醒开关\n    enableOndutyCheckRemindOfPc        PC 端弹窗渠道：上班打卡提醒开关\n    enableOffdutyCheckRemindOfPc       PC 端弹窗渠道：下班打卡提醒开关\n\n  settingScene=fastCheck（极速打卡）相关字段:\n    ondutyCheckType                    上班打卡方式：1 提醒打卡，2 不提醒且不自动打卡，3 自动打卡\n    ondutyRemindStartMin               上班打卡提醒开始时间，单位：分钟\n    ondutyRemindEndMin                 上班打卡提醒结束时间，单位：分钟\n    fastCheckLateNeedConfirm           迟到时是否需要二次确认\n    offdutyCheckType                   下班打卡方式：1 提醒打卡，2 不提醒且不自动打卡，3 自动打卡\n    offdutyRemindStartMin              下班打卡提醒开始时间，单位：分钟\n    offdutyRemindEndMin                下班打卡提醒结束时间，单位：分钟\n    canUpdateOffDuty                   是否允许用户更新下班打卡设置\n    voiceRemindSwitch                  极速打卡提示音开关\n    vibrationRemindSwitch              极速打卡震动提醒开关\n\n  settingScene=checkResultNotify（打卡结果通知）相关字段:\n    checkResultMsg                     打卡结果通知开关：0 关闭，1 开启\n\n  settingScene=lackRemind（缺卡提醒）相关字段:\n    lackSendTodoMsg                    待办提醒开关：0 关闭，null 或 1 开启\n    lackRemindUser                     工作通知渠道：用户个人缺卡提醒开关：0 关闭，null 或 1 开启\n\n  settingScene=personalAttendStatNotify（个人考勤统计通知）相关字段:\n    personDailyReportSwitch            日报推送开关：0 关闭，1 开启\n    personWeekReportType               周报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n    personMonthReportType              月报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n\n  settingScene=bossAttendStatNotify（团队考勤统计通知）相关字段:\n    bossPushStartMin                   日报推送开始时间，单位：分钟；-1 表示关闭日报推送\n    bossWeekReportType                 周报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n    bossMonthReportType                月报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -23168,7 +23396,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询个人考勤设置"
+              "value": "查询个人规则设置，包括打卡提醒、极速打卡、打卡结果通知、缺卡提醒、个人考勤统计通知、团队考勤统计通知等设置项。\n\n入参字段:\n  --setting-scene  查询设置项，枚举值包括：\n                   checkRemind（打卡提醒）\n                   fastCheck（极速打卡）\n                   checkResultNotify（打卡结果通知）\n                   lackRemind（缺卡提醒）\n                   personalAttendStatNotify（个人考勤统计通知）\n                   bossAttendStatNotify（团队考勤统计通知）\n  --user           必填，查询用户 ID，对应 MCP 参数 userId\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n\n出参字段说明:\n  顶层返回 ServiceResult:\n    success  请求是否成功\n    code     请求结果码\n    message  请求结果说明\n    result   个人规则设置结果；服务端可能根据 --setting-scene 仅返回对应设置项相关字段\n\n  result 通用字段:\n    corpId  企业 ID\n    userId  用户 ID\n\n  settingScene=checkRemind（打卡提醒）相关字段:\n    checkRemindSetting                 DING 提醒渠道设置\n    checkRemindSetting.onDutyRemind    上班打卡提醒设置，包含 openRemind、remindMinutes(负数标识几分钟前提醒，正数几分钟后提醒)\n    checkRemindSetting.offDutyRemind   下班打卡提醒设置，包含 openRemind、remindMinutes(负数标识几分钟前提醒，正数几分钟后提醒)\n    checkRemindUserOnDuty              工作通知渠道：用户个人上班打卡提醒开关\n    checkRemindUserOffDuty             工作通知渠道：用户个人下班打卡提醒开关\n    enableOndutyCheckRemindOfPc        PC 端弹窗渠道：上班打卡提醒开关\n    enableOffdutyCheckRemindOfPc       PC 端弹窗渠道：下班打卡提醒开关\n\n  settingScene=fastCheck（极速打卡）相关字段:\n    ondutyCheckType                    上班打卡方式：1 提醒打卡，2 不提醒且不自动打卡，3 自动打卡\n    ondutyRemindStartMin               上班打卡提醒开始时间，单位：分钟\n    ondutyRemindEndMin                 上班打卡提醒结束时间，单位：分钟\n    fastCheckLateNeedConfirm           迟到时是否需要二次确认\n    offdutyCheckType                   下班打卡方式：1 提醒打卡，2 不提醒且不自动打卡，3 自动打卡\n    offdutyRemindStartMin              下班打卡提醒开始时间，单位：分钟\n    offdutyRemindEndMin                下班打卡提醒结束时间，单位：分钟\n    canUpdateOffDuty                   是否允许用户更新下班打卡设置\n    voiceRemindSwitch                  极速打卡提示音开关\n    vibrationRemindSwitch              极速打卡震动提醒开关\n\n  settingScene=checkResultNotify（打卡结果通知）相关字段:\n    checkResultMsg                     打卡结果通知开关：0 关闭，1 开启\n\n  settingScene=lackRemind（缺卡提醒）相关字段:\n    lackSendTodoMsg                    待办提醒开关：0 关闭，null 或 1 开启\n    lackRemindUser                     工作通知渠道：用户个人缺卡提醒开关：0 关闭，null 或 1 开启\n\n  settingScene=personalAttendStatNotify（个人考勤统计通知）相关字段:\n    personDailyReportSwitch            日报推送开关：0 关闭，1 开启\n    personWeekReportType               周报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n    personMonthReportType              月报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n\n  settingScene=bossAttendStatNotify（团队考勤统计通知）相关字段:\n    bossPushStartMin                   日报推送开始时间，单位：分钟；-1 表示关闭日报推送\n    bossWeekReportType                 周报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n    bossMonthReportType                月报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮"
             }
           ],
           "precedence": "contract_final",
@@ -23176,7 +23404,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询个人考勤设置"
+          "value": "查询个人规则设置，包括打卡提醒、极速打卡、打卡结果通知、缺卡提醒、个人考勤统计通知、团队考勤统计通知等设置项。\n\n入参字段:\n  --setting-scene  查询设置项，枚举值包括：\n                   checkRemind（打卡提醒）\n                   fastCheck（极速打卡）\n                   checkResultNotify（打卡结果通知）\n                   lackRemind（缺卡提醒）\n                   personalAttendStatNotify（个人考勤统计通知）\n                   bossAttendStatNotify（团队考勤统计通知）\n  --user           必填，查询用户 ID，对应 MCP 参数 userId\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n\n出参字段说明:\n  顶层返回 ServiceResult:\n    success  请求是否成功\n    code     请求结果码\n    message  请求结果说明\n    result   个人规则设置结果；服务端可能根据 --setting-scene 仅返回对应设置项相关字段\n\n  result 通用字段:\n    corpId  企业 ID\n    userId  用户 ID\n\n  settingScene=checkRemind（打卡提醒）相关字段:\n    checkRemindSetting                 DING 提醒渠道设置\n    checkRemindSetting.onDutyRemind    上班打卡提醒设置，包含 openRemind、remindMinutes(负数标识几分钟前提醒，正数几分钟后提醒)\n    checkRemindSetting.offDutyRemind   下班打卡提醒设置，包含 openRemind、remindMinutes(负数标识几分钟前提醒，正数几分钟后提醒)\n    checkRemindUserOnDuty              工作通知渠道：用户个人上班打卡提醒开关\n    checkRemindUserOffDuty             工作通知渠道：用户个人下班打卡提醒开关\n    enableOndutyCheckRemindOfPc        PC 端弹窗渠道：上班打卡提醒开关\n    enableOffdutyCheckRemindOfPc       PC 端弹窗渠道：下班打卡提醒开关\n\n  settingScene=fastCheck（极速打卡）相关字段:\n    ondutyCheckType                    上班打卡方式：1 提醒打卡，2 不提醒且不自动打卡，3 自动打卡\n    ondutyRemindStartMin               上班打卡提醒开始时间，单位：分钟\n    ondutyRemindEndMin                 上班打卡提醒结束时间，单位：分钟\n    fastCheckLateNeedConfirm           迟到时是否需要二次确认\n    offdutyCheckType                   下班打卡方式：1 提醒打卡，2 不提醒且不自动打卡，3 自动打卡\n    offdutyRemindStartMin              下班打卡提醒开始时间，单位：分钟\n    offdutyRemindEndMin                下班打卡提醒结束时间，单位：分钟\n    canUpdateOffDuty                   是否允许用户更新下班打卡设置\n    voiceRemindSwitch                  极速打卡提示音开关\n    vibrationRemindSwitch              极速打卡震动提醒开关\n\n  settingScene=checkResultNotify（打卡结果通知）相关字段:\n    checkResultMsg                     打卡结果通知开关：0 关闭，1 开启\n\n  settingScene=lackRemind（缺卡提醒）相关字段:\n    lackSendTodoMsg                    待办提醒开关：0 关闭，null 或 1 开启\n    lackRemindUser                     工作通知渠道：用户个人缺卡提醒开关：0 关闭，null 或 1 开启\n\n  settingScene=personalAttendStatNotify（个人考勤统计通知）相关字段:\n    personDailyReportSwitch            日报推送开关：0 关闭，1 开启\n    personWeekReportType               周报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n    personMonthReportType              月报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n\n  settingScene=bossAttendStatNotify（团队考勤统计通知）相关字段:\n    bossPushStartMin                   日报推送开始时间，单位：分钟；-1 表示关闭日报推送\n    bossWeekReportType                 周报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮\n    bossMonthReportType                月报通知渠道：0 全关闭，1 工作通知，2 钉邮，3 工作通知和钉邮"
         },
         "effect": {
           "candidates": [
@@ -23662,7 +23890,7 @@
       "cli_name": "save",
       "cli_path": "attendance selfsetting save",
       "confirmation": "user_required",
-      "description": "更新个人考勤设置",
+      "description": "更新保存个人规则设置，包括打卡提醒、极速打卡、打卡结果通知、缺卡提醒、个人考勤统计通知、团队考勤统计通知等设置项。\n\n入参字段:\n  --setting-scene  必填，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --user           必填，更新用户 ID，对应 MCP 参数 userId\n\n按 settingScene 传入对应设置字段，且至少传一个字段：\n  checkRemind:\n    --check-remind-setting\n    --check-remind-user-on-duty\n    --check-remind-user-off-duty\n    --enable-onduty-check-remind-of-pc\n    --enable-offduty-check-remind-of-pc\n  fastCheck:\n    --onduty-check-type\n    --offduty-check-type\n    --onduty-remind-start-min\n    --onduty-remind-end-min\n    --offduty-remind-start-min\n    --offduty-remind-end-min\n    --fast-check-late-need-confirm\n    --can-update-off-duty\n    --voice-remind-switch\n    --vibration-remind-switch\n  checkResultNotify:\n    --check-result-msg\n  lackRemind:\n    --lack-send-todo-msg\n    --lack-remind-user\n  personalAttendStatNotify:\n    --person-daily-report-switch\n    --person-week-report-type\n    --person-month-report-type\n  bossAttendStatNotify:\n    --boss-push-start-min\n    --boss-week-report-type\n    --boss-month-report-type\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n返回 ServiceResult，包含 success、code、message、result；result 为 boolean，表示保存是否成功。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -23777,7 +24005,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "更新个人考勤设置"
+              "value": "更新保存个人规则设置，包括打卡提醒、极速打卡、打卡结果通知、缺卡提醒、个人考勤统计通知、团队考勤统计通知等设置项。\n\n入参字段:\n  --setting-scene  必填，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --user           必填，更新用户 ID，对应 MCP 参数 userId\n\n按 settingScene 传入对应设置字段，且至少传一个字段：\n  checkRemind:\n    --check-remind-setting\n    --check-remind-user-on-duty\n    --check-remind-user-off-duty\n    --enable-onduty-check-remind-of-pc\n    --enable-offduty-check-remind-of-pc\n  fastCheck:\n    --onduty-check-type\n    --offduty-check-type\n    --onduty-remind-start-min\n    --onduty-remind-end-min\n    --offduty-remind-start-min\n    --offduty-remind-end-min\n    --fast-check-late-need-confirm\n    --can-update-off-duty\n    --voice-remind-switch\n    --vibration-remind-switch\n  checkResultNotify:\n    --check-result-msg\n  lackRemind:\n    --lack-send-todo-msg\n    --lack-remind-user\n  personalAttendStatNotify:\n    --person-daily-report-switch\n    --person-week-report-type\n    --person-month-report-type\n  bossAttendStatNotify:\n    --boss-push-start-min\n    --boss-week-report-type\n    --boss-month-report-type\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n返回 ServiceResult，包含 success、code、message、result；result 为 boolean，表示保存是否成功。"
             }
           ],
           "precedence": "contract_final",
@@ -23785,7 +24013,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "更新个人考勤设置"
+          "value": "更新保存个人规则设置，包括打卡提醒、极速打卡、打卡结果通知、缺卡提醒、个人考勤统计通知、团队考勤统计通知等设置项。\n\n入参字段:\n  --setting-scene  必填，枚举值包括 checkRemind、fastCheck、checkResultNotify、lackRemind、personalAttendStatNotify、bossAttendStatNotify\n  --user           必填，更新用户 ID，对应 MCP 参数 userId\n\n按 settingScene 传入对应设置字段，且至少传一个字段：\n  checkRemind:\n    --check-remind-setting\n    --check-remind-user-on-duty\n    --check-remind-user-off-duty\n    --enable-onduty-check-remind-of-pc\n    --enable-offduty-check-remind-of-pc\n  fastCheck:\n    --onduty-check-type\n    --offduty-check-type\n    --onduty-remind-start-min\n    --onduty-remind-end-min\n    --offduty-remind-start-min\n    --offduty-remind-end-min\n    --fast-check-late-need-confirm\n    --can-update-off-duty\n    --voice-remind-switch\n    --vibration-remind-switch\n  checkResultNotify:\n    --check-result-msg\n  lackRemind:\n    --lack-send-todo-msg\n    --lack-remind-user\n  personalAttendStatNotify:\n    --person-daily-report-switch\n    --person-week-report-type\n    --person-month-report-type\n  bossAttendStatNotify:\n    --boss-push-start-min\n    --boss-week-report-type\n    --boss-month-report-type\n\n说明：corpId 和 opUserId 由当前登录上下文自动补齐，不需要通过 CLI 入参传入。\n返回 ServiceResult，包含 success、code、message、result；result 为 boolean，表示保存是否成功。"
         },
         "effect": {
           "candidates": [
@@ -26502,7 +26730,7 @@
       "cli_name": "+check-record",
       "cli_path": "attendance +check-record",
       "confirmation": "not_required",
-      "description": "查询用户打卡流水（打卡时间/地点/定位方式）",
+      "description": "当你要查看员工每一次实际打卡的原始记录（具体打卡时刻、打卡地点、定位/Wifi/蓝牙等方式）而不是判定结论时使用，例如核实某人是否在指定地点打卡；输入 userId 列表和不超过 1 个月的日期区间，返回逐条打卡流水。与 +check-result 的区别是这里返回明细流水而非迟到早退结论。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -26612,7 +26840,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户打卡流水（打卡时间/地点/定位方式）"
+              "value": "当你要查看员工每一次实际打卡的原始记录（具体打卡时刻、打卡地点、定位/Wifi/蓝牙等方式）而不是判定结论时使用，例如核实某人是否在指定地点打卡；输入 userId 列表和不超过 1 个月的日期区间，返回逐条打卡流水。与 +check-result 的区别是这里返回明细流水而非迟到早退结论。"
             }
           ],
           "precedence": "contract_final",
@@ -26620,7 +26848,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户打卡流水（打卡时间/地点/定位方式）"
+          "value": "当你要查看员工每一次实际打卡的原始记录（具体打卡时刻、打卡地点、定位/Wifi/蓝牙等方式）而不是判定结论时使用，例如核实某人是否在指定地点打卡；输入 userId 列表和不超过 1 个月的日期区间，返回逐条打卡流水。与 +check-result 的区别是这里返回明细流水而非迟到早退结论。"
         },
         "effect": {
           "candidates": [
@@ -27153,7 +27381,7 @@
       "cli_name": "+check-result",
       "cli_path": "attendance +check-result",
       "confirmation": "not_required",
-      "description": "查询用户打卡结果（迟到/早退/缺卡等）",
+      "description": "当你需要批量统计一批员工在某段时间的打卡结果（正常/迟到/早退/缺卡等判定结论）时使用，例如做月度考勤汇总或异常人员排查；输入多个 userId（最多 100 人）和不超过 1 个月的日期区间，返回每人每天的打卡结果状态，支持分页。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -27263,7 +27491,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户打卡结果（迟到/早退/缺卡等）"
+              "value": "当你需要批量统计一批员工在某段时间的打卡结果（正常/迟到/早退/缺卡等判定结论）时使用，例如做月度考勤汇总或异常人员排查；输入多个 userId（最多 100 人）和不超过 1 个月的日期区间，返回每人每天的打卡结果状态，支持分页。"
             }
           ],
           "precedence": "contract_final",
@@ -27271,7 +27499,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户打卡结果（迟到/早退/缺卡等）"
+          "value": "当你需要批量统计一批员工在某段时间的打卡结果（正常/迟到/早退/缺卡等判定结论）时使用，例如做月度考勤汇总或异常人员排查；输入多个 userId（最多 100 人）和不超过 1 个月的日期区间，返回每人每天的打卡结果状态，支持分页。"
         },
         "effect": {
           "candidates": [
@@ -27985,7 +28213,7 @@
       "cli_name": "+get-adjustment-rule",
       "cli_path": "attendance +get-adjustment-rule",
       "confirmation": "not_required",
-      "description": "根据补卡规则主键 ID 查询补卡规则详情",
+      "description": "当你已知某条补卡规则的主键 ID、想查看它的具体规则内容（每月可补卡次数、时限、适用范围等）时使用；输入 adjustmentId，返回该补卡规则的完整详情。不知道 ID 时先用 +search-adjustment-rule 列出。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -28095,7 +28323,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "根据补卡规则主键 ID 查询补卡规则详情"
+              "value": "当你已知某条补卡规则的主键 ID、想查看它的具体规则内容（每月可补卡次数、时限、适用范围等）时使用；输入 adjustmentId，返回该补卡规则的完整详情。不知道 ID 时先用 +search-adjustment-rule 列出。"
             }
           ],
           "precedence": "contract_final",
@@ -28103,7 +28331,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "根据补卡规则主键 ID 查询补卡规则详情"
+          "value": "当你已知某条补卡规则的主键 ID、想查看它的具体规则内容（每月可补卡次数、时限、适用范围等）时使用；输入 adjustmentId，返回该补卡规则的完整详情。不知道 ID 时先用 +search-adjustment-rule 列出。"
         },
         "effect": {
           "candidates": [
@@ -28444,7 +28672,7 @@
       "cli_name": "+get-approve-template",
       "cli_path": "attendance +get-approve-template",
       "confirmation": "not_required",
-      "description": "查询补卡/请假/加班/外出/出差审批提交链接",
+      "description": "当用户想自己发起一条考勤审批（补卡、请假、加班、外出、出差）、需要拿到对应审批表单的提交入口链接时使用；输入审批类型（如 leave/请假），返回可直接打开填写并提交的审批链接。本命令只返回链接、不代替用户提交审批。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -28554,7 +28782,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询补卡/请假/加班/外出/出差审批提交链接"
+              "value": "当用户想自己发起一条考勤审批（补卡、请假、加班、外出、出差）、需要拿到对应审批表单的提交入口链接时使用；输入审批类型（如 leave/请假），返回可直接打开填写并提交的审批链接。本命令只返回链接、不代替用户提交审批。"
             }
           ],
           "precedence": "contract_final",
@@ -28562,7 +28790,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询补卡/请假/加班/外出/出差审批提交链接"
+          "value": "当用户想自己发起一条考勤审批（补卡、请假、加班、外出、出差）、需要拿到对应审批表单的提交入口链接时使用；输入审批类型（如 leave/请假），返回可直接打开填写并提交的审批链接。本命令只返回链接、不代替用户提交审批。"
         },
         "effect": {
           "candidates": [
@@ -28903,7 +29131,7 @@
       "cli_name": "+get-checkin-record",
       "cli_path": "attendance +get-checkin-record",
       "confirmation": "not_required",
-      "description": "查询指定员工一段时间内的签到记录",
+      "description": "当你要查看员工的外勤/移动办公签到记录（signin/checkin，区别于考勤打卡）时使用，例如核实业务员的拜访签到轨迹；需提供操作者企业 ID 与员工 ID、目标员工 ID 列表（最多 100 人）以及不超过 7 天的时间区间，返回这些人的签到明细。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -29013,7 +29241,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询指定员工一段时间内的签到记录"
+              "value": "当你要查看员工的外勤/移动办公签到记录（signin/checkin，区别于考勤打卡）时使用，例如核实业务员的拜访签到轨迹；需提供操作者企业 ID 与员工 ID、目标员工 ID 列表（最多 100 人）以及不超过 7 天的时间区间，返回这些人的签到明细。"
             }
           ],
           "precedence": "contract_final",
@@ -29021,7 +29249,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询指定员工一段时间内的签到记录"
+          "value": "当你要查看员工的外勤/移动办公签到记录（signin/checkin，区别于考勤打卡）时使用，例如核实业务员的拜访签到轨迹；需提供操作者企业 ID 与员工 ID、目标员工 ID 列表（最多 100 人）以及不超过 7 天的时间区间，返回这些人的签到明细。"
         },
         "effect": {
           "candidates": [
@@ -29746,7 +29974,7 @@
       "cli_name": "+get-leave-records",
       "cli_path": "attendance +get-leave-records",
       "confirmation": "not_required",
-      "description": "查询指定员工的假期余额变更记录",
+      "description": "当你想追溯某个员工假期额度的变动流水（何时发放、扣减、因请假消耗多少）以核对余额来龙去脉时使用；输入单个 userId、日期区间，可选假期 code（不传查所有假期），返回该员工在该时间段的余额变更记录。只想看当前余额用 +get-leave-balance。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -29856,7 +30084,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询指定员工的假期余额变更记录"
+              "value": "当你想追溯某个员工假期额度的变动流水（何时发放、扣减、因请假消耗多少）以核对余额来龙去脉时使用；输入单个 userId、日期区间，可选假期 code（不传查所有假期），返回该员工在该时间段的余额变更记录。只想看当前余额用 +get-leave-balance。"
             }
           ],
           "precedence": "contract_final",
@@ -29864,7 +30092,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询指定员工的假期余额变更记录"
+          "value": "当你想追溯某个员工假期额度的变动流水（何时发放、扣减、因请假消耗多少）以核对余额来龙去脉时使用；输入单个 userId、日期区间，可选假期 code（不传查所有假期），返回该员工在该时间段的余额变更记录。只想看当前余额用 +get-leave-balance。"
         },
         "effect": {
           "candidates": [
@@ -30481,7 +30709,7 @@
       "cli_name": "+get-overtime-rule",
       "cli_path": "attendance +get-overtime-rule",
       "confirmation": "not_required",
-      "description": "根据加班规则主键 ID 查询加班规则详情",
+      "description": "当你已知某条加班规则的主键 ID、想查看它的具体内容（工作日/休息日/节假日加班计算方式、适用范围等）时使用；输入 overtimeId，返回该加班规则的完整详情。不知道 ID 时先用 +search-overtime-rule 列出。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -30591,7 +30819,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "根据加班规则主键 ID 查询加班规则详情"
+              "value": "当你已知某条加班规则的主键 ID、想查看它的具体内容（工作日/休息日/节假日加班计算方式、适用范围等）时使用；输入 overtimeId，返回该加班规则的完整详情。不知道 ID 时先用 +search-overtime-rule 列出。"
             }
           ],
           "precedence": "contract_final",
@@ -30599,7 +30827,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "根据加班规则主键 ID 查询加班规则详情"
+          "value": "当你已知某条加班规则的主键 ID、想查看它的具体内容（工作日/休息日/节假日加班计算方式、适用范围等）时使用；输入 overtimeId，返回该加班规则的完整详情。不知道 ID 时先用 +search-overtime-rule 列出。"
         },
         "effect": {
           "candidates": [
@@ -30940,7 +31168,7 @@
       "cli_name": "+get-schedule",
       "cli_path": "attendance +get-schedule",
       "confirmation": "not_required",
-      "description": "获取指定用户一段时间内的排班记录",
+      "description": "当你要查看排班制考勤组下员工在某段时间的排班记录（含排班 id、班次、是否休息）时使用，尤其是需要拿到排班 id 用于后续 BOSS 改签打卡（+boss-check）的场景；输入 userId 列表和起止时间，返回逐日排班明细。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -31050,7 +31278,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "获取指定用户一段时间内的排班记录"
+              "value": "当你要查看排班制考勤组下员工在某段时间的排班记录（含排班 id、班次、是否休息）时使用，尤其是需要拿到排班 id 用于后续 BOSS 改签打卡（+boss-check）的场景；输入 userId 列表和起止时间，返回逐日排班明细。"
             }
           ],
           "precedence": "contract_final",
@@ -31058,7 +31286,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "获取指定用户一段时间内的排班记录"
+          "value": "当你要查看排班制考勤组下员工在某段时间的排班记录（含排班 id、班次、是否休息）时使用，尤其是需要拿到排班 id 用于后续 BOSS 改签打卡（+boss-check）的场景；输入 userId 列表和起止时间，返回逐日排班明细。"
         },
         "effect": {
           "candidates": [
@@ -31591,7 +31819,7 @@
       "cli_name": "+get-self-setting",
       "cli_path": "attendance +get-self-setting",
       "confirmation": "not_required",
-      "description": "查询个人规则设置（打卡提醒/极速打卡/缺卡提醒等）",
+      "description": "当你想查看某个用户在指定场景下的个人考勤规则开关配置（如打卡提醒、极速打卡、缺卡提醒、考勤结果通知等是否开启）时使用；输入设置场景 settingScene 和用户 userId，返回该用户对应场景的个人设置。查企业全局设置用 +get-global-setting。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -31701,7 +31929,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询个人规则设置（打卡提醒/极速打卡/缺卡提醒等）"
+              "value": "当你想查看某个用户在指定场景下的个人考勤规则开关配置（如打卡提醒、极速打卡、缺卡提醒、考勤结果通知等是否开启）时使用；输入设置场景 settingScene 和用户 userId，返回该用户对应场景的个人设置。查企业全局设置用 +get-global-setting。"
             }
           ],
           "precedence": "contract_final",
@@ -31709,7 +31937,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询个人规则设置（打卡提醒/极速打卡/缺卡提醒等）"
+          "value": "当你想查看某个用户在指定场景下的个人考勤规则开关配置（如打卡提醒、极速打卡、缺卡提醒、考勤结果通知等是否开启）时使用；输入设置场景 settingScene 和用户 userId，返回该用户对应场景的个人设置。查企业全局设置用 +get-global-setting。"
         },
         "effect": {
           "candidates": [
@@ -32182,7 +32410,7 @@
       "cli_name": "+get-summary",
       "cli_path": "attendance +get-summary",
       "confirmation": "not_required",
-      "description": "查询某个人的考勤统计摘要（周/月）",
+      "description": "当你想快速了解某个人一周或一月的考勤汇总（出勤天数、迟到早退次数、加班、请假时长等统计口径）而不是逐天明细时使用；输入 userId、所在周期内的任意日期和统计类型（week/month），返回该周期的考勤统计摘要。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -32292,7 +32520,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询某个人的考勤统计摘要（周/月）"
+              "value": "当你想快速了解某个人一周或一月的考勤汇总（出勤天数、迟到早退次数、加班、请假时长等统计口径）而不是逐天明细时使用；输入 userId、所在周期内的任意日期和统计类型（week/month），返回该周期的考勤统计摘要。"
             }
           ],
           "precedence": "contract_final",
@@ -32300,7 +32528,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询某个人的考勤统计摘要（周/月）"
+          "value": "当你想快速了解某个人一周或一月的考勤汇总（出勤天数、迟到早退次数、加班、请假时长等统计口径）而不是逐天明细时使用；输入 userId、所在周期内的任意日期和统计类型（week/month），返回该周期的考勤统计摘要。"
         },
         "effect": {
           "candidates": [
@@ -32857,7 +33085,7 @@
       "cli_name": "+list-approve",
       "cli_path": "attendance +list-approve",
       "confirmation": "not_required",
-      "description": "查询用户考勤审批单（补卡/加班/请假/出差外出）",
+      "description": "当你想查看某些员工已提交的考勤类审批单（加班、请假、出差外出、补卡）时使用，例如核对某人这段时间请了几次假或有没有补卡审批；输入 userId 列表、审批类型（overtime/加班、leave/请假、trip/出差外出、patch/补卡）和日期区间，返回匹配的审批单记录。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -32967,7 +33195,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询用户考勤审批单（补卡/加班/请假/出差外出）"
+              "value": "当你想查看某些员工已提交的考勤类审批单（加班、请假、出差外出、补卡）时使用，例如核对某人这段时间请了几次假或有没有补卡审批；输入 userId 列表、审批类型（overtime/加班、leave/请假、trip/出差外出、patch/补卡）和日期区间，返回匹配的审批单记录。"
             }
           ],
           "precedence": "contract_final",
@@ -32975,7 +33203,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询用户考勤审批单（补卡/加班/请假/出差外出）"
+          "value": "当你想查看某些员工已提交的考勤类审批单（加班、请假、出差外出、补卡）时使用，例如核对某人这段时间请了几次假或有没有补卡审批；输入 userId 列表、审批类型（overtime/加班、leave/请假、trip/出差外出、patch/补卡）和日期区间，返回匹配的审批单记录。"
         },
         "effect": {
           "candidates": [
@@ -33604,7 +33832,7 @@
       "cli_name": "+list-leave-types",
       "cli_path": "attendance +list-leave-types",
       "confirmation": "not_required",
-      "description": "查询当前用户可用的假期规则列表",
+      "description": "当你想知道企业有哪些假期类型（年假、事假、病假等）及其对应的假期编码 code、单位、是否带薪时使用，通常是查余额或改假期规则前先拿到 leaveCode；无需参数，返回当前用户可用的假期规则列表。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -33714,7 +33942,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询当前用户可用的假期规则列表"
+              "value": "当你想知道企业有哪些假期类型（年假、事假、病假等）及其对应的假期编码 code、单位、是否带薪时使用，通常是查余额或改假期规则前先拿到 leaveCode；无需参数，返回当前用户可用的假期规则列表。"
             }
           ],
           "precedence": "contract_final",
@@ -33722,7 +33950,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询当前用户可用的假期规则列表"
+          "value": "当你想知道企业有哪些假期类型（年假、事假、病假等）及其对应的假期编码 code、单位、是否带薪时使用，通常是查余额或改假期规则前先拿到 leaveCode；无需参数，返回当前用户可用的假期规则列表。"
         },
         "effect": {
           "candidates": [
@@ -33966,7 +34194,7 @@
       "cli_name": "+my-attendance",
       "cli_path": "attendance +my-attendance",
       "confirmation": "not_required",
-      "description": "查我今天的考勤打卡记录（打卡流水，自动解析当前用户）",
+      "description": "当你想快速看自己今天的打卡流水（几点上下班打卡、打卡地址/定位方式）、又不想先查自己的 userId 再手动填写今天的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出今天 00:00 到次日 00:00 的时间窗，最后查询你今天的打卡流水记录。只读操作，不会修改任何考勤数据；今天若还没有任何打卡则返回空结果。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -34076,7 +34304,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查我今天的考勤打卡记录（打卡流水，自动解析当前用户）"
+              "value": "当你想快速看自己今天的打卡流水（几点上下班打卡、打卡地址/定位方式）、又不想先查自己的 userId 再手动填写今天的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出今天 00:00 到次日 00:00 的时间窗，最后查询你今天的打卡流水记录。只读操作，不会修改任何考勤数据；今天若还没有任何打卡则返回空结果。"
             }
           ],
           "precedence": "contract_final",
@@ -34084,7 +34312,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查我今天的考勤打卡记录（打卡流水，自动解析当前用户）"
+          "value": "当你想快速看自己今天的打卡流水（几点上下班打卡、打卡地址/定位方式）、又不想先查自己的 userId 再手动填写今天的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出今天 00:00 到次日 00:00 的时间窗，最后查询你今天的打卡流水记录。只读操作，不会修改任何考勤数据；今天若还没有任何打卡则返回空结果。"
         },
         "effect": {
           "candidates": [
@@ -34328,7 +34556,7 @@
       "cli_name": "+query-report-data",
       "cli_path": "attendance +query-report-data",
       "confirmation": "not_required",
-      "description": "根据字段查询考勤报表数据（仅管理员）",
+      "description": "当你要按指定考勤字段导出/查询一批员工在某时间段的报表数值（如各人的出勤天数、迟到次数、加班时长）时使用，常用于做考勤汇总或核算；输入 userId 列表（最多 20 人）、字段 ID 列表（来自 +list-report-columns）和不超过 32 天的时间区间，返回对应字段的数据。仅管理员可用。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -34438,7 +34666,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "根据字段查询考勤报表数据（仅管理员）"
+              "value": "当你要按指定考勤字段导出/查询一批员工在某时间段的报表数值（如各人的出勤天数、迟到次数、加班时长）时使用，常用于做考勤汇总或核算；输入 userId 列表（最多 20 人）、字段 ID 列表（来自 +list-report-columns）和不超过 32 天的时间区间，返回对应字段的数据。仅管理员可用。"
             }
           ],
           "precedence": "contract_final",
@@ -34446,7 +34674,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "根据字段查询考勤报表数据（仅管理员）"
+          "value": "当你要按指定考勤字段导出/查询一批员工在某时间段的报表数值（如各人的出勤天数、迟到次数、加班时长）时使用，常用于做考勤汇总或核算；输入 userId 列表（最多 20 人）、字段 ID 列表（来自 +list-report-columns）和不超过 32 天的时间区间，返回对应字段的数据。仅管理员可用。"
         },
         "effect": {
           "candidates": [
@@ -35075,7 +35303,7 @@
       "cli_name": "+search-adjustment-rule",
       "cli_path": "attendance +search-adjustment-rule",
       "confirmation": "not_required",
-      "description": "查询当前用户可管理的补卡规则列表",
+      "description": "当你要浏览或按名称查找当前用户可管理的补卡规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回补卡规则列表。要看某条规则的完整内容用 +get-adjustment-rule。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -35185,7 +35413,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询当前用户可管理的补卡规则列表"
+              "value": "当你要浏览或按名称查找当前用户可管理的补卡规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回补卡规则列表。要看某条规则的完整内容用 +get-adjustment-rule。"
             }
           ],
           "precedence": "contract_final",
@@ -35193,7 +35421,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询当前用户可管理的补卡规则列表"
+          "value": "当你要浏览或按名称查找当前用户可管理的补卡规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回补卡规则列表。要看某条规则的完整内容用 +get-adjustment-rule。"
         },
         "effect": {
           "candidates": [
@@ -35704,7 +35932,7 @@
       "cli_name": "+search-class",
       "cli_path": "attendance +search-class",
       "confirmation": "not_required",
-      "description": "查询当前用户可管理的班次详情列表",
+      "description": "当你要浏览或按名称查找当前用户能管理的班次、以便拿到班次 ID 用于建组、排班或改班次时使用；可选按班次名关键字模糊搜索、按 ALL/我负责的过滤并分页，返回班次列表及详情。要看某个具体班次的完整配置用 +get-class。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -35814,7 +36042,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询当前用户可管理的班次详情列表"
+              "value": "当你要浏览或按名称查找当前用户能管理的班次、以便拿到班次 ID 用于建组、排班或改班次时使用；可选按班次名关键字模糊搜索、按 ALL/我负责的过滤并分页，返回班次列表及详情。要看某个具体班次的完整配置用 +get-class。"
             }
           ],
           "precedence": "contract_final",
@@ -35822,7 +36050,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询当前用户可管理的班次详情列表"
+          "value": "当你要浏览或按名称查找当前用户能管理的班次、以便拿到班次 ID 用于建组、排班或改班次时使用；可选按班次名关键字模糊搜索、按 ALL/我负责的过滤并分页，返回班次列表及详情。要看某个具体班次的完整配置用 +get-class。"
         },
         "effect": {
           "candidates": [
@@ -36447,7 +36675,7 @@
       "cli_name": "+search-group",
       "cli_path": "attendance +search-group",
       "confirmation": "not_required",
-      "description": "查询当前用户可管理的考勤组列表",
+      "description": "当你要浏览或按名称查找当前用户可管理的考勤组、以便拿到考勤组 ID 用于查看详情、改成员或改配置时使用；可选按名称关键字、考勤组类型（固定班制/排班制/自由工时）过滤，并可选带出定位/Wifi/蓝牙信息，分页返回考勤组简要列表。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -36557,7 +36785,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询当前用户可管理的考勤组列表"
+              "value": "当你要浏览或按名称查找当前用户可管理的考勤组、以便拿到考勤组 ID 用于查看详情、改成员或改配置时使用；可选按名称关键字、考勤组类型（固定班制/排班制/自由工时）过滤，并可选带出定位/Wifi/蓝牙信息，分页返回考勤组简要列表。"
             }
           ],
           "precedence": "contract_final",
@@ -36565,7 +36793,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询当前用户可管理的考勤组列表"
+          "value": "当你要浏览或按名称查找当前用户可管理的考勤组、以便拿到考勤组 ID 用于查看详情、改成员或改配置时使用；可选按名称关键字、考勤组类型（固定班制/排班制/自由工时）过滤，并可选带出定位/Wifi/蓝牙信息，分页返回考勤组简要列表。"
         },
         "effect": {
           "candidates": [
@@ -37361,7 +37589,7 @@
       "cli_name": "+search-overtime-rule",
       "cli_path": "attendance +search-overtime-rule",
       "confirmation": "not_required",
-      "description": "查询当前用户可管理的加班规则列表",
+      "description": "当你要浏览或按名称查找当前用户可管理的加班规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回加班规则列表。要看某条规则的完整内容用 +get-overtime-rule。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -37471,7 +37699,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询当前用户可管理的加班规则列表"
+              "value": "当你要浏览或按名称查找当前用户可管理的加班规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回加班规则列表。要看某条规则的完整内容用 +get-overtime-rule。"
             }
           ],
           "precedence": "contract_final",
@@ -37479,7 +37707,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询当前用户可管理的加班规则列表"
+          "value": "当你要浏览或按名称查找当前用户可管理的加班规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回加班规则列表。要看某条规则的完整内容用 +get-overtime-rule。"
         },
         "effect": {
           "candidates": [
@@ -37990,7 +38218,7 @@
       "cli_name": "+this-month",
       "cli_path": "attendance +this-month",
       "confirmation": "not_required",
-      "description": "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）",
+      "description": "当你想快速看自己本月的打卡流水（几点上下班打卡、打卡地址/定位方式）、又不想先查自己的 userId 再手动填写本月的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出本月 1 号 00:00 到下月 1 号 00:00 的时间窗，最后查询你本月的打卡流水记录。只读操作，不会修改任何考勤数据；本月若还没有任何打卡则返回空结果。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -38100,7 +38328,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）"
+              "value": "当你想快速看自己本月的打卡流水（几点上下班打卡、打卡地址/定位方式）、又不想先查自己的 userId 再手动填写本月的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出本月 1 号 00:00 到下月 1 号 00:00 的时间窗，最后查询你本月的打卡流水记录。只读操作，不会修改任何考勤数据；本月若还没有任何打卡则返回空结果。"
             }
           ],
           "precedence": "contract_final",
@@ -38108,7 +38336,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）"
+          "value": "当你想快速看自己本月的打卡流水（几点上下班打卡、打卡地址/定位方式）、又不想先查自己的 userId 再手动填写本月的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出本月 1 号 00:00 到下月 1 号 00:00 的时间窗，最后查询你本月的打卡流水记录。只读操作，不会修改任何考勤数据；本月若还没有任何打卡则返回空结果。"
         },
         "effect": {
           "candidates": [
@@ -38354,7 +38582,7 @@
       "cli_name": "balance",
       "cli_path": "attendance vacation balance",
       "confirmation": "not_required",
-      "description": "查询员工假期余额",
+      "description": "调用 MCP 工具 get_leave_balance_quota 查询指定员工的假期余额。\n例如：查询某员工年假还剩多少、病假额度等。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -38469,7 +38697,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询员工假期余额"
+              "value": "调用 MCP 工具 get_leave_balance_quota 查询指定员工的假期余额。\n例如：查询某员工年假还剩多少、病假额度等。"
             }
           ],
           "precedence": "contract_final",
@@ -38477,7 +38705,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询员工假期余额"
+          "value": "调用 MCP 工具 get_leave_balance_quota 查询指定员工的假期余额。\n例如：查询某员工年假还剩多少、病假额度等。"
         },
         "effect": {
           "candidates": [
@@ -38921,7 +39149,7 @@
       "cli_name": "records",
       "cli_path": "attendance vacation records",
       "confirmation": "not_required",
-      "description": "查询假期余额变更记录",
+      "description": "调用 MCP 工具 get_leave_balance_records 查询指定员工的假期余额变更记录。\n例如：查询某员工年假变更历史、请假扣减记录等。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -39036,7 +39264,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询假期余额变更记录"
+              "value": "调用 MCP 工具 get_leave_balance_records 查询指定员工的假期余额变更记录。\n例如：查询某员工年假变更历史、请假扣减记录等。"
             }
           ],
           "precedence": "contract_final",
@@ -39044,7 +39272,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询假期余额变更记录"
+          "value": "调用 MCP 工具 get_leave_balance_records 查询指定员工的假期余额变更记录。\n例如：查询某员工年假变更历史、请假扣减记录等。"
         },
         "effect": {
           "candidates": [
@@ -39682,7 +39910,7 @@
       "cli_name": "save-balance",
       "cli_path": "attendance vacation save-balance",
       "confirmation": "user_required",
-      "description": "调整员工假期余额",
+      "description": "调用 MCP 工具 update_leave_balance 设置指定员工的假期余额数量。\n\n重要说明：这是设置（SET）接口，传入的值会替换当前余额，而不是增加（ADD）。\n\n参数说明：\n  --target       目标员工工号（必填）\n  --leave-code   假期编码（必填）\n  --num          余额数量（必填，如8天传8，7.5天传7.5）\n  --reason       变更原因（必填，最长100字符）\n  --start        有效期开始日期 YYYY-MM-DD\n  --end          有效期结束日期 YYYY-MM-DD\n  --user-say-yes 用户已确认，跳过交互式确认提示（Agent 调用时传 true 前必须完成用户二次确认）\n\n注意：\n  - 余额数量在传递给 MCP 时会自动乘以100（如8天传800，7.5天传750）\n  - 此接口为 SET 操作：传入值会直接设置为新的余额，而非累加到现有余额",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -39797,7 +40025,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "调整员工假期余额"
+              "value": "调用 MCP 工具 update_leave_balance 设置指定员工的假期余额数量。\n\n重要说明：这是设置（SET）接口，传入的值会替换当前余额，而不是增加（ADD）。\n\n参数说明：\n  --target       目标员工工号（必填）\n  --leave-code   假期编码（必填）\n  --num          余额数量（必填，如8天传8，7.5天传7.5）\n  --reason       变更原因（必填，最长100字符）\n  --start        有效期开始日期 YYYY-MM-DD\n  --end          有效期结束日期 YYYY-MM-DD\n  --user-say-yes 用户已确认，跳过交互式确认提示（Agent 调用时传 true 前必须完成用户二次确认）\n\n注意：\n  - 余额数量在传递给 MCP 时会自动乘以100（如8天传800，7.5天传750）\n  - 此接口为 SET 操作：传入值会直接设置为新的余额，而非累加到现有余额"
             }
           ],
           "precedence": "contract_final",
@@ -39805,7 +40033,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "调整员工假期余额"
+          "value": "调用 MCP 工具 update_leave_balance 设置指定员工的假期余额数量。\n\n重要说明：这是设置（SET）接口，传入的值会替换当前余额，而不是增加（ADD）。\n\n参数说明：\n  --target       目标员工工号（必填）\n  --leave-code   假期编码（必填）\n  --num          余额数量（必填，如8天传8，7.5天传7.5）\n  --reason       变更原因（必填，最长100字符）\n  --start        有效期开始日期 YYYY-MM-DD\n  --end          有效期结束日期 YYYY-MM-DD\n  --user-say-yes 用户已确认，跳过交互式确认提示（Agent 调用时传 true 前必须完成用户二次确认）\n\n注意：\n  - 余额数量在传递给 MCP 时会自动乘以100（如8天传800，7.5天传750）\n  - 此接口为 SET 操作：传入值会直接设置为新的余额，而非累加到现有余额"
         },
         "effect": {
           "candidates": [
@@ -40716,7 +40944,7 @@
       "cli_name": "types",
       "cli_path": "attendance vacation types",
       "confirmation": "not_required",
-      "description": "查询可用假期类型",
+      "description": "调用 MCP 工具 get_leave_types 查询当前用户可用的假期规则列表。\n例如：年假、事假、病假等假期类型及对应规则。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "read",
       "effect_source": "corecmd.contract",
@@ -40830,7 +41058,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "查询可用假期类型"
+              "value": "调用 MCP 工具 get_leave_types 查询当前用户可用的假期规则列表。\n例如：年假、事假、病假等假期类型及对应规则。"
             }
           ],
           "precedence": "contract_final",
@@ -40838,7 +41066,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "查询可用假期类型"
+          "value": "调用 MCP 工具 get_leave_types 查询当前用户可用的假期规则列表。\n例如：年假、事假、病假等假期类型及对应规则。"
         },
         "effect": {
           "candidates": [
@@ -41097,7 +41325,7 @@
           ]
         ]
       },
-      "description": "更新假期类型规则",
+      "description": "调用 MCP 工具 save_leave_type 更新已有假期规则。\n--leave-code 必填，指定要更新的假期规则编码。\n其他字段均为可选，仅需传入要修改的字段。\n\n参数说明：\n  --leave-code        假期编码（必填）\n  --name              假期名称（可选）\n  --unit              假期单位：day/halfDay/hour（可选）\n  --paid              是否带薪假期（可选）\n  --per-hours         一天折算小时数（可选）\n  --when-can-leave    新员工请假规则：entry/formal（可选）\n  --visibility-rules  适用范围规则 JSON 数组（可选）\n  --user-say-yes      用户已确认，跳过交互式确认提示（Agent 调用时传 true 前必须完成用户二次确认）\n\n--visibility-rules 适用范围语义（HSF 反序列化约定，必读）：\n  - 不传：不修改原有可见范围。\n  - 改为指定范围：传 [{\"type\":\"staff|dept|label|employee_type\",\"visible\":[\"id1\",\"id2\"]}, ...]，\n    每条规则 type 和 visible 都必须非空。\n  - 改为全公司可见（哨兵约定）：必须显式传 [{\"type\":\"dept\",\"visible\":[\"-1\"]}]，\n    服务端识别后会落库为空可见范围（即全公司）。\n  - 反例（CLI 会拦截报错，避免被服务端静默忽略）：\n    * 空数组 []、[{}]、[{\"type\":\"dept\",\"visible\":[]}] 等被视为未传，不会生效为全公司可见；\n    * 若要清空可见范围，必须显式传哨兵值 [\"-1\"]。",
       "display": "考勤打卡 / 排班 / 统计",
       "effect": "write",
       "effect_source": "corecmd.contract",
@@ -41212,7 +41440,7 @@
               "selected": true,
               "source": "corecmd.contract",
               "source_ref": "corecmd.SchemaDecl",
-              "value": "更新假期类型规则"
+              "value": "调用 MCP 工具 save_leave_type 更新已有假期规则。\n--leave-code 必填，指定要更新的假期规则编码。\n其他字段均为可选，仅需传入要修改的字段。\n\n参数说明：\n  --leave-code        假期编码（必填）\n  --name              假期名称（可选）\n  --unit              假期单位：day/halfDay/hour（可选）\n  --paid              是否带薪假期（可选）\n  --per-hours         一天折算小时数（可选）\n  --when-can-leave    新员工请假规则：entry/formal（可选）\n  --visibility-rules  适用范围规则 JSON 数组（可选）\n  --user-say-yes      用户已确认，跳过交互式确认提示（Agent 调用时传 true 前必须完成用户二次确认）\n\n--visibility-rules 适用范围语义（HSF 反序列化约定，必读）：\n  - 不传：不修改原有可见范围。\n  - 改为指定范围：传 [{\"type\":\"staff|dept|label|employee_type\",\"visible\":[\"id1\",\"id2\"]}, ...]，\n    每条规则 type 和 visible 都必须非空。\n  - 改为全公司可见（哨兵约定）：必须显式传 [{\"type\":\"dept\",\"visible\":[\"-1\"]}]，\n    服务端识别后会落库为空可见范围（即全公司）。\n  - 反例（CLI 会拦截报错，避免被服务端静默忽略）：\n    * 空数组 []、[{}]、[{\"type\":\"dept\",\"visible\":[]}] 等被视为未传，不会生效为全公司可见；\n    * 若要清空可见范围，必须显式传哨兵值 [\"-1\"]。"
             }
           ],
           "precedence": "contract_final",
@@ -41220,7 +41448,7 @@
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
           "source_ref": "corecmd.SchemaDecl",
-          "value": "更新假期类型规则"
+          "value": "调用 MCP 工具 save_leave_type 更新已有假期规则。\n--leave-code 必填，指定要更新的假期规则编码。\n其他字段均为可选，仅需传入要修改的字段。\n\n参数说明：\n  --leave-code        假期编码（必填）\n  --name              假期名称（可选）\n  --unit              假期单位：day/halfDay/hour（可选）\n  --paid              是否带薪假期（可选）\n  --per-hours         一天折算小时数（可选）\n  --when-can-leave    新员工请假规则：entry/formal（可选）\n  --visibility-rules  适用范围规则 JSON 数组（可选）\n  --user-say-yes      用户已确认，跳过交互式确认提示（Agent 调用时传 true 前必须完成用户二次确认）\n\n--visibility-rules 适用范围语义（HSF 反序列化约定，必读）：\n  - 不传：不修改原有可见范围。\n  - 改为指定范围：传 [{\"type\":\"staff|dept|label|employee_type\",\"visible\":[\"id1\",\"id2\"]}, ...]，\n    每条规则 type 和 visible 都必须非空。\n  - 改为全公司可见（哨兵约定）：必须显式传 [{\"type\":\"dept\",\"visible\":[\"-1\"]}]，\n    服务端识别后会落库为空可见范围（即全公司）。\n  - 反例（CLI 会拦截报错，避免被服务端静默忽略）：\n    * 空数组 []、[{}]、[{\"type\":\"dept\",\"visible\":[]}] 等被视为未传，不会生效为全公司可见；\n    * 若要清空可见范围，必须显式传哨兵值 [\"-1\"]。"
         },
         "effect": {
           "candidates": [

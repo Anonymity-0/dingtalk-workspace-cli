@@ -280,6 +280,7 @@ func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testi
 	}
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("dry-run", false, "")
+	cmd.Flags().String("node", "", "")
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: cli.SafetySpec{
 			Effect: "destructive", Risk: "high",
@@ -304,9 +305,22 @@ func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testi
 		t.Fatal("expected both contract confirm and sheet mutation markers")
 	}
 
-	cmd.SetIn(strings.NewReader("yes\n"))
+	// Missing --node must fail before confirmation (RFC §5.1).
 	cmd.SetArgs(nil)
 	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "flag --node is required") {
+		t.Fatalf("missing --node must validate first, got %#v", err)
+	}
+	if ran {
+		t.Fatal("RunE must not run when --node is missing")
+	}
+
+	if err := cmd.Flags().Set("node", "node-probe"); err != nil {
+		t.Fatal(err)
+	}
+	cmd.SetIn(strings.NewReader("yes\n"))
+	cmd.SetArgs(nil)
+	err = cmd.Execute()
 	var appErr *apperrors.Error
 	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
 		t.Fatalf("piped yes must be confirmation_required, got %#v", err)
