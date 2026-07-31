@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cmdcore"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
@@ -514,6 +516,62 @@ func TestLiveMountEOFRequiresConfirmation(t *testing.T) {
 	}
 	if called {
 		t.Fatal("EOF must not execute")
+	}
+}
+
+func TestLiveMountExplicitSafetyDrivesRuntimeAndContractFinal(t *testing.T) {
+	called := false
+	explicit := cli.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	}
+	s := Shortcut{
+		Service: "chat", Command: "+send", Risk: RiskRead,
+		Safety: explicit,
+		Schema: cmdcore.SchemaDecl{
+			Description: "发送消息",
+			Interface: &cmdcore.InterfaceDecl{
+				Mode: "mcp", Availability: "available",
+				ProductID: "chat", RPCName: "send_message",
+			},
+			Selection: cmdcore.SelectionDecl{
+				AgentSummary: "发送消息",
+				UseWhen:      []string{"需要发送消息时"},
+				AvoidWhen:    []string{"只需读取消息时"},
+				Examples:     []string{"dws chat +send"},
+			},
+		},
+		Execute: func(*RuntimeContext) error {
+			called = true
+			return nil
+		},
+	}
+
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+	root.PersistentFlags().Bool("yes", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	cmd := mount(s)
+	root.AddCommand(cmd)
+
+	final, ok := cli.RuntimeContractFinal(cmd)
+	if !ok || final.Safety == nil {
+		t.Fatal("mounted Shortcut must publish ContractFinal Safety")
+	}
+	if got := *final.Safety; got.Effect != explicit.Effect || got.Risk != explicit.Risk ||
+		got.Confirmation != explicit.Confirmation || got.Idempotency != explicit.Idempotency {
+		t.Fatalf("ContractFinal Safety = %#v, want explicit %#v", got, explicit)
+	}
+
+	root.SetArgs([]string{s.Command})
+	root.SetIn(strings.NewReader(""))
+	root.SetErr(&bytes.Buffer{})
+	err := root.Execute()
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("explicit Safety must drive runtime confirmation; err = %#v", err)
+	}
+	if called {
+		t.Fatal("explicit Safety confirmation gate must run before Execute")
 	}
 }
 

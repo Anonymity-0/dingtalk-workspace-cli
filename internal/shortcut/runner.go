@@ -217,9 +217,16 @@ func (rt *RuntimeContext) Output(payload any) error {
 	return output.WriteCommandPayload(rt.cmd, payload, output.FormatJSON)
 }
 
-// mount compiles a Shortcut into a cobra command.
+// mount compiles a Shortcut into a cobra command through the unified cmdcore
+// path. FromShortcut expands the legacy Risk only when Safety is absent; when
+// Safety is explicit the same value drives both ConfirmSafety and ContractFinal.
 func mount(s Shortcut) *cobra.Command {
-	return cmdcore.NewCommand(FromShortcut(s))
+	cmd := cmdcore.NewCommand(FromShortcut(s))
+	// Preserve the historical Shortcut help surface: Tips, rather than Agent
+	// selection examples, own cobra's Example block. The Schema declaration still
+	// carries its reviewed examples in ContractFinal.
+	cmd.Example = shortcutExamples(s.Tips)
+	return cmd
 }
 
 func flagHelp(f Flag) string {

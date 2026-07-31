@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
@@ -147,6 +148,21 @@ func TestDocVersionRevertDryRunRejectsMissingVersionBeforePreview(t *testing.T) 
 	}
 	if strings.Contains(output, `"tool": "revert_doc_version"`) {
 		t.Fatalf("missing version emitted a misleading mutation preview: %q", output)
+	}
+}
+
+func TestDocVersionRevertPublishesRuntimeSafety(t *testing.T) {
+	cmd, remaining, err := newDocCommand().Find([]string{"version", "revert"})
+	if err != nil || len(remaining) != 0 {
+		t.Fatalf("find doc version revert: command=%v remaining=%v err=%v", cmd, remaining, err)
+	}
+	final, ok := cli.RuntimeContractFinal(cmd)
+	if !ok || final.Safety == nil {
+		t.Fatal("doc version revert must publish ContractFinal Safety")
+	}
+	if safety := *final.Safety; safety.Effect != "write" || safety.Risk != "medium" ||
+		safety.Confirmation != "user_required" || safety.Idempotency != "unknown" {
+		t.Fatalf("doc version revert Safety = %#v, want write/medium/user_required/unknown", safety)
 	}
 }
 

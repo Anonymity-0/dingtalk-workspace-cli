@@ -2696,6 +2696,12 @@ CLI 内部自动完成全部流程:
 	versionListCmd.Flags().Int("limit", 0, "返回版本数量上限")
 	versionListCmd.Flags().String("cursor", "", "分页游标")
 
+	versionRevertSafety := cli.SafetySpec{
+		Effect:       "write",
+		Risk:         "medium",
+		Confirmation: "user_required",
+		Idempotency:  "unknown",
+	}
 	versionRevertCmd := &cobra.Command{
 		Use:     "revert",
 		Short:   "回滚文档到指定版本",
@@ -2724,12 +2730,7 @@ CLI 内部自动完成全部流程:
 					apperrors.WithActions("查询可用文档版本", "选择存在的版本号后重新预览"),
 				)
 			}
-			if err := cmdcore.ConfirmSafety(cmd, cli.SafetySpec{
-				Effect:       "destructive",
-				Risk:         "high",
-				Confirmation: "user_required",
-				Idempotency:  "unknown",
-			}); err != nil {
+			if err := cmdcore.ConfirmSafety(cmd, versionRevertSafety); err != nil {
 				return err
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
@@ -2738,6 +2739,25 @@ CLI 内部自动完成全部流程:
 			})
 		},
 	}
+	DeclareLeafMetadata(versionRevertCmd, LeafSpec{
+		Safety: versionRevertSafety,
+		Schema: LeafSchema{
+			Description: "将文档回滚到指定历史版本",
+			Interface: &LeafInterfaceDecl{
+				Mode: "composite", Availability: "available",
+				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: LeafSelectionDecl{
+				AgentSummary: "将文档回滚到指定历史版本",
+				UseWhen:      []string{"用户明确要求将 adoc 回滚到指定历史版本（已从 version list 确认版本号）时"},
+				AvoidWhen: []string{
+					"只看版本列表用 version list；保存快照用 save",
+					"版本号未确认或用户未同意回滚时不要执行",
+				},
+				Examples: []string{"dws doc version revert --node <DOC_ID> --version 3 --format json"},
+			},
+		},
+	})
 	versionRevertCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	versionRevertCmd.Flags().Int("version", 0, "目标版本号 (必填，从 list 获取)")
 
