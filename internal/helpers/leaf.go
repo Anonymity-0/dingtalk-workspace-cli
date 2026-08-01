@@ -46,10 +46,11 @@ const contractConfirmDeferredAnnotation = "dws.contract.confirm_deferred"
 //   - 完全托管模式 NewLeafCommand：声明 + 执行都归 corecmd（flag 注册、
 //     参数投影、ConfirmSafety、派发）。新命令默认走此模式。
 //   - 声明元数据模式 DeclareLeafMetadata：声明 Safety + Contract（AttachContract），
-//     不注册 flag、不接管参数投影；可选 Validate 挂到 PreRunE（确认前）。
-//     当 Safety.Confirmation=user_required 时用**同一份** SafetySpec 包一层
-//     ConfirmSafety（在 PreRunE 之后），保证执行门禁与 Catalog 同源。
-//     用于执行体必须冻结的既有命令补声明，是迁移态。
+//     不注册 flag、不接管参数投影；可选 Validate 与 ConfirmSafety 同挂在
+//     RunE 包装器内（Validate 在前，不是 PreRunE——直接调 RunE /
+//     proxySubCmd 会跳过 PreRunE）。当 Safety.Confirmation=user_required 时
+//     用**同一份** SafetySpec 包一层 ConfirmSafety，保证执行门禁与 Catalog
+//     同源。用于执行体必须冻结的既有命令补声明，是迁移态。
 //
 // 每个 API 各自声明：
 //
@@ -199,8 +200,10 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 // user_required 确认时机：
 //   - 提供 Validate：Validate → ConfirmSafety → 原 RunE（本地副作用命令）
 //   - 未提供 Validate：原 RunE 先跑（含缺参校验），ConfirmSafety 推迟到
-//     首次 deps.Caller.CallTool；若无 Caller 可挂门禁，则回退为
-//     ConfirmSafety → 原 RunE（此类命令应补 Validate，见同源门禁）
+//     首次 deps.Caller.CallTool。无 Caller 时回退 ConfirmSafety → 原 RunE。
+//     有 Caller 但 RunE 成功返回且从未 CallTool：fail-closed（禁止「成功
+//     返回却未确认」——此时副作用可能已发生，事后 Confirm 太晚）。本地
+//     副作用叶必须补 Validate，或把副作用放进 gated CallTool。
 //
 // 该模式是迁移态而非终态：命令具备条件时应升级为 NewLeafCommand。传入
 // Flags/Constraints/ConstParams/Call/RunE/PostMount 或空 Contract 会 panic，
@@ -280,7 +283,9 @@ func installContractRunEPipeline(cmd *cobra.Command, rt *contractRuntime) {
 		if !rt.confirm {
 			return inner(c, args)
 		}
-		if deps != nil && deps.Caller != nil && deps.Caller.DryRun() {
+		// OR across flagsets (root persistent --dry-run must not be shadowed by
+		// a leaf-local --dry-run defaulting to false).
+		if corecmd.BoolFlag(c, "dry-run") || (deps != nil && deps.Caller != nil && deps.Caller.DryRun()) {
 			return inner(c, args)
 		}
 		if rt.validate != nil {
@@ -307,7 +312,15 @@ func installContractRunEPipeline(cmd *cobra.Command, rt *contractRuntime) {
 			return err
 		}
 		if !gate.confirmed {
-			return corecmd.ConfirmSafety(c, rt.safety)
+			// Fail closed: RunE already returned successfully. A post-RunE
+			// ConfirmSafety cannot undo local side effects, and --yes would
+			// falsely green-light them after the fact. Side-effect leaves must
+			// declare Validate (confirm-before-RunE) or dispatch through the
+			// gated CallTool path. Dry-run previews may finish without CallTool.
+			if corecmd.BoolFlag(c, "dry-run") {
+				return nil
+			}
+			return fmt.Errorf("contract: user_required confirmation was never obtained via CallTool for %q; add Validate for local side effects or dispatch through deps.Caller.CallTool", c.Name())
 		}
 		return nil
 	}

@@ -30,8 +30,14 @@ changes must not rewrite it mechanically.
 - Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Contract`) → `corecmd.New`
 - **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Contract` (`corecmd.ContractDecl`; nested fields are `contract.*`)
 - Naming: `ContractDecl` is the authoring leaf declaration. "Schema" means Catalog / `ToolSpec` delivery — do not reintroduce `SchemaDecl`.
-- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Contract` is set, convert once via `cli.RegisterRuntimeContractFinal` (annotate + store seam); assembly **pass-throughs** Final. Production code must not call `contract.RegisterRuntimeContractFinal` directly.
-- Package seam: types/registries → `corecmd/contract` (sole definitions); Cobra annotate+store seam + Catalog/`ResolveMeta` delivery → `internal/cli`. cli does not redefine contract types.
+- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Contract` is set, convert once via `contractfinal.RegisterRuntimeContractFinal` (framework) or `cli.RegisterRuntimeContractFinal` (product re-export); assembly **pass-throughs** Final.
+- Package seam:
+  - types / ProductDecl → `corecmd/contract` (DTO only; **no** Cobra-keyed ContractFinal store)
+  - AnnotateRuntime* writers → `internal/cli/runtimeannotate` (`corecmd` may import; must **not** import `internal/cli` root)
+  - ContractFinal cobra store + Register → `internal/cli/contractfinal`
+  - homology gates → `internal/cli/homology`
+  - Catalog / `ResolveMeta` / go:embed → `internal/cli` root (thin re-exports of annotate/store APIs)
+- Description declare vs delivery: construction requires `ContractDecl.Description` (evidence). Catalog delivery prefers Cobra Long → provenance `cobra_help`; without Long, declared text → `contract_final`. Title: declared first, then Short, then MCP. Do **not** read this as "declare = wire final" or dual authority.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
 - Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
 
@@ -41,7 +47,7 @@ changes must not rewrite it mechanically.
 - Hard rule: every help/Schema fact is **declared** **or** **annotated**; never inference-only (§1.1–§1.3; framework §5.0).
 - Embed path: `corecmd.New` → `dws.schema.*` annotations → Schema catalog assembly
 - MCP metadata must not create CLI flags; optional 1:1 passthrough is a gated subset only.
-- Planned gate IDs: `HOM-P*`, `HOM-S*`, `HOM-I1`, `HOM-D1` (see that doc §4).
+- Gate IDs: `HOM-P*`, `HOM-S*`, `HOM-I1`, `HOM-D1` (see that doc §3–§4). `HOM-P1`/`HOM-D1`/`HOM-S1`/`HOM-S2` are on the `check-schema-catalog.sh` policy whitelist; remaining IDs land incrementally.
 
 ## Agent Schema contract
 
@@ -379,10 +385,13 @@ lower-precedence source. A higher-precedence declaration may still raise an
 optional flag to required. `cli_required` continues to mirror the executable
 Cobra marker.
 
-For command-level description, Cobra Long wins when present (delivered
-provenance `cobra_help`, resolution `cobra_help_preferred`); without Long,
-ContractDecl description is delivered as `contract_final`. Title keeps declared
-ContractDecl / ContractFinal first, then Cobra Short, then MCP metadata.
+For command-level description: **declare required, delivery Long may win**.
+`ContractDecl.Description` is mandatory at construction (declaration evidence).
+Catalog delivery prefers Cobra Long when present (provenance `cobra_help`,
+resolution `cobra_help_preferred`); without Long, the declared Description is
+delivered as `contract_final`. Title keeps declared ContractDecl /
+ContractFinal first, then Cobra Short, then MCP metadata. This is one authority
+chain with an explicit delivery preference — not two competing sources.
 Generic RPC prose may remain an unselected provenance candidate (and
 parameter-level `interface_description`); it must not overwrite a specialized
 leaf's title or description.

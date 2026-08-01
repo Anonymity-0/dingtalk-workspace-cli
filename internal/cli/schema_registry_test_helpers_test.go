@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/spf13/cobra"
 )
 
@@ -77,9 +77,9 @@ func schemaRegistryForTestWithMetadata(root *cobra.Command, agent embeddedAgentM
 	// Clear bind-time ContractFinal so injected fixtures remain authoritative
 	// for the commands under test. Production assembly never takes this path.
 	for _, command := range bound.Commands {
-		contract.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
+		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
 		for _, alias := range command.AliasCommands {
-			contract.ClearRuntimeContractFinalForTest(alias.Command)
+			contractfinal.ClearRuntimeContractFinalForTest(alias.Command)
 		}
 	}
 	return assembleSchemaRegistryFromBoundAllowingLegacy(bound, runtimeSchemaMetadataSources{Agent: agent, MCP: mcp})

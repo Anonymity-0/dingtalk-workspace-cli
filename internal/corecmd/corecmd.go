@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package command is the shared, dispatch-agnostic base for building leaf
+// Package corecmd is the shared, dispatch-agnostic base for building leaf
 // commands. It concentrates flag registration, the alias/env/default effective
 // value fallback chain, required validation, cross-flag constraint declaration
 // checks + runtime enforcement, SafetySpec-driven confirmation, toolArgs
@@ -20,33 +20,31 @@
 // Declaration vs execution (framework rule):
 //
 //   - Declare = Spec data fields (Flags, Constraints, Safety,
-//     ConstParams, Use/Short/Long/Example). NewCommand registers, validates,
+//     ConstParams, Use/Short/Long/Example). New registers, validates,
 //     confirms, and embeds those facts into dws.schema.*.
 //   - Execute = Validate / Invoke / Orchestrate / RunE / PostMount. Hooks
 //     consume assembled args; they must not invent the CLI surface.
 //   - Annotate = explicit cobra annotations when a fact is not (yet) a Contract
 //     field (e.g. write-guard runtime_gate). Inference-only Schema/help is
 //     forbidden.
-//   - Reviewed non-Contract Schema (identity, selection, interface_*, dry-run,
-//     idempotency) has its own sources and must not create CLI flags.
+//   - Selection / product routing prose is declared on ContractDecl /
+//     ProductDecl (delivered as contract_final). schema_hints/ is retired.
+//     Identity remains the reviewed CommandRegistry. Interface / dry-run
+//     reviewed sources must not create CLI flags.
 //
 // Full ToolSpec field authority: RFC §5.0.4 / homology §1.4.
 //
-// It is deliberately dispatch-agnostic: it never calls an MCP tool. The
-// LeafSpec framework (internal/helpers) and, later, the Shortcut framework wrap
-// these primitives and supply their own dispatch (single-step MCP / multi-step
-// orchestration / escape hatch). Extracting the primitives here lets both
-// frameworks share one flag + constraint + safety + schema base, differing only
-// in how they dispatch — the first step toward a single typed command registry.
+// It is deliberately dispatch-agnostic: it never calls an MCP tool. LeafSpec
+// (internal/helpers) and Shortcut (internal/shortcut) wrap these primitives and
+// supply dispatch. Invoke / Orchestrate / Ctx are the #830 transitional
+// dispatch API still used in production; the RFC target is mcpbind + Handler
+// (do not treat removal of Invoke/Orchestrate as already landed).
 //
-// Behavioral contract: this package is a pure extraction of the logic that
-// previously lived in internal/helpers/leaf.go, so flag registration, value
-// fallback, required/constraint semantics, confirmation behavior, and schema projection
-// stay semantically identical. The evidence is split: check-generated-drift
-// (catalog unchanged) proves only the build-time projection — identity, flags,
-// help and annotations — while the runtime pipeline (required validation,
-// toolArgs assembly, write confirmation, dispatch order) is evidenced solely by
-// this package's own tests plus the leaf/risk/constraint unit tests.
+// Behavioral contract: flag registration, value fallback, required/constraint
+// semantics, confirmation behavior, and schema projection stay shared across
+// Leaf and Shortcut. Evidence is split: check-generated-drift proves build-time
+// projection; runtime pipeline order is covered by this package's tests plus
+// leaf/risk/constraint unit tests.
 package corecmd
 
 import (
@@ -61,7 +59,8 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
@@ -214,16 +213,17 @@ const (
 //
 //   - RunE — full escape hatch: the framework only registers flags/constraints/
 //     help and hands control over.
-//   - Invoke — single-step: runs after required/constraint/Validate checks, args
-//     assembly and the Safety confirmation gate, receiving the assembled toolArgs.
-//   - Orchestrate — multi-step: runs after the same checks and confirmation but
-//     receives only the Ctx, so it can chain several backend calls itself.
+//   - Invoke — #830 transitional single-step dispatch: runs after required/
+//     constraint/Validate checks, args assembly and the Safety confirmation
+//     gate, receiving the assembled toolArgs. Target: mcpbind Bind.
+//   - Orchestrate — #830 transitional multi-step dispatch: same checks and
+//     confirmation, receives only the Ctx. Target: Handler / orchestration.
 //   - Validate / PostMount — orchestration only; must not register business flags
 //     or assemble business params that belong in Flags/ConstParams.
 //
-// Exactly one of RunE / Invoke / Orchestrate must be set; NewCommand validates
-// this at construction time. command itself stays dispatch-agnostic and never
-// calls a backend: the adapters (FromLeafSpec / FromShortcut) supply the body.
+// Exactly one of RunE / Invoke / Orchestrate must be set; New validates this at
+// construction time. corecmd stays dispatch-agnostic and never calls a backend:
+// the adapters (FromLeafSpec / FromShortcut) supply the body.
 type Spec struct {
 	Use     string
 	Short   string
@@ -1139,23 +1139,23 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 				continue
 			}
 			if flag.Required || flag.MarkRequired {
-				cli.AnnotateRuntimeRequiredFlags(cmd, name)
+				runtimeannotate.AnnotateRuntimeRequiredFlags(cmd, name)
 			}
 			if len(flag.Enum) > 0 {
-				cli.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
+				runtimeannotate.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
 			}
 			// Same class as Enum: a declared rule the reviewed registry cannot
 			// derive. Without it a credential that is mandatory under one
 			// identity is published as plainly optional.
 			if flag.RequiredWhen != "" {
-				cli.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
+				runtimeannotate.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
 			}
 		}
 		embedContractDecl(cmd, spec)
 		return
 	}
 
-	cli.AnnotateRuntimeContract(cmd)
+	runtimeannotate.AnnotateRuntimeContract(cmd)
 	required := make([]string, 0, len(spec.Flags))
 	for _, flag := range spec.Flags {
 		name := strings.TrimSpace(flag.Name)
@@ -1163,36 +1163,36 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 			continue
 		}
 		requiredFlag := flag.Required || flag.MarkRequired
-		cli.AnnotateRuntimeFlag(cmd, name, strings.TrimSpace(flag.Bind), flagKindSchemaType(flag.Kind), requiredFlag, "")
+		runtimeannotate.AnnotateRuntimeFlag(cmd, name, strings.TrimSpace(flag.Bind), flagKindSchemaType(flag.Kind), requiredFlag, "")
 		desc := strings.TrimSpace(flag.SchemaDescription)
 		if desc == "" {
 			desc = strings.TrimSpace(flag.Usage)
 		}
 		if desc != "" {
-			cli.AnnotateRuntimeFlagDescription(cmd, name, desc)
+			runtimeannotate.AnnotateRuntimeFlagDescription(cmd, name, desc)
 		}
 		if flag.RequiredWhen != "" {
-			cli.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
+			runtimeannotate.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
 		}
 		if flag.Format != "" {
-			cli.AnnotateRuntimeFlagFormat(cmd, name, flag.Format)
+			runtimeannotate.AnnotateRuntimeFlagFormat(cmd, name, flag.Format)
 		}
 		if flag.Example != "" {
-			cli.AnnotateRuntimeFlagExample(cmd, name, flag.Example)
+			runtimeannotate.AnnotateRuntimeFlagExample(cmd, name, flag.Example)
 		}
 		if len(flag.Enum) > 0 {
-			cli.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
+			runtimeannotate.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
 		}
 		if requiredFlag {
 			required = append(required, name)
 		}
 	}
-	cli.AnnotateRuntimeRequiredFlags(cmd, required...)
+	runtimeannotate.AnnotateRuntimeRequiredFlags(cmd, required...)
 	embedContractDecl(cmd, spec)
 }
 
 // embedContractDecl does a light runtime write: only when ContractDecl is authored,
-// convert once through the cli delivery seam (annotate + store).
+// convert once through contractfinal.RegisterRuntimeContractFinal (annotate + store).
 func embedContractDecl(cmd *cobra.Command, spec Spec) {
 	if spec.Contract.empty() {
 		return
@@ -1205,7 +1205,7 @@ func embedContractDecl(cmd *cobra.Command, spec Spec) {
 // while keeping execution substance frozen. Overwrites any prior ContractFinal
 // on cmd; does not alter an already-installed ConfirmSafety closure.
 //
-// Production registration always goes through cli.RegisterRuntimeContractFinal
+// Production registration always goes through contractfinal.RegisterRuntimeContractFinal
 // (annotate + store). Do not call contract.RegisterRuntimeContractFinal from
 // framework/product code — that store helper is seam-only.
 //
@@ -1279,7 +1279,7 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 	if len(decl.Parameters) > 0 {
 		payload.Parameters = append([]contract.ParamDecl(nil), decl.Parameters...)
 	}
-	cli.RegisterRuntimeContractFinal(cmd, payload)
+	contractfinal.RegisterRuntimeContractFinal(cmd, payload)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -1332,7 +1332,7 @@ func flagKindSchemaType(kind FlagKind) string {
 // Runtime Schema: exactly_one decomposes into require_one_of + mutually_exclusive
 // (matching the handwritten commands' use of AnnotateRuntimeConstraints).
 func AnnotateConstraints(cmd *cobra.Command, constraints []Constraint) {
-	var projected cli.RuntimeSchemaConstraints
+	var projected runtimeannotate.RuntimeSchemaConstraints
 	var required []string
 	for _, constraint := range constraints {
 		flags := make([]string, 0, len(constraint.Flags))
@@ -1362,8 +1362,8 @@ func AnnotateConstraints(cmd *cobra.Command, constraints []Constraint) {
 			}
 		}
 	}
-	cli.AnnotateRuntimeRequiredFlags(cmd, required...)
-	cli.AnnotateRuntimeConstraints(cmd, projected)
+	runtimeannotate.AnnotateRuntimeRequiredFlags(cmd, required...)
+	runtimeannotate.AnnotateRuntimeConstraints(cmd, projected)
 }
 
 // ConstraintHelp renders the --help "参数约束" section, matching the shortcut

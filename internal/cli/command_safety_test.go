@@ -14,6 +14,8 @@
 package cli
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -67,6 +69,26 @@ func TestSafetyForCLIPathTrimsWhitespace(t *testing.T) {
 	if s1 != s2 {
 		t.Errorf("whitespace-trimmed result differs: %+v vs %+v", s1, s2)
 	}
+}
+
+func TestResolveMetaFailsClosedOnUnusableMetaIndex(t *testing.T) {
+	// Guard is unit-tested without poisoning the process-wide sync.Once used
+	// by the real embedded index. Decode failure must panic, not look like a
+	// missing CLI path (which would silently drop help Safety).
+	if _, err := decodeSchemaMetaIndexLookup([]byte(`{not-json`)); err == nil {
+		t.Fatal("decodeSchemaMetaIndexLookup(corrupt) error = nil, want fail-closed decode error")
+	}
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("panicIfMetaIndexUnusable(err) did not panic")
+		}
+		msg, _ := r.(string)
+		if msg == "" || !strings.Contains(msg, "schema_meta_index.json is unusable") {
+			t.Fatalf("panic = %#v, want unusable meta-index message", r)
+		}
+	}()
+	panicIfMetaIndexUnusable(fmt.Errorf("decode schema meta index: unexpected EOF"))
 }
 
 func TestResolveMetaComplete(t *testing.T) {

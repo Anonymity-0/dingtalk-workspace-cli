@@ -8,7 +8,7 @@ set -eu
 # Do NOT compare Catalog fields to Catalog provenance labels: that is a tautology
 # (both sides read the same embedded snapshot). The real homology gate is
 # TestUserRequiredSafetyHomologyWithRuntimeGate in
-# internal/cli/contract_safety_homology_external_test.go — it walks the live
+# internal/cli/homology/safety_homology_test.go — it walks the live
 # Cobra tree, reads ContractFinal.Safety, compares to AssembleSchemaRegistry
 # ToolSpec.Confirmation, and probes the runtime gate.
 
@@ -20,7 +20,7 @@ if [ -e internal/cli/schema_hints ]; then
 	exit 1
 fi
 
-go test ./internal/cli \
+go test ./internal/cli/homology \
 	-run '^TestUserRequiredSafetyHomologyWithRuntimeGate$' \
 	-count=1
 

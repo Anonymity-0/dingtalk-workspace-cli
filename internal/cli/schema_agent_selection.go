@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/spf13/cobra"
 )
 
@@ -73,7 +73,7 @@ func BuildAgentSelectionEvalFixture(bound BoundCommandRegistry) (AgentSelectionF
 	for _, command := range bound.Commands {
 		canonical := strings.TrimSpace(command.CanonicalPath)
 		expectedTools[canonical] = true
-		if !contract.HasRuntimeContractFinal(command.PrimaryCommand) {
+		if !contractfinal.HasRuntimeContractFinal(command.PrimaryCommand) {
 			return fixture, report, fmt.Errorf("agent selection expected canonical %q has no ContractFinal declaration", canonical)
 		}
 		productID, _, ok := strings.Cut(canonical, ".")
@@ -169,7 +169,7 @@ func ValidateAgentSelectionContract(bound BoundCommandRegistry) (AgentSelectionR
 // tool from its ContractFinal overlay.
 func contractFinalSelectionHint(command *cobra.Command) ManualAgentToolHint {
 	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.ContractDecl)"}
-	payload, ok := contract.RuntimeContractFinal(command)
+	payload, ok := contractfinal.RuntimeContractFinal(command)
 	if !ok || payload.Selection == nil {
 		return hint
 	}

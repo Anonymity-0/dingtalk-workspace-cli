@@ -49,8 +49,8 @@
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌─── 执行体 (恰好一个) ─────────────────────────────────────────┐  │
-│  │  Invoke(Ctx, toolArgs)     ← 单步：框架装配好 args 后派发     │  │
-│  │  Orchestrate(Ctx)          ← 多步：自行组装多次调用           │  │
+│  │  Invoke(Ctx, toolArgs)     ← #830 过渡：单步派发（目标 mcpbind）│  │
+│  │  Orchestrate(Ctx)          ← #830 过渡：多步编排（目标 Handler）│  │
 │  │  RunE(cmd, args)           ← 逃生舱：完全自定义               │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
@@ -195,8 +195,8 @@ contract.DryRunSpec{
 
 | 执行体 | 适用场景 | 框架做了什么 |
 |--------|----------|-------------|
-| **Invoke** | 单步 MCP/后端调用 | 框架完成 required→constraint→validate→buildArgs→confirm，传入装配好的 toolArgs |
-| **Orchestrate** | 多步编排 | 框架完成 required→constraint→validate→confirm，传入 Ctx 自行组装调用 |
+| **Invoke** | #830 过渡单步派发（生产仍用；目标 mcpbind） | 框架完成 required→constraint→validate→buildArgs→confirm，传入装配好的 toolArgs |
+| **Orchestrate** | #830 过渡多步编排（生产仍用；目标 Handler） | 框架完成 required→constraint→validate→confirm，传入 Ctx 自行组装调用 |
 | **RunE** | 逃生舱 | 框架仍执行 Safety 确认，具体业务执行完全自定义 |
 
 ## 设计不变量

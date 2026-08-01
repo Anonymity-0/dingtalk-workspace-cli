@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
@@ -1559,7 +1560,7 @@ func TestCrossPlatformCoverageEmbedContractCobraProjection(t *testing.T) {
 		t.Fatalf("hidden flag must not be projected, got %#v", got)
 	}
 	// The authored ContractDecl still lands as the typed ContractFinal.
-	final, ok := contract.RuntimeContractFinal(cmd)
+	final, ok := contractfinal.RuntimeContractFinal(cmd)
 	if !ok || final.Description != "desc" {
 		t.Fatalf("cobra projection must still embed ContractDecl, final=%#v ok=%v", final, ok)
 	}
@@ -1570,7 +1571,7 @@ func TestCrossPlatformCoverageAttachContractNilAndEmptyGuards(t *testing.T) {
 	AttachContract(nil, testWriteSafety(), ContractDecl{Description: "d"}, "s", "l")
 	cmd := newTestCommand()
 	AttachContract(cmd, testWriteSafety(), ContractDecl{}, "s", "l")
-	if contract.HasRuntimeContractFinal(cmd) {
+	if contractfinal.HasRuntimeContractFinal(cmd) {
 		t.Fatal("empty ContractDecl must not register a ContractFinal")
 	}
 }

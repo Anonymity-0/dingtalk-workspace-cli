@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/agentmetadata"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/outputguard"
@@ -283,7 +284,7 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
 	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{})
-	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(declared) })
+	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(declared) })
 
 	registry := commandRegistryProjection{
 		CanonicalToolPaths: map[string]string{

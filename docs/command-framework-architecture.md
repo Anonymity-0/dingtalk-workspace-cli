@@ -35,9 +35,9 @@ type Spec struct {
     ConstParams map[string]any
     Contract   ContractDecl    // 叶子 Contract 声明（非 Catalog Schema）
 
-    // 执行面（恰好一个）
-    Invoke      func(c *Ctx, toolArgs map[string]any) error  // 单步
-    Orchestrate func(c *Ctx) error                           // 多步
+    // 执行面（恰好一个；Invoke/Orchestrate 为 #830 过渡派发 API，目标 mcpbind+Handler）
+    Invoke      func(c *Ctx, toolArgs map[string]any) error  // 过渡：单步
+    Orchestrate func(c *Ctx) error                           // 过渡：多步
     RunE        func(cmd *cobra.Command, args []string) error // 逃生舱
 
     // 钩子
@@ -153,8 +153,8 @@ ConstParams 合并
 [!ConfirmFirst? → ConfirmSafety]     ← 默认顺序：校验后确认
   │
   ▼
-Invoke(ctx, toolArgs)                ← 单步派发
-  或 Orchestrate(ctx)                ← 多步编排
+Invoke(ctx, toolArgs)                ← #830 过渡：单步派发
+  或 Orchestrate(ctx)                ← #830 过渡：多步编排
 ```
 
 ## 消费方式
@@ -218,7 +218,7 @@ DeclareLeafMetadata(baseListCmd, LeafSpec{
 })
 ```
 
-`DeclareLeafMetadata` 调用 `corecmd.AttachContract` 挂 Safety+Contract；不注册 flag、不接管参数投影。当 `Safety.Confirmation=user_required` 时，用**同一份** SafetySpec 包一层 `ConfirmSafety`，保证执行门禁与 Catalog 同源。迁移态入口；新命令仍应走 `NewLeafCommand`。
+`DeclareLeafMetadata` 调用 `corecmd.AttachContract` 挂 Safety+Contract；不注册 flag、不接管参数投影。可选 `Validate` 与 `ConfirmSafety` 同挂在 **RunE 包装器**内（不是 PreRunE）。当 `Safety.Confirmation=user_required` 时，用**同一份** SafetySpec 包一层 `ConfirmSafety`，保证执行门禁与 Catalog 同源；无 Validate 时确认推迟到 gated `CallTool`，成功返回却未确认则 fail-closed。迁移态入口；新命令仍应走 `NewLeafCommand`。
 
 ### Shortcut（智能快捷方式，已接入 live mount）
 

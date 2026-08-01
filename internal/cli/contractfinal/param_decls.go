@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cli
+package contractfinal
 
 import (
 	"fmt"
@@ -19,25 +19,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
-
-// Delivery-seam helpers that must live in cli because they emit Cobra
-// annotations (AnnotateRuntime*). Types and registries live in
-// corecmd/contract; callers author contract.SafetySpec / contract.ParamDecl /
-// contract.ContractFinalPayload directly — there is no cli type alias layer.
-
-// RegisterRuntimeContractFinal is the sole production registration entry for
-// ContractFinal: annotate (dws.schema.contract) then store the typed payload.
-// Framework code (corecmd.AttachContract / New) must use this seam rather than
-// calling contract.RegisterRuntimeContractFinal directly.
-func RegisterRuntimeContractFinal(cmd *cobra.Command, payload contract.ContractFinalPayload) {
-	if cmd == nil {
-		return
-	}
-	AnnotateRuntimeContract(cmd)
-	contract.RegisterRuntimeContractFinal(cmd, payload)
-}
 
 // ApplyParamDecls emits parameter declarations as dws.schema.* annotations on the
 // command's flags. Called at assembly time when all flags exist on the tree.
@@ -52,7 +36,7 @@ func ApplyParamDecls(cmd *cobra.Command, decls []contract.ParamDecl) error {
 		if name == "" {
 			continue
 		}
-		if runtimeCommandFlag(cmd, name) == nil {
+		if runtimeannotate.CommandFlag(cmd, name) == nil {
 			return fmt.Errorf("ParamDecl %q references unknown flag on %q", name, cmd.CommandPath())
 		}
 	}
@@ -62,27 +46,23 @@ func ApplyParamDecls(cmd *cobra.Command, decls []contract.ParamDecl) error {
 			continue
 		}
 		if prop := strings.TrimSpace(p.Property); prop != "" {
-			AnnotateRuntimeFlagProperty(cmd, name, prop)
+			runtimeannotate.AnnotateRuntimeFlagProperty(cmd, name, prop)
 		}
 		if p.Required != nil {
-			AnnotateRuntimeFlagRequiredValue(cmd, name, *p.Required)
+			runtimeannotate.AnnotateRuntimeFlagRequiredValue(cmd, name, *p.Required)
 		}
 		if it := strings.TrimSpace(p.InterfaceType); it != "" {
-			AnnotateRuntimeFlagInterfaceType(cmd, name, it)
+			runtimeannotate.AnnotateRuntimeFlagInterfaceType(cmd, name, it)
 		}
 		if desc := strings.TrimSpace(p.Description); desc != "" {
-			AnnotateRuntimeFlagDescription(cmd, name, desc)
+			runtimeannotate.AnnotateRuntimeFlagDescription(cmd, name, desc)
 		}
 		if rw := strings.TrimSpace(p.RequiredWhen); rw != "" {
-			AnnotateRuntimeFlagRequiredWhen(cmd, name, rw)
+			runtimeannotate.AnnotateRuntimeFlagRequiredWhen(cmd, name, rw)
 		}
 		if len(p.Enum) > 0 {
-			AnnotateRuntimeFlagEnum(cmd, name, p.Enum...)
+			runtimeannotate.AnnotateRuntimeFlagEnum(cmd, name, p.Enum...)
 		}
 	}
 	return nil
-}
-
-func resolvedFieldProvenance(value any, source, sourceRef, precedence, resolution, reviewReason string) contract.FieldProvenance {
-	return contract.ResolvedFieldProvenance(value, source, sourceRef, precedence, resolution, reviewReason)
 }

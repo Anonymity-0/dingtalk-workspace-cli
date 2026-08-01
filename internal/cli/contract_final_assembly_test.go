@@ -18,42 +18,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
-func TestContractFinalTypedRegistryNoJSON(t *testing.T) {
-	cmd := &cobra.Command{Use: "x"}
-	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(cmd) })
-
-	RegisterRuntimeContractFinal(cmd, contract.ContractFinalPayload{
-		Title: "T",
-		Safety: &contract.SafetySpec{
-			Effect: "write", Confirmation: "user_required", Idempotency: "retryable",
-		},
-		Selection: &contract.SelectionSpec{AgentSummary: "sum", UseWhen: []string{"u"}},
-		Identity:  &contract.ToolIdentitySpec{ProductID: "p", Name: "n"},
-	})
-	if cmd.Annotations != nil {
-		if _, ok := cmd.Annotations["dws.schema.final"]; ok {
-			t.Fatal("must not write JSON annotation dws.schema.final")
-		}
-	}
-	got, ok := contract.RuntimeContractFinal(cmd)
-	if !ok || got.Title != "T" || got.Safety == nil || got.Safety.Idempotency != "retryable" {
-		t.Fatalf("got %#v ok=%v", got, ok)
-	}
-	if got.Selection == nil || got.Selection.Reviewed != nil {
-		t.Fatalf("selection must not carry reviewed fields: %#v", got.Selection)
-	}
-}
-
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *testing.T) {
 	cmd := &cobra.Command{Use: "create", Short: "s", Long: "l"}
-	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(cmd) })
+	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(cmd) })
 	cmd.Flags().String("mode", "", "usage")
-	AnnotateRuntimeFlag(cmd, "mode", "mode", "string", false, "")
-	RegisterRuntimeContractFinal(cmd, contract.ContractFinalPayload{
+	runtimeannotate.AnnotateRuntimeFlag(cmd, "mode", "mode", "string", false, "")
+	contractfinal.RegisterRuntimeContractFinal(cmd, contract.ContractFinalPayload{
 		Title: "Final Title",
 		Safety: &contract.SafetySpec{
 			Effect: "write", Confirmation: "user_required", Idempotency: "none",
@@ -151,100 +127,6 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalRejectsReviewedSel
 	}
 }
 
-func mustFinal(t *testing.T, cmd *cobra.Command) contract.ContractFinalPayload {
-	t.Helper()
-	final, ok := contract.RuntimeContractFinal(cmd)
-	if !ok {
-		t.Fatal("missing final")
-	}
-	return final
-}
-
-func TestCrossPlatformCoverageContractFinalNilCommandGuards(t *testing.T) {
-	// Nil command registration/lookup must be inert no-ops.
-	RegisterRuntimeContractFinal(nil, contract.ContractFinalPayload{Title: "ignored"})
-	if _, ok := contract.RuntimeContractFinal(nil); ok {
-		t.Fatal("contract.RuntimeContractFinal(nil) must report no payload")
-	}
-	if contract.HasRuntimeContractFinal(nil) {
-		t.Fatal("contract.HasRuntimeContractFinal(nil) must be false")
-	}
-	contract.ClearRuntimeContractFinalForTest(nil)
-}
-
-func TestCrossPlatformCoverageApplyParamDeclsSkipsBlankAndAnnotatesEnum(t *testing.T) {
-	cmd := &cobra.Command{Use: "apply-params"}
-	cmd.Flags().String("mode", "", "mode")
-	required := false
-	if err := ApplyParamDecls(cmd, []contract.ParamDecl{
-		{Name: "  "}, // blank names are skipped
-		{
-			Name: "mode", Property: "mode", Required: &required,
-			InterfaceType: "string", Description: "mode desc",
-			RequiredWhen: "when create", Enum: []string{"a", "b"},
-		},
-	}); err != nil {
-		t.Fatalf("ApplyParamDecls() error = %v", err)
-	}
-	flag := cmd.Flags().Lookup("mode")
-	if flag == nil {
-		t.Fatal("missing mode flag")
-	}
-	if got := flag.Annotations["dws.schema.property"]; len(got) == 0 || got[0] != "mode" {
-		t.Fatalf("property = %#v", flag.Annotations["dws.schema.property"])
-	}
-	if got := flag.Annotations["x-cli-enum"]; len(got) != 2 || got[0] != "a" || got[1] != "b" {
-		t.Fatalf("enum = %#v", flag.Annotations["x-cli-enum"])
-	}
-	if err := ApplyParamDecls(nil, []contract.ParamDecl{{Name: "mode"}}); err != nil {
-		t.Fatalf("ApplyParamDecls(nil) error = %v", err)
-	}
-	if err := ApplyParamDecls(cmd, nil); err != nil {
-		t.Fatalf("ApplyParamDecls(nil decls) error = %v", err)
-	}
-}
-
-func TestApplyParamDeclsRejectsUnknownFlag(t *testing.T) {
-	cmd := &cobra.Command{Use: "apply-params"}
-	cmd.Flags().String("mode", "", "mode")
-	err := ApplyParamDecls(cmd, []contract.ParamDecl{
-		{Name: "mode", Property: "mode"},
-		{Name: "missing-flag", Property: "missing"},
-	})
-	if err == nil {
-		t.Fatal("ApplyParamDecls() error = nil, want unknown flag")
-	}
-	if !strings.Contains(err.Error(), "missing-flag") {
-		t.Fatalf("ApplyParamDecls() error = %v, want missing-flag", err)
-	}
-	if !strings.Contains(err.Error(), "unknown flag") {
-		t.Fatalf("ApplyParamDecls() error = %v, want unknown flag", err)
-	}
-	flag := cmd.Flags().Lookup("mode")
-	if flag == nil {
-		t.Fatal("missing mode flag")
-	}
-	if got := flag.Annotations["dws.schema.property"]; len(got) != 0 {
-		t.Fatalf("fail-closed must not annotate before unknown ParamDecl; property = %#v", got)
-	}
-}
-
-func TestCrossPlatformCoverageRuntimeContractFinalRejectsForeignStoredValue(t *testing.T) {
-	cmd := &cobra.Command{Use: "x"}
-	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(cmd) })
-
-	// Defensive branch: a stored value that is not a *contract.ContractFinalPayload
-	// (or a typed nil) must fail the read instead of panicking.
-	contract.StoreRuntimeContractFinalRawForTest(cmd, "not-a-payload")
-	if _, ok := contract.RuntimeContractFinal(cmd); ok {
-		t.Fatal("foreign stored value must not decode as contract.ContractFinalPayload")
-	}
-	contract.StoreRuntimeContractFinalRawForTest(cmd, (*contract.ContractFinalPayload)(nil))
-	if _, ok := contract.RuntimeContractFinal(cmd); ok {
-		t.Fatal("typed nil payload must not decode as contract.ContractFinalPayload")
-	}
-}
-
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalIdentityOverridesApplied(t *testing.T) {
 	cmd := &cobra.Command{Use: "create"}
 	entry := runtimeSchemaEntry{
@@ -321,7 +203,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSafetyAnnotationFa
 
 	// Safety nil + Contract Risk annotation: Risk overlay wins.
 	riskCmd := &cobra.Command{Use: "create"}
-	AnnotateRuntimeRisk(riskCmd, "write")
+	runtimeannotate.AnnotateRuntimeRisk(riskCmd, "write")
 	entry.Command = riskCmd
 	spec, err := runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{}, runtimeSchemaMetadataSources{})
 	if err != nil {
@@ -336,7 +218,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSafetyAnnotationFa
 
 	// Safety nil + runtime gate annotation: gate overlay wins.
 	gateCmd := &cobra.Command{Use: "create"}
-	AnnotateRuntimeGate(gateCmd, "devAppRequireWriteGuard")
+	runtimeannotate.AnnotateRuntimeGate(gateCmd, "devAppRequireWriteGuard")
 	entry.Command = gateCmd
 	spec, err = runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{}, runtimeSchemaMetadataSources{})
 	if err != nil {
@@ -365,4 +247,13 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalParameterResolutio
 	if err == nil || !strings.Contains(err.Error(), "resolve Contract Schema parameters") {
 		t.Fatalf("parameter resolution error = %v, want resolve Contract Schema parameters", err)
 	}
+}
+
+func mustFinal(t *testing.T, cmd *cobra.Command) contract.ContractFinalPayload {
+	t.Helper()
+	final, ok := contractfinal.RuntimeContractFinal(cmd)
+	if !ok {
+		t.Fatal("missing final")
+	}
+	return final
 }

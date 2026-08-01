@@ -11,32 +11,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package contract owns the command-framework declaration registries and the
-// leaf/product types that form ContractFinal pass-through.
+// Package contract owns command-framework declaration DTOs and the
+// ProductDecl registry. It is intentionally free of Cobra-keyed runtime
+// stores and Catalog / go:embed delivery code.
 //
 // This package is the sole definition point for:
-//   - ContractFinalPayload (+ registry store)
-//   - ProductDecl (+ registry)
+//   - ContractFinalPayload (DTO only — store lives in cli/contractfinal)
+//   - ProductDecl (+ string-keyed registry; not Cobra-keyed)
 //   - SafetySpec / SelectionSpec / InterfaceSpec / DryRunSpec / identity /
 //     positionals / ParamDecl
 //   - FieldProvenance / FieldCandidateProvenance
 //
-// Package boundary (corecmd → cli seam):
+// Package boundary:
 //
-//   - Types and registries → corecmd/contract (this package). Callers author
-//     contract.SafetySpec / contract.ParamDecl / contract.ProductDecl /
-//     contract.ContractFinalPayload / contract.InterfaceSpec directly.
+//   - Types / ProductDecl → corecmd/contract (this package).
 //   - Authoring wrapper → corecmd.ContractDecl (leaf-facing; nested fields are
 //     these contract types). Name is ContractDecl, not SchemaDecl: "Schema" in
 //     this repo means Catalog / ToolSpec delivery, not the author declaration.
-//   - Cobra annotation + store seam → internal/cli.RegisterRuntimeContractFinal
-//     (AnnotateRuntimeContract + RegisterRuntimeContractFinal). Production
-//     framework code (corecmd.New / AttachContract) must use that seam and must
-//     not call this package's store helper directly.
-//   - Catalog assembly / ResolveMeta / go:embed → internal/cli (delivery
-//     boundary; not moved into contract).
+//   - AnnotateRuntime* writers → internal/cli/runtimeannotate
+//     (corecmd may import; must not import cli root).
+//   - ContractFinal cobra store + Register seam → internal/cli/contractfinal
+//     (framework calls RegisterRuntimeContractFinal here; product code uses
+//     cli.RegisterRuntimeContractFinal re-export).
+//   - Catalog assembly / ResolveMeta / go:embed → internal/cli (delivery root).
 //
-// Authoring path: corecmd.ContractDecl → ContractFinalPayload (via cli seam);
-// ProductDecl for product-level Agent routing. Provenance stamp for declared
-// leaf Safety remains "corecmd.contract".
+// Description declare vs delivery (not dual authority):
+//
+//   - Construction requires ContractDecl.Description (declaration evidence).
+//   - Catalog delivery prefers Cobra Long when present → provenance cobra_help;
+//     without Long, declared Description is delivered → contract_final.
+//   - Title prefers declared ContractDecl/ContractFinal, then Cobra Short, then
+//     MCP metadata. Declare is not "wire final value" for description when Long
+//     exists; assembly stamps the real winner.
+//
+// Authoring path: corecmd.ContractDecl → ContractFinalPayload (via
+// contractfinal seam); ProductDecl for product-level Agent routing.
+// Provenance stamp for declared leaf Safety remains "corecmd.contract".
 package contract

@@ -25,6 +25,7 @@
 package cli
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -62,15 +63,26 @@ var (
 
 // initMetaByCLIPath builds the cli_path → CommandMeta lookup from the embedded
 // CommandMeta summary index. It does not decode the full schema_catalog/.
+// Decode failure is fail-closed: the error is retained and ResolveMeta panics
+// rather than serving an empty map that would silently hide help Safety.
 func initMetaByCLIPath() {
 	runtimeEmbeddedSchemaMetaIndexLazyCount.Add(1)
 	lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexJSON)
 	if err != nil {
 		runtimeEmbeddedSchemaMetaIndexErr = err
-		metaByCLIPath = map[string]CommandMeta{}
+		metaByCLIPath = nil
 		return
 	}
 	metaByCLIPath = lookup
+}
+
+// panicIfMetaIndexUnusable fails closed when the embedded CommandMeta summary
+// could not be decoded. Callers must not treat this as "command missing".
+func panicIfMetaIndexUnusable(err error) {
+	if err == nil {
+		return
+	}
+	panic(fmt.Sprintf("embedded schema_meta_index.json is unusable: %v", err))
 }
 
 // buildMetaByCLIPath constructs the lookup from a loaded catalog.
@@ -185,9 +197,12 @@ func registerCommandMetaAliases(lookup map[string]CommandMeta, metas []CommandMe
 // meta index (utility commands, hidden commands, shortcuts).
 //
 // ResolveMeta reads schema_meta_index.json only; it never triggers the full
-// embeddedSchemaCatalog() decode used by dws schema / --all.
+// embeddedSchemaCatalog() decode used by dws schema / --all. A corrupt or
+// undecodable meta index panics (fail-closed) so help Safety cannot silently
+// disappear behind an empty lookup.
 func ResolveMeta(cliPath string) (CommandMeta, bool) {
 	metaByCLIPathOnce.Do(initMetaByCLIPath)
+	panicIfMetaIndexUnusable(runtimeEmbeddedSchemaMetaIndexErr)
 	m, ok := metaByCLIPath[strings.TrimSpace(cliPath)]
 	return m, ok
 }

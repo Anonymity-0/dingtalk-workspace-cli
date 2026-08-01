@@ -3,11 +3,11 @@
 - **状态**：draft v5.1，征求设计评审
 - **范围**：`internal/corecmd`、`internal/helpers`（`LeafSpec`）、`internal/shortcut`
 - **实现基线**：PR #830 的 `6fb08c9e`
-- **应丢弃的原型**：`0f08484d`（`Invoke` / `Orchestrate` / `Ctx`）
+- **#830 过渡派发 API（仍生产使用）**：`Invoke` / `Orchestrate` / `Ctx`（见 §3 / §5.0.3；目标 mcpbind + Handler，**本里程碑不删**）
 - **同源决策**：[`flag-help-schema-homology.md`](flag-help-schema-homology.md)（路径 A：Contract 权威）
 - **框架声明定义**：本文 **§5.0**（今日 `corecmd.Spec`/`LeafSpec` 与目标 `Contract`）
 
-本文档取代收敛方案的前三版草案。它保留了 PR #830 中有价值的部分——一份声明同时驱动运行时校验、Runtime Schema 和帮助信息，外加严格的漂移门禁——但不把原型提交引入的派发 API 固化下来。
+本文档取代收敛方案的前三版草案。它保留了 PR #830 中有价值的部分——一份声明同时驱动运行时校验、Runtime Schema 和帮助信息，外加严格的漂移门禁。`Invoke` / `Orchestrate` / `Ctx` 是 **#830 过渡派发 API**：今日仍在生产路径上，终态目标是 mcpbind 绑定 + Handler；不得在文档里写成「已丢弃」或要求本里程碑完整删派发 API。
 
 v5.1 的变更：
 
@@ -190,21 +190,21 @@ LeafSpec 已经在生产中证明了声明驱动的执行：27 个源定义每�
 
 ## 4. 为什么最初的 S1 模型不是目标架构
 
-原型新增了：
+#830 过渡派发 API（**仍生产使用**，见文首）形态：
 
 ```go
 RunE        func(*cobra.Command, []string) error
-Invoke      func(*Ctx, map[string]any) error
-Orchestrate func(*Ctx) error
+Invoke      func(*Ctx, map[string]any) error  // 过渡：单步
+Orchestrate func(*Ctx) error                   // 过渡：多步
 ```
 
-它不稳定，有四个原因。
+它不是终态架构，有四个原因。完整替换为 mcpbind + Handler 是后续里程碑，**不是**本 RFC 落地 PR 的删除义务。
 
-### 4.1 `Invoke` 是由下一步就要移除的 MCP 泄漏所定义的
+### 4.1 `Invoke` 是由下一步要收敛掉的 MCP 泄漏所定义的
 
-`Invoke` 与 `Orchestrate` 之间唯一本质的区别，是 `command` 会在 `Invoke` 之前构建 `map[string]any`。一旦载荷绑定移出核心，两种形态都变成 `func(*Runtime) error`。
+`Invoke` 与 `Orchestrate` 之间唯一本质的区别，是 `corecmd` 会在 `Invoke` 之前构建 `map[string]any`。一旦载荷绑定移出核心，两种形态都变成 `func(*Runtime) error`。
 
-因此旧的 S4 并不是一条独立的清理链。载荷绑定的分离与 handler 模型必须一起设计。
+因此旧的 S4 并不是一条独立的清理链。载荷绑定的分离与 handler 模型必须一起设计；在那之前，过渡 API 继续服务 Leaf/Shortcut。
 
 ### 4.2 `RunE` 会让已声明的安全契约变成假话
 
@@ -273,10 +273,10 @@ Definition（仅声明；不可编译）
 
 | 层 | 含义 | 今日落点 |
 |---|---|---|
-| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`） |
-| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `cli.RegisterRuntimeContractFinal`（annotate + store seam） |
-| **注解 seam** | Cobra `dws.schema.*` 写入 | `cli.AnnotateRuntime*`（framework 可调用；**不**在 cli 再定义 contract 类型） |
-| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；Catalog embed / `ResolveMeta` | `internal/cli`（交付边界，不搬入 contract） |
+| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段**（声明证据；交付见下） | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（DTO：`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`；**无** Cobra store） |
+| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `contractfinal.RegisterRuntimeContractFinal`（annotate + store；产品代码经 `cli.RegisterRuntimeContractFinal` 薄 re-export） |
+| **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/cli/runtimeannotate.AnnotateRuntime*`（`corecmd` 可依赖；**不** import `cli` 根；cli 根薄 re-export） |
+| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；Catalog embed / `ResolveMeta` | `internal/cli` 根（交付边界）；ContractFinal store 在 `cli/contractfinal` |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
 
 硬规则：
@@ -329,8 +329,8 @@ Definition（仅声明；不可编译）
 ```text
 今日 LeafSpec / corecmd.Spec.Flags|Constraints|Safety|…
         ≈  目标 Definition.Contract
-今日 Call / Invoke / Orchestrate / RunE
-        ≈  目标 mcpbind 派发 或 Handler（形态 1/2/3）
+今日 Call / Invoke / Orchestrate / RunE（#830 过渡派发仍生产使用）
+        ≈  目标 mcpbind 派发 或 Handler（形态 1/2/3；完整删派发 API 属后续里程碑）
 今日 Validate / PostMount
         ≈  目标 Validators / 收窄后的挂载钩子（不得再充当第二套 flag 权威）
 ```
@@ -344,11 +344,11 @@ Definition（仅声明；不可编译）
 | Schema 字段组 | 子字段 / 内容 | 权威类 | 今日写入面 | 框架声明？ |
 |---|---|---|---|---|
 | **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`ContractDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
-| **Display / Title / Description** | 产品展示名；工具 title/description | **title**：ContractDecl 声明优先，否则 Cobra Short；**description**：Cobra Long 优先（provenance `cobra_help` / `cobra_help_preferred`），无 Long 时用 ContractDecl description（`contract_final`） | registry 产品名；`ContractDecl` + Cobra Short/Long；组装 stamp 真实 winner | Short/Long 可声明；**canonical 文案不以 Contract 胜 identity**；description 以 Long 为交付权威 |
+| **Display / Title / Description** | 产品展示名；工具 title/description | **title**：ContractDecl 声明优先，否则 Cobra Short，再 MCP；**description**：**构造期** `ContractDecl.Description` **必填**（声明证据）；**Catalog 交付** Cobra Long 优先（provenance `cobra_help` / `cobra_help_preferred`），无 Long 用声明（`contract_final`） | registry 产品名；`ContractDecl` + Cobra Short/Long；组装 stamp 真实 winner | 非「declare = wire 最终值」、非双权威：声明必填 + 交付 Long 可赢；**canonical 文案不以 Contract 胜 identity** |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
 | | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
-| | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍 hints/手工；目标进 Contract / reviewed 约束 | 有则须 declare 或 reviewed annotate |
+| | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍手工 annotate；目标进 Contract / reviewed 约束（`schema_hints/` 已退役） | 有则须 declare 或 reviewed annotate |
 | | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
 | **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
 | **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
@@ -359,7 +359,7 @@ Definition（仅声明；不可编译）
 | **Interface** | `interface_mode`, `interface_ref`, `availability`, `reason` | 评审源 | MCP meta + agent metadata 解析 | 否；与 CLI Identity 分离 |
 | **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 声明（`ContractDecl.Selection` / `ProductDecl`） | `ContractDecl` / `ProductDecl`（`schema_hints/` 已退役） | 可声明；声明载荷**不得携带** `Reviewed`（旧路径专用），携带即组装报错 |
 | **FieldProvenance** | 各字段 winner / candidates | 组装派生物 | Schema 组装器 | 派生；须与 delivered value 一致 |
-| **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | hints / embedded MCP / resolver | 不构成 CLI 表面 |
+| **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | embedded MCP / resolver（禁止 hints 回潮） | 不构成 CLI 表面 |
 | **ConstParams**（框架有、Schema parameters 无） | 固定 toolArgs | **声明**（载荷） | `ConstParams` | **是**（故意不上 parameter 表） |
 
 产品级 Schema（`ProductSpec` 的 description / selection）权威在 registry + `ProductDecl`，**不在**单命令 Contract。
@@ -1165,11 +1165,11 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 | Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
 | Safety 与运行时确认 | 可执行 Contract 的完整 `contract.SafetySpec`，或迁移期显式 annotate（如 `runtime_gate`）；见 §5.0 | `confirmation` 单独驱动运行时门，`effect` / `risk` / `idempotency` 原样发布，禁止跨字段机械推导；任一 Safety 字段非空时四字段必须齐全，否则构造期 panic；`ConfirmFirst` 只在 `confirmation=user_required` 时合法 |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
-| Agent 选择文案（`use_when`、`avoid_when`、摘要） | 经评审的 hints/catalog | 身份解析到活契约 |
+| Agent 选择文案（`use_when`、`avoid_when`、摘要） | 声明：`ContractDecl.Selection` / `ProductDecl`（交付 provenance `contract_final`）；`schema_hints/` 已退役，禁止回潮 | 身份解析到活契约；选择文案不得创建 CLI 表面 |
 
-冲突在 CI 中失败闭合。手工 hints 可纠正文案或后端事实，但不得静默覆盖可执行 CLI 行为。
+冲突在 CI 中失败闭合。Selection / Safety / 参数事实须声明在 ProductDecl 或 owning leaf 的 ContractFinal 上；不得用 hints overlay 静默覆盖可执行 CLI 行为，也不得把 hints 写成 selection 权威。
 
-该权威表不取代现有的多源 Schema 解析器。它使每个字段组的优先级显式：Contract 供给可执行/原生层，而经评审的覆盖、版本化绑定、排除与后端元数据保留其声明职责。
+该权威表不取代现有的多源 Schema 解析器。它使每个字段组的优先级显式：Contract / ProductDecl 供给可执行与 Agent 选择层，而经评审的 registry、版本化绑定、排除与后端元数据保留其声明职责。
 
 ### 5.11 声明式 dry-run 计划
 
@@ -1711,7 +1711,7 @@ H0 不属于本 RFC 的实现序列，列在此处只为记录其与 M2/M3 的�
 | P6c | 一个稳定发布 / 至少 30 天后：移除遗留，运行 M5b 阶段 B（删除已转换 `Execute` 函数体），收窄钩子 | 清理 |
 | P7 | 手写迁移与 Schema 权威工作 | 单独项目 |
 
-PR #830 可携带 RFC 供评审，但不得把 `Invoke`/`Orchestrate` 原型原样推送为已接受的 P1 API。
+PR #830 可携带 RFC 供评审。`Invoke`/`Orchestrate`/`Ctx` 是已合并的**过渡派发 API**（生产仍用），不得误标为「已接受的终态 P1 API」，也不得在未完成 mcpbind+Handler 里程碑前要求完整删除。
 
 ---
 

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -488,7 +489,7 @@ func TestCrossPlatformCoverageContractFinalDeclarationFailureEdges(t *testing.T)
 	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
 		Selection: &contract.SelectionSpec{AgentSummary: "declared summary"},
 	})
-	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(declared) })
+	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(declared) })
 	bound := cli.BoundCommandRegistry{ByCanonical: map[string]cli.BoundCommandSpec{
 		"sample.run": {PrimaryCommand: declared},
 	}}

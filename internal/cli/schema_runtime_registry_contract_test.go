@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -143,7 +144,7 @@ func TestAssembleSchemaRegistryFailClosedMissingProductDecl(t *testing.T) {
 		Selection:   &contract.SelectionSpec{AgentSummary: "orphan leaf"},
 	})
 	t.Cleanup(func() {
-		contract.ClearRuntimeContractFinalForTest(leaf)
+		contractfinal.ClearRuntimeContractFinalForTest(leaf)
 		contract.ClearProductDeclForTest("orphan")
 	})
 	product := &cobra.Command{Use: "orphan"}
@@ -163,7 +164,7 @@ func TestAssembleSchemaRegistryAllowingLegacyIsolatesOverlayPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, command := range bound.Commands {
-		contract.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
+		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
 	}
 	agent := embeddedAgentMetadata{
 		Version: 1,
@@ -203,7 +204,7 @@ func TestAssembleSchemaRegistryRequiresContractFinalAndProductDecl(t *testing.T)
 		},
 	})
 	t.Cleanup(func() {
-		contract.ClearRuntimeContractFinalForTest(leaf)
+		contractfinal.ClearRuntimeContractFinalForTest(leaf)
 		contract.ClearProductDeclForTest("sample")
 	})
 	contract.RegisterProductDecl(contract.ProductDecl{
@@ -333,7 +334,7 @@ func assembleContractFinalTextTool(t *testing.T, short, long, declaredDescriptio
 		},
 	})
 	t.Cleanup(func() {
-		contract.ClearRuntimeContractFinalForTest(leaf)
+		contractfinal.ClearRuntimeContractFinalForTest(leaf)
 		contract.ClearProductDeclForTest("sample")
 	})
 	contract.RegisterProductDecl(contract.ProductDecl{

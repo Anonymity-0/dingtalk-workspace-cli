@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
@@ -207,7 +208,7 @@ func assembleSchemaRegistryFromBoundWithOptions(bound BoundCommandRegistry, meta
 }
 
 func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
-	if final, ok := contract.RuntimeContractFinal(entry.Command); ok {
+	if final, ok := contractfinal.RuntimeContractFinal(entry.Command); ok {
 		return runtimeToolSpecFromContractFinal(entry, final, metadata)
 	}
 	canonicalPath := entry.ProductID + "." + entry.ToolName
@@ -231,7 +232,7 @@ func assembleProductSelection(entry runtimeSchemaEntry, metadata runtimeSchemaMe
 // runtimeToolSpecAllowingLegacy is the test-isolated overlay path. Prefer
 // ContractFinal when present; otherwise reopen retired skill/MCP/agent inject.
 func runtimeToolSpecAllowingLegacy(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
-	if final, ok := contract.RuntimeContractFinal(entry.Command); ok {
+	if final, ok := contractfinal.RuntimeContractFinal(entry.Command); ok {
 		return runtimeToolSpecFromContractFinal(entry, final, metadata)
 	}
 	return runtimeToolSpecFromLegacyMetadata(entry, metadata)

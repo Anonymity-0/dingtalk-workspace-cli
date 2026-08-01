@@ -256,9 +256,10 @@ func TestCrossPlatformCoverageDeclareLeafMetadataConfirmFallbackWithoutCaller(t 
 }
 
 // TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithoutCallTool
-// covers the deferred-confirm post-RunE fallback: with a deps.Caller present
-// and an inner RunE that never dispatches through CallTool, the gate stays
-// unconfirmed and ConfirmSafety must still run after the inner RunE.
+// covers the deferred-confirm fail-closed path: with a deps.Caller present and
+// an inner RunE that never dispatches through CallTool, success-without-confirm
+// is rejected. Post-RunE ConfirmSafety is intentionally not used — local side
+// effects may already have run.
 func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithoutCallTool(t *testing.T) {
 	prev := deps
 	caller := &deferConfirmTestCaller{}
@@ -287,24 +288,25 @@ func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithout
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{})
 
-	// Without --yes the post-RunE fallback confirmation must fail closed.
 	err := cmd.Execute()
-	if err == nil || (!strings.Contains(err.Error(), "confirmation_required") && !strings.Contains(err.Error(), "需要用户确认")) {
-		t.Fatalf("Execute() without --yes error = %v, want confirmation_required", err)
+	if err == nil || !strings.Contains(err.Error(), "never obtained via CallTool") {
+		t.Fatalf("Execute() without CallTool error = %v, want fail-closed contract error", err)
 	}
 	if ran != 1 {
-		t.Fatalf("inner RunE ran %d times, want 1 (deferred gate confirms after RunE)", ran)
+		t.Fatalf("inner RunE ran %d times, want 1 (fail-closed after successful RunE)", ran)
 	}
 	if caller.calls != 0 {
 		t.Fatalf("CallTool calls = %d, want 0", caller.calls)
 	}
 
-	// With --yes the post-RunE fallback confirmation passes.
+	// --yes must not green-light a post-RunE confirmation: the contract error
+	// remains even when ConfirmSafety would have passed.
 	if err := cmd.Flags().Set("yes", "true"); err != nil {
 		t.Fatal(err)
 	}
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute() with --yes error = %v", err)
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "never obtained via CallTool") {
+		t.Fatalf("Execute() with --yes but no CallTool error = %v, want fail-closed contract error", err)
 	}
 	if ran != 2 {
 		t.Fatalf("inner RunE ran %d times, want 2", ran)

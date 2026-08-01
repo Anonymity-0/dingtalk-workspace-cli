@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -246,7 +247,7 @@ func validateSelectionAuthoringContracts(opts Options) error {
 	expectedTools := expectedCanonicalToolSet(opts)
 	for canonical := range expectedTools {
 		bound, ok := opts.BoundCommands.ByCanonical[canonical]
-		if ok && contract.HasRuntimeContractFinal(bound.PrimaryCommand) {
+		if ok && contractfinal.HasRuntimeContractFinal(bound.PrimaryCommand) {
 			delete(expectedTools, canonical)
 		}
 	}

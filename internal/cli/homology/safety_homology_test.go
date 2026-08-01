@@ -1,7 +1,7 @@
 // Copyright 2026 Alibaba Group
 // Licensed under the Apache License, Version 2.0 (the "License");
 
-package cli_test
+package homology
 
 import (
 	"errors"
@@ -15,8 +15,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )
@@ -87,7 +87,7 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 			fails = append(fails, row{canonical, cmd.PrimaryCLIPath, "", "nil PrimaryCommand"})
 			continue
 		}
-		final, hasFinal := contract.RuntimeContractFinal(leaf)
+		final, hasFinal := contractfinal.RuntimeContractFinal(leaf)
 		if !hasFinal || final.Safety == nil {
 			continue
 		}

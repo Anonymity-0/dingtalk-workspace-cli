@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -151,7 +152,7 @@ func contractFinalProductMetadata(decl contract.ProductDecl) ProductMetadata {
 // Absent payload sections stay absent (never authored-empty); declared
 // sections map field-by-field, preserving explicit empty-list authorship.
 func contractFinalToolMetadata(command *cobra.Command) (ToolMetadata, bool) {
-	payload, ok := contract.RuntimeContractFinal(command)
+	payload, ok := contractfinal.RuntimeContractFinal(command)
 	if !ok {
 		return ToolMetadata{}, false
 	}

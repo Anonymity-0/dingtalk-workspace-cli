@@ -1,7 +1,7 @@
 // Copyright 2026 Alibaba Group
 // Licensed under the Apache License, Version 2.0 (the "License");
 
-package cli_test
+package homology
 
 import (
 	"encoding/json"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -82,7 +83,7 @@ func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing
 			rows = append(rows, row{canonical, cliPath, "FAIL", "absent from embedded full leaf shard"})
 			continue
 		}
-		final, has := contract.RuntimeContractFinal(cmd.PrimaryCommand)
+		final, has := contractfinal.RuntimeContractFinal(cmd.PrimaryCommand)
 		if !has {
 			failCount++
 			rows = append(rows, row{canonical, cliPath, "FAIL", "no contract.RuntimeContractFinal on PrimaryCommand"})
@@ -207,7 +208,8 @@ func repoCLIDir() string {
 	if !ok {
 		return "."
 	}
-	return filepath.Dir(file)
+	// This file lives in internal/cli/homology; schema_catalog is under internal/cli.
+	return filepath.Clean(filepath.Join(filepath.Dir(file), ".."))
 }
 
 func loadEmbeddedFullLeafTools() (map[string]embedToolView, error) {

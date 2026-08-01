@@ -13,15 +13,15 @@
 
 package contract
 
-import (
-	"sync"
-
-	"github.com/spf13/cobra"
-)
-
 // ContractFinalPayload is the Contract-authored final Schema leaf overlay.
-// Registered in-process by the framework; Schema assembly reads it as
-// pass-through. No JSON bridge. Treat as read-only after Register.
+// Registered in-process by the framework via runtimeannotate / cli seam;
+// Schema assembly reads it as pass-through. No JSON bridge. Treat as
+// read-only after Register.
+//
+// The Cobra-keyed runtime store lives in internal/corecmd/runtimeannotate
+// (not this DTO package). Production product code registers through
+// cli.RegisterRuntimeContractFinal; framework code may call
+// runtimeannotate.RegisterRuntimeContractFinal directly.
 type ContractFinalPayload struct {
 	Title       string
 	Description string
@@ -32,60 +32,4 @@ type ContractFinalPayload struct {
 	Interface   *InterfaceSpec
 	Selection   *SelectionSpec
 	Identity    *ToolIdentitySpec
-}
-
-var contractFinalByCommand sync.Map // *cobra.Command → *ContractFinalPayload
-
-// RegisterRuntimeContractFinal stores the typed final Schema overlay for a leaf.
-// Light runtime write: one map store, no JSON, no deep clone.
-//
-// Seam-only: production code must call cli.RegisterRuntimeContractFinal so the
-// dws.schema.contract annotation and the typed store stay atomic. This helper
-// exists for that seam (and tests that exercise the store). Do not call it from
-// corecmd.AttachContract / product helpers / shortcuts.
-func RegisterRuntimeContractFinal(cmd *cobra.Command, payload ContractFinalPayload) {
-	if cmd == nil {
-		return
-	}
-	p := payload
-	contractFinalByCommand.Store(cmd, &p)
-}
-
-// RuntimeContractFinal returns the registered final Schema overlay (read-only).
-func RuntimeContractFinal(cmd *cobra.Command) (ContractFinalPayload, bool) {
-	if cmd == nil {
-		return ContractFinalPayload{}, false
-	}
-	raw, ok := contractFinalByCommand.Load(cmd)
-	if !ok {
-		return ContractFinalPayload{}, false
-	}
-	p, ok := raw.(*ContractFinalPayload)
-	if !ok || p == nil {
-		return ContractFinalPayload{}, false
-	}
-	return *p, true
-}
-
-// HasRuntimeContractFinal reports whether the leaf has a registered final overlay.
-func HasRuntimeContractFinal(cmd *cobra.Command) bool {
-	if cmd == nil {
-		return false
-	}
-	_, ok := contractFinalByCommand.Load(cmd)
-	return ok
-}
-
-// ClearRuntimeContractFinalForTest removes a registration (tests only).
-func ClearRuntimeContractFinalForTest(cmd *cobra.Command) {
-	if cmd != nil {
-		contractFinalByCommand.Delete(cmd)
-	}
-}
-
-// StoreRuntimeContractFinalRawForTest injects a raw map value (tests only).
-func StoreRuntimeContractFinalRawForTest(cmd *cobra.Command, raw any) {
-	if cmd != nil {
-		contractFinalByCommand.Store(cmd, raw)
-	}
 }

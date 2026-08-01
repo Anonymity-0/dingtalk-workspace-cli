@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -163,7 +164,7 @@ func BindEffectiveCommandRegistry(root *cobra.Command, effective EffectiveComman
 		// Index Contract-declared dry_run capabilities at bind time: every
 		// process that resolves the command tree gets the reviewed set, not
 		// only processes that also run Schema assembly.
-		if payload, ok := contract.RuntimeContractFinal(item.PrimaryCommand); ok && payload.DryRun != nil {
+		if payload, ok := contractfinal.RuntimeContractFinal(item.PrimaryCommand); ok && payload.DryRun != nil {
 			recordDeclaredDryRunCapability(item.CanonicalPath, *payload.DryRun)
 		}
 	}

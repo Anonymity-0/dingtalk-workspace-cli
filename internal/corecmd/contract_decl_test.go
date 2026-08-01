@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -65,7 +66,7 @@ func TestCrossPlatformCoverageNewCommandEmbedsFullContractDeclAsFinalSource(t *t
 			t.Fatal("framework must convert typed ContractDecl; must not write JSON dws.schema.final")
 		}
 	}
-	final, ok := contract.RuntimeContractFinal(cmd)
+	final, ok := contractfinal.RuntimeContractFinal(cmd)
 	if !ok {
 		t.Fatal("expected typed ContractFinal registration")
 	}
@@ -135,7 +136,7 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 		},
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
-	final, ok := contract.RuntimeContractFinal(cmd)
+	final, ok := contractfinal.RuntimeContractFinal(cmd)
 	if !ok {
 		t.Fatal("expected typed ContractFinal registration")
 	}
@@ -240,7 +241,7 @@ func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 	}
 	build := func(spec Spec) *contract.SafetySpec {
 		cmd := New(spec)
-		final, ok := contract.RuntimeContractFinal(cmd)
+		final, ok := contractfinal.RuntimeContractFinal(cmd)
 		if !ok || final.Safety == nil {
 			t.Fatalf("expected declared safety, final=%#v ok=%v", final, ok)
 		}
@@ -273,7 +274,7 @@ func TestContractDeclEmptySkipsFinal(t *testing.T) {
 		Safety: testWriteSafety(),
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
-	if contract.HasRuntimeContractFinal(cmd) {
+	if contractfinal.HasRuntimeContractFinal(cmd) {
 		t.Fatal("Safety without Contract must not register Final (keep runtime write light)")
 	}
 	if _, ok := cmd.Annotations["dws.schema.risk"]; ok {

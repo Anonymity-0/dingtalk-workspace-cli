@@ -28,9 +28,17 @@ import (
 // contract.ContractFinalPayload; Catalog assembly pass-throughs that payload.
 // Nested fields reuse contract.* types directly so authoring cannot drift from
 // the registry model.
+//
+// Description declare vs delivery (not dual authority, not "declare = wire"):
+//   - Construction requires Description (declaration evidence / fail-closed).
+//   - Catalog delivery: Cobra Long wins when present → provenance cobra_help;
+//     without Long, declared Description is delivered → contract_final.
+//   - Title: declared Title/ContractFinal first, then Cobra Short, then MCP.
+//
+// The payload stores the declared text; assembly stamps the real winner.
 type ContractDecl struct {
 	Title       string
-	Description string
+	Description string // required at construction; Catalog may prefer Cobra Long
 	Positionals []contract.RuntimeSchemaPositional
 	Parameters  []contract.ParamDecl
 	DryRun      *contract.DryRunSpec

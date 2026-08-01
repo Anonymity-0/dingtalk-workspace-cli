@@ -9,7 +9,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 ### Changed
 
 - **Hints retired; ContractDecl is the leaf Schema source** (#830) — `schema_hints/`, Manual/Schema hint overlays, and `schema_agent_metadata/` delivery are removed. Selection, safety, parameters, and interface facts declare on ProductDecl / leaf `Contract` (`corecmd.ContractDecl` + `contract.ParamDecl` / `Safety`). Authoring renamed `SchemaDecl` → `ContractDecl`; nested fields reuse `contract.*` directly.
-- **Contract package seam** (#830) — types and registries live only under `internal/corecmd/contract`. Production registration is single-entry `cli.RegisterRuntimeContractFinal` (annotate + store); `cli` no longer redefines contract type aliases.
+- **Contract package seam** (#830) — types / ProductDecl live under `internal/corecmd/contract` (DTO only). Annotate writers live in `internal/cli/runtimeannotate`; Cobra-keyed ContractFinal store + Register live in `internal/cli/contractfinal`; homology gates in `internal/cli/homology`. `cli` root keeps Catalog/`ResolveMeta` delivery and thin re-exports. `corecmd` no longer imports `internal/cli`.
 - **CommandMeta index for ResolveMeta** (#830) — generation publishes `schema_meta_index.json` alongside Catalog ToolSpec wire under `schema_catalog/`. Runtime `ResolveMeta` / `SafetyForCLIPath` read the meta-index only and do not decode the full embedded Catalog.
 
 ### Fixed

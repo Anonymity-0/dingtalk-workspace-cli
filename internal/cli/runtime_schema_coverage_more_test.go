@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -263,7 +264,9 @@ func TestCrossPlatformCoverageRuntimeSchemaPureHelperEdges(t *testing.T) {
 	if got := runtimeCommandPositionals(cmd); len(got) != 2 || got[0].Name != "first" {
 		t.Fatalf("sorted positionals = %#v", got)
 	}
-	groups := normalizeRuntimeSchemaGroups([][]string{{" "}, {" ", "one", "one"}, {"one"}, {"one"}}, 1)
+	groups := runtimeannotate.NormalizeConstraints(runtimeannotate.RuntimeSchemaConstraints{
+		RequireOneOf: [][]string{{" "}, {" ", "one", "one"}, {"one"}, {"one"}},
+	}).RequireOneOf
 	if !reflect.DeepEqual(groups, [][]string{{"one"}}) {
 		t.Fatalf("normalized groups = %#v", groups)
 	}

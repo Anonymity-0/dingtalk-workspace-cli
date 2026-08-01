@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -186,7 +187,7 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 	canonicalPaths := make([]string, 0, len(bound.Commands))
 	for _, command := range bound.Commands {
 		canonical := strings.TrimSpace(command.CanonicalPath)
-		if !contract.HasRuntimeContractFinal(command.PrimaryCommand) {
+		if !contractfinal.HasRuntimeContractFinal(command.PrimaryCommand) {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("bound tool %q has no ContractFinal declaration; Schema examples require leaf Schema.Selection", canonical)
 		}
 		canonicalPaths = append(canonicalPaths, canonical)

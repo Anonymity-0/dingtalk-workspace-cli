@@ -156,7 +156,7 @@ NewLeafCommand(LeafSpec{
 |---|---|---|
 | Identity | 评审源 | `schema_command_registry` |
 | Parameters.`name/type/required/default/property` | **声明**（或同形 annotate） | `Flags` / `Bind` |
-| Parameters.`description` | 声明 usage + 可选 hints overlay | `Usage`；hints 不得改 type/required/default |
+| Parameters.`description` | 声明 usage（`FlagSpec.Usage` / ParamDecl） | `schema_hints/` 已退役；不得用 overlay 改 type/required/default |
 | Parameters.`interface_*` | 评审源 | MCP meta / bindings；**不造 flag** |
 | Constraints | **声明** | `Constraints` |
 | Positionals | **声明** 或显式 annotate | 目标 `Args`；禁止推断 |
@@ -192,14 +192,24 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 - Flags / ConstParams / Constraints → 注册、校验与 `ConstraintHelp`；SafetySpec → 运行时 `ConfirmSafety`（command）；
 - Call / Execute 作为执行体；业务参数不得在 Call 内装配（helpers 门禁）；
-- **Contract → Schema 嵌入**：参数/约束写原生 annotation，SafetySpec 与 ContractDecl 注册为类型化 Contract Final 并由 Schema 组装透传。
+- **Contract → Schema 嵌入**：参数/约束写原生 annotation，SafetySpec 与 ContractDecl 注册为类型化 Contract Final 并由 Schema 组装透传；
+- Selection 权威为 `ContractDecl.Selection` / `ProductDecl`（`contract_final`）；`schema_hints/` 已退役。
 
-仍缺：
+已进 CI（`make policy` → `check-schema-catalog.sh` / `check-runtime-confirmation-truth.sh`）：
 
-1. `HOM-P*` / `HOM-D1` 门禁：禁止 hints 静默改写 type/required/default；help ≡ schema parameters；
-2. 重新 `make generate-schema` 后把嵌入结果固化进签入 catalog（注意本机 OOM）；identity/selection 仍走评审源。
+| Gate ID | CI 入口（`-run` 白名单 / 脚本） |
+|---|---|
+| `HOM-P1` / `HOM-D1` | `./internal/app`：`TestFinalSchemaParametersMatchExecutableHelpFlags`、`TestEmbeddedSchemaParametersMatchExecutableHelpFlags` |
+| `HOM-P2`（参数映射/bindings 子集） | `./internal/cli`：`TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog`、`TestEmbeddedCatalogMCPParameterMappingsAreComplete` 等 bindings 门禁 |
+| `HOM-S1` / `HOM-S2`（confirmation 同源） | `./internal/cli/homology`：`TestUserRequiredSafetyHomologyWithRuntimeGate` + `check-runtime-confirmation-truth.sh`；`./internal/app`：`TestSheetFinalSchemaConfirmationMatchesRuntimeGuards` |
+| 词汇/决策钉扎 | `./internal/cli/homology`：`TestHomologyDecisionDocPinsPathAAndGateIDs`、`TestMCPPassthroughAdmissionExcludesLeafAndShortcut`、`TestHomologyCIEntrypointsPinned` |
 
-已落地（写命令确认语义，`HOM-S2` 起点）：
+仍缺（未宣称全量 CI 覆盖）：
+
+1. 独立可执行的 `HOM-P3`（constraints ≡ AnnotateConstraints）与 `HOM-S3`（read 不得误投影 user_required）全量 gate；
+2. `HOM-I1` 作为单独 gate ID 的显式用例（MCP bindings ⊆ Contract flags 已有映射审计子集，但未钉 `HOM-I1` 标签）。
+
+已落地（写命令确认语义，`HOM-S2`）：
 
 - `AnnotateRuntimeGate` / `dws.schema.runtime_gate`；Leaf `PostMount: devAppMetaWrite`；手写 delete/robot 等同路径显式标注；
 - Schema 组装在无 Contract Safety 但有 gate 时 overlay `confirmation=user_required`（`applyContractGateToSafety`）；
@@ -207,24 +217,24 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 ## 4. Schema 投影与 Safety 门禁规划
 
-以下门禁在落地时应作为独立 policy / 测试交付（门禁 ID 稳定，便于 CI 认领）。
+以下门禁 ID 稳定，便于 CI 认领。§3 表标明哪些已挂入 `check-schema-catalog.sh`。
 
-| Gate ID | 断言 | 范围 |
-|---|---|---|
-| `HOM-P1` | 受管 leaf 的 schema `parameters[].name` 集合 ≡ cobra 本地 flag 名集合（排除全局 persistent） | LeafSpec / 未来 Contract 编译命令 |
-| `HOM-P2` | schema parameter `type` / `required` / `default` 与 cobra DefValue / MarkFlagRequired / FlagSpec 一致；hints overlay **不得**改写这三项，只可补 description | 同上 |
-| `HOM-P3` | schema 关系约束（require_one_of / mutually_exclusive）≡ Contract/Leaf `Constraints` 投影（与 `AnnotateConstraints` 同构） | 声明了 Constraints 的命令 |
-| `HOM-S1` | 若 Contract/Leaf `Risk` ∈ {write, high-risk-write}，则 schema `confirmation=user_required`，且 help Safety 行与之同语义 | 使用 Risk 确认的受管命令 |
-| `HOM-S2` | 若命令走显式 write guard（如 `devAppRequireWriteGuard`）而非 Risk，则必须人工标注 `dws.schema.runtime_gate`（或等价 reviewed Safety）；Schema 不得呈 `confirmation=not_required`；符合 §1.1 declare OR annotate | 今日 devapp 写命令 |
-| `HOM-S3` | `Risk=read`（或空→read）不得投影为 `user_required`，除非有 reviewed exclusion reason | 受管读命令 |
-| `HOM-I1` | `interface_ref` 存在时，bindings 覆盖的 CLI flag ⊆ Contract flags；MCP meta **不**引入额外 CLI flag | 有 MCP 绑定的命令 |
-| `HOM-D1` | `dws <path> --help` Flags 段与 schema leaf parameters 零未解释增量 | 抽样 + 受管全集逐步扩大 |
+| Gate ID | 断言 | 范围 | CI |
+|---|---|---|---|
+| `HOM-P1` | 受管 leaf 的 schema `parameters[].name` 集合 ≡ cobra 本地 flag 名集合（排除全局 persistent） | LeafSpec / Contract 编译命令 | **已进**（app help↔schema） |
+| `HOM-P2` | schema parameter `type` / `required` / `default` 与 cobra DefValue / MarkFlagRequired / FlagSpec 一致；不得用已退役 hints overlay 改写这三项 | 同上 | **部分**（bindings/mapping 门禁） |
+| `HOM-P3` | schema 关系约束（require_one_of / mutually_exclusive）≡ Contract/Leaf `Constraints` 投影（与 `AnnotateConstraints` 同构） | 声明了 Constraints 的命令 | 规划 |
+| `HOM-S1` | Contract/Leaf `user_required` Safety 与运行时 Confirm/gate 同源，且 help Safety 行同语义 | 受管写/破坏性命令 | **已进** |
+| `HOM-S2` | 若命令走显式 write guard（如 `devAppRequireWriteGuard`）而非完整 SafetySpec，则必须人工标注 `dws.schema.runtime_gate`；Schema 不得呈 `confirmation=not_required`；符合 §1.1 declare OR annotate | 今日 devapp 写命令 | **已进**（同源测试含 gate 路径） |
+| `HOM-S3` | `Risk=read`（或空→read）不得投影为 `user_required`，除非有 reviewed exclusion reason | 受管读命令 | 规划 |
+| `HOM-I1` | `interface_ref` 存在时，bindings 覆盖的 CLI flag ⊆ Contract flags；MCP meta **不**引入额外 CLI flag | 有 MCP 绑定的命令 | **部分**（mapping 审计） |
+| `HOM-D1` | `dws <path> --help` Flags 段与 schema leaf parameters 零未解释增量 | 受管公开 leaf | **已进**（与 HOM-P1 同测） |
 
 落地顺序建议：
 
-1. 先对 LeafSpec 命令实现 `HOM-P1`/`HOM-P2`/`HOM-P3`（反射 cobra 即可起步，因 flag 已由 Contract 注册）；
-2. 再收 `HOM-S1`–`S3`（需产品确认 devapp 是否升格 Risk，或保持 guard + 诚实 provenance）；
-3. `HOM-I1`/`HOM-D1` 接入 `check-schema-*` / PR 门禁。
+1. 保持 `HOM-P1`/`HOM-D1`/`HOM-S1`/`HOM-S2` 在 `check-schema-catalog.sh` 白名单中（勿再只靠词汇钉扎）；
+2. 补独立 `HOM-P3` / `HOM-S3` 可执行 gate，并把 `HOM-P2`/`HOM-I1` 从「部分」升到全量标签；
+3. 新 Leaf 继续走 Contract 嵌入；禁止 `schema_hints/` 回潮。
 
 ## 5. 路径 B 子通道：1:1 MCP 透传叶（可选，非主路径）
 
@@ -245,6 +255,6 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 ## 6. 非目标
 
-- 不把 selection 文案或 canonical identity 塞进 Contract。
+- 不把 canonical identity / 导航塞进 Contract（仍归 reviewed `CommandRegistry`）；selection 文案已由 `ContractDecl.Selection` / `ProductDecl` 声明（非 hints）。
 - 不要求删除 LeafSpec 门面。
 - 不把「生成 catalog 字节一致」当作运行时同源的充分条件（仍需 `HOM-*` 与差分门禁）。

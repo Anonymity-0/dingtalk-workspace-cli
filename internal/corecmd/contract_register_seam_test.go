@@ -21,10 +21,9 @@ import (
 	"testing"
 )
 
-// Production framework code must register ContractFinal through the cli
-// delivery seam (annotate + store), not by calling the contract store helper
-// directly.
-func TestAttachContractUsesCLIRegisterSeam(t *testing.T) {
+// Production framework code must register ContractFinal through the
+// contractfinal annotate+store seam, not by importing the cli delivery root.
+func TestAttachContractUsesContractFinalRegisterSeam(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
@@ -35,11 +34,13 @@ func TestAttachContractUsesCLIRegisterSeam(t *testing.T) {
 		t.Fatalf("read corecmd.go: %v", err)
 	}
 	body := string(raw)
-	if !strings.Contains(body, "cli.RegisterRuntimeContractFinal(") {
-		t.Fatal("AttachContract/New must call cli.RegisterRuntimeContractFinal")
+	if !strings.Contains(body, "contractfinal.RegisterRuntimeContractFinal(") {
+		t.Fatal("AttachContract/New must call contractfinal.RegisterRuntimeContractFinal")
 	}
-	// Disallow the dual-track pattern: annotate then contract.Register in corecmd.
-	if strings.Contains(body, "contract.RegisterRuntimeContractFinal(") {
-		t.Fatal("corecmd must not call contract.RegisterRuntimeContractFinal directly; use cli seam")
+	if strings.Contains(body, `"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"`) {
+		t.Fatal("corecmd must not import internal/cli delivery root")
+	}
+	if strings.Contains(body, "cli.RegisterRuntimeContractFinal(") {
+		t.Fatal("corecmd must not call cli.RegisterRuntimeContractFinal; use contractfinal seam")
 	}
 }

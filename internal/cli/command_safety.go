@@ -44,6 +44,7 @@ func (s CommandSafety) ShouldRender() bool {
 // CLI path (e.g. "dev app delete"). Returns ok=false when the path is absent
 // from the embedded schema_meta_index.json (utility commands, hidden commands,
 // shortcuts). Delegates to ResolveMeta; it does not decode schema_catalog/.
+// A corrupt meta index panics via ResolveMeta (fail-closed).
 //
 // Deprecated: use ResolveMeta(cliPath).Safety for the complete metadata view.
 // Kept for backward compatibility with existing callers.

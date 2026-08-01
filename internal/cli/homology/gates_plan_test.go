@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cli
+package homology
 
 import (
 	"os"
@@ -35,12 +35,26 @@ var plannedHomologyGateIDs = []string{
 	"HOM-D1", // --help Flags ≡ schema leaf parameters
 }
 
+// ciHomologyEntrypoints are executable gates already wired into
+// scripts/policy/check-schema-catalog.sh (and confirmation-truth helper).
+// Vocabulary-only pinning is not enough: these names must stay on the policy
+// -run whitelist.
+var ciHomologyEntrypoints = []string{
+	"TestUserRequiredSafetyHomologyWithRuntimeGate",
+	"TestHomologyDecisionDocPinsPathAAndGateIDs",
+	"TestMCPPassthroughAdmissionExcludesLeafAndShortcut",
+	"TestHomologyCIEntrypointsPinned",
+	"TestFinalSchemaParametersMatchExecutableHelpFlags",
+	"TestEmbeddedSchemaParametersMatchExecutableHelpFlags",
+	"TestSheetFinalSchemaConfirmationMatchesRuntimeGuards",
+}
+
 func TestHomologyDecisionDocPinsPathAAndGateIDs(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	doc := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "docs", "flag-help-schema-homology.md"))
+	doc := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "docs", "flag-help-schema-homology.md"))
 	raw, err := os.ReadFile(doc)
 	if err != nil {
 		t.Fatalf("read homology doc: %v", err)
@@ -62,6 +76,8 @@ func TestHomologyDecisionDocPinsPathAAndGateIDs(t *testing.T) {
 		"dws.schema.runtime_gate",
 		"mcp_passthrough",
 		"不得覆盖 LeafSpec / Shortcut 主路径",
+		"已进 CI",
+		"check-schema-catalog.sh",
 	} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("homology doc missing %q", needle)
@@ -79,7 +95,7 @@ func TestMCPPassthroughAdmissionExcludesLeafAndShortcut(t *testing.T) {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	doc := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "docs", "flag-help-schema-homology.md"))
+	doc := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "docs", "flag-help-schema-homology.md"))
 	raw, err := os.ReadFile(doc)
 	if err != nil {
 		t.Fatalf("read homology doc: %v", err)
@@ -93,6 +109,43 @@ func TestMCPPassthroughAdmissionExcludesLeafAndShortcut(t *testing.T) {
 	} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("passthrough admission text missing %q", needle)
+		}
+	}
+}
+
+func TestHomologyCIEntrypointsPinned(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	script := filepath.Join(root, "scripts", "policy", "check-schema-catalog.sh")
+	raw, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatalf("read check-schema-catalog.sh: %v", err)
+	}
+	body := string(raw)
+	for _, name := range ciHomologyEntrypoints {
+		if !strings.Contains(body, name) {
+			t.Fatalf("check-schema-catalog.sh missing homology CI entrypoint %q", name)
+		}
+	}
+	if !strings.Contains(body, "./internal/cli/homology") {
+		t.Fatal("check-schema-catalog.sh must run ./internal/cli/homology for HOM gate tests")
+	}
+	doc := filepath.Join(root, "docs", "flag-help-schema-homology.md")
+	docRaw, err := os.ReadFile(doc)
+	if err != nil {
+		t.Fatalf("read homology doc: %v", err)
+	}
+	docBody := string(docRaw)
+	for _, name := range []string{
+		"TestUserRequiredSafetyHomologyWithRuntimeGate",
+		"TestFinalSchemaParametersMatchExecutableHelpFlags",
+		"TestHomologyCIEntrypointsPinned",
+	} {
+		if !strings.Contains(docBody, name) {
+			t.Fatalf("homology doc §3 CI table missing %q", name)
 		}
 	}
 }
