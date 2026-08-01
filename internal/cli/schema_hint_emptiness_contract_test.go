@@ -14,13 +14,10 @@
 package cli
 
 import (
-	"encoding/json"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -46,11 +43,17 @@ func TestDeletedProductionSchemaHintFilesStayGone(t *testing.T) {
 	}
 }
 
-// TestEmbeddedMetadataHintShellsHaveEmptyTools locks the phase-5 end-state:
-// schema_hints/metadata may be absent. When present, shells must keep
-// tools:{} so they emit no parameter overlays. Production embed loading
-// always passes nil/empty for metadata.
-func TestEmbeddedMetadataHintShellsHaveEmptyTools(t *testing.T) {
+// TestSchemaHintsDirectoryRetired locks the full schema_hints/ retirement:
+// the directory must not reappear as a generation or runtime input.
+func TestSchemaHintsDirectoryRetired(t *testing.T) {
+	if _, err := os.Stat("schema_hints"); !os.IsNotExist(err) {
+		t.Fatalf("schema_hints/ must stay deleted after HintFile retirement: %v", err)
+	}
+}
+
+// TestEmbeddedMetadataHintLoadingStaysEmpty locks production embed loading:
+// metadata HintFiles are retired; nil/empty FS must yield zero overlays.
+func TestEmbeddedMetadataHintLoadingStaysEmpty(t *testing.T) {
 	commands, err := loadParameterCommandsFromMetadata(nil, "")
 	if err != nil {
 		t.Fatalf("loadParameterCommandsFromMetadata(nil, \"\"): %v", err)
@@ -58,63 +61,11 @@ func TestEmbeddedMetadataHintShellsHaveEmptyTools(t *testing.T) {
 	if got := len(commands); got != 0 {
 		t.Fatalf("nil metadata parameter overlays = %d, want 0", got)
 	}
-
-	const metadataDir = "schema_hints/metadata"
-	entries, err := os.ReadDir(metadataDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return
-		}
-		t.Fatalf("read %s: %v", metadataDir, err)
-	}
-	if len(entries) == 0 {
-		return
-	}
-
-	metadataFS := os.DirFS(metadataDir)
-	files, err := fs.Glob(metadataFS, "*.json")
-	if err != nil {
-		t.Fatalf("list metadata shells: %v", err)
-	}
-	sort.Strings(files)
-
-	nonEmpty := make([]string, 0)
-	for _, name := range files {
-		data, err := fs.ReadFile(metadataFS, name)
-		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
-		}
-		var file hintDirFile
-		if err := json.Unmarshal(data, &file); err != nil {
-			t.Fatalf("decode %s: %v", name, err)
-		}
-		if len(file.Tools) != 0 {
-			paths := make([]string, 0, len(file.Tools))
-			for canonical := range file.Tools {
-				paths = append(paths, canonical)
-			}
-			sort.Strings(paths)
-			nonEmpty = append(nonEmpty, filepath.Base(name)+"="+strings.Join(paths, ","))
-		}
-	}
-	if len(nonEmpty) != 0 {
-		t.Fatalf("metadata shells must keep tools:{} (want 0 tool rows); nonempty=%v", nonEmpty)
-	}
-
-	commands, err = loadParameterCommandsFromMetadata(metadataFS, "*.json")
-	if err != nil {
-		t.Fatalf("loadParameterCommandsFromMetadata: %v", err)
-	}
-	if got := len(commands); got != 0 {
-		t.Fatalf("on-disk metadata parameter overlays = %d, want 0", got)
-	}
 }
 
-// TestEmbeddedSelectionHintShellsHaveEmptyProductsAndTools locks the
-// selection retired end-state: directory may be absent. Production embed
-// loading always passes nil/empty. When residual shells are present,
-// products{} and tools{} must stay empty under ProductDecl/ContractFinal.
-func TestEmbeddedSelectionHintShellsHaveEmptyProductsAndTools(t *testing.T) {
+// TestEmbeddedSelectionHintLoadingStaysEmpty locks production embed loading:
+// selection HintFiles are retired; nil/empty FS must yield empty products/tools.
+func TestEmbeddedSelectionHintLoadingStaysEmpty(t *testing.T) {
 	hints, err := loadAgentHintsFromSelection(nil, "")
 	if err != nil {
 		t.Fatalf("loadAgentHintsFromSelection(nil, \"\"): %v", err)
@@ -124,51 +75,6 @@ func TestEmbeddedSelectionHintShellsHaveEmptyProductsAndTools(t *testing.T) {
 	}
 	if len(hints.Revisions) == 0 {
 		t.Fatal("nil selection hints must keep a synthetic revision")
-	}
-
-	const selectionDir = "schema_hints/selection"
-	entries, err := os.ReadDir(selectionDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return
-		}
-		t.Fatalf("read %s: %v", selectionDir, err)
-	}
-	if len(entries) == 0 {
-		return
-	}
-
-	selectionFS := os.DirFS(selectionDir)
-	files, err := fs.Glob(selectionFS, "*.json")
-	if err != nil {
-		t.Fatalf("list selection shells: %v", err)
-	}
-	sort.Strings(files)
-
-	nonEmpty := make([]string, 0)
-	for _, name := range files {
-		data, err := fs.ReadFile(selectionFS, name)
-		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
-		}
-		var file hintDirFile
-		if err := json.Unmarshal(data, &file); err != nil {
-			t.Fatalf("decode %s: %v", name, err)
-		}
-		if len(file.Products) != 0 || len(file.Tools) != 0 {
-			nonEmpty = append(nonEmpty, filepath.Base(name))
-		}
-	}
-	if len(nonEmpty) != 0 {
-		t.Fatalf("selection shells must keep products:{} tools:{} ; nonempty=%v", nonEmpty)
-	}
-
-	hints, err = LoadAgentHintsFromSelectionForValidation(selectionFS)
-	if err != nil {
-		t.Fatalf("LoadAgentHintsFromSelectionForValidation: %v", err)
-	}
-	if len(hints.Products) != 0 || len(hints.Tools) != 0 {
-		t.Fatalf("on-disk selection hints products=%d tools=%d, want 0/0", len(hints.Products), len(hints.Tools))
 	}
 }
 

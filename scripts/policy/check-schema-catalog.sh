@@ -58,56 +58,12 @@ if ! jq -e '
 	exit 1
 fi
 
-if ! jq -e '
-  .coverage.source_tools == (.tools | length)
-' internal/cli/schema_hints/selection-review.json >/dev/null; then
-	printf '%s\n' 'reviewed Agent selection coverage is stale' >&2
-	exit 1
-fi
-
-if ! jq -e '
-  .coverage.source_tools == (.tools | length) and
-  .coverage.matched_tools == (.tools | length)
-' internal/cli/schema_hints/sibling-disambiguation.json >/dev/null; then
-	printf '%s\n' 'reviewed sibling-disambiguation source coverage is stale' >&2
-	exit 1
-fi
-
-if ! jq -e --arg registry_count "$registry_count" '
-  .coverage.source_tools == ($registry_count | tonumber) and
-  .coverage.matched_tools == (.tools | length) and
-  all(.tools[];
-    .reviewed == false and
-    (has("interface_mode") | not) and
-    (has("availability") | not) and
-    (has("interface_ref") | not) and
-    (has("interface_reason") | not)
-  )
-' internal/cli/schema_hints/runtime-surface-completeness.json >/dev/null; then
-	printf '%s\n' 'runtime-surface completeness source must remain unreviewed and interface-free' >&2
-	exit 1
-fi
-
-if ! jq -e '
-  .source.name == "reviewed-interface-disposition-v2" and
-  .source.reviewed == true and
-  (.tools | length) > 0 and
-  all(.tools[];
-    ((keys - ["availability", "interface_mode", "interface_reason", "interface_ref"]) | length) == 0 and
-    .availability == "available" and
-    (if .interface_mode == "mcp" then
-      ((.interface_ref.product_id // "") | length) > 0 and
-      ((.interface_ref.rpc_name // "") | length) > 0 and
-      ((.interface_reason // "") | length) == 0
-    elif .interface_mode == "composite" then
-      .interface_ref == null and
-      ((.interface_reason // "") | length) > 0
-    else
-      false
-    end)
-  )
-' internal/cli/schema_hints/zz-interface-disposition-review.json >/dev/null; then
-	printf '%s\n' 'reviewed interface-only disposition source is invalid' >&2
+# schema_hints/ audit JSON is retired. Selection completeness, sibling
+# routing, and interface disposition are proven on the Catalog itself
+# (ContractFinal / ProductDecl provenance) by the jq gates below and the
+# focused Go tests invoked at the end of this script.
+if [ -e internal/cli/schema_hints ]; then
+	printf '%s\n' 'retired schema_hints/ must not be present' >&2
 	exit 1
 fi
 
@@ -124,7 +80,6 @@ if ! jq -e --arg registry_count "$registry_count" '
     (has("use_when") and (.use_when | type) == "array" and (.use_when | length) > 0) and
     (has("avoid_when") and (.avoid_when | type) == "array" and (.avoid_when | length) > 0) and
     (
-      ((.field_provenance.agent_summary.source // "") | test("schema_hints/selection/")) or
       (.field_provenance.agent_summary.precedence // "") == "contract_final" or
       (.field_provenance.agent_summary.source // "") == "corecmd.contract" or
       (.field_provenance.agent_summary.source // "") == "cli.product_decl"
@@ -155,10 +110,13 @@ if ! jq -e --arg registry_count "$registry_count" '
 	  .interface_ref == null and ((.interface_reason // "") | length) > 0
 	 else false end) and
 	(
-	  ((.agent_source_refs // []) | map(test("schema_hints/selection/")) | any) or
 	  .field_provenance.agent_summary.source == "corecmd.contract" or
 	  .field_provenance.agent_summary.source == "cli.product_decl" or
 	  (.field_provenance.agent_summary.precedence // "") == "contract_final"
+	) and
+	(
+	  (.field_provenance.interface_mode.precedence // "") == "contract_final" or
+	  (.field_provenance.interface_mode.source // "") == "corecmd.contract"
 	)
   )
 ' "$catalog" >/dev/null; then
@@ -268,8 +226,7 @@ if policy_search_paths 'mcp-gw\.dingtalk\.com|mcp\.dingtalk\.com/server|Authoriz
 	"$catalog" \
 	internal/cli/schema_mcp_metadata.json \
 	internal/cli/schema_mcp_service_review.json \
-	internal/cli/schema_parameter_bindings.json \
-	internal/cli/schema_hints; then
+	internal/cli/schema_parameter_bindings.json; then
 	printf '%s\n' 'schema assets contain endpoint or credential material' >&2
 	exit 1
 fi
@@ -284,8 +241,7 @@ if policy_search_go '\.ListTools\(' internal/app internal/cli; then
 	exit 1
 fi
 
-# Optional/empty schema_hints/metadata shells are fine; gated confirmation
-# truth is Contract SafetySpec (+ residual runtime_gate only if present).
+# Gated confirmation truth is Contract SafetySpec only (schema_hints retired).
 ./scripts/policy/check-runtime-confirmation-truth.sh
 
 # Run the typed content gates as policy, rather than treating non-empty

@@ -290,7 +290,7 @@ func TestValidateCatalogOutputIsolationProtectsEveryInputLayer(t *testing.T) {
 		}
 	}
 	metadataDir := filepath.Join(root, "internal/cli/schema_mcp_metadata.json")
-	for _, relative := range []string{"skills/mono/references/products", "internal/cli/schema_hints"} {
+	for _, relative := range []string{"skills/mono/references/products"} {
 		if err := os.MkdirAll(filepath.Join(root, relative), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -302,7 +302,6 @@ func TestValidateCatalogOutputIsolationProtectsEveryInputLayer(t *testing.T) {
 		want   string
 	}{
 		{name: "registry", output: filepath.Join(root, "internal/cli/schema_command_registry"), want: "CommandRegistry"},
-		{name: "hints", output: filepath.Join(root, "internal/cli/schema_hints"), want: "structured metadata source directory"},
 		{name: "mcp metadata", output: metadataDir, want: "pinned MCP metadata"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

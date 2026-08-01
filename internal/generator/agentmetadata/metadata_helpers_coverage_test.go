@@ -277,17 +277,18 @@ func TestCrossPlatformCoverageMetadataSourceAndPathEdges(t *testing.T) {
 	if err := os.MkdirAll(products, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loadSources(Options{Root: root, ProductsDir: "products", HintsDir: "missing"}); err == nil || !strings.Contains(err.Error(), "walk Agent hint") {
-		t.Fatalf("missing hints directory error = %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(products, "skip.txt"), []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	same := filepath.Join(root, "same.md")
 	if err := os.WriteFile(same, []byte("same"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	files, err := loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md"})
+	files, err := loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md", HintsDir: "missing"})
+	if err != nil || len(files) != 1 {
+		t.Fatalf("absent HintsDir should be skipped: %#v, %v", files, err)
+	}
+	if err := os.WriteFile(filepath.Join(products, "skip.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	files, err = loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md"})
 	if err != nil || len(files) != 1 {
 		t.Fatalf("deduplicated sources = %#v, %v", files, err)
 	}

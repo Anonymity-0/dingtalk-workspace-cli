@@ -28,24 +28,6 @@ concepts_guard="$tmp/param_concepts.json"
 concepts_schema_guard="$tmp/param_concepts.schema.json"
 cp internal/cli/param_concepts.json "$concepts_guard"
 cp internal/cli/param_concepts.schema.json "$concepts_schema_guard"
-# Guard human-authored selection and metadata (both optional).
-# schema_hints/selection and schema_hints/metadata may each be absent, empty,
-# or hold only empty products{}/tools{} shells — none of those alone is drift.
-# When a directory is present, keep a byte guard so generation cannot rewrite
-# those shells; never fail solely because the directory is missing.
-metadata_dir="internal/cli/schema_hints/metadata"
-metadata_guard=""
-if [ -d "$metadata_dir" ]; then
-	metadata_guard="$tmp/metadata-hints"
-	cp -R "$metadata_dir" "$metadata_guard"
-fi
-selection_dir="internal/cli/schema_hints/selection"
-selection_guard=""
-if [ -d "$selection_dir" ]; then
-	selection_guard="$tmp/selection-hints"
-	cp -R "$selection_dir" "$selection_guard"
-fi
-
 catalog_tmp="$tmp/schema_catalog"
 catalog_tmp_second="$tmp/schema_catalog-second"
 param_aliases_tmp="$tmp/param_aliases_generated.go"
@@ -90,34 +72,9 @@ if ! cmp -s internal/cli/param_concepts.schema.json "$concepts_schema_guard"; th
 	exit 1
 fi
 
-# Optional metadata: presence/absence and empty tools:{} shells are all OK.
-# Fail only if generation mutates, removes, or invents the directory tree.
-if [ -n "$metadata_guard" ]; then
-	if [ ! -d "$metadata_dir" ]; then
-		printf '%s\n' 'generation removed reviewed input internal/cli/schema_hints/metadata' >&2
-		exit 1
-	fi
-	if ! diff -qr "$metadata_dir" "$metadata_guard" >/dev/null; then
-		printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/metadata' >&2
-		exit 1
-	fi
-elif [ -d "$metadata_dir" ]; then
-	printf '%s\n' 'generation created reviewed input internal/cli/schema_hints/metadata' >&2
-	exit 1
-fi
-
-# Optional selection: same presence/absence contract as metadata.
-if [ -n "$selection_guard" ]; then
-	if [ ! -d "$selection_dir" ]; then
-		printf '%s\n' 'generation removed reviewed input internal/cli/schema_hints/selection' >&2
-		exit 1
-	fi
-	if ! diff -qr "$selection_dir" "$selection_guard" >/dev/null; then
-		printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/selection' >&2
-		exit 1
-	fi
-elif [ -d "$selection_dir" ]; then
-	printf '%s\n' 'generation created reviewed input internal/cli/schema_hints/selection' >&2
+# schema_hints/ is fully retired; generation must not recreate it.
+if [ -e internal/cli/schema_hints ]; then
+	printf '%s\n' 'generated drift: retired schema_hints/ must not be present' >&2
 	exit 1
 fi
 

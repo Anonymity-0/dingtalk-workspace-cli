@@ -165,6 +165,7 @@
         "chat +chat-add-bot",
         "chat +chat-audit-join",
         "chat +chat-create",
+        "chat +chat-list",
         "chat +chat-get-by-id",
         "chat +chat-members-get",
         "chat +chat-members-list",

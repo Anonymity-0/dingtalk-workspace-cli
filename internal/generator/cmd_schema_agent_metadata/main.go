@@ -71,7 +71,7 @@ func main() {
 	flag.StringVar(&skillPath, "skill", "skills/mono/SKILL.md", "Main DWS SKILL.md path")
 	flag.StringVar(&productsDir, "products", "skills/mono/references/products", "Product skill reference directory")
 	flag.StringVar(&intentGuidePath, "intent-guide", "skills/mono/references/intent-guide.md", "Cross-product intent guide path")
-	flag.StringVar(&hintsDir, "hints", "internal/cli/schema_hints", "Versioned Agent hint JSON directory (selection/ and metadata/ optional/retired when Decl covers)")
+	flag.StringVar(&hintsDir, "hints", "", "Optional residual Agent hint JSON directory (retired in production; ProductDecl/ContractFinal own routing)")
 	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "internal/cli/schema_mcp_metadata.json", "Sanitized versioned MCP metadata used only for fallback Agent summaries")
 	flag.StringVar(&outputPath, "output", "", "Optional diagnostic single-file Agent metadata JSON (not a Catalog input)")
 	flag.StringVar(&outputDir, "output-dir", "", "Optional diagnostic split Agent metadata directory (not a Catalog input; Catalog injects in-memory)")
@@ -90,14 +90,15 @@ func main() {
 		{Name: "canonical main Skill input", Path: "skills/mono/SKILL.md"},
 		{Name: "canonical product Skill input directory", Path: "skills/mono/references/products"},
 		{Name: "canonical intent guide input", Path: "skills/mono/references/intent-guide.md"},
-		{Name: "canonical structured hint input directory", Path: "internal/cli/schema_hints"},
 		{Name: "canonical reviewed CommandRegistry input", Path: "internal/cli/schema_command_registry"},
 		{Name: "canonical pinned interface metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "main Skill input", Path: skillPath},
 		{Name: "product Skill input directory", Path: productsDir},
 		{Name: "intent guide input", Path: intentGuidePath},
-		{Name: "structured hint input directory", Path: hintsDir},
 		{Name: "reviewed CommandRegistry input", Path: registryPath},
+	}
+	if strings.TrimSpace(hintsDir) != "" {
+		protectedInputs = append(protectedInputs, outputguard.Input{Name: "structured hint input directory", Path: hintsDir})
 	}
 	if strings.TrimSpace(interfaceMetadataPath) != "" {
 		protectedInputs = append(protectedInputs, outputguard.Input{Name: "pinned interface metadata input", Path: interfaceMetadataPath})

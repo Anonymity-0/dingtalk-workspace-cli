@@ -142,19 +142,7 @@ generate-schema:
 	registry_guard=$$(mktemp -d); \
 	concepts_guard=$$(mktemp); \
 	concepts_schema_guard=$$(mktemp); \
-	metadata_dir=internal/cli/schema_hints/metadata; \
-	metadata_guard=""; \
-	if [ -d "$$metadata_dir" ]; then \
-		metadata_guard=$$(mktemp -d); \
-		cp -R "$$metadata_dir"/. "$$metadata_guard"/; \
-	fi; \
-	selection_dir=internal/cli/schema_hints/selection; \
-	selection_guard=""; \
-	if [ -d "$$selection_dir" ]; then \
-		selection_guard=$$(mktemp -d); \
-		cp -R "$$selection_dir"/. "$$selection_guard"/; \
-	fi; \
-	trap 'rm -rf "$$registry_guard" "$$concepts_guard" "$$concepts_schema_guard" "$$metadata_guard" "$$selection_guard"' EXIT HUP INT TERM; \
+	trap 'rm -rf "$$registry_guard" "$$concepts_guard" "$$concepts_schema_guard"' EXIT HUP INT TERM; \
 	cp -R internal/cli/schema_command_registry/ "$$registry_guard/"; \
 	cp internal/cli/param_concepts.json "$$concepts_guard"; \
 	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
@@ -172,30 +160,8 @@ generate-schema:
 		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.schema.json' >&2; \
 		exit 1; \
 	}; \
-	if [ -n "$$metadata_guard" ]; then \
-		if [ ! -d "$$metadata_dir" ]; then \
-			printf '%s\n' 'generation removed reviewed input internal/cli/schema_hints/metadata' >&2; \
-			exit 1; \
-		fi; \
-		diff -qr "$$metadata_dir" "$$metadata_guard" >/dev/null || { \
-			printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/metadata' >&2; \
-			exit 1; \
-		}; \
-	elif [ -d "$$metadata_dir" ]; then \
-		printf '%s\n' 'generation created reviewed input internal/cli/schema_hints/metadata' >&2; \
-		exit 1; \
-	fi; \
-	if [ -n "$$selection_guard" ]; then \
-		if [ ! -d "$$selection_dir" ]; then \
-			printf '%s\n' 'generation removed reviewed input internal/cli/schema_hints/selection' >&2; \
-			exit 1; \
-		fi; \
-		diff -qr "$$selection_dir" "$$selection_guard" >/dev/null || { \
-			printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/selection' >&2; \
-			exit 1; \
-		}; \
-	elif [ -d "$$selection_dir" ]; then \
-		printf '%s\n' 'generation created reviewed input internal/cli/schema_hints/selection' >&2; \
+	if [ -e internal/cli/schema_hints ]; then \
+		printf '%s\n' 'retired schema_hints/ must not reappear after generation' >&2; \
 		exit 1; \
 	fi
 

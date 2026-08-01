@@ -25,8 +25,7 @@
 //   5. param_concepts.json + schema       reviewed parameter synonym policy
 //   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //
-// schema_hints/selection/ and schema_hints/metadata/ are retired (directories
-// may be absent). index.selection / index.metadata may be omitted or {}.
+// schema_hints/ is retired entirely (must not reappear as a generation input).
 // schema_agent_metadata/ is retired: Catalog generation injects Agent metadata
 // in-memory and does not write or embed that intermediate JSON directory.
 //

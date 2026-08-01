@@ -5,8 +5,6 @@
 package app
 
 import (
-	"encoding/json"
-	"os"
 	"sort"
 	"testing"
 )
@@ -172,122 +170,71 @@ func TestViewGetWrappersUsePinnedGetViewsInterface(t *testing.T) {
 	}
 }
 
+// TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface asserts that every
+// delivered Catalog tool owns interface disposition via ContractFinal
+// (corecmd.contract). Former schema_hints audit JSON
+// (runtime-surface-completeness / zz-interface-disposition-review) is retired.
 func TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface(t *testing.T) {
-	type hintFile struct {
-		Source map[string]any            `json:"source"`
-		Tools  map[string]map[string]any `json:"tools"`
-	}
-	load := func(path string) hintFile {
-		t.Helper()
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		var value hintFile
-		if err := json.Unmarshal(data, &value); err != nil {
-			t.Fatalf("decode %s: %v", path, err)
-		}
-		return value
-	}
-	runtimeSurface := load("../cli/schema_hints/runtime-surface-completeness.json")
-	// After hints→declarations migration, disposition facts live in compiled
-	// ContractFinal (corecmd.contract). zz-interface-disposition-review.json
-	// remains the audit key set + expected values for this gate.
-	dispositions := load("../cli/schema_hints/zz-interface-disposition-review.json")
-	if dispositions.Source["reviewed"] != true {
-		t.Fatalf("interface disposition source reviewed = %#v, want true", dispositions.Source["reviewed"])
-	}
-	for canonical, hint := range runtimeSurface.Tools {
-		if hint["reviewed"] != false {
-			t.Errorf("%s runtime surface reviewed = %#v, want false", canonical, hint["reviewed"])
-		}
-		for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
-			if _, exists := hint[field]; exists {
-				t.Errorf("%s runtime surface still owns %s", canonical, field)
-			}
-		}
-		if _, exists := dispositions.Tools[canonical]; !exists {
-			t.Errorf("%s runtime surface has no reviewed interface disposition", canonical)
-		}
-	}
-
-	allowedFields := map[string]bool{
-		"interface_mode":   true,
-		"availability":     true,
-		"interface_ref":    true,
-		"interface_reason": true,
-	}
-	canonicals := make([]string, 0, len(dispositions.Tools))
-	for canonical, hint := range dispositions.Tools {
+	tools := embeddedSchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	canonicals := make([]string, 0, len(tools))
+	for canonical := range tools {
 		canonicals = append(canonicals, canonical)
-		for field := range hint {
-			if !allowedFields[field] {
-				t.Errorf("%s interface-only source contains non-interface field %s", canonical, field)
-			}
-		}
-		mode := schemaContractString(hint["interface_mode"])
-		if mode == "local" {
-			t.Errorf("%s remote interface review is incorrectly classified local", canonical)
-		}
-		if schemaContractString(hint["availability"]) != "available" {
-			t.Errorf("%s reviewed disposition is not available", canonical)
-		}
-		switch mode {
-		case "mcp":
-			ref := schemaInterfaceObject(hint["interface_ref"])
-			if schemaContractString(ref["product_id"]) == "" || schemaContractString(ref["rpc_name"]) == "" {
-				t.Errorf("%s reviewed mcp disposition has no complete interface_ref", canonical)
-			}
-		case "composite":
-			if hint["interface_ref"] != nil {
-				t.Errorf("%s reviewed composite disposition advertises interface_ref %#v", canonical, hint["interface_ref"])
-			}
-			if schemaContractString(hint["interface_reason"]) == "" {
-				t.Errorf("%s reviewed composite disposition has no reason", canonical)
-			}
-		default:
-			t.Errorf("%s reviewed disposition mode = %q", canonical, mode)
-		}
 	}
 	sort.Strings(canonicals)
-	payload := schemaContractPayloadForBoundCanonicals(t, NewRootCommand(), canonicals...)
+	if len(canonicals) == 0 {
+		t.Fatal("embedded schema --all contains no tools")
+	}
 	for _, canonical := range canonicals {
-		want := dispositions.Tools[canonical]
-		tool := payload.Tools[canonical]
-		if got := schemaContractString(tool["interface_mode"]); got != schemaContractString(want["interface_mode"]) {
-			t.Errorf("%s final interface_mode = %q, want %q", canonical, got, want["interface_mode"])
+		tool := tools[canonical]
+		mode := schemaContractString(tool["interface_mode"])
+		availability := schemaContractString(tool["availability"])
+		switch mode {
+		case "mcp", "composite", "local":
+		default:
+			t.Errorf("%s interface_mode = %q, want mcp|composite|local", canonical, mode)
 		}
-		if got := schemaContractString(tool["availability"]); got != schemaContractString(want["availability"]) {
-			t.Errorf("%s final availability = %q, want %q", canonical, got, want["availability"])
+		switch availability {
+		case "available", "unavailable":
+		default:
+			t.Errorf("%s availability = %q, want available|unavailable", canonical, availability)
 		}
-		if schemaContractString(want["interface_mode"]) == "composite" {
+		switch {
+		case availability == "unavailable":
 			if tool["interface_ref"] != nil {
-				t.Errorf("%s final composite interface_ref = %#v, want nil", canonical, tool["interface_ref"])
+				t.Errorf("%s unavailable interface_ref = %#v, want nil", canonical, tool["interface_ref"])
 			}
-			if got := schemaContractString(tool["interface_reason"]); got != schemaContractString(want["interface_reason"]) {
-				t.Errorf("%s final interface_reason = %q, want %q", canonical, got, want["interface_reason"])
+			if schemaContractString(tool["interface_reason"]) == "" {
+				t.Errorf("%s unavailable disposition missing interface_reason", canonical)
 			}
-		} else {
-			gotRef := schemaInterfaceObject(tool["interface_ref"])
-			wantRef := schemaInterfaceObject(want["interface_ref"])
-			for _, field := range []string{"product_id", "rpc_name"} {
-				if got := schemaContractString(gotRef[field]); got != schemaContractString(wantRef[field]) {
-					t.Errorf("%s final interface_ref.%s = %q, want %q", canonical, field, got, wantRef[field])
-				}
+		case mode == "mcp":
+			ref := schemaInterfaceObject(tool["interface_ref"])
+			if schemaContractString(ref["product_id"]) == "" || schemaContractString(ref["rpc_name"]) == "" {
+				t.Errorf("%s mcp disposition has incomplete interface_ref", canonical)
+			}
+		case mode == "composite":
+			if tool["interface_ref"] != nil {
+				t.Errorf("%s composite interface_ref = %#v, want nil", canonical, tool["interface_ref"])
+			}
+			if schemaContractString(tool["interface_reason"]) == "" {
+				t.Errorf("%s composite disposition missing interface_reason", canonical)
+			}
+		case mode == "local":
+			if tool["interface_ref"] != nil {
+				t.Errorf("%s local interface_ref = %#v, want nil", canonical, tool["interface_ref"])
 			}
 		}
 		provenance := schemaContractMap(tool["field_provenance"])
 		fields := []string{"interface_mode", "availability", "interface_ref"}
-		if schemaContractString(want["interface_mode"]) == "composite" {
+		if mode == "composite" || availability == "unavailable" {
 			fields = append(fields, "interface_reason")
 		}
 		for _, field := range fields {
 			entry := provenance[field]
 			if got := schemaContractString(entry["precedence"]); got != "contract_final" {
-				t.Errorf("%s final %s precedence = %q, want contract_final", canonical, field, got)
+				t.Errorf("%s %s precedence = %q, want contract_final", canonical, field, got)
 			}
 			if got := schemaContractString(entry["source"]); got != "corecmd.contract" {
-				t.Errorf("%s final %s source = %q, want corecmd.contract", canonical, field, got)
+				t.Errorf("%s %s source = %q, want corecmd.contract", canonical, field, got)
 			}
 		}
 	}

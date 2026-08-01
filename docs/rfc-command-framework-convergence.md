@@ -345,7 +345,7 @@ Definition（仅声明；不可编译）
 | **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`SchemaDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
 | **Display / Title / Description** | 产品展示名；工具 title/description | 评审源为主；cobra Short/Long 可作候选 | registry 产品名；hints/metadata / cobra help 解析 | Short/Long 可声明，但 **canonical 文案不以 Contract 胜 identity** |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
-| | `description`（usage 文案） | 声明 usage；生产 metadata 壳为空 | `FlagSpec.Usage` / ParamDecl；勿再往 `schema_hints/metadata` 填 overlay | usage **是**；不得用 hint overlay 改 type/required/default |
+| | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
 | | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍 hints/手工；目标进 Contract / reviewed 约束 | 有则须 declare 或 reviewed annotate |
 | | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
@@ -356,12 +356,12 @@ Definition（仅声明；不可编译）
 | | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
 | **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |
 | **Interface** | `interface_mode`, `interface_ref`, `availability`, `reason` | 评审源 | MCP meta + agent metadata 解析 | 否；与 CLI Identity 分离 |
-| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 声明（`SchemaDecl.Selection`）或评审源 | `SchemaDecl` / `schema_hints/selection` | 可声明；声明载荷**不得携带** `Reviewed`（旧路径专用），携带即组装报错 |
+| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 声明（`SchemaDecl.Selection` / `ProductDecl`） | `SchemaDecl` / `ProductDecl`（`schema_hints/` 已退役） | 可声明；声明载荷**不得携带** `Reviewed`（旧路径专用），携带即组装报错 |
 | **FieldProvenance** | 各字段 winner / candidates | 组装派生物 | Schema 组装器 | 派生；须与 delivered value 一致 |
 | **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | hints / embedded MCP / resolver | 不构成 CLI 表面 |
 | **ConstParams**（框架有、Schema parameters 无） | 固定 toolArgs | **声明**（载荷） | `ConstParams` | **是**（故意不上 parameter 表） |
 
-产品级 Schema（`ProductSpec` 的 description / selection）权威在 registry + selection hints，**不在**单命令 Contract。
+产品级 Schema（`ProductSpec` 的 description / selection）权威在 registry + `ProductDecl`，**不在**单命令 Contract。
 
 冲突规则（路径 A）：
 

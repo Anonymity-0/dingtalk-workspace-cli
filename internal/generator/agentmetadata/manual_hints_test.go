@@ -120,15 +120,15 @@ func TestGenerateRejectsIncompleteSelectionCoverage(t *testing.T) {
 	}
 }
 
-func TestGenerateRequiresAgentHintDirectory(t *testing.T) {
+func TestGenerateAllowsEmptyAgentHintDirectory(t *testing.T) {
 	_, _, err := Generate(Options{})
-	if err == nil || !strings.Contains(err.Error(), "agent hint directory is required") {
+	if err == nil || !strings.Contains(err.Error(), "complete Effective CommandRegistry projection is required") {
 		t.Fatalf("Generate() error = %v", err)
 	}
 }
 
 func TestGenerateRequiresCompleteEffectiveCommandRegistryProjection(t *testing.T) {
-	_, _, err := Generate(Options{HintsDir: "internal/cli/schema_hints"})
+	_, _, err := Generate(Options{HintsDir: "hints-fixture"})
 	if err == nil || !strings.Contains(err.Error(), "complete Effective CommandRegistry projection is required") {
 		t.Fatalf("Generate() error = %v", err)
 	}

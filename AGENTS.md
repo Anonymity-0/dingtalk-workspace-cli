@@ -64,9 +64,7 @@ The Schema data flow is one way:
    + pinned MCP metadata
    └─ resolves Agent metadata by source precedence
       Markdown is evidence only; it is not concatenated into final prose
-   └─ schema_hints/selection/ and schema_hints/metadata/ are retired
-      (directories may be absent; index.selection / index.metadata may be
-      {}/omitted); not parallel leaf-fact sources
+   └─ schema_hints/ is fully retired (must not reappear); not a leaf-fact source
 
 5. One typed hub
    BoundCommandRegistry
@@ -121,8 +119,7 @@ The Schema system has two physically separated processes:
   a non-delivery helper/test binary and is not a `go:generate` entry.
 - Inputs: authored source groups (registry + ProductDecl/ContractFinal + MCP
   metadata + parameter bindings + reviewed parameter concepts + cobra tree).
-  `schema_hints/selection/` and `schema_hints/metadata/` are retired and may
-  be absent.
+  `schema_hints/` is fully retired and must not reappear.
 - Output (delivery): `schema_catalog/` (per-product shards, `go:embed`) +
   `param_aliases_generated.go`. `schema_agent_metadata/` must not reappear.
 - Refresh MCP metadata: `make fetch-mcp-metadata` (iterates 26 MCP server
@@ -171,11 +168,9 @@ When adding or changing an Agent-visible command, review all relevant inputs:
   `Schema`) for parameter facts, interface disposition, safety, and Agent
   selection prose. Delivered provenance is `contract_final` from
   `corecmd.contract`. Product routing uses `ProductDecl` (`cli.product_decl`).
-- `internal/cli/schema_hints/selection/` and `schema_hints/metadata/` are
-  retired (directories may be absent). Do not reintroduce selection HintFiles
-  or metadata tool rows; declare on ProductDecl / the owning leaf instead.
-- `internal/cli/schema_hints/index.json` may keep `selection` / `metadata` as
-  `{}` or omit them; they are not leaf-fact sources.
+- `internal/cli/schema_hints/` is fully retired. Do not reintroduce HintFiles,
+  audit JSON, or `imported/` baselines; declare on ProductDecl / the owning
+  leaf instead.
 - Native Runtime Schema identity annotations, when present, as consistency
   assertions against `EffectiveCommandRegistry`. They must agree exactly and
   must never materialize, infer, or override registry identity.
@@ -203,22 +198,19 @@ For Agent-authored selection edits:
 4. Run generation, drift, Schema policy, and the focused CLI tests before
    proposing the change.
 
-## Agent curation workflow (Schema hints)
+## Agent curation workflow
 
 Use this workflow when refreshing Agent selection prose and confirmation
 alignment. Prefer **agent-authored review** over bulk merge scripts that dump
-`selection-review.json` or Skill Markdown into Catalog fields.
+Skill Markdown into Catalog fields.
 
-Human-authored inputs are split as follows:
+Human-authored inputs:
 
 | Block | Path | Owns |
 |---|---|---|
 | **declaration** | helpers / shortcut `Safety` + `Schema` / ParamDecl + `ProductDecl` | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / parameter facts / selection prose (`contract_final`) |
-| **selection** (retired) | `internal/cli/schema_hints/selection/` may be absent | not a leaf-fact source; do not reintroduce HintFiles |
-| **metadata** (retired) | `internal/cli/schema_hints/metadata/` may be absent | not a leaf-fact source; do not reintroduce tool rows |
 
-`index.json` may omit `selection` / `metadata` or set them to `{}`. Do not
-reintroduce selection or metadata tool rows.
+`schema_hints/` is fully retired. Do not reintroduce HintFiles or audit JSON.
 
 ### Goals
 
@@ -282,10 +274,8 @@ go test ./internal/app -run '^TestSheetFinalSchemaConfirmationMatchesRuntimeGuar
 ```
 
 `check-runtime-confirmation-truth.sh` compares Catalog
-`confirmation=user_required` to Contract SafetySpec (plus any residual
-metadata `runtime_gate != none`). It does **not** require a
-`schema_hints/metadata` directory: absent, empty shells (`tools: {}`), or
-missing `tools` all pass.
+`confirmation=user_required` to Contract SafetySpec only.
+`schema_hints/` must stay absent.
 
 Example rules (fail generation otherwise):
 

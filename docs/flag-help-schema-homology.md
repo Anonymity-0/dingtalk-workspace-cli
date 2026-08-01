@@ -141,7 +141,7 @@ NewLeafCommand(LeafSpec{
 | `cli.AnnotateRuntimeGate` / `devAppMetaWrite` | `dws.schema.runtime_gate=devAppRequireWriteGuard` | 尚未迁移到 SafetySpec 的旧写命令（`HOM-S2`） |
 | `cli.AnnotateRuntimeRisk` | `dws.schema.risk=…` | Shortcut 暂存的旧兼容路径；command/Leaf 禁止新增 |
 | `cli.AnnotateRuntimeFlag` / Constraints | 与 embed 同形 | 手写 cobra 叶补齐表面（长期应迁入 Contract） |
-| reviewed `schema_hints/metadata` Safety | effect/risk/confirmation | 已迁出：metadata 壳为 `tools: {}`；受管命令以 Contract.Safety / gate 为准 |
+| reviewed `schema_hints/metadata` Safety（已退役） | effect/risk/confirmation | 已删：`schema_hints/` 不得重现；受管命令以 Contract.Safety / gate 为准 |
 
 标注与声明冲突时：**Contract 声明胜**（路径 A）。标注不得发明未注册的 CLI flag。
 
@@ -160,7 +160,7 @@ NewLeafCommand(LeafSpec{
 | Safety.`effect/risk/confirmation/idempotency` | **声明**完整 `Safety`，或迁移期 `runtime_gate` / reviewed Safety | 四字段独立；不得互相推导 |
 | DryRun | 评审源 | dry-run capabilities registry |
 | Interface | 评审源 | MCP + 内存 inject 的 Agent metadata |
-| Selection | 评审源 | `schema_hints/selection` |
+| Selection | 声明（ContractFinal / ProductDecl） | `SchemaDecl.Selection` / `ProductDecl` |
 | FieldProvenance / Extensions | 组装派生或评审扩展 | 组装器；与 delivered value 一致 |
 | （非 Schema parameter）ConstParams | **声明** | 载荷；不上 parameters 表 |
 
@@ -173,7 +173,7 @@ NewLeafCommand(LeafSpec{
 | flags / defaults / required / enum / 关系约束 / 运行时 Risk | Contract（LeafSpec / `corecmd.Spec` 门面） | cobra、`--help`、Schema `parameters` / constraints / confirmation |
 | ConstParams、Bind、OmitEmpty、Transform | 同上（载荷声明，不上 flag 表） | toolArgs；Schema 不把 ConstParams 伪装成用户 flag |
 | canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
-| use_when / avoid_when / examples / agent_summary 文案 | `schema_hints/selection` | Schema selection |
+| use_when / avoid_when / examples / agent_summary 文案 | `SchemaDecl.Selection` / `ProductDecl` | Schema selection |
 | RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + `schema_parameter_bindings` | Schema `interface_*` 字段；**不得创建 flag** |
 | 参数描述 overlay（可选） | 生产 metadata 壳为空；参数事实走 ParamDecl / FlagSpec | **Contract/cobra 胜** |
 | 遗留 Safety 文案（迁移期） | 生产 metadata 壳为空；Safety 走 Contract | 以 Contract.Safety / runtime_gate 为准（见 §4） |

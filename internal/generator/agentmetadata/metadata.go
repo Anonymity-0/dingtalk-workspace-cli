@@ -315,9 +315,11 @@ type UnmatchedReference struct {
 	Review     *ReferenceReview `json:"review,omitempty"`
 }
 
-// ReferenceReview is the fixed disposition of a Skill command reference that
-// is not a current public leaf. It prevents fuzzy matching from silently
-// binding stale prose or command groups to an unrelated tool.
+// ReferenceReview is an optional disposition of a Skill command reference that
+// is not a current public leaf. Production no longer loads reviewed HintFile
+// reference_review maps; unmatched Skill paths are recorded in the build-time
+// audit without requiring a reviewed disposition. When residual HintFiles are
+// present in fixtures, alias reviews may still merge into a live target.
 type ReferenceReview struct {
 	Status string `json:"status"`
 	Target string `json:"target,omitempty"`
@@ -368,9 +370,6 @@ var (
 )
 
 func Generate(opts Options) (File, Stats, error) {
-	if strings.TrimSpace(opts.HintsDir) == "" {
-		return File{}, Stats{}, fmt.Errorf("agent hint directory is required")
-	}
 	if len(opts.CanonicalToolPaths) == 0 || len(opts.ToolPaths) == 0 || len(opts.ProductIDs) == 0 {
 		return File{}, Stats{}, fmt.Errorf("complete Effective CommandRegistry projection is required")
 	}
@@ -381,10 +380,10 @@ func Generate(opts Options) (File, Stats, error) {
 }
 
 // generateFromSources retains the lower-precedence evidence parsers as a
-// package-internal seam for focused tests. Production callers must use Generate,
-// which reads HintsDir when set. Both metadata and selection maps/files are
-// optional once ProductDecl/ContractFinal cover routing; empty or absent
-// selection is a valid end-state.
+// package-internal seam for focused tests. Production callers must use Generate.
+// HintsDir is optional and retired for production: ProductDecl / ContractFinal
+// own routing and leaf facts. When HintsDir is empty or absent, hint parsing is
+// skipped; Skill Markdown remains evidence-only.
 func generateFromSources(opts Options) (File, Stats, error) {
 	if opts.Root == "" {
 		opts.Root = "."
@@ -1709,21 +1708,28 @@ func loadSources(opts Options) ([]sourceFile, error) {
 	paths = append(paths, productPaths...)
 	if strings.TrimSpace(opts.HintsDir) != "" {
 		hintsRoot := resolvePath(opts.Root, opts.HintsDir)
-		hintPaths := []string{}
-		err := filepath.WalkDir(hintsRoot, func(path string, entry fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
+		info, statErr := os.Stat(hintsRoot)
+		switch {
+		case statErr == nil && info.IsDir():
+			hintPaths := []string{}
+			err := filepath.WalkDir(hintsRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+				if walkErr != nil {
+					return walkErr
+				}
+				if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
+					return nil
+				}
+				hintPaths = append(hintPaths, path)
 				return nil
+			})
+			if err != nil {
+				return nil, fmt.Errorf("walk Agent hint sources: %w", err)
 			}
-			hintPaths = append(hintPaths, path)
-			return nil
-		})
-		if err != nil {
-			return nil, fmt.Errorf("walk Agent hint sources: %w", err)
+			paths = append(paths, hintPaths...)
+		case statErr != nil && !os.IsNotExist(statErr):
+			return nil, fmt.Errorf("stat Agent hint sources: %w", statErr)
+			// Absent HintsDir is the retired production end-state; skip quietly.
 		}
-		paths = append(paths, hintPaths...)
 	}
 	if strings.TrimSpace(opts.ManualHintsPath) != "" {
 		paths = append(paths, resolvePath(opts.Root, opts.ManualHintsPath))
