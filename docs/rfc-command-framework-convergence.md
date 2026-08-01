@@ -273,8 +273,8 @@ Definition（仅声明；不可编译）
 
 | 层 | 含义 | 今日落点 |
 |---|---|---|
-| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `SchemaDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Schema`；类型真身在 `corecmd/contract`（`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`） |
-| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedSchemaDecl` → `cli.AnnotateRuntimeContract` + `contract.RegisterRuntimeContractFinal` |
+| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`） |
+| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `cli.RegisterRuntimeContractFinal`（annotate + store seam） |
 | **注解 seam** | Cobra `dws.schema.*` 写入 | `cli.AnnotateRuntime*`（framework 可调用；**不**在 cli 再定义 contract 类型） |
 | **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；Catalog embed / `ResolveMeta` | `internal/cli`（交付边界，不搬入 contract） |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
@@ -282,7 +282,7 @@ Definition（仅声明；不可编译）
 硬规则：
 
 1. 声明体系**不含评审并行字段**；hooks 不算声明。声明载荷携带 reviewed 字段（如 `Selection.Reviewed`）组装直接报错——`Reviewed` 是旧路径（hints/registry）专用标记。
-2. 不得把声明序列化成 JSON 再解析；框架自己做 `SchemaDecl` → `ContractFinalPayload` → `ToolSpec`。
+2. 不得把声明序列化成 JSON 再解析；框架自己做 `ContractDecl` → `ContractFinalPayload` → `ToolSpec`。
 3. 已声明字段不得被 hints/registry 盖写。迁移期未声明叶可走旧路径。
 4. 受管（已绑定）叶上声明的 `Identity` 必须与绑定 entry 一致（`product_id`/`name`/`canonical_path`/`cli_path`/`aliases` 等）；不一致组装报错（`validateContractFinalIdentity`）。声明 identity 是钉扎与自描述，不是改写 registry 身份的通道。
 
@@ -315,7 +315,7 @@ Definition（仅声明；不可编译）
 | 模式 | 入口 | 声明面 | 执行面 | 适用 |
 |---|---|---|---|---|
 | **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Schema 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
-| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Schema`（经 `AttachSchema`） | **不**注册 flag、**不**接管参数投影；可选 `Validate` 与 `ConfirmSafety` **同挂 RunE 包装器**（Validate 在前）；无 Validate 时确认推迟到首次 `CallTool` | 既有命令补声明且执行体必须冻结 |
+| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Contract`（经 `AttachContract`） | **不**注册 flag、**不**接管参数投影；可选 `Validate` 与 `ConfirmSafety` **同挂 RunE 包装器**（Validate 在前）；无 Validate 时确认推迟到首次 `CallTool` | 既有命令补声明且执行体必须冻结 |
 
 选用规则：
 
@@ -343,7 +343,7 @@ Definition（仅声明；不可编译）
 
 | Schema 字段组 | 子字段 / 内容 | 权威类 | 今日写入面 | 框架声明？ |
 |---|---|---|---|---|
-| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`SchemaDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
+| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`ContractDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
 | **Display / Title / Description** | 产品展示名；工具 title/description | 评审源为主；cobra Short/Long 可作候选 | registry 产品名；hints/metadata / cobra help 解析 | Short/Long 可声明，但 **canonical 文案不以 Contract 胜 identity** |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
 | | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
@@ -357,7 +357,7 @@ Definition（仅声明；不可编译）
 | | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
 | **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |
 | **Interface** | `interface_mode`, `interface_ref`, `availability`, `reason` | 评审源 | MCP meta + agent metadata 解析 | 否；与 CLI Identity 分离 |
-| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 声明（`SchemaDecl.Selection` / `ProductDecl`） | `SchemaDecl` / `ProductDecl`（`schema_hints/` 已退役） | 可声明；声明载荷**不得携带** `Reviewed`（旧路径专用），携带即组装报错 |
+| **Selection** | `agent_summary`, `use_when`, `avoid_when`, `examples`, `prerequisites`, `tips`, `workflow_refs`, … | 声明（`ContractDecl.Selection` / `ProductDecl`） | `ContractDecl` / `ProductDecl`（`schema_hints/` 已退役） | 可声明；声明载荷**不得携带** `Reviewed`（旧路径专用），携带即组装报错 |
 | **FieldProvenance** | 各字段 winner / candidates | 组装派生物 | Schema 组装器 | 派生；须与 delivered value 一致 |
 | **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | hints / embedded MCP / resolver | 不构成 CLI 表面 |
 | **ConstParams**（框架有、Schema parameters 无） | 固定 toolArgs | **声明**（载荷） | `ConstParams` | **是**（故意不上 parameter 表） |

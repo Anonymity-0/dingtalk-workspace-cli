@@ -3,7 +3,6 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -36,13 +35,14 @@ func newWorkbookCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建钉钉在线电子表格文档（axls），返回 nodeId。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "create_workspace_sheet",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_workspace_sheet"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建钉钉在线电子表格文档（axls），返回 nodeId。",
 				UseWhen:      []string{"需要新建一份钉钉在线电子表格文档（不是 AI 表格 Base，也不是本地 xlsx）时"},
 				AvoidWhen:    []string{"要创建 AI 多维表 Base 用 aitable base create；只要在已有表格里加工作表用 sheet new；本地 xlsx 用 doc download"},
@@ -52,7 +52,7 @@ func newWorkbookCmds() []*cobra.Command {
 				},
 			},
 			// name is validated via mustGetFlag; publish required via ParamDecl
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
 		},
@@ -82,20 +82,21 @@ nodeId 支持传入文档链接 URL 或文档 ID（dentryUuid），系统自动�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出电子表格文档内全部工作表的 ID 与名称。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_all_sheets",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_all_sheets"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出电子表格文档内全部工作表的 ID 与名称。",
 				UseWhen:      []string{"需要拿到 sheetId/工作表名称，作为后续读写的前置步骤时"},
 				AvoidWhen:    []string{"要看单个工作表行列边界与合并区用 sheet info；读单元格内容用 sheet range read"},
 				Examples:     []string{"dws sheet list --node <NODE_ID>"},
 			},
 			// node is validated via mustGetFlag; publish required via ParamDecl
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 			},
 		},
@@ -140,13 +141,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定工作表详情（行列数、非空范围、合并区等）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_sheet",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_sheet"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定工作表详情（行列数、非空范围、合并区等）。",
 				UseWhen:      []string{"需要确认工作表尺寸、nonEmptyRange 或合并结构，以便规划读取范围时"},
 				AvoidWhen:    []string{"只要工作表列表用 sheet list；读单元格值用 sheet range read"},
@@ -177,20 +179,21 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在已有电子表格文档中新建工作表（Sheet 页签）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "create_sheet",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_sheet"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在已有电子表格文档中新建工作表（Sheet 页签）。",
 				UseWhen:      []string{"已有 axls 文档，需要新增一个工作表页签时"},
 				AvoidWhen:    []string{"要新建整份表格文档用 sheet create；复制已有工作表用 sheet copy；删除工作表用 sheet delete-sheet"},
 				Examples:     []string{"dws sheet new --node <NODE_ID> --name \"Sheet2\""},
 			},
 			// node/name validated via mustGetFlag; publish required via ParamDecl
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 				{Name: "name", Required: boolPtr(true)},
 			},
@@ -290,13 +293,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新工作表属性：名称、位置、隐藏、标签色、冻结行列。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_sheet",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_sheet"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新工作表属性：名称、位置、隐藏、标签色、冻结行列。",
 				UseWhen:      []string{"要重命名工作表、调整页签顺序、隐藏/显示、冻结行列或改标签颜色时"},
 				AvoidWhen:    []string{"改单元格内容用 range update；删整张工作表用 delete-sheet；复制工作表用 copy"},
@@ -359,13 +363,14 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在同一文档内复制工作表（含数据与格式）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "copy_sheet",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "copy_sheet"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在同一文档内复制工作表（含数据与格式）。",
 				UseWhen:      []string{"需要基于现有工作表创建完整副本时可选用，可指定副本名与位置"},
 				AvoidWhen:    []string{"只要新建空白工作表用 sheet new；跨文档复制请走文档/知识库复制能力，不要用本命令"},
@@ -400,13 +405,14 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除指定工作表（不可逆，需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_sheet",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_sheet"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除指定工作表（不可逆，需确认后加 --yes）。",
 				UseWhen:      []string{"用户明确要求永久删除某个工作表页签，且已确认目标 sheetId 时"},
 				AvoidWhen:    []string{"只想清空单元格内容用 range clear；删行列用 delete-dimension；隐藏工作表用 update --hidden"},
@@ -441,13 +447,14 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "显示工作表网格线。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "显示工作表网格线。",
 				UseWhen:      []string{"需要打开指定工作表的网格线显示时"},
 				AvoidWhen:    []string{"要隐藏网格线用 sheet hide-gridline；改冻结或隐藏工作表用 sheet update"},
@@ -482,13 +489,14 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "隐藏工作表网格线。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "隐藏工作表网格线。",
 				UseWhen:      []string{"需要关闭指定工作表的网格线显示时"},
 				AvoidWhen:    []string{"要显示网格线用 sheet show-gridline"},

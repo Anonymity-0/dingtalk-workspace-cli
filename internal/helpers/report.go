@@ -15,7 +15,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -101,13 +100,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取当前员工可使用的日志模版列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "get_available_report_templates",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "get_available_report_templates"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取当前员工可使用的日志模版列表",
 				UseWhen:      []string{"提交日志前需要列出可用模版名称与 templateId 时"},
 				AvoidWhen:    []string{"已知模版名称需要字段定义时改用 dws report template get"},
@@ -130,13 +130,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按名称获取日志模版字段定义",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "get_template_details_by_name",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "get_template_details_by_name"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按名称获取日志模版字段定义",
 				UseWhen:      []string{"已知模版名称，提交前需要读取字段名称、类型与排序时"},
 				AvoidWhen:    []string{"不知道有哪些模版时先用 dws report template list"},
@@ -174,13 +175,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定一篇日志的详情信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "get_report_entry_details",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "get_report_entry_details"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定一篇日志的详情信息",
 				UseWhen:      []string{"已知 reportId，需要读取日志正文、字段明细或钉钉跳转链接时"},
 				AvoidWhen: []string{
@@ -208,13 +210,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定日志的统计数据",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "get_report_statistics_by_id",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "get_report_statistics_by_id"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定日志的统计数据",
 				UseWhen:      []string{"已知 reportId，需要查看评论数、点赞数、已读数等统计时"},
 				AvoidWhen: []string{
@@ -252,13 +255,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按模版提交一份新日报",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "create_report",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "create_report"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按模版提交一份新日报",
 				UseWhen:      []string{"已取得 templateId 与字段定义，需要按模版提交日报/周报（contents[].key 必须等于模板 field_name）时"},
 				AvoidWhen: []string{
@@ -270,7 +274,7 @@ func newReportCommand() *cobra.Command {
 					"dws report entry submit --template-id <templateId> --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "to-chat", Required: boolPtr(false)},
 			},
 		},
@@ -301,13 +305,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前人收到的日志列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "get_received_report_list",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "get_received_report_list"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前人收到的日志列表",
 				UseWhen:      []string{"需要按时间范围查看别人发给我的日志列表并提取 reportId 时"},
 				AvoidWhen: []string{
@@ -338,13 +343,14 @@ func newReportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前人创建的日志详情列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "report", RPCName: "get_send_report_list",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "report", RPCName: "get_send_report_list"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前人创建的日志详情列表",
 				UseWhen:      []string{"需要查看我发出/创建的日志列表（含内容摘要、创建时间、访问地址）时"},
 				AvoidWhen: []string{

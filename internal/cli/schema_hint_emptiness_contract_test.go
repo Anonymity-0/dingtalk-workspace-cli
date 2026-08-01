@@ -14,12 +14,13 @@
 package cli
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // TestDeletedProductionSchemaHintFilesStayGone locks stage-3 cleanup: the

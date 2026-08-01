@@ -26,10 +26,11 @@ changes must not rewrite it mechanically.
 ## Command framework declaration
 
 - Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
-- Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Schema`) → `corecmd.New`
-- **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Schema` (ToolSpec groups)
-- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `contract.RegisterRuntimeContractFinal` (map store, no JSON/deep-clone) after `cli.AnnotateRuntimeContract`; assembly **pass-throughs** Final.
-- Package seam: types/registries → `corecmd/contract`; Cobra annotation helpers (`AnnotateRuntime*`) and Catalog/`ResolveMeta` delivery → `internal/cli`. Framework may call annotation helpers; cli does not redefine contract types.
+- Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Contract`) → `corecmd.New`
+- **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Contract` (`corecmd.ContractDecl`; nested fields are `contract.*`)
+- Naming: `ContractDecl` is the authoring leaf declaration. "Schema" means Catalog / `ToolSpec` delivery — do not reintroduce `SchemaDecl`.
+- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Contract` is set, convert once via `cli.RegisterRuntimeContractFinal` (annotate + store seam); assembly **pass-throughs** Final. Production code must not call `contract.RegisterRuntimeContractFinal` directly.
+- Package seam: types/registries → `corecmd/contract` (sole definitions); Cobra annotate+store seam + Catalog/`ResolveMeta` delivery → `internal/cli`. cli does not redefine contract types.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
 - Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
 
@@ -48,7 +49,7 @@ The Schema data flow is one way:
 ```text
 1. app.NewRootCommand()
    └─ builds the real Cobra command tree and flags
-   └─ leaf Safety / Schema / ParamDecl declare ContractFinal (declare-or-annotate)
+   └─ leaf Safety / Contract / contract.ParamDecl declare ContractFinal (declare-or-annotate)
 
 2. schema_command_registry.json
    └─ forms EffectiveCommandRegistry
@@ -57,7 +58,7 @@ The Schema data flow is one way:
 3. Parameter resolution
    Cobra flags
    + schema_parameter_bindings.json
-   + ParamDecl / native annotations from leaf declarations
+   + contract.ParamDecl / native annotations from leaf declarations
    └─ produces ParameterSpec and constraints
 
 4. Agent and interface semantics
@@ -165,10 +166,11 @@ When adding or changing an Agent-visible command, review all relevant inputs:
   machine-readable editing contract. Preserve the local `$schema` reference;
   unknown fields, invalid visibility values, stale paths, and collisions fail
   Go validation and policy.
-- Leaf `Safety` / `Schema` / `ParamDecl` (helpers `LeafSpec` or shortcut
-  `Schema`) for parameter facts, interface disposition, safety, and Agent
-  selection prose. Delivered provenance is `contract_final` from
-  `corecmd.contract`. Product routing uses `ProductDecl`
+- Leaf `Safety` / `Contract` (`corecmd.ContractDecl`) / `contract.ParamDecl`
+  (helpers `LeafSpec` or shortcut `Contract`) for parameter facts, interface
+  disposition, safety, and Agent selection prose. Delivered provenance is
+  `contract_final` from `corecmd.contract` (description may stamp `cobra_help`
+  when Cobra Long wins). Product routing uses `ProductDecl`
   (`internal/corecmd/contract`; provenance label remains `cli.product_decl`).
 - `internal/cli/schema_hints/` is fully retired. Do not reintroduce HintFiles,
   audit JSON, or `imported/` baselines; declare on ProductDecl / the owning
@@ -187,13 +189,13 @@ that works through `dws <path>` but cannot be found through the matching
 exclusion.
 
 `RegisterSchemaHints` / `ToolSchemaHint` overlays are fully removed. Parameter
-and selection facts must be declared on the owning leaf (`ParamDecl` /
-`Schema`) or via `ProductDecl`; do not reintroduce overlay registries.
+and selection facts must be declared on the owning leaf (`contract.ParamDecl` /
+`Contract`) or via `ProductDecl`; do not reintroduce overlay registries.
 
 For Agent-authored selection edits:
 
 1. Confirm the exact command and flag names in the current Cobra tree.
-2. Declare selection prose on the owning leaf (`Schema.Selection` /
+2. Declare selection prose on the owning leaf (`Contract.Selection` /
    `DeclareLeafMetadata`) and product routing via `ProductDecl`; declare
    safety / parameters / interface on the same leaf.
 3. Do not copy generated Catalog fields into source inputs.
@@ -210,7 +212,7 @@ Human-authored inputs:
 
 | Block | Path | Owns |
 |---|---|---|
-| **declaration** | helpers / shortcut `Safety` + `Schema` / ParamDecl + `ProductDecl` | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / parameter facts / selection prose (`contract_final`) |
+| **declaration** | helpers / shortcut `Safety` + `Contract` / `contract.ParamDecl` + `ProductDecl` | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / parameter facts / selection prose (`contract_final`) |
 
 `schema_hints/` is fully retired. Do not reintroduce HintFiles or audit JSON.
 
@@ -219,12 +221,12 @@ Human-authored inputs:
 1. **Selection prose** is decision-oriented (Feishu/Lark style): trigger intent,
    sibling-command routing, and outcome shape — not a restatement of the
    summary. Delivered Catalog provenance is `contract_final` from leaf
-   `Schema.Selection` / `ProductDecl`.
+   `Contract.Selection` / `ProductDecl`.
 2. **Safety** follows Runtime: `confirmation=user_required` when the leaf
    Contract/Safety (or remaining `runtime_gate` annotate) requires a user gate
    (for example `confirm_delete`, `typed_yes`, `confirm_dangerous`).
-3. **Parameter facts** are declared on the leaf (`ParamDecl` /
-   `Schema.Parameters` / FlagSpec). Do not reintroduce HintFile or
+3. **Parameter facts** are declared on the leaf (`contract.ParamDecl` /
+   `Contract.Parameters` / FlagSpec). Do not reintroduce HintFile or
    `RegisterSchemaHints` overlays.
 
 ### Authoring
@@ -232,7 +234,7 @@ Human-authored inputs:
 For every curated tool:
 
 1. Declare safety/interface/parameters/selection on the owning leaf
-   (`DeclareLeafMetadata` / `Shortcut.Schema` / ParamDecl) and product routing
+   (`DeclareLeafMetadata` / `Shortcut.Contract` / `contract.ParamDecl`) and product routing
    via `ProductDecl` when needed.
 2. Run `make generate-schema`. Do not hand-edit generated `schema_catalog/`.
 

@@ -29,7 +29,7 @@ import (
 // construction, declarative validation, Schema annotations and confirmation.
 //
 // Shortcut.Risk remains the legacy runtime confirmation source when Safety is
-// empty. Explicit Safety overrides Risk expansion; Schema is pass-through into
+// empty. Explicit Safety overrides Risk expansion; Contract is pass-through into
 // ContractFinal when authored.
 func FromShortcut(s Shortcut) corecmd.Spec {
 	safety := s.Safety
@@ -47,7 +47,7 @@ func FromShortcut(s Shortcut) corecmd.Spec {
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
 		Safety:      safety,
-		Schema:      s.Schema,
+		Contract:    s.Contract,
 		// Preserve the shipped Shortcut Catalog provenance: Cobra remains the
 		// source for type/default/usage, while command adds Required/Enum/rules.
 		ParameterProjection: corecmd.ProjectCobraParameters,

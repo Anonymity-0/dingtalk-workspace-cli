@@ -270,9 +270,12 @@ func compareFinalToLive(canonical string, final contract.ContractFinalPayload, t
 			problems = append(problems, fmt.Sprintf("%s: final=%q live=%q", field, want, got))
 		}
 	}
-	if final.Description != "" {
-		add("description", final.Description, tool.Description)
-	}
+	// Description is intentionally not compared: ContractFinal stores the
+	// authored ContractDecl.Description, while Catalog delivery prefers Cobra
+	// Long when present (provenance cobra_help). live↔embed still checks the
+	// delivered description string.
+	_ = final.Description
+	_ = tool.Description
 	if final.Safety != nil {
 		add("effect", final.Safety.Effect, tool.Effect)
 		add("risk", final.Safety.Risk, tool.Risk)

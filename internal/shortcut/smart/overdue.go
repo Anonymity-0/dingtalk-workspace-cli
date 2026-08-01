@@ -14,9 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -53,13 +54,14 @@ var Overdue = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出我已过期未完成的待办",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出我已过期未完成的待办",
 			UseWhen:      []string{"当你想快速看清自己有哪些待办已经过了截止时间却还没做完、方便优先处理时使用；内部先拉取你当前组织下作为执行人(executor)的待办列表，再在本地按「有截止时间(dueTime) 且早于当前时刻 且尚未完成」的条件筛选，最后只打印这些逾期待办的标题(subject)、截止时间(dueTime) 和任务 ID(taskId)。这是纯只读操作，只做列表与本地过滤，不会修改或完成任何待办；若没有逾期待办则返回空列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

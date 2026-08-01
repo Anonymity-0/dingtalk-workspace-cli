@@ -153,9 +153,9 @@ type Shortcut struct {
 	// non-empty it overrides Risk expansion in FromShortcut; otherwise Risk
 	// still drives ConfirmSafety so existing Execute bodies stay unchanged.
 	Safety contract.SafetySpec
-	// Schema is the final Agent Schema overlay (selection/interface/dry-run).
-	// Empty keeps the legacy hints path until the command is migrated.
-	Schema corecmd.SchemaDecl
+	// Contract is the final Agent Contract overlay (selection/interface/dry-run).
+	// Empty keeps legacy assembly until the command is migrated.
+	Contract corecmd.ContractDecl
 	// Flags are the command-specific flags. Global flags are injected separately.
 	Flags []Flag
 	// Constraints publish and enforce relationships that individual flags cannot

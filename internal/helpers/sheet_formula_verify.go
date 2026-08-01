@@ -66,13 +66,14 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "扫描表格公式单元格并按错误类型聚合返回错误数量与位置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "扫描表格公式单元格并按错误类型聚合返回错误数量与位置",
 				UseWhen:      []string{"用户说 校验公式/检查公式错误/公式错误扫描"},
 				AvoidWhen:    []string{"读取公式文本用 range read --value-render-option formula"},

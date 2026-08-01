@@ -1533,10 +1533,10 @@ func TestCrossPlatformCoverageEmbedContractCobraProjection(t *testing.T) {
 			{Name: "internal", Usage: "I", Hidden: true, Required: true},
 		},
 		Safety: testWriteSafety(),
-		Schema: SchemaDecl{
+		Contract: ContractDecl{
 			Description: "desc",
-			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "op"},
-			Selection: SelectionDecl{
+			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
+			Selection: contract.SelectionSpec{
 				AgentSummary: "s", UseWhen: []string{"u"},
 				AvoidWhen: []string{"a"}, Examples: []string{"dws shortcut-leaf"},
 			},
@@ -1558,20 +1558,20 @@ func TestCrossPlatformCoverageEmbedContractCobraProjection(t *testing.T) {
 	if got := cmd.Flags().Lookup("internal").Annotations["dws.schema.required"]; len(got) != 0 {
 		t.Fatalf("hidden flag must not be projected, got %#v", got)
 	}
-	// The authored SchemaDecl still lands as the typed ContractFinal.
+	// The authored ContractDecl still lands as the typed ContractFinal.
 	final, ok := contract.RuntimeContractFinal(cmd)
 	if !ok || final.Description != "desc" {
-		t.Fatalf("cobra projection must still embed SchemaDecl, final=%#v ok=%v", final, ok)
+		t.Fatalf("cobra projection must still embed ContractDecl, final=%#v ok=%v", final, ok)
 	}
 }
 
-func TestCrossPlatformCoverageAttachSchemaNilAndEmptyGuards(t *testing.T) {
+func TestCrossPlatformCoverageAttachContractNilAndEmptyGuards(t *testing.T) {
 	// Both guards are no-ops: nil command, and a command with no authored decl.
-	AttachSchema(nil, testWriteSafety(), SchemaDecl{Description: "d"}, "s", "l")
+	AttachContract(nil, testWriteSafety(), ContractDecl{Description: "d"}, "s", "l")
 	cmd := newTestCommand()
-	AttachSchema(cmd, testWriteSafety(), SchemaDecl{}, "s", "l")
+	AttachContract(cmd, testWriteSafety(), ContractDecl{}, "s", "l")
 	if contract.HasRuntimeContractFinal(cmd) {
-		t.Fatal("empty SchemaDecl must not register a ContractFinal")
+		t.Fatal("empty ContractDecl must not register a ContractFinal")
 	}
 }
 

@@ -362,13 +362,14 @@ func newRangeSetStyleCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为指定范围统一设置背景、字体、对齐、换行或数字格式。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_range",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_range"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为指定范围统一设置背景、字体、对齐、换行或数字格式。",
 				UseWhen:      []string{"需要批量刷样式或数字格式（百分比/货币/日期）时"},
 				AvoidWhen:    []string{"写单元格值/公式用 range update；多区域不同样式配置用 range batch-set-style"},
@@ -568,13 +569,14 @@ func newRangeBatchSetStyleCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按 JSON 配置文件顺序批量设置多个区域样式。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "The CLI reads a local batch file and performs multiple sheet/update_range calls with local continue-on-error control; the workflow has no single direct MCP interface.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "The CLI reads a local batch file and performs multiple sheet/update_range calls with local continue-on-error control; the workflow has no single direct MCP interface.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按 JSON 配置文件顺序批量设置多个区域样式。",
 				UseWhen:      []string{"多个区域样式不同、希望用配置文件一次提交时"},
 				AvoidWhen:    []string{"单一区域统一样式用 range set-style"},

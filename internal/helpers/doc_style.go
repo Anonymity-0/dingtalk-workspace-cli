@@ -54,13 +54,14 @@ func newDocStyleCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置钉钉文档顶部封面图（外链或本地图片上传）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置钉钉文档顶部封面图（外链或本地图片上传）",
 				UseWhen:      []string{"用户说 给文档设置封面/换个封面图"},
 				AvoidWhen:    []string{"读取当前封面用 doc style get；移除封面用 cover clear"},
@@ -79,13 +80,14 @@ func newDocStyleCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除钉钉文档封面",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除钉钉文档封面",
 				UseWhen:      []string{"用户说 去掉文档封面"},
 				AvoidWhen:    []string{"设置封面用 cover set"},
@@ -111,13 +113,14 @@ func newDocStyleCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置钉钉文档背景纯色（#RRGGBB）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置钉钉文档背景纯色（#RRGGBB）",
 				UseWhen:      []string{"用户说 给文档设置背景色"},
 				AvoidWhen:    []string{"背景不支持图片；封面用 cover set"},
@@ -136,13 +139,14 @@ func newDocStyleCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "清除钉钉文档背景",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "清除钉钉文档背景",
 				UseWhen:      []string{"用户说 去掉文档背景色"},
 				AvoidWhen:    []string{"设置背景用 background set"},
@@ -162,13 +166,14 @@ func newDocStyleCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "读取文档当前封面与背景配置（只读）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "读取文档当前封面与背景配置（只读）",
 				UseWhen:      []string{"用户说 看下文档现在的封面/背景"},
 				AvoidWhen:    []string{"修改用 cover set / background set"},

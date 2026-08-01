@@ -251,9 +251,10 @@ type Spec struct {
 	// ConstParams are fixed toolArgs merged after flag assembly (e.g. precheckOnly).
 	// They are payload declaration, not user flags, and never satisfy Required.
 	ConstParams map[string]any
-	// Schema is the final ToolSpec payload (identity/selection/safety/…).
-	// When non-empty, embed marks the leaf for Schema pass-through.
-	Schema SchemaDecl
+	// Contract is the authoring-time leaf contract declaration (selection /
+	// interface / parameters / dry-run / identity). When non-empty, embed
+	// converts it once to ContractFinal for Catalog pass-through.
+	Contract ContractDecl
 
 	// Validate is the cross-flag validation hook, run after required/constraint
 	// checks and before args assembly; nil skips it. Not a declaration surface.
@@ -360,13 +361,13 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 func New(spec Spec) *cobra.Command {
 	validateDispatchDecl(spec)
 	validateSafetySpec(spec)
-	validateSchemaDecl(spec)
+	validateContractDecl(spec)
 	// Help prose inherits the declaration when not authored separately:
 	// Selection.Examples (already contract-validated against the real flags)
 	// double as the --help Example block, keeping one authored source.
 	example := spec.Example
-	if strings.TrimSpace(example) == "" && len(spec.Schema.Selection.Examples) > 0 {
-		example = "  " + strings.Join(spec.Schema.Selection.Examples, "\n  ")
+	if strings.TrimSpace(example) == "" && len(spec.Contract.Selection.Examples) > 0 {
+		example = "  " + strings.Join(spec.Contract.Selection.Examples, "\n  ")
 	}
 	cmd := &cobra.Command{
 		Use:     spec.Use,
@@ -1150,7 +1151,7 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 				cli.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
 			}
 		}
-		embedSchemaDecl(cmd, spec)
+		embedContractDecl(cmd, spec)
 		return
 	}
 
@@ -1187,104 +1188,98 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 		}
 	}
 	cli.AnnotateRuntimeRequiredFlags(cmd, required...)
-	embedSchemaDecl(cmd, spec)
+	embedContractDecl(cmd, spec)
 }
 
-// embedSchemaDecl does a light runtime write: only when SchemaDecl is authored,
-// convert once and RegisterRuntimeContractFinal.
-func embedSchemaDecl(cmd *cobra.Command, spec Spec) {
-	if spec.Schema.empty() {
+// embedContractDecl does a light runtime write: only when ContractDecl is authored,
+// convert once through the cli delivery seam (annotate + store).
+func embedContractDecl(cmd *cobra.Command, spec Spec) {
+	if spec.Contract.empty() {
 		return
 	}
-	AttachSchema(cmd, spec.Safety, spec.Schema, spec.Short, spec.Long)
+	AttachContract(cmd, spec.Safety, spec.Contract, spec.Short, spec.Long)
 }
 
-// AttachSchema registers a ContractFinal Schema overlay on an existing leaf
-// without replacing its RunE/Execute body. Used to migrate reviewed hint facts
-// onto helpers while keeping execution substance frozen. Overwrites any prior
-// ContractFinal on cmd (catalog/agent metadata source); does not alter an
-// already-installed ConfirmSafety closure.
-func AttachSchema(cmd *cobra.Command, safety contract.SafetySpec, schema SchemaDecl, short, long string) {
-	if cmd == nil || schema.empty() {
+// AttachContract registers a ContractFinal overlay on an existing leaf without
+// replacing its RunE/Execute body. Used to migrate reviewed facts onto helpers
+// while keeping execution substance frozen. Overwrites any prior ContractFinal
+// on cmd; does not alter an already-installed ConfirmSafety closure.
+//
+// Production registration always goes through cli.RegisterRuntimeContractFinal
+// (annotate + store). Do not call contract.RegisterRuntimeContractFinal from
+// framework/product code — that store helper is seam-only.
+//
+// Title/Description stored on the payload are the declared Contract values
+// only. Catalog assembly may prefer Cobra Short/Long for the delivered text
+// and must stamp provenance to the real winner (cobra_help vs contract_final).
+func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl ContractDecl, short, long string) {
+	if cmd == nil || decl.empty() {
 		return
 	}
+	// short/long remain in the signature so call sites keep passing Cobra prose;
+	// Catalog assembly (not this store) prefers Long/Short when stamping
+	// description/title provenance.
+	_, _ = short, long
 	// Reuse NewCommand's completeness rules so bind-time attaches cannot ship
 	// a partial declaration that would only fail in generated artifacts.
-	validateSchemaDecl(Spec{Use: cmd.Name(), Safety: safety, Schema: schema})
+	validateContractDecl(Spec{Use: cmd.Name(), Safety: safety, Contract: decl})
 	validateSafetySpec(Spec{Use: cmd.Name(), Safety: safety})
 
 	payload := contract.ContractFinalPayload{
-		Title: firstNonEmpty(schema.Title, short),
-		// Cobra Long wins over the declared Description when the command authored
-		// one: Schema.Description is mandatory for every declaration, so letting it
-		// win silently replaced each leaf's full Agent-facing help with a one-line
-		// restatement. The declaration still supplies leaves that have no Long.
-		Description: firstNonEmpty(long, schema.Description),
+		Title:       strings.TrimSpace(decl.Title),
+		Description: strings.TrimSpace(decl.Description),
 		Safety:      schemaSafetyFromDecl(safety),
 	}
-	if n := len(schema.Positionals); n > 0 {
-		payload.Positionals = make([]contract.RuntimeSchemaPositional, n)
-		for i, p := range schema.Positionals {
-			payload.Positionals[i] = contract.RuntimeSchemaPositional{
-				Name: p.Name, Type: p.Type, Description: p.Description,
-				Required: p.Required, Variadic: p.Variadic, Index: p.Index,
-			}
-		}
+	if n := len(decl.Positionals); n > 0 {
+		payload.Positionals = append([]contract.RuntimeSchemaPositional(nil), decl.Positionals...)
 	}
-	if schema.DryRun != nil && strings.TrimSpace(schema.DryRun.PreviewKind) != "" {
-		payload.DryRun = &contract.DryRunSpec{
-			PreviewKind: strings.TrimSpace(schema.DryRun.PreviewKind),
-			RemoteReads: schema.DryRun.RemoteReads,
-		}
+	if decl.DryRun != nil && strings.TrimSpace(decl.DryRun.PreviewKind) != "" {
+		d := *decl.DryRun
+		d.PreviewKind = strings.TrimSpace(d.PreviewKind)
+		payload.DryRun = &d
 	}
-	if schema.Interface != nil {
+	if decl.Interface != nil {
 		iface := &contract.InterfaceSpec{
-			Mode:         strings.TrimSpace(schema.Interface.Mode),
-			Availability: strings.TrimSpace(schema.Interface.Availability),
-			Reason:       strings.TrimSpace(schema.Interface.Reason),
+			Mode:         strings.TrimSpace(decl.Interface.Mode),
+			Availability: strings.TrimSpace(decl.Interface.Availability),
+			Reason:       strings.TrimSpace(decl.Interface.Reason),
 		}
-		if pid := strings.TrimSpace(schema.Interface.ProductID); pid != "" {
-			iface.Ref = &contract.InterfaceRefSpec{ProductID: pid, RPCName: strings.TrimSpace(schema.Interface.RPCName)}
+		if decl.Interface.Ref != nil {
+			ref := *decl.Interface.Ref
+			ref.ProductID = strings.TrimSpace(ref.ProductID)
+			ref.RPCName = strings.TrimSpace(ref.RPCName)
+			if ref.ProductID != "" || ref.RPCName != "" {
+				iface.Ref = &ref
+			}
 		}
 		if iface.Mode != "" || iface.Ref != nil || iface.Availability != "" || iface.Reason != "" {
 			payload.Interface = iface
 		}
 	}
-	if sel := schema.Selection; strings.TrimSpace(sel.AgentSummary) != "" || len(sel.UseWhen) > 0 ||
+	if sel := decl.Selection; strings.TrimSpace(sel.AgentSummary) != "" || len(sel.UseWhen) > 0 ||
 		len(sel.AvoidWhen) > 0 || len(sel.Examples) > 0 || len(sel.Prerequisites) > 0 ||
 		len(sel.Tips) > 0 || len(sel.WorkflowRefs) > 0 {
-		payload.Selection = &contract.SelectionSpec{
-			AgentSummary: strings.TrimSpace(sel.AgentSummary),
-			UseWhen:      sel.UseWhen, AvoidWhen: sel.AvoidWhen,
-			Prerequisites: sel.Prerequisites, Tips: sel.Tips,
-			WorkflowRefs: sel.WorkflowRefs, Examples: sel.Examples,
-		}
+		copied := sel
+		copied.AgentSummary = strings.TrimSpace(sel.AgentSummary)
+		payload.Selection = &copied
 	}
-	if id := schema.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" {
-		payload.Identity = &contract.ToolIdentitySpec{
-			ProductID: strings.TrimSpace(id.ProductID), SourceProductID: strings.TrimSpace(id.SourceProductID),
-			Name: strings.TrimSpace(id.Name), CLIName: strings.TrimSpace(id.CLIName),
-			CanonicalPath: strings.TrimSpace(id.CanonicalPath), CLIPath: strings.TrimSpace(id.CLIPath),
-			PrimaryCLIPath: strings.TrimSpace(id.PrimaryCLIPath), Group: strings.TrimSpace(id.Group),
-			Aliases: id.Aliases, Source: strings.TrimSpace(id.Source),
-		}
+	if id := decl.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" {
+		copied := id
+		copied.ProductID = strings.TrimSpace(id.ProductID)
+		copied.SourceProductID = strings.TrimSpace(id.SourceProductID)
+		copied.Name = strings.TrimSpace(id.Name)
+		copied.CLIName = strings.TrimSpace(id.CLIName)
+		copied.CanonicalPath = strings.TrimSpace(id.CanonicalPath)
+		copied.CLIPath = strings.TrimSpace(id.CLIPath)
+		copied.PrimaryCLIPath = strings.TrimSpace(id.PrimaryCLIPath)
+		copied.Group = strings.TrimSpace(id.Group)
+		copied.Source = strings.TrimSpace(id.Source)
+		payload.Identity = &copied
 	}
-	if len(schema.Parameters) > 0 {
-		payload.Parameters = make([]contract.ParamDecl, 0, len(schema.Parameters))
-		for _, p := range schema.Parameters {
-			payload.Parameters = append(payload.Parameters, contract.ParamDecl{
-				Name:          p.Name,
-				Property:      p.Property,
-				Required:      p.Required,
-				InterfaceType: p.InterfaceType,
-				Description:   p.Description,
-				RequiredWhen:  p.RequiredWhen,
-				Enum:          p.Enum,
-			})
-		}
+	if len(decl.Parameters) > 0 {
+		payload.Parameters = append([]contract.ParamDecl(nil), decl.Parameters...)
 	}
-	cli.AnnotateRuntimeContract(cmd)
-	contract.RegisterRuntimeContractFinal(cmd, payload)
+	cli.RegisterRuntimeContractFinal(cmd, payload)
 }
 
 func firstNonEmpty(values ...string) string {

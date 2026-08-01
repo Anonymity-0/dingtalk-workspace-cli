@@ -80,13 +80,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在工作表中搜索单元格（支持精确匹配/正则/搜公式）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "find_cells",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "find_cells"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在工作表中搜索单元格（支持精确匹配/正则/搜公式）。",
 				UseWhen:      []string{"要查找包含某文本或公式的单元格位置时，必须用服务端 find"},
 				AvoidWhen:    []string{"不要用 range read 全量下载后客户端过滤；要替换文本用 replace"},
@@ -162,13 +163,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "全局查找替换文本（服务端原子操作）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "replace_all",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "replace_all"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "全局查找替换文本（服务端原子操作）。",
 				UseWhen:      []string{"要把工作表中匹配文本批量替换为另一文本时"},
 				AvoidWhen:    []string{"不要用 find + range update 组合模拟；只查找不替换用 find"},
@@ -222,13 +224,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在工作表数据末尾追加带值的数据行。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "append_rows",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "append_rows"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在工作表数据末尾追加带值的数据行。",
 				UseWhen:      []string{"要在已有数据下方追加记录行（带 values）时"},
 				AvoidWhen:    []string{"末尾追加空行/空列用 add-dimension；中间插入空行用 insert-dimension；覆盖已有区域用 range update/csv-put"},
@@ -300,13 +303,14 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "set_range_from_csv",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "set_range_from_csv"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
 				UseWhen:      []string{"写入纯值且超过约 5 行/20 格，或数据来自 CSV/表格文本时优先使用"},
 				AvoidWhen:    []string{"需要公式/超链接/富文本用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite"},
@@ -373,13 +377,14 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "以 CSV 文本读取指定区域。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_range_as_csv",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_range_as_csv"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "以 CSV 文本读取指定区域。",
 				UseWhen:      []string{"需要把区域导出为 CSV 文本便于管道处理时"},
 				AvoidWhen:    []string{"需要结构化 per-cell（样式/超链接/公式）用 range read；导出整份 xlsx 用 sheet export"},

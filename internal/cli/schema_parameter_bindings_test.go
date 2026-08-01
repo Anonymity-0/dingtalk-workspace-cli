@@ -33,7 +33,7 @@ func TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog(t *testi
 		t.Fatalf("active binding manifest hash = %q, reviewed baseline = %q", manifestHash, snapshot.Baseline.SHA256)
 	}
 
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	for canonical, bindings := range snapshot.Bindings {
 		detail, ok := loaded.Snapshot.Tools[canonical]
 		if !ok {

@@ -64,15 +64,60 @@ func initMetaByCLIPath() {
 	metaByCLIPath = buildMetaByCLIPath(embeddedSchemaCatalog())
 }
 
-// buildMetaByCLIPath constructs the lookup from a loaded catalog snapshot.
-// Split from initMetaByCLIPath so malformed-snapshot guards stay testable.
+// buildMetaByCLIPath constructs the lookup from a loaded catalog.
+// Prefer the typed Registry (production cold-start path). Fall back to
+// Snapshot.Tools maps for unit tests that synthesize untyped fixtures.
 func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
+	if len(loaded.Registry.Products) > 0 {
+		return buildMetaByCLIPathFromRegistry(loaded.Registry)
+	}
+	return buildMetaByCLIPathFromSnapshotTools(loaded.Snapshot.Tools)
+}
+
+func buildMetaByCLIPathFromRegistry(registry SchemaRegistry) map[string]CommandMeta {
 	lookup := make(map[string]CommandMeta)
-	if loaded.Snapshot.Tools == nil {
+	metas := make([]CommandMeta, 0, 64)
+	for _, product := range registry.Products {
+		for _, tool := range product.Tools {
+			cliPath := strings.TrimSpace(tool.Identity.CLIPath)
+			if cliPath == "" {
+				continue
+			}
+			meta := CommandMeta{
+				Identity: CommandIdentity{
+					CLIPath:   cliPath,
+					Canonical: tool.Identity.CanonicalPath,
+					Aliases:   append([]string(nil), tool.Identity.Aliases...),
+					ProductID: tool.Identity.ProductID,
+					Title:     tool.Title,
+				},
+				Safety: CommandSafety{
+					Effect:       tool.Safety.Effect,
+					Risk:         tool.Safety.Risk,
+					Confirmation: tool.Safety.Confirmation,
+					Idempotency:  tool.Safety.Idempotency,
+				},
+				Selection: CommandSelection{
+					AgentSummary: tool.Selection.AgentSummary,
+					UseWhen:      append([]string(nil), tool.Selection.UseWhen...),
+					AvoidWhen:    append([]string(nil), tool.Selection.AvoidWhen...),
+					Examples:     append([]string(nil), tool.Selection.Examples...),
+				},
+			}
+			lookup[cliPath] = meta
+			metas = append(metas, meta)
+		}
+	}
+	return registerCommandMetaAliases(lookup, metas)
+}
+
+func buildMetaByCLIPathFromSnapshotTools(tools map[string]map[string]any) map[string]CommandMeta {
+	lookup := make(map[string]CommandMeta)
+	if tools == nil {
 		return lookup
 	}
-	metas := make([]CommandMeta, 0, len(loaded.Snapshot.Tools))
-	for _, tool := range loaded.Snapshot.Tools {
+	metas := make([]CommandMeta, 0, len(tools))
+	for _, tool := range tools {
 		cliPath := schemaString(tool["cli_path"])
 		if cliPath == "" {
 			continue
@@ -101,12 +146,13 @@ func buildMetaByCLIPath(loaded loadedSchemaCatalog) map[string]CommandMeta {
 		lookup[cliPath] = meta
 		metas = append(metas, meta)
 	}
-	// Register compat alias paths (e.g. "report list") against the same
-	// metadata in a second pass, sorted by primary cli_path: primary paths
-	// always win (registered above, aliases only fill vacancies), and an
-	// alias-vs-alias collision resolves deterministically to the owner with
-	// the lexicographically smallest primary path — Snapshot.Tools is a map,
-	// so relying on iteration order would make the winner vary per process.
+	return registerCommandMetaAliases(lookup, metas)
+}
+
+// registerCommandMetaAliases fills compat alias paths. Primary paths always
+// win; alias-vs-alias collisions resolve to the owner with the
+// lexicographically smallest primary cli_path (map iteration is unstable).
+func registerCommandMetaAliases(lookup map[string]CommandMeta, metas []CommandMeta) map[string]CommandMeta {
 	sort.Slice(metas, func(i, j int) bool {
 		return metas[i].Identity.CLIPath < metas[j].Identity.CLIPath
 	})

@@ -14,9 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -49,13 +50,14 @@ var ListTables = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出某个多维表(base)里的所有数据表（只读，投影 tableId/tableName）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出某个多维表(base)里的所有数据表（只读，投影 tableId/tableName）",
 			UseWhen:      []string{"当你已经知道某个多维表(base)的 baseId、想一步看清这个 base 下都有哪些数据表(table)、拿到它们的 tableId 和 tableName 以便后续查记录或改结构，却不想手动翻 base get 的完整目录时使用；内部直接调用 get_tables，只传 baseId（不带 tableIds，因此返回该 base 下的全部数据表），再在本地把每张表投影成 tableId、tableName 两个关键字段打印出来。这是纯只读操作，只做列举与本地投影，不会创建、修改或删除任何表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

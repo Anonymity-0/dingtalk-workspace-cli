@@ -528,13 +528,14 @@ func TestLiveMountExplicitSafetyDrivesRuntimeAndContractFinal(t *testing.T) {
 	s := Shortcut{
 		Service: "chat", Command: "+send", Risk: RiskRead,
 		Safety: explicit,
-		Schema: corecmd.SchemaDecl{
+		Contract: corecmd.ContractDecl{
 			Description: "发送消息",
-			Interface: &corecmd.InterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "send_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "send_message"},
 			},
-			Selection: corecmd.SelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "发送消息",
 				UseWhen:      []string{"需要发送消息时"},
 				AvoidWhen:    []string{"只需读取消息时"},

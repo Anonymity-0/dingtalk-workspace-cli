@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -578,13 +577,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询个人考勤详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "attendance", RPCName: "get_user_attendance_record",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "attendance", RPCName: "get_user_attendance_record"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询个人考勤详情",
 				UseWhen:      []string{"需要查询指定用户某一天的考勤详情（打卡、班次、考勤组、工时、加班等，受权限限制）时"},
 				AvoidWhen: []string{
@@ -596,7 +596,7 @@ func newAttendanceCommand() *cobra.Command {
 					"dws attendance record get --user USER_ID --date 2026-03-08",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "user", Required: boolPtr(true)},
 				{Name: "date", Required: boolPtr(true)},
 			},
@@ -670,13 +670,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询打卡结果",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询打卡结果",
 				UseWhen:      []string{"查询员工打卡结果或考勤结果"},
 				AvoidWhen: []string{
@@ -739,13 +740,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询打卡记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询打卡记录",
 				UseWhen:      []string{"查询员工打卡流水或打卡记录"},
 				AvoidWhen: []string{
@@ -871,13 +873,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤相关审批单记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤相关审批单记录",
 				UseWhen:      []string{"查询补卡、加班、请假、出差外出等考勤审批记录"},
 				AvoidWhen: []string{
@@ -929,13 +932,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤审批模板和提交入口",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤审批模板和提交入口",
 				UseWhen:      []string{"用户要发起补卡、请假、加班、外出或出差审批前查询可用模板"},
 				AvoidWhen: []string{
@@ -995,13 +999,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量查询员工班次信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "attendance", RPCName: "batch_get_employee_shifts",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "attendance", RPCName: "batch_get_employee_shifts"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量查询员工班次信息",
 				UseWhen:      []string{"需要批量查询多个员工在日期范围内的考勤班次（userId/workDate/checkType/planCheckTime/isRest）时"},
 				AvoidWhen: []string{
@@ -1011,7 +1016,7 @@ func newAttendanceCommand() *cobra.Command {
 				},
 				Examples: []string{"dws attendance shift list --users userId1,userId2 --start 2026-03-03 --end 2026-03-07"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "users", Required: boolPtr(true), InterfaceType: "array"},
 				{Name: "start", Required: boolPtr(true)},
 				{Name: "end", Required: boolPtr(true)},
@@ -1066,13 +1071,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询班次定义列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询班次定义列表",
 				UseWhen:      []string{"搜索或列出可用班次/班次ID"},
 				AvoidWhen: []string{
@@ -1109,13 +1115,14 @@ func newAttendanceCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询单个班次定义详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询单个班次定义详情",
 				UseWhen:      []string{"已取得班次ID，需要查看班次配置"},
 				AvoidWhen: []string{
@@ -1211,13 +1218,14 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建班次定义",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建班次定义",
 				UseWhen:      []string{"需要新增班次及上下班时间规则，且名称与 class-vo 已确认时"},
 				AvoidWhen: []string{
@@ -1312,13 +1320,14 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新班次定义",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新班次定义",
 				UseWhen:      []string{"需要修改已有班次的名称、上下班时间或规则，且 classId 与变更内容已确认时"},
 				AvoidWhen: []string{
@@ -1360,13 +1369,14 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询单个补卡规则详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询单个补卡规则详情",
 				UseWhen:      []string{"已取得补卡规则ID，需要查看规则详情"},
 				AvoidWhen: []string{
@@ -1417,13 +1427,14 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询补卡规则列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询补卡规则列表",
 				UseWhen:      []string{"需要查看有哪些补卡规则或筛选补卡规则"},
 				AvoidWhen: []string{
@@ -1436,7 +1447,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 					"dws attendance adjustment search --query \"标准\" --page 1 --limit 50",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", Required: boolPtr(false)},
 				{Name: "page", Required: boolPtr(false)},
 			},
@@ -1469,13 +1480,14 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询单个加班规则详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询单个加班规则详情",
 				UseWhen:      []string{"已取得加班规则ID，需要查看规则详情"},
 				AvoidWhen: []string{
@@ -1526,13 +1538,14 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询加班规则列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询加班规则列表",
 				UseWhen:      []string{"需要查看可用加班规则或筛选加班规则"},
 				AvoidWhen: []string{
@@ -1545,7 +1558,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 					"dws attendance overtime search --query \"节假日\" --page 1 --limit 50",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", Required: boolPtr(false)},
 				{Name: "page", Required: boolPtr(false)},
 			},
@@ -1621,13 +1634,14 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤组列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤组列表",
 				UseWhen:      []string{"按权限或条件查看考勤组简要信息"},
 				AvoidWhen: []string{
@@ -1640,7 +1654,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 					"dws attendance group search --query \"研发组\" --type TURN --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", Required: boolPtr(false)},
 				{Name: "page", Required: boolPtr(false)},
 			},
@@ -1669,13 +1683,14 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤组完整详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤组完整详情",
 				UseWhen:      []string{"已取得考勤组ID，需要查看完整配置"},
 				AvoidWhen: []string{
@@ -1726,13 +1741,14 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤组指定字段子集",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤组指定字段子集",
 				UseWhen:      []string{"只需要考勤组成员、打卡地址、蓝牙等部分字段，减少返回体积"},
 				AvoidWhen: []string{
@@ -1804,13 +1820,14 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "增删考勤组成员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "增删考勤组成员",
 				UseWhen:      []string{"需要向考勤组添加或移除成员，且 groupId 与成员列表已确认时"},
 				AvoidWhen: []string{
@@ -2048,13 +2065,14 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建考勤组",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建考勤组",
 				UseWhen:      []string{"需要新建考勤组并配置规则，且名称、类型与 group-vo 已确认时"},
 				AvoidWhen: []string{
@@ -2258,13 +2276,14 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新考勤组配置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新考勤组配置",
 				UseWhen:      []string{"需要修改已有考勤组的规则、班次、位置或范围，且 groupId 与变更内容已确认时"},
 				AvoidWhen: []string{
@@ -2314,13 +2333,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询个人考勤统计摘要",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the CLI calls attendance-wukong/get_user_attendance_summary, which is absent from the pinned MCP metadata snapshot; the incompatible attendance/get_attendance_summary contract must not be advertised.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the CLI calls attendance-wukong/get_user_attendance_summary, which is absent from the pinned MCP metadata snapshot; the incompatible attendance/get_attendance_summary contract must not be advertised.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询个人考勤统计摘要",
 				UseWhen:      []string{"需要查看员工出勤/异常/请假等考勤统计摘要时"},
 				AvoidWhen: []string{
@@ -2332,7 +2352,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 					"dws attendance summary --user USER_ID --date \"2026-03-12 15:00:00\" --stats-type month",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "user", Required: boolPtr(true)},
 				{Name: "date", Required: boolPtr(true)},
 				{Name: "stats-type", Required: boolPtr(true)},
@@ -2374,13 +2394,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤组与考勤规则",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "attendance", RPCName: "query_attendance_group_or_rules",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "attendance", RPCName: "query_attendance_group_or_rules"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤组与考勤规则",
 				UseWhen:      []string{"需要回答「我属于哪个考勤组/打卡范围/弹性工时怎么算」等规则概览问题时"},
 				AvoidWhen: []string{
@@ -2392,7 +2413,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 					"dws attendance rules --date 2026-03-14",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "date", Required: boolPtr(true)},
 			},
 		},
@@ -2511,13 +2532,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询个人考勤设置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询个人考勤设置",
 				UseWhen:      []string{"查看某个员工的个人打卡提醒、极速打卡、结果通知等设置"},
 				AvoidWhen: []string{
@@ -2613,13 +2635,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新个人考勤设置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新个人考勤设置",
 				UseWhen:      []string{"需要修改员工个人打卡提醒、极速打卡或结果通知设置，且 scene 与变更值已确认时"},
 				AvoidWhen: []string{
@@ -2684,13 +2707,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询企业全局考勤设置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询企业全局考勤设置",
 				UseWhen:      []string{"管理员查看企业级打卡提醒、极速打卡等全局设置"},
 				AvoidWhen: []string{
@@ -2768,13 +2792,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新企业全局考勤设置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新企业全局考勤设置",
 				UseWhen:      []string{"管理员明确要求修改企业级打卡提醒、极速打卡等全局设置，且 scope/scene 与变更值已确认时"},
 				AvoidWhen: []string{
@@ -2820,13 +2845,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询可查看的考勤报表字段",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询可查看的考勤报表字段",
 				UseWhen:      []string{"查看操作者有权限查询的考勤报表字段"},
 				AvoidWhen: []string{
@@ -2892,13 +2918,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询考勤报表数据",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询考勤报表数据",
 				UseWhen:      []string{"按字段查询考勤报表数据并进行权限过滤"},
 				AvoidWhen: []string{
@@ -2963,13 +2990,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询假期报表数据",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询假期报表数据",
 				UseWhen:      []string{"查询用户假期/请假相关报表数据"},
 				AvoidWhen: []string{
@@ -3021,13 +3049,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询可用假期类型",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询可用假期类型",
 				UseWhen:      []string{"查看当前用户可用的假期规则/假期类型列表"},
 				AvoidWhen: []string{
@@ -3076,13 +3105,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询员工假期余额",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询员工假期余额",
 				UseWhen:      []string{"查询指定员工的年假、调休等假期余额"},
 				AvoidWhen: []string{
@@ -3138,13 +3168,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询假期余额变更记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询假期余额变更记录",
 				UseWhen:      []string{"查询员工假期余额的增减流水或变更历史"},
 				AvoidWhen: []string{
@@ -3332,13 +3363,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新假期类型规则",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新假期类型规则",
 				UseWhen:      []string{"管理员明确要求修改已有假期规则或假期类型配置，且 leave-code 与变更字段已确认时"},
 				AvoidWhen: []string{
@@ -3428,13 +3460,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "调整员工假期余额",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "调整员工假期余额",
 				UseWhen:      []string{"管理员明确要求设置指定员工假期余额（SET 替换而非累加），且 target/leave-code/num/reason 已确认时"},
 				AvoidWhen: []string{
@@ -3590,13 +3623,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "导入排班制考勤组排班记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "导入排班制考勤组排班记录",
 				UseWhen:      []string{"需要向排班制考勤组批量导入或覆盖员工排班，且 groupId 与 scheduleVOS 已确认时"},
 				AvoidWhen: []string{
@@ -3676,13 +3710,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询员工排班记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询员工排班记录",
 				UseWhen:      []string{"查询指定员工在日期范围内的排班记录"},
 				AvoidWhen: []string{
@@ -3999,13 +4034,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询打卡流水记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询打卡流水记录",
 				UseWhen:      []string{"查询员工打卡流水、定位或打卡时间记录"},
 				AvoidWhen: []string{
@@ -4118,13 +4154,14 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "管理员修正员工打卡结果",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "管理员修正员工打卡结果",
 				UseWhen:      []string{"管理员明确要求修正员工打卡时间或打卡结果，且已确认 planId/resultId 与变更内容时"},
 				AvoidWhen: []string{
@@ -4137,7 +4174,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 					"dws attendance boss-check --result-id 789012 --result Normal",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "plan-id", Required: boolPtr(true)},
 			},
 		},

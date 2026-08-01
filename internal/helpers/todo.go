@@ -15,7 +15,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -127,13 +126,14 @@ func newTodoCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建个人待办",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "create_personal_todo",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "create_personal_todo"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建个人待办",
 				UseWhen:      []string{"需要在当前组织创建个人待办（标题与执行人必填；可选截止时间、优先级、按天循环）时"},
 				AvoidWhen: []string{
@@ -207,13 +207,14 @@ func newTodoCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建个人子待办",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "create_personal_sub_todo",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "create_personal_sub_todo"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建个人子待办",
 				UseWhen:      []string{"父待办由本人创建且已确认 parentId，需要创建子待办（标题、执行人、可选截止时间/优先级）时"},
 				AvoidWhen: []string{
@@ -264,13 +265,14 @@ func newTodoCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前组织待办，或通过 --query-all 跨组织查询全部待办",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "get_user_todos_in_current_org",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "get_user_todos_in_current_org"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前组织待办，或通过 --query-all 跨组织查询全部待办",
 				UseWhen:      []string{"需要按完成状态、优先级、角色或截止日期范围查询当前用户待办列表时；跨组织范围时显式使用 --query-all"},
 				AvoidWhen:    []string{"已知 taskId 需要完整单条详情时改用 dws todo task get"},
@@ -279,7 +281,7 @@ func newTodoCommand() *cobra.Command {
 					"dws todo task list --page 1 --size 20 --status false --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "query-all", Required: boolPtr(false), InterfaceType: "boolean", Description: "为 true 时跨组织查询全部待办；默认仅查询当前组织待办"},
 				{Name: "role-types", Property: "roleTypes", Required: boolPtr(false), Description: "角色类型列表；省略时运行时默认使用 executor"},
 			},
@@ -351,13 +353,14 @@ func newTodoCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "修改整个待办任务",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "update_todo_task",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "update_todo_task"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "修改整个待办任务",
 				UseWhen:      []string{"已知 taskId，需要修改待办标题、截止时间、优先级或完成标记等字段时"},
 				AvoidWhen: []string{
@@ -400,13 +403,14 @@ func newTodoCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "修改执行者的待办完成状态",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "update_todo_done_status",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "update_todo_done_status"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "修改执行者的待办完成状态",
 				UseWhen:      []string{"已知 taskId，需要把执行者侧完成状态设为已完成或未完成时"},
 				AvoidWhen: []string{
@@ -472,13 +476,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询待办详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "get_todo_detail",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "get_todo_detail"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询待办详情",
 				UseWhen:      []string{"已知 taskId，且调用者是创建者或执行者，需要查看单条待办详情时"},
 				AvoidWhen: []string{
@@ -517,13 +522,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除待办",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "delete_todo",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "delete_todo"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除待办",
 				UseWhen:      []string{"用户明确要求删除指定待办（所有执行者侧一并删除）时"},
 				AvoidWhen: []string{
@@ -560,13 +566,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "添加待办执行人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "add_task_executors",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "add_task_executors"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "添加待办执行人",
 				UseWhen:      []string{"已知 taskId，需要为待办追加执行人（userId 列表）时"},
 				AvoidWhen: []string{
@@ -606,13 +613,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除待办执行人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "remove_task_executors",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "remove_task_executors"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除待办执行人",
 				UseWhen:      []string{"用户明确要求从待办移除指定执行人时"},
 				AvoidWhen: []string{
@@ -651,13 +659,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "添加待办参与人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "add_task_participants",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "add_task_participants"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "添加待办参与人",
 				UseWhen:      []string{"已知 taskId，需要为待办追加参与人（userId 列表）时"},
 				AvoidWhen: []string{
@@ -697,13 +706,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除待办参与人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "remove_task_participants",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "remove_task_participants"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除待办参与人",
 				UseWhen:      []string{"用户明确要求从待办移除指定参与人时"},
 				AvoidWhen: []string{
@@ -772,13 +782,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "写入一条待办提醒规则（上游不支持规则读回）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "add_todo_reminder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "add_todo_reminder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "写入一条待办提醒规则（上游不支持规则读回）",
 				UseWhen:      []string{"已知 taskId，需要按截止时间偏移或自定义时间戳添加提醒时（dueTime 模式要求待办已有截止时间）；成功响应仅作为写入回执"},
 				AvoidWhen: []string{
@@ -832,13 +843,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "整体替换或清除待办提醒规则（上游不支持规则读回）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "reset_todo_reminder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "reset_todo_reminder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "整体替换或清除待办提醒规则（上游不支持规则读回）",
 				UseWhen:      []string{"需要清除或整体替换待办提醒规则时（不传 reminder-rules 或传 [] 可清除）；非空规则会在远端调用前严格校验，成功响应仅作为写入回执"},
 				AvoidWhen: []string{
@@ -851,7 +863,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task reset-reminder --task-id <taskId> --reminder-rules '[{\"dueDateOffset\":-30,\"baseTime\":\"dueTime\"},{\"reminderTimeStamp\":\"2026-03-10T18:00:00+08:00\",\"baseTime\":\"customTime\"}]'",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "reminder-rules", Description: "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"},
 			},
 		},
@@ -914,14 +926,15 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "上传待办附件",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "add_todo_attachment",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "add_todo_attachment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "上传待办附件",
 				UseWhen:      []string{"已知 taskId 且待办已确认存在，需要上传本地文件为待办附件时"},
 				AvoidWhen: []string{
@@ -963,13 +976,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询待办附件列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询待办附件列表",
 				UseWhen:      []string{"已知 taskId，需要查看该待办当前附件及其 attachmentId、文件名和大小时"},
 				AvoidWhen: []string{
@@ -1124,13 +1138,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "给待办添加评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "add_todo_comment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "add_todo_comment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "给待办添加评论",
 				UseWhen:      []string{"已知 taskId，需要给待办新增一条评论文本时"},
 				AvoidWhen: []string{
@@ -1168,13 +1183,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取待办评论列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "list_todo_comment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "list_todo_comment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取待办评论列表",
 				UseWhen:      []string{"已知 taskId，需要分页查看该待办评论时"},
 				AvoidWhen: []string{
@@ -1212,13 +1228,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除待办评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "todo", RPCName: "delete_todo_comment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "todo", RPCName: "delete_todo_comment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除待办评论",
 				UseWhen:      []string{"用户明确要求删除指定待办下的某条评论时"},
 				AvoidWhen: []string{
@@ -1274,19 +1291,20 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把一个或多个现有标签添加到指定待办",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI builds TodoTagRequest and calls todo/tag_todo, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI builds TodoTagRequest and calls todo/tag_todo, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把一个或多个现有标签添加到指定待办",
 				UseWhen:      []string{"已有 taskId 和标签 code，需要给该待办打标"},
 				AvoidWhen:    []string{"尚无标签 code 时先用 todo tag list 或 todo tag create；修改标签定义应使用 todo tag update"},
 				Examples:     []string{"dws todo tag add --task-id <taskId> --tag-codes code1,code2"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "tag-codes", Property: "tagCodes", Required: boolPtr(true), InterfaceType: "array"},
 				{Name: "task-id", Property: "taskId", Required: boolPtr(true)},
 			},
@@ -1319,19 +1337,20 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "不可逆地删除当前用户的一个或多个待办标签",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI parses tag codes into UserTagDeleteRequest and calls todo/delete_todo_tag, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI parses tag codes into UserTagDeleteRequest and calls todo/delete_todo_tag, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "不可逆地删除当前用户的一个或多个待办标签",
 				UseWhen:      []string{"用户明确要求删除已有标签 code，且已确认标签编码及不可逆影响"},
 				AvoidWhen:    []string{"只需从某个待办移除标签或重命名标签时不要删除标签定义；未确认 code 时先用 todo tag list"},
 				Examples:     []string{"dws todo tag delete --tag-codes code1,code2"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "tag-codes", Property: "tagCodes", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
@@ -1370,19 +1389,20 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量更新已有待办标签的名称等定义",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI decodes user tag JSON into UserTagAddRequest and calls todo/update_todo_tag, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI decodes user tag JSON into UserTagAddRequest and calls todo/update_todo_tag, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量更新已有待办标签的名称等定义",
 				UseWhen:      []string{"已有标签 code，需要按 JSON 数组更新一个或多个标签定义"},
 				AvoidWhen:    []string{"给待办打标签应使用 todo tag add；创建没有 code 的新标签应使用 todo tag create"},
 				Examples:     []string{"dws todo tag update --user-tags '[{\"code\":\"code1\",\"name\":\"新名称\"}]'"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "user-tags", Property: "userTags", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
@@ -1401,13 +1421,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户可用的待办标签及其 code",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI calls todo/list_todo_tags, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI calls todo/list_todo_tags, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户可用的待办标签及其 code",
 				UseWhen:      []string{"需要查看待办标签目录或先取得标签 code 供打标、更新、删除使用"},
 				AvoidWhen:    []string{"查询待办任务列表应使用 todo task list；该命令只返回标签定义"},
@@ -1440,19 +1461,20 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为当前用户创建一个新的待办标签",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI wraps one trimmed name in UserTagAddRequest and calls todo/create_todo_tag, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI wraps one trimmed name in UserTagAddRequest and calls todo/create_todo_tag, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为当前用户创建一个新的待办标签",
 				UseWhen:      []string{"用户明确要求创建可复用的待办标签，且已给出非空标签名称"},
 				AvoidWhen:    []string{"给已有待办打上现有标签应使用 todo tag add；重命名已有标签应使用 todo tag update"},
 				Examples:     []string{"dws todo tag create --name \"项目标签\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "name", Required: boolPtr(true)},
 			},
 		},

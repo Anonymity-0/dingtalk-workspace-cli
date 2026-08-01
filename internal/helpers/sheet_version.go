@@ -34,13 +34,14 @@ func newSheetVersionCmd() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "手动保存表格版本快照",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "手动保存表格版本快照",
 				UseWhen:      []string{"用户说 保存版本/存个快照，目标是在线表格"},
 				AvoidWhen:    []string{"回滚用 version revert；查看历史用 version list"},
@@ -76,13 +77,14 @@ func newSheetVersionCmd() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查看表格历史版本列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看表格历史版本列表",
 				UseWhen:      []string{"用户说 看历史版本/版本列表，目标是在线表格"},
 				AvoidWhen:    []string{"回滚用 version revert"},
@@ -118,13 +120,14 @@ func newSheetVersionCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "回滚表格到指定历史版本",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "回滚表格到指定历史版本",
 				UseWhen:      []string{"用户说 回滚到某个版本/恢复到之前的表格"},
 				AvoidWhen:    []string{"普通文件回滚用 drive revert；在线文档用 doc version revert"},

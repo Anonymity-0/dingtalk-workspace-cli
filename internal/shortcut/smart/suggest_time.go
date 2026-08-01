@@ -14,8 +14,9 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -44,13 +45,14 @@ var SuggestTime = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按姓名解析多位参与者，推荐大家都有空的可开会时间段（自动解析 userId）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按姓名解析多位参与者，推荐大家都有空的可开会时间段（自动解析 userId）",
 			UseWhen:      []string{"当你想为几个人凑一个大家都空闲的开会时间、但只知道他们的姓名而不想逐个手动查 userId 时使用；内部会把 --with 里的姓名逐个搜通讯录解析成唯一 userId（任何一个没匹配到或匹配到多人都会明确报出来，绝不瞎猜），再基于所有参与者的忙闲，在给定时间范围内推荐若干可用时段。只读，不创建任何日程。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

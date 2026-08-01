@@ -24,6 +24,7 @@ package aitable
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -74,13 +75,14 @@ var BaseList = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取当前用户可访问的 AI 表格 Base 列表（最近访问，支持游标分页）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取当前用户可访问的 AI 表格 Base 列表（最近访问，支持游标分页）",
 			UseWhen:      []string{"当你不知道具体 baseId、想先浏览自己最近用过或可访问的 AI 表格清单以便定位目标时使用；支持游标分页，返回 Base 列表及其 baseId。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -186,13 +188,14 @@ var BaseSearch = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按名称关键词搜索 AI 表格 Base",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按名称关键词搜索 AI 表格 Base",
 			UseWhen:      []string{"当你知道某个 AI 表格的名字或部分关键词、想直接定位到它并拿到 baseId 时使用；输入名称关键词，返回匹配的 Base 列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -230,13 +233,14 @@ var BaseGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取指定 Base 的目录信息（tables / dashboards summary）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取指定 Base 的目录信息（tables / dashboards summary）",
 			UseWhen:      []string{"当你已有 baseId、需要了解这个表格里有哪些数据表和仪表盘（拿到 tableId/dashboardId）以便进一步操作时使用；返回 Base 的目录结构概要。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -363,13 +367,14 @@ var TableGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "批量获取指定数据表的表级信息、字段目录与视图目录",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "批量获取指定数据表的表级信息、字段目录与视图目录",
 			UseWhen:      []string{"当你已进入某个 Base、需要了解其中某些数据表有哪些字段（拿 fieldId）、有哪些视图（拿 viewId）以便读写数据时使用；批量返回表信息、字段目录和视图目录。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -470,13 +475,14 @@ var FieldGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "批量获取字段详情（含类型相关完整配置）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "批量获取字段详情（含类型相关完整配置）",
 			UseWhen:      []string{"当你需要查看字段的完整类型配置（如单选选项、关联表设置、AI 配置）以便正确写入数据或改配置时使用；批量返回字段详情。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -586,13 +592,14 @@ var RecordQuery = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "查询表格记录（按 ID 取 / 条件筛选 / 关键词 / 分页）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "查询表格记录（按 ID 取 / 条件筛选 / 关键词 / 分页）",
 			UseWhen:      []string{"当你要读取表格里的行数据——按 recordId 精确取、按结构化条件筛选、按关键词全文搜索或分页遍历时使用；返回匹配记录及其单元格值。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -712,13 +719,14 @@ var RecordQueryEmpty = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "扫描并过滤出完全没填用户字段的空行",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "扫描并过滤出完全没填用户字段的空行",
 			UseWhen:      []string{"当你想清理表格、需要先找出那些所有用户字段都为空的空行时使用；扫描并返回空行列表，支持分页预算。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -759,13 +767,14 @@ var RecordHistoryList = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按 recordId 查询单条记录的变更历史",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按 recordId 查询单条记录的变更历史",
 			UseWhen:      []string{"当你要追溯某条记录曾被谁在何时改过哪些字段时使用；按 recordId 分页返回该行的变更历史。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -808,13 +817,14 @@ var RecordShareURL = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按 recordId 批量获取记录分享链接，单次最多 20 条",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按 recordId 批量获取记录分享链接，单次最多 20 条",
 			UseWhen:      []string{"当你要把某几条记录以链接形式分享给他人（可带视图上下文）时使用；按 recordId 批量返回分享链接，单次最多 20 条。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -932,13 +942,14 @@ var TemplateSearch = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按名称关键词搜索 AI 表格模板",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按名称关键词搜索 AI 表格模板",
 			UseWhen:      []string{"当你要新建表格并想套用现成模板、需要先按关键词找模板（不传关键词则返回热门）时使用；返回模板列表及其模板 ID。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1078,13 +1089,14 @@ var ViewGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取视图完整信息（列顺序、筛选、排序、分组等）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取视图完整信息（列顺序、筛选、排序、分组等）",
 			UseWhen:      []string{"当你要了解某个视图当前的列顺序、筛选、排序、分组等完整配置以便复用或修改时使用；批量返回视图详情。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1288,13 +1300,14 @@ var ViewGetLock = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取视图锁定状态",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取视图锁定状态",
 			UseWhen:      []string{"当你想确认某视图是否已被锁定（以防他人误改其配置）时使用；返回该视图的锁定状态。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1357,13 +1370,14 @@ var ViewGetFrozenCols = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取视图当前冻结的左侧列数",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取视图当前冻结的左侧列数",
 			UseWhen:      []string{"当你想知道某视图当前冻结了左侧几列时使用；返回冻结列数。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1422,13 +1436,14 @@ var ViewGetRowHeight = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取视图单元格行高（像素）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取视图单元格行高（像素）",
 			UseWhen:      []string{"当你想知道某视图当前的行高档位时使用；返回单元格行高的像素值。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1521,13 +1536,14 @@ var FormList = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出指定数据表下的所有表单视图",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出指定数据表下的所有表单视图",
 			UseWhen:      []string{"当你要查看某数据表下已有哪些收集表单时使用；返回该表的全部表单视图列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1684,13 +1700,14 @@ var FormFieldList = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出表单视图当前可见的字段及其配置",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出表单视图当前可见的字段及其配置",
 			UseWhen:      []string{"当你要查看某表单当前放出了哪些字段供填写及其是否必填等配置时使用；返回表单可见字段列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -1785,13 +1802,14 @@ var FormShareGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "读取视图当前的分享表单配置",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "读取视图当前的分享表单配置",
 			UseWhen:      []string{"当你要查看某视图的表单分享是否已开启及其分享配置时使用；返回当前的分享表单配置。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2019,13 +2037,14 @@ var DashboardConfigExample = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取 dashboard config 的结构示例",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取 dashboard config 的结构示例",
 			UseWhen:      []string{"当你准备创建或更新仪表盘、需要先了解 dashboard config 的字段结构长什么样时使用；返回一份配置结构示例供参考。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2050,13 +2069,14 @@ var DashboardGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取指定 dashboard 的详细信息（含 charts summary）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取指定 dashboard 的详细信息（含 charts summary）",
 			UseWhen:      []string{"当你要查看某仪表盘的配置详情及它包含哪些图表（拿 chartId）时使用；返回 dashboard 信息与 charts 概要。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2231,13 +2251,14 @@ var ChartWidgetsExample = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取所有图表类型的 widget config 示例",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取所有图表类型的 widget config 示例",
 			UseWhen:      []string{"当你准备创建或修改图表、需要先参考各类图表 widget config 的示例结构时使用；返回所有图表类型的配置示例。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2262,13 +2283,14 @@ var ChartGet = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取指定 chart 的详细信息",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取指定 chart 的详细信息",
 			UseWhen:      []string{"当你要查看某个图表的配置详情（统计维度、样式等）时使用；返回指定 chart 的详细信息。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2596,13 +2618,14 @@ var RoleList = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出指定 Base 下的全部角色",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出指定 Base 下的全部角色",
 			UseWhen:      []string{"当你要查看某 Base 下配置了哪些角色（拿 roleId）时使用；返回全部角色列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2853,13 +2876,14 @@ var SectionListEmpty = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出指定 Base 下所有没有子节点的空文件夹",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出指定 Base 下所有没有子节点的空文件夹",
 			UseWhen:      []string{"当你想清理 Base、需要先找出所有没有任何子节点的空文件夹时使用；返回空文件夹列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -2887,13 +2911,14 @@ var SectionListNodes = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出指定 Base 当前版本下的全部 nsheet 节点",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出指定 Base 当前版本下的全部 nsheet 节点",
 			UseWhen:      []string{"当你要总览某 Base 当前版本下的全部节点（表、仪表盘、文件夹等）目录结构时使用；返回所有 nsheet 节点。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

@@ -33,13 +33,14 @@ var ListPending = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "查询待我处理的审批（时间范围为 epoch 毫秒）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "查询待我处理的审批（时间范围为 epoch 毫秒）",
 			UseWhen:      []string{"当你想知道自己当前有哪些审批还没处理、需要清理审批待办或按时间段/关键字盘点待审批单时使用；传入起止时间（epoch 毫秒，可选关键字与分页），返回待我审批的实例列表，是后续 +get 查详情、+approve/+reject 处理的入口。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -116,13 +117,14 @@ var ListForms = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取当前用户可见的审批表单列表",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取当前用户可见的审批表单列表",
 			UseWhen:      []string{"当你想浏览自己有权限发起哪些审批模板、或需要为 +list-initiated 等操作枚举 processCode 时使用；无需关键字，按游标分页返回当前用户可见的全部审批表单，适合不确定表单名称时先整体看一遍。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -234,13 +236,14 @@ var SearchForms = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按关键字模糊搜索当前用户可见的审批表单",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按关键字模糊搜索当前用户可见的审批表单",
 			UseWhen:      []string{"当你已知想找的审批大致名称（如「报销」「请假」）、想快速定位对应表单及其 processCode 时使用，比 +list-forms 全量列举更高效；传入关键字，返回名称或 processCode 匹配的表单，供后续 +list-initiated 按模板查询。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -295,13 +298,14 @@ var ListExecuted = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取当前用户已经处理过的审批单列表",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取当前用户已经处理过的审批单列表",
 			UseWhen:      []string{"当你想回顾自己历史上审批过（已同意/拒绝等）的单子、做复盘或查找某条已办审批时使用，区别于 +list-pending 的待办；按页码/关键字分页返回我已处理的审批单。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -415,13 +419,14 @@ var ListSubmitted = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取当前用户已发起的审批单列表",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取当前用户已发起的审批单列表",
 			UseWhen:      []string{"当你想查看自己提交发起的审批单及其审批进度（如某笔报销/请假审到哪一步）时使用；按页码/关键字分页返回我发起的审批单，可据此决定是否 +revoke 撤销或催办。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
@@ -483,13 +488,14 @@ var ListCc = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "获取抄送当前用户的审批单列表",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "获取抄送当前用户的审批单列表",
 			UseWhen:      []string{"当你想查看抄送给自己、需要知悉但无需审批的单子时使用；按页码/关键字分页返回抄送我的审批单列表，适合了解与自己相关但不用自己动手处理的审批动态。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

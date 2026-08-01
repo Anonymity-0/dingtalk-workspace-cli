@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // These wire structs are used only at the JSON boundary. Once decoded, the
@@ -105,6 +106,13 @@ type schemaParamWire struct {
 	FieldProvenance      map[string]contract.FieldProvenance `json:"field_provenance"`
 }
 
+// validateSchemaSnapshotTypedRoundTrip gates the expensive Catalog↔typed
+// content equality pass. Production cold start leaves it false: generation
+// already proves delivery invariants, and the loader still enforces structure,
+// unknown fields, Index(), interface, and provenance. Tests enable it via
+// init in schema_snapshot_roundtrip_test.go so loader drift cases stay covered.
+var validateSchemaSnapshotTypedRoundTrip = false
+
 func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry, SchemaIndex, error) {
 	catalogData, err := json.Marshal(snapshot.Catalog)
 	if err != nil {
@@ -114,8 +122,32 @@ func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry,
 	if err := decodeStrictSchemaJSON(catalogData, &catalog); err != nil {
 		return SchemaRegistry{}, SchemaIndex{}, fmt.Errorf("decode typed Schema Catalog index: %w", err)
 	}
+	tools := make(map[string]schemaToolWire, len(snapshot.Tools))
+	for canonical, detail := range snapshot.Tools {
+		wire, err := schemaToolWireFromPayload(detail)
+		if err != nil {
+			return SchemaRegistry{}, SchemaIndex{}, fmt.Errorf("decode Schema ToolSpec %s: %w", canonical, err)
+		}
+		tools[canonical] = wire
+	}
+	registry, index, err := schemaRegistryFromTyped(catalog, tools)
+	if err != nil {
+		return SchemaRegistry{}, SchemaIndex{}, err
+	}
+	if validateSchemaSnapshotTypedRoundTrip {
+		if err := validateSnapshotTypedRoundTrip(snapshot, registry); err != nil {
+			return SchemaRegistry{}, SchemaIndex{}, err
+		}
+	}
+	return registry, index, nil
+}
+
+// schemaRegistryFromTyped builds SchemaRegistry/SchemaIndex from already-decoded
+// wire structs. The production embed path uses this to avoid per-tool
+// map[string]any → json.Marshal → Unmarshal round trips.
+func schemaRegistryFromTyped(catalog schemaCatalogWire, tools map[string]schemaToolWire) (SchemaRegistry, SchemaIndex, error) {
 	products := make([]ProductSpec, 0, len(catalog.Products))
-	seen := make(map[string]bool, len(snapshot.Tools))
+	seen := make(map[string]bool, len(tools))
 	for _, productWire := range catalog.Products {
 		product := ProductSpec{
 			ID:              strings.TrimSpace(productWire.ID),
@@ -134,11 +166,11 @@ func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry,
 		}
 		for _, summary := range productWire.Tools {
 			canonical := strings.TrimSpace(summary.CanonicalPath)
-			detail, ok := snapshot.Tools[canonical]
+			wire, ok := tools[canonical]
 			if !ok {
 				return SchemaRegistry{}, SchemaIndex{}, fmt.Errorf("schema Catalog summary %s has no full ToolSpec", canonical)
 			}
-			tool, err := schemaToolSpecFromPayload(detail)
+			tool, err := schemaToolSpecFromWire(wire)
 			if err != nil {
 				return SchemaRegistry{}, SchemaIndex{}, fmt.Errorf("decode Schema ToolSpec %s: %w", canonical, err)
 			}
@@ -150,9 +182,9 @@ func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry,
 		}
 		products = append(products, product)
 	}
-	if len(seen) != len(snapshot.Tools) {
+	if len(seen) != len(tools) {
 		missing := make([]string, 0)
-		for canonical := range snapshot.Tools {
+		for canonical := range tools {
 			if !seen[canonical] {
 				missing = append(missing, canonical)
 			}
@@ -172,22 +204,30 @@ func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry,
 	if err != nil {
 		return SchemaRegistry{}, SchemaIndex{}, err
 	}
-	registry = index.Registry()
-	if err := validateSnapshotTypedRoundTrip(snapshot, registry); err != nil {
-		return SchemaRegistry{}, SchemaIndex{}, err
-	}
-	return registry, index, nil
+	return index.Registry(), index, nil
 }
 
-func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
+func schemaToolWireFromPayload(payload map[string]any) (schemaToolWire, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return ToolSpec{}, err
+		return schemaToolWire{}, err
 	}
 	var wire schemaToolWire
 	if err := decodeStrictSchemaJSON(data, &wire); err != nil {
+		return schemaToolWire{}, err
+	}
+	return wire, nil
+}
+
+func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
+	wire, err := schemaToolWireFromPayload(payload)
+	if err != nil {
 		return ToolSpec{}, err
 	}
+	return schemaToolSpecFromWire(wire)
+}
+
+func schemaToolSpecFromWire(wire schemaToolWire) (ToolSpec, error) {
 	parameterNames := make([]string, 0, len(wire.Parameters))
 	for name := range wire.Parameters {
 		parameterNames = append(parameterNames, name)

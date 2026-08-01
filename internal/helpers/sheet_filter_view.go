@@ -187,13 +187,14 @@ func newFilterCmd() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取工作表全局筛选信息。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_filter",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_filter"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取工作表全局筛选信息。",
 				UseWhen:      []string{"要查看当前全局筛选范围与列条件，或创建前确认是否已存在时"},
 				AvoidWhen:    []string{"个人筛选视图用 filter-view list/info；不要与 filter-view 混淆"},
@@ -243,13 +244,14 @@ func newFilterCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建全局筛选（每表仅一个；range 须含表头）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "create_filter",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_filter"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建全局筛选（每表仅一个；range 须含表头）。",
 				UseWhen:      []string{"用户说筛选/过滤/只看某些行，且要影响所有协作者视图时创建全局筛选"},
 				AvoidWhen:    []string{"个人化筛选视图用 filter-view create；已存在全局筛选时先 get 再 update；禁止删行来代替筛选"},
@@ -282,13 +284,14 @@ func newFilterCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除全局筛选（需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_filter",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_filter"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除全局筛选（需确认后加 --yes）。",
 				UseWhen:      []string{"需要移除整张表的全局筛选及全部条件时"},
 				AvoidWhen:    []string{"只清某列条件用 filter clear-criteria；删筛选视图用 filter-view delete"},
@@ -337,13 +340,14 @@ func newFilterCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量更新全局筛选多列条件。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_filter",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_filter"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量更新全局筛选多列条件。",
 				UseWhen:      []string{"全局筛选已存在，需要设置或替换若干列条件时"},
 				AvoidWhen:    []string{"尚无筛选时先 create；只清一列用 clear-criteria；筛选视图条件用 filter-view update-criteria"},
@@ -382,13 +386,14 @@ func newFilterCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "清除全局筛选中某一列条件（不删筛选本身）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "clear_filter_criteria",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "clear_filter_criteria"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "清除全局筛选中某一列条件（不删筛选本身）。",
 				UseWhen:      []string{"只需取消某列过滤、保留全局筛选框架时"},
 				AvoidWhen:    []string{"删除整个全局筛选用 filter delete；筛选视图列条件用 filter-view delete-criteria"},
@@ -430,13 +435,14 @@ func newFilterCmd() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在全局筛选范围内按列排序（会改物理顺序）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "sort_filter",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "sort_filter"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在全局筛选范围内按列排序（会改物理顺序）。",
 				UseWhen:      []string{"已有全局筛选，需要按某列升/降序排列筛选范围内数据时"},
 				AvoidWhen:    []string{"无筛选取区域排序用 range sort；排序不可撤销"},
@@ -488,13 +494,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出工作表全部筛选视图概要。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_filter_views",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_filter_views"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出工作表全部筛选视图概要。",
 				UseWhen:      []string{"用户明确说筛选视图，需要枚举 filterViewId/名称/范围时"},
 				AvoidWhen:    []string{"全局筛选用 filter get；单视图详情用 filter-view info"},
@@ -559,13 +566,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建个人筛选视图（可同时带 criteria）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "create_filter_view",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_filter_view"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建个人筛选视图（可同时带 criteria）。",
 				UseWhen:      []string{"需要命名的个人化筛选视角且不影响其他协作者时"},
 				AvoidWhen:    []string{"影响全员的全局筛选用 filter create；只改已有视图属性用 filter-view update"},
@@ -643,13 +651,14 @@ filterViewId 可通过 filter-view list 获取。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新筛选视图名称、范围和/或多列条件。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_filter_view",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_filter_view"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新筛选视图名称、范围和/或多列条件。",
 				UseWhen:      []string{"需要改筛选视图名、扩大范围或批量改多列条件时"},
 				AvoidWhen:    []string{"只改单列条件用 update-criteria；删整个视图用 delete"},
@@ -695,13 +704,14 @@ filterViewId 可通过 filter-view list 获取。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除整个筛选视图（需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_filter_view",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_filter_view"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除整个筛选视图（需确认后加 --yes）。",
 				UseWhen:      []string{"用户明确要删除某个筛选视图及其全部条件时"},
 				AvoidWhen:    []string{"只清某列条件用 delete-criteria；删全局筛选用 filter delete"},
@@ -799,13 +809,14 @@ condition 类型支持的 operator（必须使用 kebab-case 格式）：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置或更新筛选视图的单列条件。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置或更新筛选视图的单列条件。",
 				UseWhen:      []string{"只要精确配置某一列的 values/condition/color 条件时"},
 				AvoidWhen:    []string{"批量多列或改名改范围用 filter-view update；清除该列用 delete-criteria"},
@@ -863,13 +874,14 @@ filterViewId 可通过 filter-view list 获取。
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "清除筛选视图某列条件（需确认后加 --yes；保留视图）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "clear_filter_view_criteria",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "clear_filter_view_criteria"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "清除筛选视图某列条件（需确认后加 --yes；保留视图）。",
 				UseWhen:      []string{"只需取消筛选视图中某列过滤时"},
 				AvoidWhen:    []string{"删除整个筛选视图用 filter-view delete"},
@@ -904,14 +916,15 @@ filterViewId 可通过 filter-view list 获取。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取单个筛选视图完整配置（含 criteria）。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_filter_views",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_filter_views"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取单个筛选视图完整配置（含 criteria）。",
 				UseWhen:      []string{"已知 filterViewId，需要查看名称/范围/全部条件时"},
 				AvoidWhen:    []string{"列目录用 list；列条件清单用 list-criteria；全局筛选用 filter get"},
@@ -947,14 +960,15 @@ filterViewId 可通过 filter-view list 获取。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出筛选视图已设置的全部列条件。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_filter_views",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_filter_views"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出筛选视图已设置的全部列条件。",
 				UseWhen:      []string{"管理条件前需要看当前视图有哪些列条件时"},
 				AvoidWhen:    []string{"单列详情用 get-criteria；视图属性用 info"},
@@ -996,14 +1010,15 @@ filterViewId 可通过 filter-view list 获取。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取筛选视图指定列的条件详情。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_filter_views",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_filter_views"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取筛选视图指定列的条件详情。",
 				UseWhen:      []string{"修改某列条件前先查看该列当前 filterType/operators 时"},
 				AvoidWhen:    []string{"全部列条件用 list-criteria"},

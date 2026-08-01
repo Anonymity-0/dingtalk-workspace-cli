@@ -16,8 +16,9 @@ package smart
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -46,13 +47,14 @@ var Broadcast = shortcut.Shortcut{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按姓名逐一给多个人群发同一条单聊消息（自动解析 userId、逐个发送）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按姓名逐一给多个人群发同一条单聊消息（自动解析 userId、逐个发送）",
 			UseWhen:      []string{"当你想把同一条通知一次性单聊发给多位同事、但只知道他们的姓名不想逐个查 userId 时使用；内部把姓名列表逐个解析成唯一用户后，用 openDingTalkId 对每个人单独发一条单聊消息，并汇总成功/失败人数。某个姓名匹配不到人或匹配到多人时，会跳过该人并在结尾报出，不影响其他人收到消息。会真实发出多条消息。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

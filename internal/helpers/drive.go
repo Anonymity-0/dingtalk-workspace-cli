@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -464,13 +463,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取文件/文件夹列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "The CLI command routes by --workspace between drive/list_files and doc/list_nodes, so the reviewed executable wrapper has no single direct MCP interface.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "The CLI command routes by --workspace between drive/list_files and doc/list_nodes, so the reviewed executable wrapper has no single direct MCP interface.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取文件/文件夹列表",
 				UseWhen: []string{
 					"用户要浏览「我的文件」/钉盘/网盘某目录下有哪些文件或文件夹时",
@@ -515,13 +515,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取文件元数据信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "get_file_info",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "get_file_info"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取文件元数据信息",
 				UseWhen: []string{
 					"用户要查看钉盘文件/文件夹元信息（名称、类型、大小、路径、时间）时",
@@ -611,14 +612,15 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "下载钉盘或文档空间文件到本地",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "download_file",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "download_file"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "下载钉盘或文档空间文件到本地",
 				UseWhen: []string{
 					"用户要把钉盘普通文件（PDF/图片/Office 等非在线文档）下载到本地路径时",
@@ -708,13 +710,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
 				UseWhen: []string{
 					"用户要下载文件的历史版本/旧版本",
@@ -757,13 +760,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "create_folder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "create_folder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建文件夹",
 				UseWhen: []string{
 					"用户要在钉盘/「我的文件」下新建普通文件夹时",
@@ -818,13 +822,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取文件上传信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "get_upload_info",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "get_upload_info"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取文件上传信息",
 				UseWhen:      []string{"仅当无法使用 drive upload 一条命令、需要自定义流式上传时，获取 OSS 预签名上传凭证"},
 				AvoidWhen: []string{
@@ -870,13 +875,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "提交文件上传",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "commit_upload",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "commit_upload"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "提交文件上传",
 				UseWhen:      []string{"手动三步上传的最后一步：已 PUT 到 OSS，用 upload-info 返回的 uploadId 提交入库时"},
 				AvoidWhen: []string{
@@ -964,14 +970,15 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
 				UseWhen: []string{
 					"用户要把本地文件上传到钉盘/我的文件（首选一条命令自动完成凭证+PUT+提交）时",
@@ -992,7 +999,7 @@ func newDriveCommand() *cobra.Command {
 			// Composite multi-step leaf (get_upload_info → PUT → commit_upload):
 			// no single RPCName / interface_ref. Keep --node→nodeId on this leaf
 			// only; do not hang it on upload-info or commit.
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(false)},
 			},
 		},
@@ -1043,13 +1050,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容查询钉盘空间列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "list_spaces",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "list_spaces"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容查询钉盘空间列表",
 				UseWhen:      []string{"兼容入口：枚举钉盘企业空间或「我的文件」空间以拿 spaceId/rootFolderId 时"},
 				AvoidWhen: []string{
@@ -1064,7 +1072,7 @@ func newDriveCommand() *cobra.Command {
 			// MCP pins maxResults as number while the Cobra flag is integer. Publishing
 			// interface_type=number is a merge-base contract change; declare integer so
 			// resolution equals cobra_flag_type and omits a separate interface_type field.
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", InterfaceType: "integer"},
 			},
 		},
@@ -1201,13 +1209,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "drive", RPCName: "search_files",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "search_files"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果",
 				UseWhen: []string{
 					"用户要在钉盘/我的文件里按关键词找文件、文件夹或团队空间，且不知道具体路径时",
@@ -1274,13 +1283,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将钉盘中的文件或文件夹移入回收站",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "delete_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将钉盘中的文件或文件夹移入回收站",
 				UseWhen:      []string{"用户明确要求把钉盘/文档空间中的文件或文件夹移入回收站，且已确认目标节点时"},
 				AvoidWhen: []string{
@@ -1329,13 +1339,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "copy_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "copy_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）",
 				UseWhen: []string{
 					"用户要复制/拷贝一份文件或文档到新位置，且原位置仍需保留副本时（copy≠move）",
@@ -1393,13 +1404,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将文件或文档移动到目标文件夹或知识库（原位置不再保留）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "move_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "move_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将文件或文档移动到目标文件夹或知识库（原位置不再保留）",
 				UseWhen: []string{
 					"用户要移动/搬走文件或文档到新位置，且原位置不再保留时（move≠copy）",
@@ -1457,13 +1469,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "rename_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "rename_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
 				UseWhen:      []string{"用户要重命名钉盘/文档空间中的文件、文档或文件夹时；实际执行会读取节点类型和当前扩展名，仅去掉完全匹配的一层后缀"},
 				AvoidWhen: []string{
@@ -1475,7 +1488,7 @@ func newDriveCommand() *cobra.Command {
 			},
 			// Shared RPC rename_document with doc rename; keep this description
 			// on the drive leaf only (doc rename does not strip extensions).
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "name", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
 			},
 		},
@@ -1504,13 +1517,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。",
 				UseWhen:      []string{"用户要查看节点阅读/编辑/评论/点赞/预览/下载等统计维度时"},
 				AvoidWhen: []string{
@@ -1556,13 +1570,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为钉盘或文档空间中的现有节点创建快捷方式。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为钉盘或文档空间中的现有节点创建快捷方式。",
 				UseWhen:      []string{"用户要给已有节点建快捷方式/软链接到目标文件夹或知识库时"},
 				AvoidWhen: []string{
@@ -1626,13 +1641,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为文档空间节点添加协作成员并授予指定角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "add_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "add_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为文档空间节点添加协作成员并授予指定角色",
 				UseWhen: []string{
 					"给单篇文档/文件夹/文件做节点级授权（USER + 角色 MANAGER/EDITOR/DOWNLOADER/READER）时",
@@ -1689,13 +1705,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新文档空间节点已有协作者的权限角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "update_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新文档空间节点已有协作者的权限角色",
 				UseWhen:      []string{"调整已有节点成员角色（如 READER→EDITOR）时"},
 				AvoidWhen: []string{
@@ -1747,13 +1764,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询文档空间节点的协作者列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "list_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询文档空间节点的协作者列表",
 				UseWhen:      []string{"查看某文档/文件夹节点当前有哪些成员及角色时"},
 				AvoidWhen: []string{
@@ -1800,13 +1818,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "从文档空间节点移除协作成员的权限",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "remove_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "remove_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "从文档空间节点移除协作成员的权限",
 				UseWhen:      []string{"从节点移除指定用户的直接授权时"},
 				AvoidWhen: []string{
@@ -1918,13 +1937,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "转交文档或知识库所有者给指定用户（不可逆）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "转交文档或知识库所有者给指定用户（不可逆）",
 				UseWhen:      []string{"用户明确要求转交文档/知识库所有权"},
 				AvoidWhen:    []string{"普通协作权限变更用 permission add/update/remove"},
@@ -1955,13 +1975,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询节点可申请的权限角色列表与审批人列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询节点可申请的权限角色列表与审批人列表",
 				UseWhen:      []string{"无权限访问文档时，先查可申请角色与审批人"},
 				AvoidWhen:    []string{"实际发起申请用 apply_permission"},
@@ -2010,13 +2031,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "向审批人发起文档权限申请（会真实通知审批人）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "向审批人发起文档权限申请（会真实通知审批人）",
 				UseWhen:      []string{"用户确认要为无权限文档发起权限申请"},
 				AvoidWhen:    []string{"先用 apply-info 查可申请角色与审批人；未经用户确认不得自行提交"},
@@ -2088,13 +2110,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查看回收站文件列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看回收站文件列表",
 				UseWhen:      []string{"用户要查看钉盘回收站里有哪些已删文件时"},
 				AvoidWhen: []string{
@@ -2131,13 +2154,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "还原回收站中的文件",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "还原回收站中的文件",
 				UseWhen:      []string{"用户要从回收站还原指定回收项（已从 recycle list 拿到 id）时"},
 				AvoidWhen: []string{
@@ -2226,13 +2250,14 @@ func newDriveCommand() *cobra.Command {
 			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
 			return err
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "开启文件的互联网公开发布",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "开启文件的互联网公开发布",
 				UseWhen:      []string{"用户明确要求将文件设为互联网公开（任何人凭链接可访问，无需登录）时"},
 				AvoidWhen: []string{
@@ -2277,13 +2302,14 @@ func newDriveCommand() *cobra.Command {
 			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
 			return err
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "关闭文件的互联网公开发布",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "关闭文件的互联网公开发布",
 				UseWhen:      []string{"用户明确要求关闭文件的互联网公开发布，使外部链接失效时"},
 				AvoidWhen: []string{
@@ -2317,13 +2343,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询文件当前是否处于互联网公开发布状态",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询文件当前是否处于互联网公开发布状态",
 				UseWhen:      []string{"查询文件是否已互联网公开发布及公开权限（READER/DOWNLOADER/EDITOR）时"},
 				AvoidWhen: []string{
@@ -2418,13 +2445,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取当前用户最近访问或编辑过的文档列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取当前用户最近访问或编辑过的文档列表",
 				UseWhen: []string{
 					"用户要看最近访问或最近编辑的文档列表时（默认最近访问 operate-type=0）",
@@ -2475,13 +2503,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "收藏文档/文件到当前用户收藏列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "收藏文档/文件到当前用户收藏列表",
 				UseWhen:      []string{"用户说 收藏这个文档/加个收藏/标星"},
 				AvoidWhen:    []string{"取消收藏用 unmark_star；查看收藏列表用 get_star_list"},
@@ -2508,13 +2537,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将文档/文件从当前用户收藏列表移除",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将文档/文件从当前用户收藏列表移除",
 				UseWhen:      []string{"用户说 取消收藏/去掉收藏/不收藏了"},
 				AvoidWhen:    []string{"添加收藏用 mark_star"},
@@ -2556,13 +2586,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取当前用户的收藏列表，支持分页与按内容类型筛选",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取当前用户的收藏列表，支持分页与按内容类型筛选",
 				UseWhen:      []string{"用户说 我的收藏/收藏列表/收藏了哪些文档"},
 				AvoidWhen:    []string{"操作单个收藏用 mark_star/unmark_star"},
@@ -2599,13 +2630,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取节点封面图片地址（文档首图/图片缩略图/类型图标）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取节点封面图片地址（文档首图/图片缩略图/类型图标）",
 				UseWhen:      []string{"用户说 封面/封面图/缩略图/预览图"},
 				AvoidWhen:    []string{"设置文档封面用 doc style cover set"},
@@ -2642,13 +2674,14 @@ func newDriveCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）",
 				UseWhen:      []string{"用户说 回滚版本/恢复到某个版本/版本回退，且目标是普通文件"},
 				AvoidWhen:    []string{"在线文档回滚用 doc version revert；在线表格用 sheet version revert"},

@@ -5,9 +5,10 @@ package cli
 import (
 	"encoding/json"
 	"errors"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func contractCoverageTool(product, name, cliPath string) ToolSpec {

@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package contract owns the command-framework Schema declaration registries
-// and the leaf/product types that form ContractFinal pass-through.
+// Package contract owns the command-framework declaration registries and the
+// leaf/product types that form ContractFinal pass-through.
 //
 // This package is the sole definition point for:
-//   - ContractFinalPayload (+ registry)
+//   - ContractFinalPayload (+ registry store)
 //   - ProductDecl (+ registry)
 //   - SafetySpec / SelectionSpec / InterfaceSpec / DryRunSpec / identity /
 //     positionals / ParamDecl
@@ -25,17 +25,18 @@
 //
 //   - Types and registries → corecmd/contract (this package). Callers author
 //     contract.SafetySpec / contract.ParamDecl / contract.ProductDecl /
-//     contract.ContractFinalPayload directly; there is no cli type-alias layer.
-//   - Cobra annotation seam (AnnotateRuntime*) → internal/cli. Framework code
-//     (corecmd.New / AttachSchema) may call those helpers to embed
-//     dws.schema.* facts; cli must not redefine the contract types.
-//   - Delivery helpers that must emit annotations
-//     (cli.RegisterRuntimeContractFinal, cli.ApplyParamDecls) stay in cli but
-//     accept contract.* payloads.
+//     contract.ContractFinalPayload / contract.InterfaceSpec directly.
+//   - Authoring wrapper → corecmd.ContractDecl (leaf-facing; nested fields are
+//     these contract types). Name is ContractDecl, not SchemaDecl: "Schema" in
+//     this repo means Catalog / ToolSpec delivery, not the author declaration.
+//   - Cobra annotation + store seam → internal/cli.RegisterRuntimeContractFinal
+//     (AnnotateRuntimeContract + RegisterRuntimeContractFinal). Production
+//     framework code (corecmd.New / AttachContract) must use that seam and must
+//     not call this package's store helper directly.
 //   - Catalog assembly / ResolveMeta / go:embed → internal/cli (delivery
 //     boundary; not moved into contract).
 //
-// Authoring path: corecmd.SchemaDecl → ContractFinalPayload; ProductDecl for
-// product-level Agent routing. Provenance stamp for declared leaf Safety
-// remains "corecmd.contract".
+// Authoring path: corecmd.ContractDecl → ContractFinalPayload (via cli seam);
+// ProductDecl for product-level Agent routing. Provenance stamp for declared
+// leaf Safety remains "corecmd.contract".
 package contract

@@ -683,13 +683,14 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查看后台连接器守护进程状态",
-			Interface: &LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令仅操作本地进程或策略文件，不调用 MCP 接口",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看后台连接器守护进程状态",
 				UseWhen:      []string{"需要确认本地 connect 守护进程是否在跑、pid/日志路径"},
 				AvoidWhen:    []string{"要停止守护进程时用 dev connect stop"},
@@ -725,13 +726,14 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "优雅停止后台连接器守护进程",
-			Interface: &LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令仅操作本地进程或策略文件，不调用 MCP 接口",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "优雅停止后台连接器守护进程",
 				UseWhen:      []string{"用户明确要求停止本地 Stream/连接器守护进程"},
 				AvoidWhen:    []string{"只想查看状态时用 dev connect status"},

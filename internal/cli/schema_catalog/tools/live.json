@@ -4,10 +4,10 @@
     "live.get_my_lives": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "查看当前用户发起的直播列表与基础统计",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"
@@ -31,7 +31,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查看当前用户发起的直播列表与基础统计"
             }
           ],
@@ -39,7 +39,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查看当前用户发起的直播列表与基础统计"
         },
         "availability": {
@@ -49,7 +49,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -57,7 +57,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -67,7 +67,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"
               ]
@@ -77,7 +77,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"
           ]
@@ -89,7 +89,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "live.get_my_lives"
             }
           ],
@@ -97,7 +97,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "live.get_my_lives"
         },
         "confirmation": {
@@ -107,7 +107,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -115,7 +115,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -125,7 +125,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查看当前用户发起的直播列表与基础统计"
             }
           ],
@@ -133,7 +133,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查看当前用户发起的直播列表与基础统计"
         },
         "effect": {
@@ -143,7 +143,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -151,7 +151,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -161,7 +161,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws live stream list"
               ]
@@ -171,7 +171,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws live stream list"
           ]
@@ -183,7 +183,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -191,7 +191,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -201,7 +201,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -209,7 +209,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -219,7 +219,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "live",
                 "rpc_name": "get_my_lives"
@@ -230,7 +230,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "live",
             "rpc_name": "get_my_lives"
@@ -243,7 +243,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -251,7 +251,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -261,7 +261,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -269,7 +269,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -279,7 +279,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -287,25 +287,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "查看我的直播列表"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "查看我的直播列表"
         },
         "use_when": {
@@ -315,7 +315,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "用户要看自己发起过的直播、状态或观看量等列表信息"
               ]
@@ -325,7 +325,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "用户要看自己发起过的直播、状态或观看量等列表信息"
           ]

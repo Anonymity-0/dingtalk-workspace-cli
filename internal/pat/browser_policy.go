@@ -231,13 +231,14 @@ func newBrowserPolicyCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "配置 PAT 授权流程是否允许打开本地浏览器",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令仅操作本地进程或策略文件，不调用 MCP 接口",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "配置 PAT 授权流程是否允许打开本地浏览器",
 				UseWhen:      []string{"需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"},
 				AvoidWhen:    []string{"需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"},

@@ -294,7 +294,7 @@ func validateCompatibilityLeafContract(spec CommandSpec, primary, alias *cobra.C
 }
 
 // filterSchemaAnnotations returns a copy of annotations without dws.schema.*
-// keys. Those are Schema-level metadata (contract.ParamDecl / AttachSchema) that do not
+// keys. Those are Schema-level metadata (contract.ParamDecl / AttachContract) that do not
 // affect command execution and are resolved through the shared assembly path.
 func filterSchemaAnnotations(annotations map[string][]string) map[string][]string {
 	if len(annotations) == 0 {
@@ -487,7 +487,7 @@ func compatibilityFlagContractProblems(canonicalPath string, primary, alias *cob
 				name, compatibilityJSON(primaryFlag.Required), compatibilityJSON(aliasFlag.Required)))
 		}
 		// Compare annotations excluding dws.schema.* keys: those are Schema-level
-		// metadata declarations (contract.ParamDecl / AttachSchema) that do not affect
+		// metadata declarations (contract.ParamDecl / AttachContract) that do not affect
 		// command execution. The compatibility check verifies executable equivalence;
 		// Schema facts are resolved through the shared assembly path.
 		primaryExecAnnotations := filterSchemaAnnotations(primaryFlag.Annotations)

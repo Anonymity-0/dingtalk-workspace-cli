@@ -28,7 +28,7 @@ func TestEmbeddedSchemaCatalogStructure(t *testing.T) {
 	// After PR #656 the catalog is embedded as per-product shards, not a single
 	// JSON file. The loaded snapshot is the reassembled result — serialize it
 	// back to JSON and validate the same closed structure.
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	data, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
 		t.Fatalf("marshal embedded catalog snapshot: %v", err)

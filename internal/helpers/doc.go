@@ -17,7 +17,6 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -902,13 +901,14 @@ func newDocCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "搜索文档（不传关键词返回最近访问）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "search_documents",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "search_documents"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "搜索文档（不传关键词返回最近访问）",
 				UseWhen:      []string{"兼容入口：按关键词搜文档时（已弃用，日常改用 drive search / wiki node search）"},
 				AvoidWhen:    []string{"全局搜文件用 dws drive search；指定知识库内搜用 dws wiki node search"},
@@ -955,13 +955,14 @@ func newDocCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "list_nodes",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_nodes"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
 				UseWhen:      []string{"兼容入口：遍历文件夹或知识库直接子节点时（已弃用，日常改用 drive list / wiki node list）"},
 				AvoidWhen:    []string{"日常浏览「我的文档」/钉盘用 dws drive list；知识库用 dws wiki node list"},
@@ -992,13 +993,14 @@ func newDocCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取文档元信息（标题/类型/创建者/权限等）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "get_document_info",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "get_document_info"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取文档元信息（标题/类型/创建者/权限等）",
 				UseWhen: []string{
 					"用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
@@ -1088,13 +1090,14 @@ func newDocCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "get_document_content",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "get_document_content"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
 				UseWhen: []string{
 					"用户要读取钉钉在线文字文档(adoc)正文（Markdown）时",
@@ -1111,7 +1114,7 @@ func newDocCommand() *cobra.Command {
 					"dws doc read --node <DOC_ID> --content-format jsonml --scope outline --max-depth 3",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 				{Name: "content-format", Property: "format", Required: boolPtr(false)},
 				{Name: "end-block-id", Required: boolPtr(false)},
@@ -1213,13 +1216,14 @@ func newDocCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建一篇新的在线文档",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "create_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建一篇新的在线文档",
 				UseWhen: []string{
 					"用户要新建一篇文字在线文档(adoc)，可空文档或带初始 Markdown 时",
@@ -1235,7 +1239,7 @@ func newDocCommand() *cobra.Command {
 					"dws doc create --name \"Q1 总结\" --content \"# Q1 总结\" --folder <FOLDER_ID> --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
 		},
@@ -1340,13 +1344,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "update_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
 				UseWhen: []string{
 					"用户要向已有 adoc 追加内容时用 --mode append（更安全）",
@@ -1363,7 +1368,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"dws doc update --node <DOC_ID> --content-file ./body.md --mode overwrite --dry-run",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 			},
 		},
@@ -1417,13 +1422,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "create_file",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_file"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
 				UseWhen:      []string{"兼容入口：按类型创建文件节点时（已弃用，改用 wiki node create）"},
 				AvoidWhen: []string{
@@ -1468,13 +1474,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "create_folder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_folder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建文件夹",
 				UseWhen:      []string{"兼容入口：创建文件夹（已弃用）时"},
 				AvoidWhen:    []string{"个人空间/钉盘改用 dws drive mkdir；知识库改用 wiki node create --type folder"},
@@ -1504,14 +1511,15 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
 				UseWhen:      []string{"把本地文件上传到文档空间/知识库（可 --convert 转在线文档）时"},
 				AvoidWhen: []string{
@@ -1544,14 +1552,15 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "download_file",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "download_file"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
 				UseWhen:      []string{"兼容入口：获取文件下载凭证（已迁移场景优先 drive download）时"},
 				AvoidWhen: []string{
@@ -1612,13 +1621,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询文档一级块元素列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "list_document_blocks",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_document_blocks"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询文档一级块元素列表",
 				UseWhen:      []string{"查看文档一级块结构、拿 blockId，供 insert/update/delete 或划词评论定位时"},
 				AvoidWhen: []string{
@@ -1735,13 +1745,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "向文档插入块元素",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "insert_document_block",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "insert_document_block"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "向文档插入块元素",
 				UseWhen:      []string{"在文档中插入新块（段落/标题等）；简单场景用 --text/--heading，复杂块用 --element JSON"},
 				AvoidWhen: []string{
@@ -1813,13 +1824,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新文档中的指定块",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "update_document_block",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_document_block"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新文档中的指定块",
 				UseWhen:      []string{"修改已有块的文本/标题/样式（已知 blockId）时"},
 				AvoidWhen: []string{
@@ -1855,13 +1867,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除块元素（不可逆）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "delete_document_block",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document_block"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除块元素（不可逆）",
 				UseWhen:      []string{"用户确认后删除文档中指定块元素时"},
 				AvoidWhen: []string{
@@ -1892,13 +1905,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "copy_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "copy_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
 				UseWhen: []string{
 					"用户要复制文档/文件并保留原位置时（尤其保形复制模板：copy + rename + block update）",
@@ -1935,13 +1949,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "move_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "move_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
 				UseWhen:      []string{"用户要移动文档/文件且原位置不再保留时"},
 				AvoidWhen: []string{
@@ -1984,13 +1999,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "rename_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "rename_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
 				UseWhen:      []string{"用户要改在线文档在列表与链接中展示的名称时"},
 				AvoidWhen: []string{
@@ -2032,13 +2048,14 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "delete_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
 				UseWhen:      []string{"用户明确要求用 doc delete 兼容入口将文档/文件移入回收站，且已确认目标时"},
 				AvoidWhen: []string{
@@ -2048,7 +2065,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 				Examples: []string{"dws doc delete --node <DOC_ID> --format json"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 			},
 		},
@@ -2285,13 +2302,14 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取文档附件的临时下载链接",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "download_doc_attachment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "download_doc_attachment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取文档附件的临时下载链接",
 				UseWhen:      []string{"获取文档正文中附件的临时下载 URL（resourceId 来自 block list attachment）时"},
 				AvoidWhen:    []string{"下载钉盘普通文件用 drive download；导出在线文档用 doc export"},
@@ -2329,14 +2347,15 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "上传本地文件并作为附件插入文档",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "上传本地文件并作为附件插入文档",
 				UseWhen:      []string{"把本地文件/图片作为附件块插入文档正文（自动 prepare+PUT+insert）时"},
 				AvoidWhen: []string{
@@ -2429,13 +2448,14 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询文档评论列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc-comment", RPCName: "list_comments",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "list_comments"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询文档评论列表",
 				UseWhen:      []string{"查看文档评论列表，可按全文/划词、已解决/未解决过滤时"},
 				AvoidWhen:    []string{"创建全文评论用 comment create；划词用 create-inline；回复用 reply；删除用 delete"},
@@ -2496,13 +2516,14 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建文档评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc-comment", RPCName: "create_comment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "create_comment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建文档评论",
 				UseWhen:      []string{"在文档上创建不绑定具体划词位置的全文评论，可 @用户或通过 --mentioned-open-conversation-id @群"},
 				AvoidWhen: []string{
@@ -2514,7 +2535,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 					"dws doc comment create --node <DOC_ID> --content \"请review\" --mention uid1,uid2 --mentioned-open-conversation-id <openConversationId> --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
 			},
 		},
@@ -2581,13 +2602,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "回复文档评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc-comment", RPCName: "reply_comment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "reply_comment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "回复文档评论",
 				UseWhen:      []string{"回复已有评论（文字、可 @用户/@群，或 --emoji 表情）；commentKey 来自 list/create"},
 				AvoidWhen:    []string{"新建评论用 create/create-inline；删评论用 delete"},
@@ -2596,7 +2618,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"比心\" --emoji --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
 			},
 		},
@@ -2647,13 +2669,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新指定文档评论的文字内容和可选 @用户/@群。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新指定文档评论的文字内容和可选 @用户/@群。",
 				UseWhen:      []string{"修改已有评论正文；可选更新 --mention 或 --mentioned-open-conversation-id"},
 				AvoidWhen:    []string{"删除评论用 delete；回复用 reply"},
@@ -2662,7 +2685,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 					"dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"请群内确认\" --mentioned-open-conversation-id <openConversationId>",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "mention", InterfaceType: "array"},
 				{Name: "mentioned-open-conversation-id", Property: "mentionedOpenConversationIds", Required: boolPtr(false), InterfaceType: "array"},
 			},
@@ -2701,13 +2724,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "永久删除指定文档中的一条评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "永久删除指定文档中的一条评论",
 				UseWhen:      []string{"用户明确要求永久删除指定文档中的某条评论（已有 commentKey）时"},
 				AvoidWhen:    []string{"只需改文案用 update；回复用 reply；目标评论不明或未确认时不要删"},
@@ -2768,13 +2792,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在文档选中文本范围创建划词评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc-comment", RPCName: "create_inline_comment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "create_inline_comment"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在文档选中文本范围创建划词评论",
 				UseWhen:      []string{"针对块内某段文本创建划词评论（必填 blockId、start、end）时"},
 				AvoidWhen: []string{
@@ -2870,13 +2895,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "add_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "add_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
 				UseWhen:      []string{"给单篇文档做节点级授权（与 drive permission add 同能力的 doc 入口）时"},
 				AvoidWhen: []string{
@@ -2942,13 +2968,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "update_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
 				UseWhen:      []string{"变更文档节点上已有用户角色时"},
 				AvoidWhen:    []string{"新授权用 add；移除用 remove"},
@@ -3006,13 +3033,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "list_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
 				UseWhen:      []string{"列出文档节点成员权限时"},
 				AvoidWhen:    []string{"增删改权限用 add/update/remove；知识库成员用 wiki member list"},
@@ -3070,13 +3098,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "remove_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "remove_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
 				UseWhen:      []string{"移除文档节点上指定用户权限时"},
 				AvoidWhen:    []string{"改角色用 update；知识库撤成员用 wiki member remove"},
@@ -3305,14 +3334,15 @@ CLI 内部自动完成全部流程：
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询文档导出任务结果",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "query_export_job",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "query_export_job"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询文档导出任务结果",
 				UseWhen:      []string{"doc export 超时/中断后，用 jobId 查询导出任务状态与下载链接时"},
 				AvoidWhen:    []string{"常规导出请直接 dws doc export（一体化提交+轮询+下载），不要先查 job"},
@@ -3403,14 +3433,15 @@ CLI 内部自动完成全部流程:
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "根据 taskId 查询文档导入任务的执行结果",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "根据 taskId 查询文档导入任务的执行结果",
 				UseWhen:      []string{"查询文档导入任务结果（已有 taskId，导入超时/中断后兜底）时"},
 				AvoidWhen:    []string{"发起导入用 doc import（若入口可用）；不要用本命令代替导入"},
@@ -3448,13 +3479,14 @@ CLI 内部自动完成全部流程:
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "手动保存文档版本快照",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "手动保存文档版本快照",
 				UseWhen:      []string{"手动保存当前文档版本快照时"},
 				AvoidWhen:    []string{"回滚用 revert；只看历史用 list"},
@@ -3490,13 +3522,14 @@ CLI 内部自动完成全部流程:
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查看文档历史版本列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看文档历史版本列表",
 				UseWhen:      []string{"查看文档历史版本列表以确认版本号时"},
 				AvoidWhen:    []string{"回滚用 version revert（需确认）；保存快照用 version save"},
@@ -3550,13 +3583,14 @@ CLI 内部自动完成全部流程:
 	}
 	DeclareLeafMetadata(versionRevertCmd, LeafSpec{
 		Safety: versionRevertSafety,
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将文档回滚到指定历史版本",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将文档回滚到指定历史版本",
 				UseWhen:      []string{"用户明确要求将 adoc 回滚到指定历史版本（已从 version list 确认版本号）时"},
 				AvoidWhen: []string{
@@ -3616,13 +3650,14 @@ CLI 内部自动完成全部流程:
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取当前用户可用的文档模板列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取当前用户可用的文档模板列表",
 				UseWhen:      []string{"列出当前用户可用的文档模板时"},
 				AvoidWhen:    []string{"按关键词搜模板用 template search；套用模板用 template apply"},
@@ -3672,13 +3707,14 @@ CLI 内部自动完成全部流程:
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "根据关键词搜索文档模板",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "根据关键词搜索文档模板",
 				UseWhen:      []string{"按关键词搜索文档模板时"},
 				AvoidWhen:    []string{"浏览全部模板用 template list；创建文档用 template apply"},
@@ -3729,13 +3765,14 @@ CLI 内部自动完成全部流程:
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "使用指定模板创建新文档",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "使用指定模板创建新文档",
 				UseWhen:      []string{"使用指定模板创建新文档时"},
 				AvoidWhen:    []string{"先 list/search 拿到模板再 apply；普通空文档用 doc create"},

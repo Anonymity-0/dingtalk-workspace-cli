@@ -27,8 +27,10 @@ import (
 // corecmd/contract; callers author contract.SafetySpec / contract.ParamDecl /
 // contract.ContractFinalPayload directly — there is no cli type alias layer.
 
-// RegisterRuntimeContractFinal stores the typed final Schema overlay and marks
-// the leaf with the runtime contract annotation for delivery consumers.
+// RegisterRuntimeContractFinal is the sole production registration entry for
+// ContractFinal: annotate (dws.schema.contract) then store the typed payload.
+// Framework code (corecmd.AttachContract / New) must use this seam rather than
+// calling contract.RegisterRuntimeContractFinal directly.
 func RegisterRuntimeContractFinal(cmd *cobra.Command, payload contract.ContractFinalPayload) {
 	if cmd == nil {
 		return

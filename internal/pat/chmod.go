@@ -29,7 +29,6 @@ import (
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -446,13 +445,14 @@ agentCode 配置:
 			}
 			return nil
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "pat", RPCName: "pat.batch_grant",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "pat", RPCName: "pat.batch_grant"},
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
 				UseWhen: []string{
 					"命令提示缺少行为授权，需要按产品或 scope 批量授权",
@@ -466,7 +466,7 @@ agentCode 配置:
 				Examples: []string{"dws pat chmod --products calendar,aitable --grant-type session --session-id <SESSION_ID> --dry-run --format json"},
 			},
 			// session-id is conditionally required in Validate; publish via
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{
 					Name:         "session-id",
 					Required:     boolPtr(false),

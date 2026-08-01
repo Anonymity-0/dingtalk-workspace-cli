@@ -133,14 +133,15 @@ func newSheetCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "submit_export_job",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "submit_export_job"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
 				UseWhen:      []string{"需要把在线电子表格导出为 Excel 文件或拿到 downloadUrl 时"},
 				AvoidWhen:    []string{"禁止用 range read 拼 xlsx；本地已有 xlsx 节点用 doc download；Agent 不要外层再轮询"},
@@ -159,13 +160,14 @@ func newSheetCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量打包多个写操作原子执行（可含清除/删除，需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量打包多个写操作原子执行（可含清除/删除，需确认后加 --yes）。",
 				UseWhen:      []string{"用户明确要求把多个已审查写操作作为一批执行时"},
 				AvoidWhen:    []string{"单操作请用对应原子命令；仅预览用 --dry-run，不要在未确认时加 --yes"},
@@ -179,13 +181,14 @@ func newSheetCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量清除多个区域（原子事务，需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量清除多个区域（原子事务，需确认后加 --yes）。",
 				UseWhen:      []string{"需要一次清除多个互不相关的区域，并希望同批提交时"},
 				AvoidWhen:    []string{"只清一个区域用 range clear；混有写入/合并等操作用 batch-update"},

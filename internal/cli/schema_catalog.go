@@ -71,9 +71,11 @@ type loadedSchemaCatalog struct {
 }
 
 var (
-	runtimeEmbeddedSchemaCatalogOnce sync.Once
-	runtimeEmbeddedSchemaCatalog     loadedSchemaCatalog
-	runtimeEmbeddedSchemaCatalogErr  error
+	runtimeEmbeddedSchemaCatalogOnce     sync.Once
+	runtimeEmbeddedSchemaCatalog         loadedSchemaCatalog
+	runtimeEmbeddedSchemaCatalogErr      error
+	runtimeEmbeddedSchemaCatalogMapsOnce sync.Once
+	runtimeEmbeddedSchemaCatalogMapsErr  error
 )
 
 var runtimeEmbeddedSchemaCatalogLazyLoadCount atomic.Uint64
@@ -86,6 +88,32 @@ func embeddedSchemaCatalog() loadedSchemaCatalog {
 	return runtimeEmbeddedSchemaCatalog
 }
 
+// materializeEmbeddedSchemaCatalogMaps fills Snapshot.Catalog/Tools from the
+// typed Registry for callers that still need the untyped delivery maps.
+// Production ResolveMeta does not call this; cold start stays on the typed path.
+func materializeEmbeddedSchemaCatalogMaps() (loadedSchemaCatalog, error) {
+	_ = embeddedSchemaCatalog()
+	if runtimeEmbeddedSchemaCatalogErr != nil {
+		return loadedSchemaCatalog{}, runtimeEmbeddedSchemaCatalogErr
+	}
+	runtimeEmbeddedSchemaCatalogMapsOnce.Do(func() {
+		if runtimeEmbeddedSchemaCatalog.Snapshot.Tools != nil {
+			return
+		}
+		payload, err := runtimeEmbeddedSchemaCatalog.Registry.ToSnapshotPayload()
+		if err != nil {
+			runtimeEmbeddedSchemaCatalogMapsErr = fmt.Errorf("materialize embedded Schema Catalog maps: %w", err)
+			return
+		}
+		runtimeEmbeddedSchemaCatalog.Snapshot.Catalog = payload.Catalog
+		runtimeEmbeddedSchemaCatalog.Snapshot.Tools = payload.Tools
+	})
+	if runtimeEmbeddedSchemaCatalogMapsErr != nil {
+		return loadedSchemaCatalog{}, runtimeEmbeddedSchemaCatalogMapsErr
+	}
+	return runtimeEmbeddedSchemaCatalog, nil
+}
+
 // schemaCatalogEnvelope is the global half of the split release Catalog. It
 // mirrors the generator's envelope struct; the Catalog map and release hashes
 // do not partition by product and stay in one file.
@@ -96,6 +124,15 @@ type schemaCatalogEnvelope struct {
 	Catalog     map[string]any `json:"catalog"`
 }
 
+// schemaCatalogEnvelopeTyped is the production cold-start envelope: Catalog is
+// decoded straight into wire structs instead of map[string]any.
+type schemaCatalogEnvelopeTyped struct {
+	Version     int               `json:"version"`
+	SurfaceHash string            `json:"surface_hash,omitempty"`
+	SourceHash  string            `json:"source_hash"`
+	Catalog     schemaCatalogWire `json:"catalog"`
+}
+
 // schemaCatalogToolShard mirrors the per-product shard written by the
 // generator. Only the product and its leaf ToolSpecs are stored here.
 type schemaCatalogToolShard struct {
@@ -103,17 +140,89 @@ type schemaCatalogToolShard struct {
 	Tools   map[string]map[string]any `json:"tools"`
 }
 
+// schemaCatalogToolShardTyped is the production cold-start shard: each ToolSpec
+// decodes directly into schemaToolWire with no map[string]any intermediate.
+type schemaCatalogToolShardTyped struct {
+	Product string                    `json:"product"`
+	Tools   map[string]schemaToolWire `json:"tools"`
+}
+
 // assembleEmbeddedSchemaCatalog reassembles the split release Catalog shards
-// into the same SchemaCatalogSnapshot the single-file layout produced, then
-// validates it through the production loader. source_hash still covers the
-// whole payload: if any shard is missing, stale, or tampered, the content hash
-// check in loadSchemaCatalogSnapshot fails exactly as before.
+// by decoding JSON bytes directly into typed wire structs, then building
+// SchemaRegistry/SchemaIndex. Unyped Snapshot.Catalog/Tools maps are left
+// empty until materializeEmbeddedSchemaCatalogMaps (tests / rare map callers).
+//
+// Wire JSON (catalog.json + tools/*.json) is unchanged. Generation-time
+// delivery invariants still prove content equality through the map-based
+// decodeSchemaCatalogSnapshot path.
 func assembleEmbeddedSchemaCatalog() (loadedSchemaCatalog, error) {
-	snapshot, err := assembleSchemaCatalogSnapshot(embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
+	envelope, tools, err := assembleTypedSchemaCatalog(embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
 	if err != nil {
 		return loadedSchemaCatalog{}, err
 	}
-	return loadSchemaCatalogSnapshot(snapshot)
+	return loadTypedSchemaCatalog(envelope, tools)
+}
+
+// assembleTypedSchemaCatalog decodes the embedded envelope and per-product
+// shards straight into wire structs for the production loader.
+func assembleTypedSchemaCatalog(envelopeJSON []byte, shards fs.FS, dir string) (schemaCatalogEnvelopeTyped, map[string]schemaToolWire, error) {
+	var envelope schemaCatalogEnvelopeTyped
+	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
+		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode embedded schema catalog.json: %w", err)
+	}
+	entries, err := fs.ReadDir(shards, dir)
+	if err != nil {
+		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read embedded schema catalog tools directory: %w", err)
+	}
+	tools := make(map[string]schemaToolWire, len(entries)*8)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
+		if readErr != nil {
+			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read embedded schema catalog shard %s: %w", entry.Name(), readErr)
+		}
+		var shard schemaCatalogToolShardTyped
+		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
+			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode embedded schema catalog shard %s: %w", entry.Name(), err)
+		}
+		for canonical, spec := range shard.Tools {
+			tools[canonical] = spec
+		}
+	}
+	return envelope, tools, nil
+}
+
+func loadTypedSchemaCatalog(envelope schemaCatalogEnvelopeTyped, tools map[string]schemaToolWire) (loadedSchemaCatalog, error) {
+	if envelope.Version != SchemaCatalogSnapshotVersion {
+		return loadedSchemaCatalog{}, fmt.Errorf("unsupported Schema Catalog snapshot version %d", envelope.Version)
+	}
+	if envelope.Catalog.Kind == "" || len(tools) == 0 {
+		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot is empty")
+	}
+	if envelope.SourceHash == "" {
+		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot is missing source_hash")
+	}
+	registry, index, err := schemaRegistryFromTyped(envelope.Catalog, tools)
+	if err != nil {
+		return loadedSchemaCatalog{}, fmt.Errorf("load typed Schema registry: %w", err)
+	}
+	if err := loadCatalogValidateInterfaces(registry); err != nil {
+		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema interface disposition: %w", err)
+	}
+	if err := loadCatalogValidateProvenance(registry); err != nil {
+		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema provenance: %w", err)
+	}
+	return loadedSchemaCatalog{
+		Snapshot: SchemaCatalogSnapshot{
+			Version:     envelope.Version,
+			SurfaceHash: envelope.SurfaceHash,
+			SourceHash:  envelope.SourceHash,
+		},
+		Registry: registry,
+		Index:    index,
+	}, nil
 }
 
 // assembleSchemaCatalogSnapshot merges an envelope document and a directory of

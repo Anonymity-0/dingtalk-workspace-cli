@@ -14,8 +14,9 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -61,13 +62,14 @@ var FindMailUser = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "按关键词搜索邮箱联系人并投影列表（姓名/昵称/邮箱/工号等）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "按关键词搜索邮箱联系人并投影列表（姓名/昵称/邮箱/工号等）",
 			UseWhen:      []string{"当你只知道某人的姓名、花名或邮箱片段，想在企业邮箱通讯录里按关键词把匹配的邮箱用户找出来、并只看一份精简清单（姓名、昵称、邮箱地址、工号、职位、工作地）而不想拿到一大坨原始字段时使用；内部按 --query 关键词调用邮箱用户搜索，再在本地把每个匹配用户投影成整洁记录打印出来，可配合 --format/--jq/--fields。这是纯只读操作，只做搜索与本地投影，不会修改任何数据；注意仅企业邮箱可用（个人邮箱如 xxx@dingtalk.com 会因无权限报错）；若没有命中则提示「没搜到邮箱联系人」。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

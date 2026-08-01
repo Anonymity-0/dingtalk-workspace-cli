@@ -9,7 +9,7 @@ import (
 )
 
 func TestEmbeddedCatalogKeepsSpecializedAitableViewTextCommandSpecific(t *testing.T) {
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	checked := 0
 	for canonical, tool := range loaded.Snapshot.Tools {
 		if !strings.HasPrefix(canonical, "aitable.view_get_") &&

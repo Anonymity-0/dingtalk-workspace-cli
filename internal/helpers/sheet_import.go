@@ -78,13 +78,14 @@ func newSheetImportCmdWithConfig(cfg importFlowConfig) *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将本地 xlsx/xls 文件导入为新的钉钉在线电子表格。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "该 CLI 导入流程包含本地文件校验、创建导入会话、OSS 上传、确认转换和任务轮询，不能绑定为单一 interface_ref。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "该 CLI 导入流程包含本地文件校验、创建导入会话、OSS 上传、确认转换和任务轮询，不能绑定为单一 interface_ref。",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将本地 xlsx/xls 文件导入为新的钉钉在线电子表格。",
 				UseWhen:      []string{"用户要把本地 Excel 文件转换为可在线编辑的钉钉表格时"},
 				AvoidWhen: []string{
@@ -121,13 +122,14 @@ func newSheetImportCmdWithConfig(cfg importFlowConfig) *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "根据 taskId 查询表格导入任务结果。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "该 CLI 续查命令显式复用 doc server 的 query_import_task；当前 Sheet 静态接口快照没有可直接绑定的单一 interface_ref。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "该 CLI 续查命令显式复用 doc server 的 query_import_task；当前 Sheet 静态接口快照没有可直接绑定的单一 interface_ref。",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "根据 taskId 查询表格导入任务结果。",
 				UseWhen:      []string{"已有 sheet import 返回的 taskId，需要在导入超时或中断后续查转换状态时"},
 				AvoidWhen: []string{

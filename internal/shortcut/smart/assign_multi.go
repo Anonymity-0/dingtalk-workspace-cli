@@ -15,8 +15,9 @@ package smart
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -53,13 +54,14 @@ var AssignMulti = shortcut.Shortcut{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "把一条待办按姓名一次性指派给多个人（自动把每个姓名解析成 userId）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "把一条待办按姓名一次性指派给多个人（自动把每个姓名解析成 userId）",
 			UseWhen:      []string{"当你想把同一条待办同时指派给好几个同事、但手上只有他们的姓名而不是 userId 时使用；内部会把 --to 里的每个姓名逐个解析成唯一 userId，只要有任何一个姓名查不到或者重名有歧义，就把这些问题一次性汇总报错、并且完全不创建待办（不会建出只指派了一半人的残缺待办）。全部姓名都解析成功后，才用这些 userId 一次性创建这条待办并指派给所有人。会真实创建一条新的待办。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

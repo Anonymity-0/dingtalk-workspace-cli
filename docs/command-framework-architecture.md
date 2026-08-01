@@ -33,7 +33,7 @@ type Spec struct {
     Safety      contract.SafetySpec // 运行时与 Schema 的单一安全来源
     ConfirmFirst bool         // 确认门先于参数校验
     ConstParams map[string]any
-    Schema      SchemaDecl    // 完整 ToolSpec 载荷
+    Contract   ContractDecl    // 叶子 Contract 声明（非 Catalog Schema）
 
     // 执行面（恰好一个）
     Invoke      func(c *Ctx, toolArgs map[string]any) error  // 单步
@@ -120,7 +120,7 @@ flag 解析按以下顺序取值（先命中先生效）：
 
 1. **validateDispatchDecl** — 恰好一个执行体（Invoke/Orchestrate/RunE）
 2. **validateSafetySpec** — 非空 SafetySpec 的四个独立字段必须完整
-3. **validateSchemaDecl** — Schema 声明完整性（Description、AgentSummary、UseWhen、AvoidWhen、Examples、Interface）
+3. **validateContractDecl** — Schema 声明完整性（Description、AgentSummary、UseWhen、AvoidWhen、Examples、Interface）
 4. **RegisterFlags** — flag + alias 注册到 cobra
 5. **ValidateConstraintDecls** — 约束引用的 flag 必须存在
 6. **embedContractIntoSchema** — 投影到 dws.schema.* annotations
@@ -179,7 +179,7 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
         Schema: LeafSchema{
             Description: "创建开放平台企业内部应用",
             DryRun:      &LeafDryRunDecl{PreviewKind: "invocation"},
-            Interface:   &LeafInterfaceDecl{Mode: "composite", Availability: "available"},
+            Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
             Selection: LeafSelectionDecl{
                 AgentSummary: "创建钉钉开放平台应用",
                 UseWhen:      []string{"需要新建企业内部应用"},
@@ -218,7 +218,7 @@ DeclareLeafMetadata(baseListCmd, LeafSpec{
 })
 ```
 
-`DeclareLeafMetadata` 调用 `corecmd.AttachSchema` 挂 Safety+Schema；不注册 flag、不接管参数投影。当 `Safety.Confirmation=user_required` 时，用**同一份** SafetySpec 包一层 `ConfirmSafety`，保证执行门禁与 Catalog 同源。迁移态入口；新命令仍应走 `NewLeafCommand`。
+`DeclareLeafMetadata` 调用 `corecmd.AttachContract` 挂 Safety+Contract；不注册 flag、不接管参数投影。当 `Safety.Confirmation=user_required` 时，用**同一份** SafetySpec 包一层 `ConfirmSafety`，保证执行门禁与 Catalog 同源。迁移态入口；新命令仍应走 `NewLeafCommand`。
 
 ### Shortcut（智能快捷方式，已接入 live mount）
 
@@ -245,7 +245,7 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 | 文件 | 职责 |
 |------|------|
 | `internal/corecmd/corecmd.go` | 核心类型 + `New` 构建器 + 运行时管线 |
-| `internal/corecmd/schema_decl.go` | SchemaDecl 载荷类型 + 声明完整性守卫 |
+| `internal/corecmd/contract_decl.go` | ContractDecl 载荷类型 + 声明完整性守卫 |
 | `internal/helpers/leaf.go` | LeafSpec 门面：`NewLeafCommand`（完全托管）+ `DeclareLeafMetadata`（声明元数据） |
 | `internal/shortcut/adapter.go` | FromShortcut 完整映射与 Risk 兼容边界 |
 | `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 `corecmd.New(FromShortcut(s))` |

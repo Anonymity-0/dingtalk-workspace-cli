@@ -16,8 +16,9 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -88,13 +89,14 @@ func newMCPURLGetCommand(caller edition.ToolCaller) *cobra.Command {
 			Effect: "read", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the public CLI wrapper calls the helper-only mcp-meta/get_mcp_server_url endpoint, which is intentionally absent from the public product catalog and pinned MCP metadata.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the public CLI wrapper calls the helper-only mcp-meta/get_mcp_server_url endpoint, which is intentionally absent from the public product catalog and pinned MCP metadata.",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
 				UseWhen:      []string{"已知钉钉 MCP 市场 mcpId，需要获得当前身份可用的 Streamable HTTP 连接地址"},
 				AvoidWhen: []string{

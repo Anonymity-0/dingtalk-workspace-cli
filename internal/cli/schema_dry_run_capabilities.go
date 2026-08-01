@@ -5,10 +5,11 @@ package cli
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // dryRunCapabilityGroup is a reviewed positive capability declaration. An
@@ -20,14 +21,14 @@ type dryRunCapabilityGroup struct {
 
 // reviewedDryRunCapabilityGroups contains only command-owned preview paths
 // for tools WITHOUT a Contract final declaration. Declared tools publish
-// their dry_run capability from corecmd.SchemaDecl (reviewed code) and are
+// their dry_run capability from corecmd.ContractDecl (reviewed code) and are
 // merged into the reviewed set at assembly time — no manual list entry.
 // Inheriting the root --dry-run flag or reaching the generic EchoRunner is not
 // evidence of a stable capability and must never add a command to this list.
 // CI executes each selected example and compares the observed preview kind to
 // this reviewed declaration.
 var reviewedDryRunCapabilityGroups = []dryRunCapabilityGroup{
-	// Declared tools publish dry_run from schemaHintDecls / LeafSpec Schema.
+	// Declared tools publish dry_run from LeafSpec / Shortcut ContractDecl.
 	// Manual entries remain only for tools that cannot yet declare ContractFinal.
 }
 

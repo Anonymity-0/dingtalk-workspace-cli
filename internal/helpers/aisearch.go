@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -246,13 +245,14 @@ func newAisearchCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "aisearch", RPCName: "enterprise_person_search",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "aisearch", RPCName: "enterprise_person_search"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
 				UseWhen: []string{
 					"找人、谁负责某事、查上级/下级、按手机号或工号定位人员",
@@ -292,7 +292,7 @@ func newAisearchCommand() *cobra.Command {
 		RunE: runAisearchEnterprise,
 	}
 	// Register flags that carry ParamDecl before DeclareLeafMetadata so
-	// AttachSchema can emit their dws.schema.* annotations.
+	// AttachContract can emit their dws.schema.* annotations.
 	enterpriseCmd.Flags().String("queries", "", "内容关键词列表，多个用逗号分隔；汇总类场景可留空")
 	enterpriseCmd.Flags().String("time-range", "", "时间范围，仅当用户显式给出时间词时填写，如 今天/本周/9月/过去一周")
 	DeclareLeafMetadata(enterpriseCmd, LeafSpec{
@@ -300,13 +300,14 @@ func newAisearchCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "aisearch", RPCName: "search_enterprise",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "aisearch", RPCName: "search_enterprise"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
 				UseWhen: []string{
 					"按主题找资料、方案、文档、消息、邮件等内容，且关注“有什么内容”",
@@ -322,7 +323,7 @@ func newAisearchCommand() *cobra.Command {
 					"dws aisearch enterprise --queries \"OKR\" --types mail --time-range \"最近\" --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "queries", Required: boolPtr(false)},
 				{Name: "time-range", Required: boolPtr(false)},
 			},
@@ -355,13 +356,14 @@ func newAisearchCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "搜索发送/创建/分享/编辑/接收等明确行为记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "aisearch", RPCName: "search_enterprise_behavior",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "aisearch", RPCName: "search_enterprise_behavior"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "搜索发送/创建/分享/编辑/接收等明确行为记录",
 				UseWhen:      []string{"用户明确问我/某人发过、发给、收到、创建、分享、编辑过什么"},
 				AvoidWhen: []string{

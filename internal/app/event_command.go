@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"io"
 	"log/slog"
 	"os"
@@ -29,6 +28,8 @@ import (
 	"syscall"
 	"text/tabwriter"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -381,13 +382,14 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
 				UseWhen: []string{
 					"需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
@@ -780,13 +782,14 @@ func newEventListCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "列出支持的个人事件目录与状态说明",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令读取 CLI 内置的个人事件目录，不绑定 pinned MCP RPC",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令读取 CLI 内置的个人事件目录，不绑定 pinned MCP RPC",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出支持的个人事件目录与状态说明",
 				UseWhen:      []string{"尚不知道可用 event_key，需要先盘点个人事件目录"},
 				AvoidWhen: []string{
@@ -870,13 +873,14 @@ func newEventStatusCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "查看个人事件订阅、本地 bus 与消费进程状态",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看个人事件订阅、本地 bus 与消费进程状态",
 				UseWhen:      []string{"需要确认订阅是否活跃、bus/consume 是否仍在运行"},
 				AvoidWhen:    []string{"取消订阅用 event stop；列事件目录用 event list"},
@@ -1202,14 +1206,15 @@ func newEventStopCommand() *cobra.Command {
 			}
 			return nil
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "取消个人事件订阅并停止对应本地消费",
-			DryRun:      &helpers.LeafDryRunDecl{PreviewKind: "request", RemoteReads: false},
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消个人事件订阅并停止对应本地消费",
 				UseWhen:      []string{"用户明确要求取消已知 subscribe_id（或清理全部）并停止消费"},
 				AvoidWhen: []string{

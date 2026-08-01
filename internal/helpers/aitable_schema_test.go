@@ -27,10 +27,10 @@ import (
 
 func TestDeclareLeafMetadataRejectsExecutionSurface(t *testing.T) {
 	cmd := &cobra.Command{Use: "x", Short: "x"}
-	schema := LeafSchema{
+	schema := LeafContract{
 		Description: "d",
-		Interface:   &LeafInterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "p", RPCName: "t"},
-		Selection: LeafSelectionDecl{
+		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "p", RPCName: "t"}},
+		Selection: contract.SelectionSpec{
 			AgentSummary: "s",
 			UseWhen:      []string{"u"},
 			AvoidWhen:    []string{"a"},
@@ -47,10 +47,10 @@ func TestDeclareLeafMetadataRejectsExecutionSurface(t *testing.T) {
 		fn()
 	}
 	mustPanic("flags", func() {
-		DeclareLeafMetadata(cmd, LeafSpec{Schema: schema, Flags: []LeafFlag{{Name: "f"}}})
+		DeclareLeafMetadata(cmd, LeafSpec{Contract: schema, Flags: []LeafFlag{{Name: "f"}}})
 	})
 	mustPanic("runE", func() {
-		DeclareLeafMetadata(cmd, LeafSpec{Schema: schema, RunE: func(*cobra.Command, []string) error { return nil }})
+		DeclareLeafMetadata(cmd, LeafSpec{Contract: schema, RunE: func(*cobra.Command, []string) error { return nil }})
 	})
 	mustPanic("empty schema", func() {
 		DeclareLeafMetadata(cmd, LeafSpec{})
@@ -58,7 +58,7 @@ func TestDeclareLeafMetadataRejectsExecutionSurface(t *testing.T) {
 	// Validate is the one execution hook allowed in metadata mode (PreRunE,
 	// before ConfirmSafety). It must not panic.
 	DeclareLeafMetadata(&cobra.Command{Use: "y", Short: "y", RunE: func(*cobra.Command, []string) error { return nil }}, LeafSpec{
-		Schema:   schema,
+		Contract: schema,
 		Validate: func(*cobra.Command, []string) error { return nil },
 	})
 }
@@ -69,10 +69,10 @@ func TestDeclareLeafMetadataDoesNotRewriteRunE(t *testing.T) {
 	before := cmd.RunE
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: aitableSafetyRead(),
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "d",
 			Interface:   aitableMCPInterface("tool"),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "s",
 				UseWhen:      []string{"u"},
 				AvoidWhen:    []string{"a"},

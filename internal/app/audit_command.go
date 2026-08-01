@@ -6,12 +6,13 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/audit"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -85,13 +86,14 @@ func newAuditTailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "查看本地操作审计日志最近 N 条记录",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看本地操作审计日志最近 N 条记录",
 				UseWhen:      []string{"需要快速查看最近写入的审计记录（默认最近 20 条）"},
 				AvoidWhen: []string{
@@ -145,13 +147,14 @@ func newAuditExportCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "按日期范围导出本地操作审计日志（jsonl 或 csv）",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按日期范围导出本地操作审计日志（jsonl 或 csv）",
 				UseWhen:      []string{"需要把本地审计日志导出为 jsonl/csv，或按 --since/--until 取一段时间"},
 				AvoidWhen: []string{
@@ -223,13 +226,14 @@ func newAuditVerifyCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "校验本地审计日志文件的哈希链完整性",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令校验本地审计日志哈希链，不绑定 pinned MCP RPC",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "校验本地审计日志文件的哈希链完整性",
 				UseWhen:      []string{"怀疑审计文件被篡改，或需要确认最新/指定文件哈希链是否完整"},
 				AvoidWhen:    []string{"只浏览或导出日志内容时用 audit tail / audit export"},

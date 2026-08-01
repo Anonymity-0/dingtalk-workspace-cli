@@ -51,7 +51,7 @@ func TestEmbeddedSchemaCatalogSelectionCompleteness(t *testing.T) {
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
 	}
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	products := map[string]struct{}{}
 	for canonical, tool := range loaded.Snapshot.Tools {
 		product := schemaString(tool["product_id"])

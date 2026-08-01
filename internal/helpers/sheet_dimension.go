@@ -64,13 +64,14 @@ func newDimensionCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在指定位置之前插入空行或空列。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "insert_dimension",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "insert_dimension"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在指定位置之前插入空行或空列。",
 				UseWhen:      []string{"要在某行号/列字母之前插入若干空行或空列时"},
 				AvoidWhen:    []string{"末尾追加空行空列用 add-dimension；末尾追加数据用 append；删除行列用 delete-dimension"},
@@ -148,13 +149,14 @@ func newDimensionCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移动连续行或列到目标索引（保留格式）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "move_dimension",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "move_dimension"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移动连续行或列到目标索引（保留格式）。",
 				UseWhen:      []string{"要调整行/列物理顺序时，使用原子 move-dimension"},
 				AvoidWhen:    []string{"不要用读出再写回模拟移动；移动矩形单元格区域用 range move-to"},
@@ -210,13 +212,14 @@ func newDimensionCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在工作表末尾追加空行或空列。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "add_dimension",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "add_dimension"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在工作表末尾追加空行或空列。",
 				UseWhen:      []string{"需要扩展表格维度（末尾加空行/空列）时"},
 				AvoidWhen:    []string{"追加带数据的行用 append；在中间插入用 insert-dimension"},
@@ -275,13 +278,14 @@ rangeAddress 也支持带工作表前缀的写法，如 Sheet1!A1:B3，此时将
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "合并指定区域单元格（默认 mergeAll，可按行/列合并）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "merge_cells",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "merge_cells"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "合并指定区域单元格（默认 mergeAll，可按行/列合并）。",
 				UseWhen:      []string{"需要把一片区域合并为一个或多个合并单元格时"},
 				AvoidWhen:    []string{"取消合并用 unmerge-cells；合并会丢弃非左上角值"},
@@ -322,13 +326,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消指定范围内的合并单元格。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "unmerge_range",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "unmerge_range"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消指定范围内的合并单元格。",
 				UseWhen:      []string{"需要拆分已合并区域时"},
 				AvoidWhen:    []string{"创建合并用 merge-cells"},
@@ -392,13 +397,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除指定位置起的连续行或列（需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_dimension",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_dimension"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除指定位置起的连续行或列（需确认后加 --yes）。",
 				UseWhen:      []string{"用户明确要物理删除若干行/列时"},
 				AvoidWhen:    []string{"只清空内容保留占位用 range clear；移动行列用 move-dimension"},
@@ -487,13 +493,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新连续行/列的显隐或行高/列宽。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_dimension",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_dimension"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新连续行/列的显隐或行高/列宽。",
 				UseWhen:      []string{"要隐藏/显示行或列，或设置行高/列宽时"},
 				AvoidWhen:    []string{"插入/删除行列用 insert/delete-dimension；移动行列用 move-dimension"},
@@ -555,13 +562,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为连续整行或整列创建分组（可展开/折叠）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为连续整行或整列创建分组（可展开/折叠）。",
 				UseWhen:      []string{"需要按整行范围如 3:7 或整列如 C:F 创建分组时"},
 				AvoidWhen:    []string{"取消分组用 ungroup-dimension；隐藏行列用 update-dimension --hidden；range 不能是 A1:C5 矩形"},
@@ -606,13 +614,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消指定连续行/列分组。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消指定连续行/列分组。",
 				UseWhen:      []string{"需要解除已有行/列分组时"},
 				AvoidWhen:    []string{"创建分组用 group-dimension"},
@@ -686,13 +695,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为指定范围设置下拉列表（可多选、可带颜色）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "set_dropdown_lists",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "set_dropdown_lists"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为指定范围设置下拉列表（可多选、可带颜色）。",
 				UseWhen:      []string{"需要给单元格配置可选值下拉约束时"},
 				AvoidWhen:    []string{"查看已有下拉用 get-dropdown；移除下拉用 delete-dropdown"},
@@ -738,13 +748,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定范围的下拉列表配置。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_dropdown_lists",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_dropdown_lists"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定范围的下拉列表配置。",
 				UseWhen:      []string{"修改或核对下拉选项前，先读取现有 dataValidations 时"},
 				AvoidWhen:    []string{"设置下拉用 set-dropdown；删除下拉用 delete-dropdown；判空看 hasDropdown"},
@@ -784,13 +795,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除指定范围的下拉列表（需确认后加 --yes；不清除已填值）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_dropdown_lists",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_dropdown_lists"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除指定范围的下拉列表（需确认后加 --yes；不清除已填值）。",
 				UseWhen:      []string{"需要移除下拉约束但保留单元格已有值时"},
 				AvoidWhen:    []string{"只改选项用 set-dropdown 覆盖；清单元格内容用 range clear"},

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -318,13 +317,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户日程列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "list_calendar_events",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "list_calendar_events"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户日程列表",
 				UseWhen:      []string{"需要按起止时间检索指定日历本下的日程列表时（未传起止默认查当天）"},
 				AvoidWhen: []string{
@@ -361,13 +361,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询日程详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "get_calendar_detail",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "get_calendar_detail"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询日程详情",
 				UseWhen:      []string{"已知 eventId，需要查看日程明细时"},
 				AvoidWhen: []string{
@@ -466,13 +467,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建日程",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "create_calendar_event",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "create_calendar_event"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建日程",
 				UseWhen:      []string{"需要创建新日程（时间、可选参会人/提醒/会议室/循环规则）并提取 eventId 时"},
 				AvoidWhen: []string{
@@ -484,7 +486,7 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event create --title \"周会\" --start \"2026-03-10T14:00:00+08:00\" --end \"2026-03-10T15:00:00+08:00\" --attendees userId1,userId2",
 				},
 			},
-			Parameters: append([]corecmd.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "title", Required: boolPtr(true)},
 				{Name: "start", Required: boolPtr(true)},
 				{Name: "end", Required: boolPtr(true)},
@@ -551,13 +553,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "修改日程",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "update_calendar_event",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "update_calendar_event"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "修改日程",
 				UseWhen:      []string{"已知 eventId 且具备组织者权限，需要修改标题、时间、地点、描述等字段时"},
 				AvoidWhen: []string{
@@ -594,13 +597,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除指定日程",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "delete_calendar_event",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "delete_calendar_event"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除指定日程",
 				UseWhen:      []string{"用户明确要求删除/取消指定日程，且 eventId 已确认时（组织者删除会通知所有参与者）"},
 				AvoidWhen: []string{
@@ -644,13 +648,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "建议日程时间",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "list_suggested_event_times",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "list_suggested_event_times"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "建议日程时间",
 				UseWhen:      []string{"时间未定，需要基于参会人闲忙推荐可用时间块时"},
 				AvoidWhen: []string{
@@ -705,13 +710,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "响应日程",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "respond",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "respond"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "响应日程",
 				UseWhen:      []string{"作为参会人需要设置自己的响应状态（accepted/declined/tentative）时"},
 				AvoidWhen: []string{
@@ -760,13 +766,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取日程参与人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "get_calendar_participants",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "get_calendar_participants"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取日程参与人",
 				UseWhen:      []string{"已知 eventId，需要查看参会人列表及状态时（订阅日历日程无参会人）"},
 				AvoidWhen:    []string{"要添加/移除参会人时改用 attendee add/delete"},
@@ -810,13 +817,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "添加日程参与人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "add_calendar_participant",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "add_calendar_participant"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "添加日程参与人",
 				UseWhen:      []string{"已知 eventId，需要向已有日程批量添加参会人时（订阅日历日程无参会人）"},
 				AvoidWhen: []string{
@@ -862,13 +870,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除日程参与人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "remove_calendar_participant",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "remove_calendar_participant"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除日程参与人",
 				UseWhen:      []string{"已知 eventId，需要从日程批量移除参会人时（订阅日历日程无参会人）"},
 				AvoidWhen: []string{
@@ -1011,13 +1020,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询空闲或按名搜索会议室",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "query_available_meeting_room",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "query_available_meeting_room"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询空闲或按名搜索会议室",
 				UseWhen:      []string{"需要按名称模糊搜会议室，或按时间段查询全程空闲且可预订的会议室时"},
 				AvoidWhen: []string{
@@ -1063,13 +1073,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为日程预订会议室",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "add_meeting_room",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "add_meeting_room"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为日程预订会议室",
 				UseWhen:      []string{"已知 eventId 与 roomId，需要为已有日程预订线下会议室时"},
 				AvoidWhen: []string{
@@ -1114,13 +1125,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除日程中的会议室",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "delete_meeting_room",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "delete_meeting_room"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除日程中的会议室",
 				UseWhen:      []string{"已知 eventId 与 roomId，需要取消日程会议室预订并释放占用时"},
 				AvoidWhen: []string{
@@ -1156,13 +1168,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询会议室分组列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "list_meeting_room_groups",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "list_meeting_room_groups"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询会议室分组列表",
 				UseWhen:      []string{"需要分页查看企业会议室分组（groupId/parentId）时"},
 				AvoidWhen:    []string{"要搜空闲会议室时改用 dws calendar room search"},
@@ -1234,13 +1247,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询用户或会议室闲忙",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "query_busy_status",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "query_busy_status"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询用户或会议室闲忙",
 				UseWhen:      []string{"需要查询指定用户和/或会议室在时间范围内的已占用时段时（users 与 rooms 至少其一）"},
 				AvoidWhen:    []string{"需要创建或改日程时不要使用；本命令只返回闲忙时间片段"},
@@ -1304,13 +1318,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为日程添加附件",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "add_attachments",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "add_attachments"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为日程添加附件",
 				UseWhen:      []string{"已知 eventId，已有钉盘 fileId，需要为日程添加附件时（订阅日历日程不支持）"},
 				AvoidWhen: []string{
@@ -1343,13 +1358,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询主日历访问控制列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "list_acls",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "list_acls"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询主日历访问控制列表",
 				UseWhen:      []string{"需要查看主日历共享给了谁、各自权限时（不是日历本列表）"},
 				AvoidWhen:    []string{"要列日历本时改用 dws calendar book list"},
@@ -1427,13 +1443,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询用户日历列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "list_calendars",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "list_calendars"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询用户日历列表",
 				UseWhen:      []string{"需要列出自己的、已订阅的、他人共享的日历本（主日历 id=primary）时"},
 				AvoidWhen: []string{
@@ -1464,13 +1481,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定日历信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "get_calendar",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "get_calendar"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定日历信息",
 				UseWhen:      []string{"已知日历 id（主日历固定 primary），需要查询该日历本信息时"},
 				AvoidWhen: []string{
@@ -1504,13 +1522,14 @@ func newCalendarCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "搜索日历本列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "calendar", RPCName: "search_calendar",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "search_calendar"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "搜索日历本列表",
 				UseWhen:      []string{"需要按日历本名模糊搜索当前用户拥有的日历本时"},
 				AvoidWhen: []string{
@@ -2528,8 +2547,8 @@ var recurrenceFlagNames = []string{
 
 // calendarRecurrenceParamDecls declares recurrence required/required_when pins
 // for create/update event leaves (native_annotation).
-func calendarRecurrenceParamDecls() []corecmd.ParamDecl {
-	return []corecmd.ParamDecl{
+func calendarRecurrenceParamDecls() []contract.ParamDecl {
+	return []contract.ParamDecl{
 		{Name: "recurrence-day-of-month", Required: boolPtr(false), RequiredWhen: "recurrence-type is absoluteMonthly or absoluteYearly"},
 		{Name: "recurrence-days-of-week", Required: boolPtr(false), RequiredWhen: "recurrence-type is weekly or relativeMonthly"},
 		{Name: "recurrence-index", Required: boolPtr(false), RequiredWhen: "recurrence-type is relativeMonthly"},

@@ -83,13 +83,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户待处理的审批单列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "list_pending_approvals",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "list_pending_approvals"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户待处理的审批单列表",
 				UseWhen:      []string{"需要查看待我处理的审批单并提取 processInstanceId / 跳转链接时"},
 				AvoidWhen: []string{
@@ -122,13 +123,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定审批实例的详情信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "get_processInstance_detail",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "get_processInstance_detail"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定审批实例的详情信息",
 				UseWhen:      []string{"已知 processInstanceId，需要查看表单内容与当前状态详情时"},
 				AvoidWhen: []string{
@@ -168,13 +170,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "同意审批",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "approve_processInstance",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "approve_processInstance"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "同意审批",
 				UseWhen:      []string{"已知 processInstanceId 与待办 taskId，用户明确要求同意该审批任务时"},
 				AvoidWhen: []string{
@@ -213,13 +216,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "拒绝审批",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "reject_processInstance",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "reject_processInstance"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "拒绝审批",
 				UseWhen:      []string{"已知 processInstanceId 与 taskId，用户明确要求拒绝/驳回该审批任务时"},
 				AvoidWhen: []string{
@@ -258,13 +262,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "撤销当前用户已发起的审批实例",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "revoke_processInstance",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "revoke_processInstance"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "撤销当前用户已发起的审批实例",
 				UseWhen:      []string{"用户明确要求撤销自己已发起的审批实例，且 processInstanceId 已确认时"},
 				AvoidWhen: []string{
@@ -294,13 +299,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取审批操作记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "get_processInstance_records",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "get_processInstance_records"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取审批操作记录",
 				UseWhen:      []string{"已知 processInstanceId，需要查看谁做了什么审批操作及结果时"},
 				AvoidWhen: []string{
@@ -350,13 +356,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户已发起的审批实例列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "list_initiated_instances",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "list_initiated_instances"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户已发起的审批实例列表",
 				UseWhen:      []string{"已知 processCode，需要按起止时间查询自己发起的审批实例基础信息时"},
 				AvoidWhen: []string{
@@ -389,13 +396,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询待我审批的任务Id",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "list_pending_tasks",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "list_pending_tasks"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询待我审批的任务Id",
 				UseWhen:      []string{"已知 processInstanceId，需要取得当前用户待办 taskId 以便同意或拒绝时"},
 				AvoidWhen: []string{
@@ -428,13 +436,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取当前用户可见的审批表单列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "list_user_visible_process",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "list_user_visible_process"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取当前用户可见的审批表单列表",
 				UseWhen:      []string{"需要列出可见审批模板并取得 processCode 时"},
 				AvoidWhen:    []string{"需要实例、任务或操作记录时不要使用；该命令只列可见模板"},
@@ -503,13 +512,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取员工已处理任务列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "get_done_tasks",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "get_done_tasks"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取员工已处理任务列表",
 				UseWhen:      []string{"需要查看当前用户已经处理过的审批单列表时"},
 				AvoidWhen: []string{
@@ -546,13 +556,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取已提交实例列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "get_submitted_instances",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "get_submitted_instances"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取已提交实例列表",
 				UseWhen:      []string{"需要查看当前用户已提交/发起相关的审批单列表时"},
 				AvoidWhen: []string{
@@ -589,13 +600,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取抄送用户的列表",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "get_noticed_instances",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "get_noticed_instances"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取抄送用户的列表",
 				UseWhen:      []string{"需要查看抄送给当前用户的审批单列表时"},
 				AvoidWhen: []string{
@@ -635,13 +647,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "转交审批任务",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "redirect_task",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "redirect_task"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "转交审批任务",
 				UseWhen:      []string{"已知 taskId 与接收人 toActionerId，用户明确要求转交审批任务时"},
 				AvoidWhen: []string{
@@ -680,13 +693,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "用户添加审批评论",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "dingflow_comments",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "dingflow_comments"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "用户添加审批评论",
 				UseWhen:      []string{"已知 processInstanceId，需要为审批实例添加评论文本时"},
 				AvoidWhen: []string{
@@ -728,13 +742,14 @@ func newOaCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "抄送审批人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "oa", RPCName: "oa_cc_noticer",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "oa_cc_noticer"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "抄送审批人",
 				UseWhen:      []string{"已知 processInstanceId，需要为审批实例追加抄送人时"},
 				AvoidWhen: []string{

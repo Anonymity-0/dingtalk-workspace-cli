@@ -16,11 +16,12 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"io/fs"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // schema_agent_metadata/*.json is retired as a shipped artifact. Catalog

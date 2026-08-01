@@ -21,7 +21,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -1243,13 +1242,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建群聊并可指定群名与初始成员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "create_group_conversation",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_group_conversation"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建群聊并可指定群名与初始成员",
 				UseWhen: []string{
 					"需要新建内部/外部群或话题圈，并带上初始成员",
@@ -1297,13 +1297,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按关键词搜索群聊并拿到 openConversationId",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the CLI calls im/search_groups with a flat payload, while the pinned snapshot only contains the incompatible chat/search_groups_by_keyword contract.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the CLI calls im/search_groups with a flat payload, while the pinned snapshot only contains the incompatible chat/search_groups_by_keyword contract.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按关键词搜索群聊并拿到 openConversationId",
 				UseWhen:      []string{"只知道群名关键词，需要定位群并提取 openConversationId"},
 				AvoidWhen: []string{
@@ -1361,13 +1362,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把企业机器人拉进我有管理权限的群",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "bot", RPCName: "add_robot_to_group",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "bot", RPCName: "add_robot_to_group"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把企业机器人拉进我有管理权限的群",
 				UseWhen:      []string{"需要把已有企业机器人加入指定群"},
 				AvoidWhen: []string{
@@ -1399,13 +1401,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "修改指定群聊的名称",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "update_group_name",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "update_group_name"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "修改指定群聊的名称",
 				UseWhen:      []string{"需要给已有群聊重命名时"},
 				AvoidWhen:    []string{"只修改个人可见备注时不要使用群名称更新"},
@@ -1439,13 +1442,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "向指定群聊添加成员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "add_group_member",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "add_group_member"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "向指定群聊添加成员",
 				UseWhen:      []string{"已知群 ID 和成员 ID，需要邀请成员入群时"},
 				AvoidWhen:    []string{"添加机器人时使用 chat group members add-bot"},
@@ -1482,13 +1486,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "从指定群聊移除成员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "remove_group_member",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "remove_group_member"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "从指定群聊移除成员",
 				UseWhen:      []string{"群管理员明确要移除一个或多个普通成员时"},
 				AvoidWhen:    []string{"移除机器人时使用 chat group members remove-bot"},
@@ -1579,13 +1584,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "分页读取指定会话消息及其引用上下文",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "list_conversation_message_v2",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "list_conversation_message_v2"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "分页读取指定会话消息及其引用上下文",
 				UseWhen:      []string{"用户明确指定某个会话，并要读取消息或追溯引用回复中的原消息上下文时"},
 				AvoidWhen:    []string{"跨全部会话按时间查询时使用 chat message list-all"},
@@ -1645,13 +1651,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "读取与指定用户的单聊消息记录",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "list_individual_chat_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "list_individual_chat_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "读取与指定用户的单聊消息记录",
 				UseWhen:      []string{"用户明确要求查看和某人的一对一聊天时"},
 				AvoidWhen:    []string{"跨群聊按发送者查询时使用 chat message list-by-sender"},
@@ -1906,13 +1913,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "以当前用户身份发送群聊或单聊消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "send_personal_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "send_personal_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "以当前用户身份发送群聊或单聊消息",
 				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时"},
 				AvoidWhen:    []string{"机器人身份或 Webhook 发送应使用对应命令"},
@@ -2024,13 +2032,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "以应用机器人身份发送群消息或批量单聊",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "以应用机器人身份发送群消息或批量单聊",
 				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递消息时"},
 				AvoidWhen:    []string{"个人身份发送或自定义 Webhook 告警不要使用"},
@@ -2078,13 +2087,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "撤回指定机器人发送的消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "撤回指定机器人发送的消息",
 				UseWhen:      []string{"持有 robotCode 和发送结果 key，需要撤回机器人消息时"},
 				AvoidWhen:    []string{"个人身份消息撤回使用 chat message recall"},
@@ -2162,13 +2172,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "用自定义机器人 Webhook 向群发送消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "bot", RPCName: "send_message_by_custom_robot",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "bot", RPCName: "send_message_by_custom_robot"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "用自定义机器人 Webhook 向群发送消息",
 				UseWhen:      []string{"已有自定义机器人 webhook token，需要向群发告警或通知"},
 				AvoidWhen: []string{
@@ -2217,13 +2228,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "分页读取指定话题的回复",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "list_topic_replies",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "list_topic_replies"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "分页读取指定话题的回复",
 				UseWhen:      []string{"已知话题 ID 并需要查看回复串时"},
 				AvoidWhen:    []string{"读取普通会话消息时使用 chat message list"},
@@ -2258,13 +2270,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按时间范围搜索跨会话消息并保留权益指引",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "search_messages_by_time_range",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "search_messages_by_time_range"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按时间范围搜索跨会话消息并保留权益指引",
 				UseWhen:      []string{"需要汇总一段时间内所有可见会话消息时"},
 				AvoidWhen:    []string{"已指定单个会话时优先使用 chat message list"},
@@ -2331,13 +2344,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按发送者和时间范围查询消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "search_messages_by_sender",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "search_messages_by_sender"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按发送者和时间范围查询消息",
 				UseWhen:      []string{"需要查某人发送过的消息且不限定单聊时"},
 				AvoidWhen:    []string{"明确查询与某人的单聊记录时使用 chat message list-direct"},
@@ -2390,13 +2404,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定时间范围内提及当前用户的消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "search_at_me_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "search_at_me_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定时间范围内提及当前用户的消息",
 				UseWhen:      []string{"需要找出 @我的消息和待关注事项时"},
 				AvoidWhen:    []string{"查询全部消息时使用 chat message list-all"},
@@ -2427,13 +2442,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户特别关注的消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "list_special_focus_messages",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "list_special_focus_messages"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户特别关注的消息",
 				UseWhen:      []string{"需要查看特别关注或重点消息列表时"},
 				AvoidWhen:    []string{"普通未读消息或提及消息使用对应专用命令"},
@@ -2467,13 +2483,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户置顶的会话",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "list_top_conversations",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "list_top_conversations"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户置顶的会话",
 				UseWhen:      []string{"需要查看现有置顶会话清单时"},
 				AvoidWhen:    []string{"设置或取消某个会话置顶时使用 chat set-top"},
@@ -2504,13 +2521,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户存在未读消息的会话",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "unread_message_conversation_list",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "unread_message_conversation_list"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户存在未读消息的会话",
 				UseWhen:      []string{"需要定位哪些会话还有未读内容时"},
 				AvoidWhen:    []string{"查询某条消息的已读人员时使用 chat message read-status"},
@@ -2566,13 +2584,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按关键词和时间范围搜索消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "search_messages_by_keyword",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "search_messages_by_keyword"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按关键词和时间范围搜索消息",
 				UseWhen:      []string{"需要用关键词查找消息且过滤条件较简单时"},
 				AvoidWhen:    []string{"需要多会话、发送者或 @维度组合时使用 search-advanced"},
@@ -2700,13 +2719,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "search_messages",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "search_messages"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
 				UseWhen:      []string{"需要组合时间范围、关键词、发送者、@我/@某人、指定会话等条件搜消息"},
 				AvoidWhen: []string{
@@ -2741,13 +2761,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询异步消息发送任务的状态",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "query_message_send_status",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "query_message_send_status"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询异步消息发送任务的状态",
 				UseWhen:      []string{"发送命令返回 openTaskId 后需要确认投递结果时"},
 				AvoidWhen:    []string{"没有 openTaskId 或只需查消息内容时不要使用"},
@@ -2783,13 +2804,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "撤回当前用户已发送的单条消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "recall_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "recall_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "撤回当前用户已发送的单条消息",
 				UseWhen:      []string{"已知会话与消息 ID，需要撤回自己发出的那条消息"},
 				AvoidWhen: []string{
@@ -2865,19 +2887,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "编辑当前用户已发送消息的 Markdown 内容",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI builds or accepts message content and calls im/edit_message, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI builds or accepts message content and calls im/edit_message, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "编辑当前用户已发送消息的 Markdown 内容",
 				UseWhen:      []string{"已有会话 openConversationId 和消息 openMessageId，需要更正已发送消息的标题、正文或 @ 信息"},
 				AvoidWhen:    []string{"发送新消息应使用 chat message send；撤回消息应使用 chat message recall"},
 				Examples:     []string{"dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text \"更新后的内容\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
@@ -2928,13 +2951,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定消息的已读状态和人员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "query_msg_read_status",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "query_msg_read_status"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定消息的已读状态和人员",
 				UseWhen:      []string{"已知会话 ID 与消息 ID，需要核对阅读情况时"},
 				AvoidWhen:    []string{"查看哪些会话未读时使用 chat message list-unread-conversations"},
@@ -2957,13 +2981,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定人员共同所在的群聊",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "search_common_groups",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "search_common_groups"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定人员共同所在的群聊",
 				UseWhen:      []string{"需要找两人或多人共同群聊时"},
 				AvoidWhen:    []string{"按群名称搜索时使用 chat search"},
@@ -3020,13 +3045,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "搜索我创建的企业机器人并提取 robot-code",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "bot", RPCName: "search_my_robots",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "bot", RPCName: "search_my_robots"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "搜索我创建的企业机器人并提取 robot-code",
 				UseWhen:      []string{"需要我自己创建的机器人及其 robot-code"},
 				AvoidWhen:    []string{"搜索全部可用企业机器人时使用 chat bot find"},
@@ -3444,13 +3470,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取群聊或单聊会话的详细信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "get_conversation_info",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "get_conversation_info"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取群聊或单聊会话的详细信息",
 				UseWhen:      []string{"已知群 ID 或用户标识并需要解析会话详情时"},
 				AvoidWhen:    []string{"按群名查找会话时使用 chat search"},
@@ -3528,13 +3555,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户的自定义会话分组",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "list_user_define_conv_categories",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_user_define_conv_categories"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户的自定义会话分组",
 				UseWhen:      []string{"需要取得分组 ID 或浏览分组配置时"},
 				AvoidWhen:    []string{"需要查看某个分组内会话时使用 chat category list-conversations"},
@@ -3564,13 +3592,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出指定会话分组中的会话",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "list_conversations_by_category",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_conversations_by_category"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定会话分组中的会话",
 				UseWhen:      []string{"已知分组 ID 并需要查看其中会话时"},
 				AvoidWhen:    []string{"只需列出分组本身时使用 chat category list"},
@@ -3711,19 +3740,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定会话所属的自定义会话分组",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI maps a conversation locator to im/list_conv_categories_by_conv, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI maps a conversation locator to im/list_conv_categories_by_conv, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定会话所属的自定义会话分组",
 				UseWhen:      []string{"已有会话 openConversationId，需要反查该会话被放入了哪些自定义分组"},
 				AvoidWhen:    []string{"列出全部自定义分组应使用 chat category list；按 categoryId 查详情应使用 chat category batch-info"},
 				Examples:     []string{"dws chat category list-by-conv --group <openConversationId>"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
@@ -3755,19 +3785,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按分组 ID 批量获取自定义会话分组详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI parses category IDs and calls im/get_conv_categories_info, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI parses category IDs and calls im/get_conv_categories_info, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按分组 ID 批量获取自定义会话分组详情",
 				UseWhen:      []string{"已经有一个或多个会话分组 categoryId，需要批量读取分组信息"},
 				AvoidWhen:    []string{"不知道 categoryId 时先用 chat category list；按会话反查所属分组应使用 chat category list-by-conv"},
 				Examples:     []string{"dws chat category batch-info --category-ids 123,456"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "category-ids", Property: "categoryIds", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
@@ -3792,13 +3823,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把数字群号解析为群聊信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "get_conv_info_by_group_id",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "get_conv_info_by_group_id"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把数字群号解析为群聊信息",
 				UseWhen:      []string{"用户只提供数字群号且需要 openConversationId 时"},
 				AvoidWhen:    []string{"已经持有 openConversationId 时直接使用目标命令"},
@@ -3832,13 +3864,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按消息 ID 批量获取消息详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "list_messages_by_ids",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_messages_by_ids"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按消息 ID 批量获取消息详情",
 				UseWhen:      []string{"已经持有一组 msgId 并需要精确取回消息时"},
 				AvoidWhen:    []string{"只有关键词或时间范围时使用 search 或 list 命令"},
@@ -3873,19 +3906,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "给指定消息添加表情回应",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "add_emoji_reaction",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "add_emoji_reaction"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "给指定消息添加表情回应",
 				UseWhen:      []string{"需要对已有消息添加一个 emoji reaction 时"},
 				AvoidWhen:    []string{"发送文本消息或文字表情时不要使用"},
 				Examples:     []string{"dws chat message add-emoji --conversation-id <openConversationId> --msg-id <openMessageId> --emoji \"赞\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
@@ -3924,19 +3958,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除指定消息上的表情回应",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "remove_emoji_reaction",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_emoji_reaction"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除指定消息上的表情回应",
 				UseWhen:      []string{"需要取消此前添加的 emoji reaction 时"},
 				AvoidWhen:    []string{"移除文字表情时使用 chat message remove-text-emotion"},
 				Examples:     []string{"dws chat message remove-emoji --conversation-id <openConversationId> --msg-id <openMessageId> --emoji \"赞\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
@@ -3977,19 +4012,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "给指定消息添加已定义的文字表情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "add_text_emotion",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "add_text_emotion"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "给指定消息添加已定义的文字表情",
 				UseWhen:      []string{"已有文字表情定义并要附加到消息时"},
 				AvoidWhen:    []string{"需要先创建文字表情资源时使用 chat message create-text-emotion"},
 				Examples:     []string{"dws chat message add-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
@@ -4033,19 +4069,20 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除指定消息上的文字表情回应",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "remove_text_emotion",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_text_emotion"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除指定消息上的文字表情回应",
 				UseWhen:      []string{"需要取消已添加的文字表情时"},
 				AvoidWhen:    []string{"移除普通 emoji reaction 时使用 chat message remove-emoji"},
 				Examples:     []string{"dws chat message remove-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
@@ -4087,13 +4124,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把消息上已有的文字表情原地替换为新的文字表情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI calls im/update_text_emotion, which is proven by dws-wukong develop@30f13f02 but absent from the pinned MCP metadata snapshot; no pinned interface_ref can represent the command yet.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把消息上已有的文字表情原地替换为新的文字表情",
 				UseWhen:      []string{"需要更新消息的状态文字或表情，并避免先移除再添加造成闪烁和两次网络调用时"},
 				AvoidWhen: []string{
@@ -4102,7 +4140,7 @@ func newChatCommand() *cobra.Command {
 				},
 				Examples: []string{"dws chat message update-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "background-id", Property: "backgroundId", Required: boolPtr(true), Description: "新文字表情的背景 ID"},
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId；与 --group、--id、--chat 四选一"},
@@ -4158,13 +4196,14 @@ func newChatCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建可用于消息回应的文字表情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "create_text_emotion",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_text_emotion"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建可用于消息回应的文字表情",
 				UseWhen:      []string{"需要定义新的文字表情资源时"},
 				AvoidWhen:    []string{"已有 emotionId 并要回应消息时使用 chat message add-text-emotion"},
@@ -4221,13 +4260,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建并向群聊或单聊发送互动卡片",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "create_and_send_card",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_and_send_card"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建并向群聊或单聊发送互动卡片",
 				UseWhen:      []string{"需要卡片式交互且已准备接收会话或用户时"},
 				AvoidWhen:    []string{"只发送普通文本时使用 send 或 send-by-bot"},
@@ -4267,13 +4307,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新已发送流式卡片的内容和状态",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_streaming_card",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_streaming_card"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已发送流式卡片的内容和状态",
 				UseWhen:      []string{"已有 bizId 并需要追加内容或结束流式输出时"},
 				AvoidWhen:    []string{"创建新卡片时使用 chat message send-card"},
@@ -4402,14 +4443,15 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "下载消息中的媒体资源到本地",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "下载消息中的媒体资源到本地",
 				UseWhen:      []string{"已知消息、会话和资源 ID，需要保存媒体文件时"},
 				AvoidWhen:    []string{"只查看文本消息内容时使用对应消息查询命令"},
@@ -4485,13 +4527,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把群主身份转让给指定群成员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "transfer_group_owner",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "transfer_group_owner"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把群主身份转让给指定群成员",
 				UseWhen:      []string{"现群主明确指定新群主时"},
 				AvoidWhen:    []string{"只是授予管理员权限时使用 chat group set-admin"},
@@ -4532,13 +4575,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定群聊的邀请链接",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "get_group_invite_url",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "get_group_invite_url"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定群聊的邀请链接",
 				UseWhen:      []string{"需要生成群邀请链接或设置有效期时"},
 				AvoidWhen:    []string{"需要直接添加已知成员时使用 chat group members add"},
@@ -4575,19 +4619,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "开启或关闭指定会话的免打扰",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_notification_off",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_notification_off"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "开启或关闭指定会话的免打扰",
 				UseWhen:      []string{"用户明确要静音或恢复某个会话通知时"},
 				AvoidWhen:    []string{"群成员禁言属于发言权限，应使用 group-mute 命令"},
 				Examples:     []string{"dws chat mute --conversation-id <openConversationId>"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
@@ -4622,13 +4667,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "当前用户退出群聊，群本身保留",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "quit_group",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "quit_group"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "当前用户退出群聊，群本身保留",
 				UseWhen:      []string{"用户只要自己离开某个群，不需要解散群"},
 				AvoidWhen: []string{
@@ -4667,13 +4713,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "使用真实媒体 ID 更新群头像",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_group_icon",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_group_icon"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "使用真实媒体 ID 更新群头像",
 				UseWhen:      []string{"已有上传后的头像 mediaId 并要修改群头像时"},
 				AvoidWhen:    []string{"没有真实可用 mediaId 时先完成媒体上传"},
@@ -4732,13 +4779,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新指定群聊的一项设置开关",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_group_settings",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_group_settings"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新指定群聊的一项设置开关",
 				UseWhen:      []string{"需要调整 searchable、入群验证或群权限等设置时"},
 				AvoidWhen:    []string{"全员禁言和成员禁言使用专门的 mute 命令"},
@@ -4807,13 +4855,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "引用指定消息发送个人回复",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "chat", RPCName: "send_personal_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "send_personal_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "引用指定消息发送个人回复",
 				UseWhen:      []string{"用户要针对某条已有消息进行引用回复时"},
 				AvoidWhen:    []string{"无需引用上下文的普通消息使用 chat message send"},
@@ -4865,13 +4914,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把一条已有消息转发到另一个会话",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "forward_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "forward_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把一条已有消息转发到另一个会话",
 				UseWhen:      []string{"已知源消息与源、目标会话 ID 时"},
 				AvoidWhen:    []string{"合并转发多条消息时使用 chat message combine-forward"},
@@ -4916,19 +4966,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置或取消指定会话置顶",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "set_top_conversation",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "set_top_conversation"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置或取消指定会话置顶",
 				UseWhen:      []string{"需要改变某个会话在列表中的置顶状态时"},
 				AvoidWhen:    []string{"只查看置顶清单时使用 chat list-top-conversations"},
 				Examples:     []string{"dws chat set-top --conversation-id <openConversationId>"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "off", Required: boolPtr(false)},
 			},
 		},
@@ -4958,13 +5009,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询群用户禁言配置（禁言黑名单/全员禁言白名单）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询群用户禁言配置（禁言黑名单/全员禁言白名单）",
 				UseWhen:      []string{"用户说 看下群里谁被禁言/禁言配置"},
 				AvoidWhen:    []string{"设置全员禁言用 chat group-mute；禁言个人用 chat group-mute-member"},
@@ -5001,19 +5053,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "开启或关闭群聊全员禁言",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "set_group_mute",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "set_group_mute"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "开启或关闭群聊全员禁言",
 				UseWhen:      []string{"需要控制整个群的发言权限时"},
 				AvoidWhen:    []string{"只禁言指定成员时使用 chat group-mute-member"},
 				Examples:     []string{"dws chat group-mute --group <openConversationId>"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "off", Required: boolPtr(false)},
 			},
 		},
@@ -5087,19 +5140,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "禁言或解除禁言指定群成员",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "set_group_member_mute_list",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "set_group_member_mute_list"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "禁言或解除禁言指定群成员",
 				UseWhen:      []string{"需要按成员设置禁言时长或解除禁言时"},
 				AvoidWhen:    []string{"需要全员禁言时使用 chat group-mute"},
 				Examples:     []string{"dws chat group-mute-member --group <openConversationId> --users userId1,userId2 --mute-time 3600000"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "off", Required: boolPtr(false)},
 			},
 		},
@@ -5157,19 +5211,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置或取消群管理员角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_conv_member_roles",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_conv_member_roles"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置或取消群管理员角色",
 				UseWhen:      []string{"需要变更指定成员的群管理员身份时"},
 				AvoidWhen:    []string{"自定义业务角色应使用 chat group-role 系列命令"},
 				Examples:     []string{"dws chat group set-admin --group <openConversationId> --users userId1,userId2"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "off", Required: boolPtr(false)},
 			},
 		},
@@ -5261,13 +5316,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出群聊中的自定义角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "list_custom_group_roles",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_custom_group_roles"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出群聊中的自定义角色",
 				UseWhen:      []string{"需要取得角色 ID 或查看角色定义时"},
 				AvoidWhen:    []string{"查询某个成员已分配角色时使用 chat group-role query-user"},
@@ -5297,13 +5353,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在群聊中创建自定义角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "add_custom_group_role",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "add_custom_group_role"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在群聊中创建自定义角色",
 				UseWhen:      []string{"需要新增可分配给群成员的业务角色时"},
 				AvoidWhen:    []string{"设置系统管理员角色时使用 chat group set-admin"},
@@ -5336,13 +5393,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新群聊自定义角色的名称",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_custom_group_role",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_custom_group_role"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新群聊自定义角色的名称",
 				UseWhen:      []string{"已知角色 ID 并需要重命名该角色时"},
 				AvoidWhen:    []string{"需要变更成员角色分配时使用 set-user 或 remove-user"},
@@ -5376,13 +5434,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除群聊中的自定义角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "remove_custom_group_role",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_custom_group_role"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除群聊中的自定义角色",
 				UseWhen:      []string{"明确要移除整个自定义角色定义时"},
 				AvoidWhen:    []string{"只取消某个成员的角色时使用 chat group-role remove-user"},
@@ -5427,13 +5486,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为指定群成员设置自定义角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "set_custom_user_roles",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "set_custom_user_roles"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为指定群成员设置自定义角色",
 				UseWhen:      []string{"需要把一个或多个已有角色分配给成员时"},
 				AvoidWhen:    []string{"创建新角色定义时使用 chat group-role add"},
@@ -5479,13 +5539,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消指定成员的一个或多个自定义角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "remove_custom_user_roles",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_custom_user_roles"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消指定成员的一个或多个自定义角色",
 				UseWhen:      []string{"需要保留角色定义但解除成员角色时"},
 				AvoidWhen:    []string{"删除角色定义本身时使用 chat group-role remove"},
@@ -5529,13 +5590,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定群成员的自定义角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "query_custom_user_roles",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "query_custom_user_roles"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定群成员的自定义角色",
 				UseWhen:      []string{"需要核对某个成员在群内的业务角色时"},
 				AvoidWhen:    []string{"列出全部角色定义时使用 chat group-role list"},
@@ -5581,13 +5643,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出群内机器人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "bot", RPCName: "list_group_bots",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "bot", RPCName: "list_group_bots"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出群内机器人",
 				UseWhen:      []string{"需要查看某群已安装哪些机器人或提取 openBotId"},
 				AvoidWhen:    []string{"搜索企业内机器人目录时使用 chat bot find"},
@@ -5620,13 +5683,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "从群内移除指定机器人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "bot", RPCName: "remove_robot_in_group",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "bot", RPCName: "remove_robot_in_group"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "从群内移除指定机器人",
 				UseWhen:      []string{"需要把某个机器人踢出指定群"},
 				AvoidWhen: []string{
@@ -5681,13 +5745,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按关键词搜索企业机器人并拿到 openDingTalkId",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "bot", RPCName: "search_bots",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "bot", RPCName: "search_bots"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按关键词搜索企业机器人并拿到 openDingTalkId",
 				UseWhen:      []string{"要找可用机器人并提取 openDingTalkId（例如后续单聊机器人）"},
 				AvoidWhen: []string{
@@ -5724,13 +5789,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "永久解散指定群聊（不可恢复，仅群主）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "dismiss_group",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "dismiss_group"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "永久解散指定群聊（不可恢复，仅群主）",
 				UseWhen: []string{
 					"群主明确要求永久解散整个群，而不是自己退出",
@@ -5779,13 +5845,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置新成员可见的群历史消息范围",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "update_show_history_msg_option",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_show_history_msg_option"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置新成员可见的群历史消息范围",
 				UseWhen:      []string{"需要调整新成员入群后的历史消息可见性时"},
 				AvoidWhen:    []string{"普通消息查询或群设置的其他开关不要使用"},
@@ -5829,13 +5896,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把多条消息合并转发到目标会话",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "combine_forward_messages",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "combine_forward_messages"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把多条消息合并转发到目标会话",
 				UseWhen:      []string{"需要保留多条源消息并作为合集转发时"},
 				AvoidWhen:    []string{"只转发单条消息时使用 chat message forward"},
@@ -5884,13 +5952,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把一个话题消息转发到目标会话",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "forward_topic",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "forward_topic"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把一个话题消息转发到目标会话",
 				UseWhen:      []string{"需要转发话题圈中的主题及上下文时"},
 				AvoidWhen:    []string{"普通单条消息转发使用 chat message forward"},
@@ -5933,13 +6002,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把指定消息设为会话置顶消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "set_pin_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "set_pin_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把指定消息设为会话置顶消息",
 				UseWhen:      []string{"需要在会话中置顶一条已知消息时"},
 				AvoidWhen:    []string{"取消置顶使用 chat message unset-pin-msg"},
@@ -5976,13 +6046,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消指定消息的会话置顶",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "unset_pin_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "unset_pin_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消指定消息的会话置顶",
 				UseWhen:      []string{"需要移除一条已知置顶消息时"},
 				AvoidWhen:    []string{"新增置顶使用 chat message set-pin-msg"},
@@ -6027,13 +6098,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出指定会话中的置顶消息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "list_pin_messages",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_pin_messages"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定会话中的置顶消息",
 				UseWhen:      []string{"需要查看群聊当前置顶的消息时"},
 				AvoidWhen:    []string{"设置或取消置顶时使用 set-pin-msg 或 unset-pin-msg"},
@@ -6070,13 +6142,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将指定会话中的一条消息加入当前用户的收藏。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将指定会话中的一条消息加入当前用户的收藏。",
 				UseWhen:      []string{"用户明确要收藏一条已知消息，且已取得消息 ID 与所属会话 ID 时。"},
 				AvoidWhen:    []string{"需要给消息添加表情、置顶消息或发送新消息时不要使用；本命令只修改当前用户的收藏状态。"},
@@ -6111,13 +6184,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消当前用户对指定消息的收藏标记，不删除原消息。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消当前用户对指定消息的收藏标记，不删除原消息。",
 				UseWhen:      []string{"用户明确要从个人收藏中移除一条已知消息时。"},
 				AvoidWhen:    []string{"需要撤回或删除原消息、移除表情回应或取消消息置顶时不要使用。"},
@@ -6160,19 +6234,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "分页查询当前用户收藏的消息列表。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "分页查询当前用户收藏的消息列表。",
 				UseWhen:      []string{"需要查看当前用户已经收藏的消息，或使用 nextCursor 继续翻页时。"},
 				AvoidWhen:    []string{"需要搜索普通聊天记录、置顶消息或修改收藏状态时不要使用。"},
 				Examples:     []string{"dws chat message list-favorites --cursor 0 --size 20"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "size", InterfaceType: "string"},
 			},
 		},
@@ -6213,19 +6288,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户创建或管理的群聊",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "im", RPCName: "list_owned_or_admin_groups",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_owned_or_admin_groups"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户创建或管理的群聊",
 				UseWhen:      []string{"需要按群主或管理员角色盘点群聊时"},
 				AvoidWhen:    []string{"按名称搜索任意可见群时使用 chat search"},
 				Examples:     []string{"dws chat group list-my-groups --role OWNER --limit 100"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", Required: boolPtr(false)},
 				{Name: "role", Required: boolPtr(false)},
 			},
@@ -6577,13 +6653,14 @@ status 可选值:
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "设置或清除当前用户在指定群内的昵称",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI maps nickname update or clear semantics to im/update_group_nick, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI maps nickname update or clear semantics to im/update_group_nick, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "设置或清除当前用户在指定群内的昵称",
 				UseWhen:      []string{"用户要求修改自己的群昵称，或明确要求清除群昵称"},
 				AvoidWhen:    []string{"修改群名称应使用 chat group rename；修改其他成员信息不应使用本命令"},
@@ -6592,7 +6669,7 @@ status 可选值:
 					"dws chat group update-nick --group <openConversationId>",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "nick", Property: "nick", Required: boolPtr(false)},
 			},
@@ -6953,19 +7030,20 @@ status 可选值:
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "不可逆地把已有普通群升级为外部群",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: the executable CLI validates an optional string map and calls im/upgrade_group_to_external, which is absent from the pinned MCP metadata snapshot.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: the executable CLI validates an optional string map and calls im/upgrade_group_to_external, which is absent from the pinned MCP metadata snapshot.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "不可逆地把已有普通群升级为外部群",
 				UseWhen:      []string{"群主明确要求保留现有会话并升级为可跨组织协作的外部群，且已确认不可逆影响"},
 				AvoidWhen:    []string{"新建外部群应使用 chat group create --type EXTERNAL；未确认群主身份和不可逆影响时不要执行"},
 				Examples:     []string{"dws chat group upgrade-to-external --group <openConversationId>"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "extension", Property: "extension", Required: boolPtr(false), InterfaceType: "object"},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 			},
@@ -7013,19 +7091,20 @@ status 可选值:
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按名称、成员或关键词创建智能会话分组",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按名称、成员或关键词创建智能会话分组",
 				UseWhen:      []string{"需要自动归集符合条件的会话时"},
 				AvoidWhen:    []string{"只需查看现有分组或手工管理会话时不要使用"},
 				Examples:     []string{"dws chat category create-smart --name \"项目群\" --keywords \"项目,交付\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "keywords", Property: "groupNameKeywords", Required: boolPtr(false), InterfaceType: "array", Description: "群名称关键词列表，逗号分隔（可选）"},
 				{Name: "members", Property: "memberOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array", Description: "群内成员 openDingTalkId 列表，逗号分隔（可选）"},
 				{Name: "name", Property: "categoryName", Required: boolPtr(true), Description: "分组名称 (必填)"},
@@ -7127,13 +7206,14 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量查询当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量查询当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
 				UseWhen:      []string{"用户说 看下这些群我的置顶和免打扰设置"},
 				AvoidWhen:    []string{"管理员级群功能开关用 chat group update-settings"},
@@ -7178,13 +7258,14 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量更新当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量更新当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
 				UseWhen:      []string{"用户说 把这些群都设为免打扰/置顶"},
 				AvoidWhen:    []string{"单个群昵称优先 chat group update-nick"},

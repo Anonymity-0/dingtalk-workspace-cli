@@ -286,13 +286,14 @@ func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testi
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "test sheet delete",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "unit test fixture",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "unit test fixture",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "test sheet delete",
 				UseWhen:      []string{"unit test"},
 				AvoidWhen:    []string{"unit test"},

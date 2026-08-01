@@ -168,7 +168,7 @@ func ValidateAgentSelectionContract(bound BoundCommandRegistry) (AgentSelectionR
 // contractFinalSelectionHint synthesizes selection assertions of a declared
 // tool from its ContractFinal overlay.
 func contractFinalSelectionHint(command *cobra.Command) ManualAgentToolHint {
-	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.SchemaDecl)"}
+	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.ContractDecl)"}
 	payload, ok := contract.RuntimeContractFinal(command)
 	if !ok || payload.Selection == nil {
 		return hint

@@ -23,7 +23,7 @@ import (
 )
 
 // applyContractFinalDeclarations merges each registered Contract final
-// overlay (corecmd.SchemaDecl pass-through) into the matching tool record as
+// overlay (corecmd.ContractDecl pass-through) into the matching tool record as
 // the top-precedence candidate. Declared tools stop depending on selection
 // hint files: the in-code declaration is the single final source for every
 // field it carries. Non-declared tools are untouched.
@@ -156,8 +156,8 @@ func contractFinalToolMetadata(command *cobra.Command) (ToolMetadata, bool) {
 		return ToolMetadata{}, false
 	}
 	metadata := ToolMetadata{
-		AgentSummarySource: "corecmd.SchemaDecl",
-		SourceRefs:         []string{"corecmd.SchemaDecl"},
+		AgentSummarySource: "corecmd.ContractDecl",
+		SourceRefs:         []string{"corecmd.ContractDecl"},
 		reviewedRank:       selectionRankContractFinal,
 		reviewedOrigin:     contractFinalOrigin,
 	}

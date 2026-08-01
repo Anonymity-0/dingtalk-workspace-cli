@@ -41,13 +41,14 @@ var Whoami = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "查看我自己的通讯录资料（姓名/userId/手机/部门/组织，干净投影）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "查看我自己的通讯录资料（姓名/userId/手机/部门/组织，干净投影）",
 			UseWhen:      []string{"当你（或 AI agent）需要知道「我是谁」——我自己的 userId、姓名、所在部门、组织、手机号，用于后续按名解析他人前先确定自己身份、或填充发起人信息时使用；内部调用零参数的 get_current_user_profile（永远是「我」，无需传姓名），再把冗长的原始资料投影成 {name,userId,mobile,dept,org,email} 几个关键字段。这是纯只读操作，不修改任何资料。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

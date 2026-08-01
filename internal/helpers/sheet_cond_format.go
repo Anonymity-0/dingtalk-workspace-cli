@@ -43,13 +43,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出工作表条件格式规则。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_cond_format",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_cond_format"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出工作表条件格式规则。",
 				UseWhen:      []string{"查看或修改前需要枚举条件格式规则 ID 时"},
 				AvoidWhen:    []string{"创建/更新/删除分别用 cond-format create/update/delete"},
@@ -184,13 +185,14 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建条件格式规则。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "create_cond_format",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_cond_format"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建条件格式规则。",
 				UseWhen:      []string{"需要按条件自动着色/标注单元格时"},
 				AvoidWhen:    []string{"改已有规则用 update；删规则用 delete；普通样式刷用 set-style"},
@@ -289,13 +291,14 @@ ruleId 可通过 cond-format list 获取。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新已有条件格式规则。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_cond_format",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_cond_format"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已有条件格式规则。",
 				UseWhen:      []string{"已知规则 ID，需要调整条件或样式时"},
 				AvoidWhen:    []string{"新建用 create；删除用 delete"},
@@ -340,13 +343,14 @@ ruleId 可通过 cond-format list 获取。`,
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除条件格式规则（需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_cond_format",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_cond_format"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除条件格式规则（需确认后加 --yes）。",
 				UseWhen:      []string{"用户明确要求删除某条条件格式规则时"},
 				AvoidWhen:    []string{"只想改规则用 update；列目录用 list"},

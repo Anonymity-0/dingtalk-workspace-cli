@@ -38,8 +38,11 @@ var contractFinalByCommand sync.Map // *cobra.Command → *ContractFinalPayload
 
 // RegisterRuntimeContractFinal stores the typed final Schema overlay for a leaf.
 // Light runtime write: one map store, no JSON, no deep clone.
-// Annotation side-effects (dws.schema.contract) remain the caller's
-// responsibility so this package stays free of CLI delivery imports.
+//
+// Seam-only: production code must call cli.RegisterRuntimeContractFinal so the
+// dws.schema.contract annotation and the typed store stay atomic. This helper
+// exists for that seam (and tests that exercise the store). Do not call it from
+// corecmd.AttachContract / product helpers / shortcuts.
 func RegisterRuntimeContractFinal(cmd *cobra.Command, payload ContractFinalPayload) {
 	if cmd == nil {
 		return

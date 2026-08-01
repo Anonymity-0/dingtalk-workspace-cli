@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -88,13 +87,14 @@ func newDingCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "以企业机器人发送应用内/短信/电话 DING",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "ding", RPCName: "send_ding_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "ding", RPCName: "send_ding_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "以企业机器人发送应用内/短信/电话 DING",
 				UseWhen:      []string{"需要用企业机器人向指定 userId 发送应用内、短信或电话 DING"},
 				AvoidWhen: []string{
@@ -107,7 +107,7 @@ func newDingCommand() *cobra.Command {
 					"dws ding message send --robot-code <ROBOT_CODE> --type call --users userId1 --content \"紧急告警\" --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "content", Required: boolPtr(true)},
 				{Name: "robot-code", Required: boolPtr(true)},
 				{Name: "users", Required: boolPtr(true), InterfaceType: "array"},
@@ -141,13 +141,14 @@ func newDingCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "撤回已发送的机器人 DING",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "ding", RPCName: "recall_ding_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "ding", RPCName: "recall_ding_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "撤回已发送的机器人 DING",
 				UseWhen:      []string{"已知 openDingId 与同一 robot-code，需要撤回机器人 DING"},
 				AvoidWhen:    []string{"需要以用户身份撤回 DING 时不要使用本命令"},

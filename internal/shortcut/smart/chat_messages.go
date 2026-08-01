@@ -14,9 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -65,13 +66,14 @@ var ChatMessages = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
 			UseWhen:      []string{"当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"},
 			AvoidWhen:    []string{"要跨多个会话按关键词、发送者或消息类型检索时使用 +search-msg；已有一批精确消息 ID 时使用 +messages-mget"},

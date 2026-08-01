@@ -23,7 +23,7 @@ corecmd.Spec (声明) → corecmd.New() → cobra.Command
      ├── contract.SafetySpec (运行时 + Schema 单一安全来源)
      ├── FlagSpec[] (参数 + 回退链 + 绑定)
      ├── Constraint[] (互斥/至少一个)
-     ├── SchemaDecl (Agent Selection/DryRun/Interface)
+     ├── ContractDecl (Agent Selection/DryRun/Interface)
      │
      └── Invoke / Orchestrate / RunE (执行)
 ```
@@ -82,7 +82,7 @@ API Discovery → 代码生成 → surface command
 | 参数别名 + 环境变量回退 | ✅ FlagSpec.Aliases + EnvVar | ❌ 无 | ❌ 无 |
 | 声明式约束 (互斥/至少一个) | ✅ Constraint[] | ❌ 只有 Validate hook | ✅ argparse group |
 | 安全契约 | ✅ SafetySpec（effect/risk/confirmation/idempotency） | Risk | 无 |
-| Schema 投影 (Agent metadata) | ✅ SchemaDecl 内建 | ⚠️ 运行时 introspection | ❌ 外挂 |
+| Schema 投影 (Agent metadata) | ✅ ContractDecl 内建 | ⚠️ 运行时 introspection | ❌ 外挂 |
 | 参数绑定 (flag name → API key) | ✅ FlagSpec.Bind | ❌ 手写 | ✅ 自动映射 |
 | ConstParams (固定载荷) | ✅ | ❌ 手写在 Execute | ✅ 隐式 |
 | 确认门顺序可配 (ConfirmFirst) | ✅ | ❌ 固定顺序 | ❌ 无确认机制 |
@@ -156,7 +156,7 @@ GWS:      API Discovery JSON → 代码生成 → surface command
 
 | 框架 | 核心框架代码 | 单命令声明开销 | 备注 |
 |------|-------------|---------------|------|
-| DWS command | ~1400 行 (command.go + schema_decl.go) | ~20-30 行 (纯声明) | 框架重、单命令轻 |
+| DWS command | ~1400 行 (command.go + contract_decl.go) | ~20-30 行 (纯声明) | 框架重、单命令轻 |
 | lark-cli | ~800 行 (runner.go + types.go + common.go) | ~50-150 行 (声明 + Execute 逻辑) | 框架轻、单命令重 |
 | GWS gcloud | ~5000+ 行 (calliope 框架) | ~10 行 (多数自动生成) | 框架最重、单命令最轻 |
 
@@ -181,7 +181,7 @@ NewLeafCommand(LeafSpec{
     Schema: LeafSchema{
         Description: "创建开放平台企业内部应用",
         DryRun:    &LeafDryRunDecl{PreviewKind: "invocation"},
-        Interface: &LeafInterfaceDecl{Mode: "composite", Availability: "available"},
+        Interface: &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
         Selection: LeafSelectionDecl{
             AgentSummary: "创建钉钉开放平台应用",
             UseWhen:      []string{"需要新建企业内部应用"},

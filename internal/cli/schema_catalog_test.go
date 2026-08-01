@@ -25,7 +25,7 @@ func TestEmbeddedSchemaCatalogIntegrity(t *testing.T) {
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatal("embedded schema catalog is unavailable or failed integrity validation")
 	}
-	if got := schemaString(loaded.Snapshot.Catalog["source"]); got != "embedded-command-catalog" {
+	if got := loaded.Registry.Source; got != "embedded-command-catalog" {
 		t.Fatalf("catalog source = %q", got)
 	}
 }
@@ -74,7 +74,7 @@ func TestEmbeddedSchemaCatalogProgressiveQueries(t *testing.T) {
 }
 
 func TestEmbeddedSchemaAllPayloadContainsEveryFullLeaf(t *testing.T) {
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	payload, err := embeddedSchemaAllPayload()
 	if err != nil {
 		t.Fatal(err)

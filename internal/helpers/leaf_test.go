@@ -414,13 +414,14 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Validate: func(*cobra.Command, []string) error { return nil },
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "test delete",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "test fixture for ConfirmSafety wrap",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "test fixture for ConfirmSafety wrap",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "test delete",
 				UseWhen:      []string{"test"},
 				AvoidWhen:    []string{"never"},
@@ -480,13 +481,14 @@ func TestDeclareLeafMetadataDefersConfirmUntilCallTool(t *testing.T) {
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "test delete",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "test fixture for deferred ConfirmSafety",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "test fixture for deferred ConfirmSafety",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "test delete",
 				UseWhen:      []string{"test"},
 				AvoidWhen:    []string{"never"},
@@ -543,13 +545,14 @@ func TestDeclareLeafMetadataValidateRunsBeforeConfirmSafety(t *testing.T) {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "test mutate",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "test fixture for Validate-before-ConfirmSafety",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "test fixture for Validate-before-ConfirmSafety",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "test mutate",
 				UseWhen:      []string{"test"},
 				AvoidWhen:    []string{"never"},

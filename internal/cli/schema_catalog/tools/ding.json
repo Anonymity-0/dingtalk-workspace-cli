@@ -4,10 +4,10 @@
     "ding.recall_ding_message": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "撤回已发送的机器人 DING",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要以用户身份撤回 DING 时不要使用本命令"
@@ -31,7 +31,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "撤回已发送的机器人 DING"
             }
           ],
@@ -39,7 +39,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "撤回已发送的机器人 DING"
         },
         "availability": {
@@ -49,7 +49,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -57,7 +57,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -67,7 +67,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要以用户身份撤回 DING 时不要使用本命令"
               ]
@@ -77,7 +77,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要以用户身份撤回 DING 时不要使用本命令"
           ]
@@ -89,7 +89,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "ding.recall_ding_message"
             }
           ],
@@ -97,7 +97,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "ding.recall_ding_message"
         },
         "confirmation": {
@@ -107,7 +107,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -115,7 +115,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -125,7 +125,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "撤回已发送的机器人 DING"
             }
           ],
@@ -133,7 +133,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "撤回已发送的机器人 DING"
         },
         "effect": {
@@ -143,7 +143,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "write"
             }
           ],
@@ -151,7 +151,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "write"
         },
         "examples": {
@@ -161,7 +161,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws ding message recall --robot-code \u003cROBOT_CODE\u003e --id \u003cOPEN_DING_ID\u003e --format json"
               ]
@@ -171,7 +171,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws ding message recall --robot-code \u003cROBOT_CODE\u003e --id \u003cOPEN_DING_ID\u003e --format json"
           ]
@@ -183,7 +183,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "unknown"
             }
           ],
@@ -191,7 +191,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -201,7 +201,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -209,7 +209,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -219,7 +219,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "ding",
                 "rpc_name": "recall_ding_message"
@@ -230,7 +230,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "ding",
             "rpc_name": "recall_ding_message"
@@ -243,7 +243,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -251,7 +251,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -261,7 +261,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -269,7 +269,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -279,7 +279,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "medium"
             }
           ],
@@ -287,25 +287,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "撤回 DING 消息"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "撤回 DING 消息"
         },
         "use_when": {
@@ -315,7 +315,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "已知 openDingId 与同一 robot-code，需要撤回机器人 DING"
               ]
@@ -325,7 +325,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "已知 openDingId 与同一 robot-code，需要撤回机器人 DING"
           ]
@@ -571,10 +571,10 @@
     "ding.send_ding_message": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "以企业机器人发送应用内/短信/电话 DING",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "普通聊天消息用 chat message send / send-by-bot",
@@ -601,7 +601,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "以企业机器人发送应用内/短信/电话 DING"
             }
           ],
@@ -609,7 +609,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "以企业机器人发送应用内/短信/电话 DING"
         },
         "availability": {
@@ -619,7 +619,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -627,7 +627,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -637,7 +637,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "普通聊天消息用 chat message send / send-by-bot",
                 "需要用户身份 DING 时不要用本命令（机器人身份）",
@@ -649,7 +649,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "普通聊天消息用 chat message send / send-by-bot",
             "需要用户身份 DING 时不要用本命令（机器人身份）",
@@ -663,7 +663,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "ding.send_ding_message"
             }
           ],
@@ -671,7 +671,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "ding.send_ding_message"
         },
         "confirmation": {
@@ -681,7 +681,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -689,25 +689,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "发送 DING 消息。类型:\n  app  = 应用内 DING (默认)\n  sms  = 短信 DING (有成本)\n  call = 电话 DING (有成本)"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "发送 DING 消息。类型:\n  app  = 应用内 DING (默认)\n  sms  = 短信 DING (有成本)\n  call = 电话 DING (有成本)"
         },
         "effect": {
@@ -717,7 +717,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "write"
             }
           ],
@@ -725,7 +725,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "write"
         },
         "examples": {
@@ -735,7 +735,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws ding message send --robot-code \u003cROBOT_CODE\u003e --users userId1,userId2 --content \"请查看\" --format json",
                 "dws ding message send --robot-code \u003cROBOT_CODE\u003e --type call --users userId1 --content \"紧急告警\" --format json"
@@ -746,7 +746,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws ding message send --robot-code \u003cROBOT_CODE\u003e --users userId1,userId2 --content \"请查看\" --format json",
             "dws ding message send --robot-code \u003cROBOT_CODE\u003e --type call --users userId1 --content \"紧急告警\" --format json"
@@ -759,7 +759,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "unknown"
             }
           ],
@@ -767,7 +767,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -777,7 +777,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -785,7 +785,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -795,7 +795,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "ding",
                 "rpc_name": "send_ding_message"
@@ -806,7 +806,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "ding",
             "rpc_name": "send_ding_message"
@@ -819,7 +819,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -827,7 +827,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -837,7 +837,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -845,7 +845,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -855,7 +855,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "medium"
             }
           ],
@@ -863,25 +863,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "发送 DING 消息"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "发送 DING 消息"
         },
         "use_when": {
@@ -891,7 +891,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要用企业机器人向指定 userId 发送应用内、短信或电话 DING"
               ]
@@ -901,7 +901,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要用企业机器人向指定 userId 发送应用内、短信或电话 DING"
           ]
@@ -1426,10 +1426,10 @@
     "ding.shortcut_list": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "查询 DING 消息列表",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -1453,7 +1453,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查询 DING 消息列表"
             }
           ],
@@ -1461,7 +1461,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查询 DING 消息列表"
         },
         "availability": {
@@ -1471,7 +1471,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -1479,7 +1479,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -1489,7 +1489,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ]
@@ -1499,7 +1499,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ]
@@ -1511,7 +1511,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "ding.shortcut_list"
             }
           ],
@@ -1519,7 +1519,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "ding.shortcut_list"
         },
         "confirmation": {
@@ -1529,7 +1529,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -1537,25 +1537,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
         },
         "effect": {
@@ -1565,7 +1565,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -1573,7 +1573,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -1583,7 +1583,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws ding +list"
               ]
@@ -1593,7 +1593,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws ding +list"
           ]
@@ -1605,7 +1605,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -1613,7 +1613,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -1623,7 +1623,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "composite"
             }
           ],
@@ -1631,7 +1631,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "composite"
         },
         "interface_reason": {
@@ -1641,7 +1641,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
             }
           ],
@@ -1649,7 +1649,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
         "interface_ref": {
@@ -1659,7 +1659,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": null
             }
           ],
@@ -1667,7 +1667,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": null
         },
         "metadata_source": {
@@ -1677,7 +1677,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -1685,7 +1685,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -1695,7 +1695,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -1703,7 +1703,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -1713,7 +1713,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -1721,25 +1721,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "查询 DING 消息列表"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "查询 DING 消息列表"
         },
         "use_when": {
@@ -1749,7 +1749,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
               ]
@@ -1759,7 +1759,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
           ]
@@ -1964,10 +1964,10 @@
     "ding.shortcut_recall_personal": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "撤回本人发起的 DING",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -1991,7 +1991,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "撤回本人发起的 DING"
             }
           ],
@@ -1999,7 +1999,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "撤回本人发起的 DING"
         },
         "availability": {
@@ -2009,7 +2009,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -2017,7 +2017,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -2027,7 +2027,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ]
@@ -2037,7 +2037,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ]
@@ -2049,7 +2049,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "ding.shortcut_recall_personal"
             }
           ],
@@ -2057,7 +2057,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "ding.shortcut_recall_personal"
         },
         "confirmation": {
@@ -2067,7 +2067,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "user_required"
             }
           ],
@@ -2075,25 +2075,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "user_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
         },
         "effect": {
@@ -2103,7 +2103,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "destructive"
             }
           ],
@@ -2111,7 +2111,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "destructive"
         },
         "examples": {
@@ -2121,7 +2121,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws ding +recall-personal --id \u003cID\u003e"
               ]
@@ -2131,7 +2131,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws ding +recall-personal --id \u003cID\u003e"
           ]
@@ -2143,7 +2143,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "unknown"
             }
           ],
@@ -2151,7 +2151,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -2161,7 +2161,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "composite"
             }
           ],
@@ -2169,7 +2169,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "composite"
         },
         "interface_reason": {
@@ -2179,7 +2179,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
             }
           ],
@@ -2187,7 +2187,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
         "interface_ref": {
@@ -2197,7 +2197,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": null
             }
           ],
@@ -2205,7 +2205,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": null
         },
         "metadata_source": {
@@ -2215,7 +2215,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -2223,7 +2223,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -2233,7 +2233,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -2241,7 +2241,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -2251,7 +2251,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "high"
             }
           ],
@@ -2259,25 +2259,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "high"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "撤回本人发起的 DING"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "撤回本人发起的 DING"
         },
         "use_when": {
@@ -2287,7 +2287,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
               ]
@@ -2297,7 +2297,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
           ]
@@ -2423,10 +2423,10 @@
     "ding.shortcut_receiver_status": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "查询 DING 消息接收人已读状态",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -2450,7 +2450,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查询 DING 消息接收人已读状态"
             }
           ],
@@ -2458,7 +2458,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查询 DING 消息接收人已读状态"
         },
         "availability": {
@@ -2468,7 +2468,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -2476,7 +2476,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -2486,7 +2486,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ]
@@ -2496,7 +2496,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ]
@@ -2508,7 +2508,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "ding.shortcut_receiver_status"
             }
           ],
@@ -2516,7 +2516,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "ding.shortcut_receiver_status"
         },
         "confirmation": {
@@ -2526,7 +2526,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -2534,25 +2534,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
         },
         "effect": {
@@ -2562,7 +2562,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -2570,7 +2570,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -2580,7 +2580,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws ding +receiver-status --ding-id \u003cDING_ID\u003e"
               ]
@@ -2590,7 +2590,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws ding +receiver-status --ding-id \u003cDING_ID\u003e"
           ]
@@ -2602,7 +2602,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -2610,7 +2610,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -2620,7 +2620,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "composite"
             }
           ],
@@ -2628,7 +2628,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "composite"
         },
         "interface_reason": {
@@ -2638,7 +2638,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
             }
           ],
@@ -2646,7 +2646,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
         "interface_ref": {
@@ -2656,7 +2656,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": null
             }
           ],
@@ -2664,7 +2664,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": null
         },
         "metadata_source": {
@@ -2674,7 +2674,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -2682,7 +2682,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -2692,7 +2692,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -2700,7 +2700,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -2710,7 +2710,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -2718,25 +2718,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "查询 DING 消息接收人已读状态"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "查询 DING 消息接收人已读状态"
         },
         "use_when": {
@@ -2746,7 +2746,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
               ]
@@ -2756,7 +2756,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
           ]
@@ -2882,10 +2882,10 @@
     "ding.shortcut_send_personal": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "以本人身份发送 DING 给指定人",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -2909,7 +2909,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "以本人身份发送 DING 给指定人"
             }
           ],
@@ -2917,7 +2917,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "以本人身份发送 DING 给指定人"
         },
         "availability": {
@@ -2927,7 +2927,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -2935,7 +2935,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -2945,7 +2945,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ]
@@ -2955,7 +2955,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ]
@@ -2967,7 +2967,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "ding.shortcut_send_personal"
             }
           ],
@@ -2975,7 +2975,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "ding.shortcut_send_personal"
         },
         "confirmation": {
@@ -2985,7 +2985,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "user_required"
             }
           ],
@@ -2993,25 +2993,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "user_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
         },
         "effect": {
@@ -3021,7 +3021,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "write"
             }
           ],
@@ -3029,7 +3029,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "write"
         },
         "examples": {
@@ -3039,7 +3039,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws ding +send-personal --users \u003cVALUES\u003e --content \u003cCONTENT\u003e"
               ]
@@ -3049,7 +3049,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws ding +send-personal --users \u003cVALUES\u003e --content \u003cCONTENT\u003e"
           ]
@@ -3061,7 +3061,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "unknown"
             }
           ],
@@ -3069,7 +3069,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -3079,7 +3079,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "composite"
             }
           ],
@@ -3087,7 +3087,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "composite"
         },
         "interface_reason": {
@@ -3097,7 +3097,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
             }
           ],
@@ -3105,7 +3105,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
         "interface_ref": {
@@ -3115,7 +3115,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": null
             }
           ],
@@ -3123,7 +3123,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": null
         },
         "metadata_source": {
@@ -3133,7 +3133,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -3141,7 +3141,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -3151,7 +3151,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -3159,7 +3159,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -3169,7 +3169,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "medium"
             }
           ],
@@ -3177,25 +3177,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "以本人身份发送 DING 给指定人"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "以本人身份发送 DING 给指定人"
         },
         "use_when": {
@@ -3205,7 +3205,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
               ]
@@ -3215,7 +3215,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
           ]

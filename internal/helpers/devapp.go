@@ -269,11 +269,11 @@ func newDevAppEventListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "keyword", Usage: "事件搜索关键词，支持按事件码或事件名称模糊匹配", Bind: "keyword", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询应用已订阅的事件列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出或搜索应用可订阅的事件",
 				UseWhen:      []string{"需要查事件码、事件名称或当前事件列表时"},
 				AvoidWhen:    []string{"订阅或退订事件使用对应写命令"},
@@ -298,11 +298,11 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "event-codes", Usage: "事件码，多个用逗号或分号分隔", Bind: "eventCodes", Trim: true, Required: true, RequiredHint: "--event-codes 为必填", Transform: transformDevAppListParam},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "订阅应用事件回调",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为应用订阅指定事件码",
 				UseWhen:      []string{"已确认事件码并需要新增事件订阅时"},
 				AvoidWhen:    []string{"查询事件码或已有订阅时先使用 dev app event list"},
@@ -327,11 +327,11 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "event-codes", Usage: "事件码，多个用逗号或分号分隔", Bind: "eventCodes", Trim: true, Required: true, RequiredHint: "--event-codes 为必填", Transform: transformDevAppListParam},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消订阅应用事件",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消应用的指定事件订阅",
 				UseWhen:      []string{"需要停止接收一个或多个已订阅事件时"},
 				AvoidWhen:    []string{"只是查看事件订阅时使用 dev app event list"},
@@ -361,11 +361,11 @@ func newDevAppListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "sort-type", Usage: "排序字段，如 gmt_modified", Bind: "sortType", Trim: true, OmitEmpty: true},
 			{Name: "sort-order", Usage: "排序方向 asc 或 desc", Bind: "sortOrder", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询开放平台企业内部应用列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按条件分页查询开放平台应用",
 				UseWhen:      []string{"需要按名称、创建人或应用键筛选应用时"},
 				AvoidWhen:    []string{"已经持有明确 unifiedAppId 时使用 dev app get"},
@@ -397,11 +397,11 @@ func newDevAppGetCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询开放平台企业内部应用详情",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定开放平台应用详情",
 				UseWhen:      []string{"已知 unifiedAppId 或 appKey 并需要核对应用配置或状态时"},
 				AvoidWhen:    []string{"需要搜索或分页浏览多个应用时使用 dev app list"},
@@ -430,11 +430,11 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 			{Name: "desc", Usage: "应用描述", Bind: "desc", Trim: true, OmitEmpty: true},
 			{Name: "icon-media-id", Usage: "应用图标 mediaId", Bind: "iconMediaId", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建钉钉开放平台应用并返回 unifiedAppId/凭证信息",
 				UseWhen:      []string{"需要新建企业内部应用或三方个人应用并拿到 unifiedAppId"},
 				AvoidWhen:    []string{"应用已存在只需改信息时用 dev app update", "只查文档时用 devdoc"},
@@ -470,11 +470,11 @@ func newDevAppUpdateCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "修改开放平台企业内部应用基础信息",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新开放平台应用名称/描述/图标等基础信息",
 				UseWhen:      []string{"已有 unifiedAppId，需要修改应用基础信息"},
 				AvoidWhen:    []string{"创建新应用用 create；停用/启用用 disable/enable；改安全配置用 security config"},
@@ -496,11 +496,11 @@ func newDevAppCredentialsGetCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "读取开放平台应用凭证",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "读取指定应用的客户端凭证",
 				UseWhen:      []string{"已知 unifiedAppId 且需要 clientId 或 clientSecret 时"},
 				AvoidWhen:    []string{"不要把凭证内容用于普通应用详情查询或写入日志"},
@@ -523,11 +523,11 @@ func newDevAppDisableCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "停用开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "停用指定开放平台应用",
 				UseWhen:      []string{"需要让应用暂时不可用但保留配置时"},
 				AvoidWhen:    []string{"永久删除应用使用 dev app delete"},
@@ -550,11 +550,11 @@ func newDevAppEnableCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "启用开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "启用指定开放平台应用",
 				UseWhen:      []string{"需要恢复一个已停用应用时"},
 				AvoidWhen:    []string{"启用应用内机器人能力使用 dev app robot enable"},
@@ -589,11 +589,11 @@ func newDevAppDeleteCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "confirm-name", Usage: "二次确认：必须与被删应用的名称一致（不可逆操作的防误删）", Bind: "confirmName", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除开放平台企业内部应用（不可逆，需 --confirm-name 二次确认）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除开放平台企业内部应用（不可恢复）",
 				UseWhen:      []string{"用户明确要求永久删除应用，且接受不可恢复后果"},
 				AvoidWhen:    []string{"只需临时下架时用 dev app disable", "用户未确认应用名/影响范围时不要删除"},
@@ -683,11 +683,11 @@ func newDevAppWebappGetCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询网页应用配置",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定应用的网页入口配置",
 				UseWhen:      []string{"需要核对应用 H5 或 PC 首页地址时"},
 				AvoidWhen:    []string{"修改网页入口时使用 dev app webapp config"},
@@ -723,11 +723,11 @@ func newDevAppWebappConfigCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "配置网页应用能力",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建或更新应用网页入口配置",
 				UseWhen:      []string{"需要设置 H5、PC 首页或 OMP 地址时"},
 				AvoidWhen:    []string{"只查看当前网页配置时使用 dev app webapp get"},
@@ -755,11 +755,11 @@ func newDevAppPermissionListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "scope-type", Usage: "权限一级类型：APP 或 SNS", Bind: "scopeType", Trim: true, OmitEmpty: true, Transform: func(raw string) (any, error) { return strings.ToUpper(raw), nil }},
 			{Name: "api-status", Usage: "开发者后台 apiStatus 过滤", Bind: "apiStatus", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询开放平台应用权限列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询应用权限及其授权状态",
 				UseWhen:      []string{"需要按关键词、范围或状态查权限时"},
 				AvoidWhen:    []string{"新增或移除权限使用对应 permission 写命令"},
@@ -787,11 +787,11 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "scope-values", Usage: "权限点 scopeValue，多个用逗号或分号分隔", Bind: "scopeValues", Trim: true, Required: true, RequiredHint: "--scope-values 为必填", Transform: transformDevAppScopeValues},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "申请开放平台应用权限点",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为应用申请一个或多个接口权限",
 				UseWhen:      []string{"已确认 scopeValue 并需要新增权限时"},
 				AvoidWhen:    []string{"查找或核对已有权限时使用 dev app permission list"},
@@ -816,11 +816,11 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "scope-values", Usage: "待取消权限点 scopeValue，多个用逗号或分号分隔", Bind: "scopeValues", Trim: true, Required: true, RequiredHint: "--scope-values 为必填", Transform: transformDevAppScopeValues},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消开放平台应用权限点",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "移除应用的一个或多个接口权限",
 				UseWhen:      []string{"需要撤销已知 scopeValue 的权限时"},
 				AvoidWhen:    []string{"只查看权限状态时使用 dev app permission list"},
@@ -842,11 +842,11 @@ func newDevAppMemberListCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询开放平台应用成员",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定应用的协作成员",
 				UseWhen:      []string{"需要查看应用开发者和管理员清单时"},
 				AvoidWhen:    []string{"新增或移除成员使用对应 member 写命令"},
@@ -880,11 +880,11 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "添加开放平台应用成员",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "向应用添加开发者或管理员成员",
 				UseWhen:      []string{"需要授予指定用户应用协作角色时"},
 				AvoidWhen:    []string{"只查看现有成员时使用 dev app member list"},
@@ -918,11 +918,11 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "移除开放平台应用成员",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "从应用移除开发者或管理员成员",
 				UseWhen:      []string{"需要撤销指定用户的应用协作角色时"},
 				AvoidWhen:    []string{"删除应用本身或只查看成员时不要使用"},
@@ -959,11 +959,11 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 			}
 			return nil
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新开放平台应用安全配置",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新应用 IP 白名单、回调和单点登录地址",
 				UseWhen:      []string{"需要调整应用安全相关 URL 或白名单时"},
 				AvoidWhen:    []string{"普通应用名称和描述更新使用 dev app update"},
@@ -999,11 +999,11 @@ func newDevAppRobotSubmitCommand(runner executor.Runner) *cobra.Command {
 			{Name: "preview-media-id", Usage: "机器人预览图 mediaId；为空时复用图标", Bind: "previewMediaId", Trim: true, OmitEmpty: true},
 			{Name: "task-id", Usage: "失败重试时传入原 taskId；为空时服务端自动生成", Bind: "taskId", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "异步提交钉钉智能体机器人创建任务（支持失败重试）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "提交机器人建号异步任务",
 				UseWhen:      []string{"需要创建新的机器人账号并取得 taskId 时"},
 				AvoidWhen:    []string{"已有任务应先用 robot result 轮询，不能重复提交"},
@@ -1040,11 +1040,11 @@ func newDevAppRobotResultCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "task-id", Usage: "提交创建任务时返回的 taskId (必填)", Bind: "taskId", Trim: true, Required: true, RequiredHint: "--task-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询机器人异步创建任务结果",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询机器人建号异步任务结果",
 				UseWhen:      []string{"已有 taskId，需要轮询 WAITING、SUCCESS 或审批状态时"},
 				AvoidWhen:    []string{"没有建号任务时先使用 dev app robot submit"},
@@ -1066,11 +1066,11 @@ func newDevAppRobotConfigGetCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询现有应用的机器人配置",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定应用的机器人配置和状态",
 				UseWhen:      []string{"需要判断机器人是否未配置、离线或在线时"},
 				AvoidWhen:    []string{"查询机器人建号异步任务使用 dev app robot result"},
@@ -1116,11 +1116,11 @@ func newDevAppRobotConfigCommand(runner executor.Runner) *cobra.Command {
 			{Name: "i18n-brief", Usage: "机器人简介国际化 JSON", Bind: "i18nBrief", Trim: true, OmitEmpty: true},
 			{Name: "i18n-description", Usage: "机器人描述国际化 JSON", Bind: "i18nDescription", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建或更新现有应用的机器人配置（upsert）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建或更新应用的机器人能力配置",
 				UseWhen:      []string{"已有 unifiedAppId 并需要配置机器人名称、回调或技能时"},
 				AvoidWhen:    []string{"机器人建号使用 robot submit，本地建联使用 dev connect"},
@@ -1159,11 +1159,11 @@ func newDevAppRobotEnableCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "启用现有应用机器人能力（纯启用，无需配置字段）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "启用指定应用的机器人能力",
 				UseWhen:      []string{"机器人配置存在但处于 OFFLINE 时"},
 				AvoidWhen:    []string{"建立本地 Stream 连接使用 dev connect"},
@@ -1187,11 +1187,11 @@ func newDevAppRobotOfflineCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "停用现有应用的机器人能力",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "停用指定应用的机器人能力",
 				UseWhen:      []string{"需要暂时让应用机器人离线时"},
 				AvoidWhen:    []string{"停用整个应用使用 dev app disable"},
@@ -1302,11 +1302,11 @@ func newDevAppVersionCreateCommand(runner executor.Runner) *cobra.Command {
 			{Name: "version", Usage: "高级可选：显式版本号，如 1.0.1；默认不传，由服务端基于最新已发布版本自动递增", Bind: "version", Trim: true, OmitEmpty: true},
 			{Name: "desc", Usage: "版本描述", Bind: "desc", Trim: true, OmitEmpty: true},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "基于当前配置创建应用新版本",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为应用当前配置创建待发布版本",
 				UseWhen:      []string{"配置变更完成后需要生成版本进入发布流程时"},
 				AvoidWhen:    []string{"只是查看已有版本时使用 dev app version list"},
@@ -1328,11 +1328,11 @@ func newDevAppVersionListCommand(runner executor.Runner) *cobra.Command {
 		Flags: []LeafFlag{
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "分页查询应用版本列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "分页列出应用的历史和待发布版本",
 				UseWhen:      []string{"需要查找 versionId 或浏览版本记录时"},
 				AvoidWhen:    []string{"已知版本并需详情或状态时使用 get 或 status"},
@@ -1355,11 +1355,11 @@ func newDevAppVersionGetCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "version-id", Usage: "版本 ID (必填)", Bind: "versionId", Trim: true, Required: true, RequiredHint: "--version-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定版本详情",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定应用版本的详细内容",
 				UseWhen:      []string{"已知 versionId 并需要核对版本配置时"},
 				AvoidWhen:    []string{"查看发布进度时使用 dev app version status"},
@@ -1404,11 +1404,11 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 			{Name: "confirmed-sensitive", Usage: "确认发布包含高敏权限的版本", Kind: LeafBool, Bind: "confirmedSensitive"},
 		},
 		ConstParams: map[string]any{"precheckOnly": false},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "发布指定版本（含高敏权限需 --confirmed-sensitive）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "发布开放平台应用指定版本（可先预检）",
 				UseWhen:      []string{"版本已创建，需要预检或正式发布到线上"},
 				AvoidWhen:    []string{"还没有 versionId 时先 version create / list / get", "含高敏权限但尚未确认时不要正式发布"},
@@ -1431,11 +1431,11 @@ func newDevAppVersionStatusCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 			{Name: "version-id", Usage: "版本 ID (必填)", Bind: "versionId", Trim: true, Required: true, RequiredHint: "--version-id 为必填"},
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询版本发布/审批状态",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定应用版本的发布或审批状态",
 				UseWhen:      []string{"需要判断版本是否已发布、审核中或受阻时"},
 				AvoidWhen:    []string{"需要版本配置详情时使用 dev app version get"},
@@ -1492,7 +1492,7 @@ func devAppMeta(tool string) func(*cobra.Command) {
 }
 
 // devAppCompositeInterfaceReason 是 devapp 全树共用的评审 interface 说明（非 pin
-// MCP 元数据的远程适配器），作为 InterfaceDecl.Reason 的最终发布值。
+// MCP 元数据的远程适配器），作为 contract.InterfaceSpec.Reason 的最终发布值。
 const devAppCompositeInterfaceReason = "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
 
 // devapp 的 SafetySpec 直接对齐 Agent Runtime Schema。函数每次返回一个值
@@ -1527,14 +1527,14 @@ func devAppSafetyDestructive() contract.SafetySpec {
 
 // devAppDryRun 是 devapp 全树共用的 dry_run 最终声明：本地拼装调用预览
 // （invocation preview），dry-run 不发起任何远端读。
-var devAppDryRun = &LeafDryRunDecl{
+var devAppDryRun = &contract.DryRunSpec{
 	PreviewKind: "invocation",
 	RemoteReads: false,
 }
 
 // devAppCompositeInterface 是 devapp 全树共用的 Interface 最终声明。
-func devAppCompositeInterface() *LeafInterfaceDecl {
-	return &LeafInterfaceDecl{Mode: "composite", Availability: "available", Reason: devAppCompositeInterfaceReason}
+func devAppCompositeInterface() *contract.InterfaceSpec {
+	return &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: devAppCompositeInterfaceReason}
 }
 
 func runDevAppTool(runner executor.Runner, cmd *cobra.Command, tool string, params map[string]any) error {

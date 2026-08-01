@@ -13,7 +13,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -142,13 +141,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前登录用户自己的可用邮箱",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "list_user_mailboxes",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_user_mailboxes"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前登录用户自己的可用邮箱",
 				UseWhen:      []string{"需要选择当前用户企业邮箱或个人邮箱时"},
 				AvoidWhen:    []string{"查找他人的邮箱地址不能使用此命令"},
@@ -263,13 +263,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "用 KQL 搜索邮件，返回 ID 与元信息而非完整正文",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "search_emails",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "search_emails"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "用 KQL 搜索邮件，返回 ID 与元信息而非完整正文",
 				UseWhen:      []string{"按主题/发件人/时间等条件搜索邮件并提取 messageId"},
 				AvoidWhen: []string{
@@ -278,7 +279,7 @@ func newMailCommand() *cobra.Command {
 				},
 				Examples: []string{"dws mail message search --email user@company.com --query \"subject:周报\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", Property: "size"},
 			},
 		},
@@ -327,13 +328,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出收件箱或指定文件夹中的邮件（无需手写 KQL）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "CLI wrapper converts the reviewed folder selection into a KQL query and maps pagination before calling the pinned search_emails RPC; the local transform plus RPC call is not a one-to-one interface contract",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "CLI wrapper converts the reviewed folder selection into a KQL query and maps pagination before calling the pinned search_emails RPC; the local transform plus RPC call is not a one-to-one interface contract",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出收件箱或指定文件夹中的邮件（无需手写 KQL）",
 				UseWhen:      []string{"浏览某文件夹邮件列表，且没有复杂搜索条件"},
 				AvoidWhen:    []string{"需要主题/发件人/日期等组合条件时用 mail message search"},
@@ -345,7 +347,7 @@ func newMailCommand() *cobra.Command {
 			// Composite wrapper maps --limit onto search_emails.size (same RPC as
 			// mail message search). Declare here so clearing hints does not fall
 			// back to flag_name_inference → "limit".
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "limit", Property: "size"},
 			},
 		},
@@ -377,13 +379,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定邮件的完整正文和元数据",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "get_email_by_message_id",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "get_email_by_message_id"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定邮件的完整正文和元数据",
 				UseWhen:      []string{"搜索或列表已返回 messageId，需要打开邮件内容时"},
 				AvoidWhen:    []string{"只需筛选邮件列表时使用 message list 或 search"},
@@ -457,13 +460,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "以指定邮箱地址发送一封邮件",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "send_email",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "send_email"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "以指定邮箱地址发送一封邮件",
 				UseWhen:      []string{"用户明确要发邮件，且已确认发件人邮箱、收件人、主题与正文"},
 				AvoidWhen: []string{
@@ -513,13 +517,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出指定邮箱的系统和自定义文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "list_folders",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_folders"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定邮箱的系统和自定义文件夹",
 				UseWhen:      []string{"需要取得 folderId 或浏览邮箱目录时"},
 				AvoidWhen:    []string{"按文件夹列出邮件时使用 mail message list"},
@@ -568,13 +573,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建自定义邮件文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_mail_folder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_mail_folder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建自定义邮件文件夹",
 				UseWhen:      []string{"需要在指定邮箱中新建归档文件夹时"},
 				AvoidWhen:    []string{"移动邮件到已有文件夹时使用 mail message batch-move"},
@@ -612,13 +618,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除指定邮箱下的邮件文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "delete_mail_folder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "delete_mail_folder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除指定邮箱下的邮件文件夹",
 				UseWhen:      []string{"已通过 folder list 拿到文件夹 ID，用户明确要删除该文件夹"},
 				AvoidWhen: []string{
@@ -660,13 +667,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "重命名指定邮件文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "update_mail_folder",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "update_mail_folder"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "重命名指定邮件文件夹",
 				UseWhen:      []string{"已知 folderId 并需要修改文件夹名称时"},
 				AvoidWhen:    []string{"创建或删除文件夹使用对应命令"},
@@ -725,13 +733,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出指定邮箱可用的邮件标签",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "list_tags",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_tags"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定邮箱可用的邮件标签",
 				UseWhen:      []string{"需要取得标签 ID 或查看现有标签时"},
 				AvoidWhen:    []string{"邮件文件夹目录使用 mail folder list"},
@@ -935,13 +944,14 @@ func newMailCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定邮件会话的详情",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "get_thread",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "get_thread"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定邮件会话的详情",
 				UseWhen:      []string{"已知 conversationId 并需要查看同一会话中的邮件上下文时"},
 				AvoidWhen:    []string{"只有单封 messageId 时使用 mail message get"},
@@ -1231,13 +1241,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建仅回复原发件人的邮件草稿",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_reply_draft",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_reply_draft"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建仅回复原发件人的邮件草稿",
 				UseWhen:      []string{"已知原邮件 ID 并要回复发件人时"},
 				AvoidWhen:    []string{"需要回复全部参与者时使用 mail message reply-all"},
@@ -1299,13 +1310,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建回复原邮件全部参与者的草稿",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_replyall_draft",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_replyall_draft"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建回复原邮件全部参与者的草稿",
 				UseWhen:      []string{"已知原邮件 ID 且回复需要覆盖所有相关收件人时"},
 				AvoidWhen:    []string{"只回复原发件人时使用 mail message reply"},
@@ -1367,13 +1379,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "基于已有邮件创建转发草稿",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_forward_draft",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_forward_draft"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "基于已有邮件创建转发草稿",
 				UseWhen:      []string{"已知原邮件 ID，需要编辑收件人或附言后再发送时"},
 				AvoidWhen:    []string{"直接发送全新邮件使用 mail message send"},
@@ -1408,13 +1421,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把多封邮件批量移动到指定文件夹",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "batch_move_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "batch_move_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把多封邮件批量移动到指定文件夹",
 				UseWhen:      []string{"已知邮件 ID 列表和目标 folderId 时"},
 				AvoidWhen:    []string{"永久删除邮件时使用 mail message batch-delete"},
@@ -1446,13 +1460,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量删除邮件（可移入已删除或按类型删除）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "batch_delete_message",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "batch_delete_message"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量删除邮件（可移入已删除或按类型删除）",
 				UseWhen:      []string{"已知多个 messageId，用户明确要求删除这些邮件"},
 				AvoidWhen: []string{
@@ -1633,13 +1648,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建邮件草稿但不发送",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_draft",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_draft"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建邮件草稿但不发送",
 				UseWhen:      []string{"需要先保存收件人、主题、正文或附件供后续编辑时"},
 				AvoidWhen:    []string{"用户要求立即发信时使用 mail message send"},
@@ -1710,13 +1726,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新已有邮件草稿的内容",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "update_draft",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "update_draft"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已有邮件草稿的内容",
 				UseWhen:      []string{"已知草稿 messageId 并需要修改主题、正文或收件人时"},
 				AvoidWhen:    []string{"已发送邮件不能用草稿更新"},
@@ -1756,13 +1773,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出指定邮件的全部附件元数据",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "list_mail_attachments",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_mail_attachments"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定邮件的全部附件元数据",
 				UseWhen:      []string{"已知邮件 ID 并需要取得附件 ID、名称或大小时"},
 				AvoidWhen:    []string{"实际保存附件时使用 mail attachment download"},
@@ -1810,13 +1828,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把指定邮件附件下载到本地文件",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_download_session",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_download_session"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把指定邮件附件下载到本地文件",
 				UseWhen:      []string{"已知邮件 ID、附件 ID 和文件名，需要保存单个附件时"},
 				AvoidWhen:    []string{"只需列出附件元数据时使用 mail attachment list"},
@@ -2052,13 +2071,14 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "发送草稿箱中已有的邮件草稿",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "send_draft",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "send_draft"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "发送草稿箱中已有的邮件草稿",
 				UseWhen:      []string{"已知草稿 messageId 且用户要求发送该草稿时"},
 				AvoidWhen:    []string{"创建或编辑草稿分别使用 draft create 和 draft update"},
@@ -2140,19 +2160,20 @@ user 对象字段：
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "按姓名、工号或关键词搜索企业邮箱用户",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "search_mail_users",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "search_mail_users"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "按姓名、工号或关键词搜索企业邮箱用户",
 				UseWhen:      []string{"需要查找他人的企业邮箱地址时"},
 				AvoidWhen:    []string{"列出当前用户自己的邮箱使用 mail mailbox list，搜索邮件内容使用 message search"},
 				Examples:     []string{"dws mail user search --email user@company.com --keyword \"张三\" --limit 20"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "employee-no", Required: boolPtr(false)},
 				{Name: "keyword", Required: boolPtr(false)},
 			},
@@ -2216,13 +2237,14 @@ user 对象字段：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建可复用的邮件模板",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_user_message_template",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_user_message_template"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建可复用的邮件模板",
 				UseWhen:      []string{"需要保存固定主题、正文或收件人供重复使用时"},
 				AvoidWhen:    []string{"只创建一次性草稿时使用 mail draft create"},
@@ -2276,13 +2298,14 @@ user 对象字段：
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "分页列出当前邮箱的邮件模板",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "list_user_message_templates",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_user_message_templates"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "分页列出当前邮箱的邮件模板",
 				UseWhen:      []string{"需要浏览模板或取得 templateId 时"},
 				AvoidWhen:    []string{"查看单个模板详情时使用 mail template get"},
@@ -2323,13 +2346,14 @@ user 对象字段：
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定邮件模板的完整内容",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "get_user_message_template",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "get_user_message_template"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定邮件模板的完整内容",
 				UseWhen:      []string{"已知 templateId 并需要查看主题、正文或收件人时"},
 				AvoidWhen:    []string{"需要浏览所有模板时使用 mail template list"},
@@ -2394,19 +2418,20 @@ user 对象字段：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新已有邮件模板的内容",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "update_user_message_template",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "update_user_message_template"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已有邮件模板的内容",
 				UseWhen:      []string{"已知 templateId 并需要修改名称、主题、正文或收件人时"},
 				AvoidWhen:    []string{"创建新模板时使用 mail template create"},
 				Examples:     []string{"dws mail template update --email user@company.com --id <templateId> --subject \"新标题\" --content \"新正文\""},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "content", Required: boolPtr(false)},
 				{Name: "name", Required: boolPtr(false)},
 				{Name: "subject", Required: boolPtr(false)},
@@ -2448,13 +2473,14 @@ user 对象字段：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除指定邮件模板",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "delete_user_message_template",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "delete_user_message_template"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除指定邮件模板",
 				UseWhen:      []string{"已知 templateId 且明确不再需要该模板时"},
 				AvoidWhen:    []string{"只修改模板内容时使用 mail template update"},
@@ -2509,13 +2535,14 @@ user 对象字段：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建个人邮件联系人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "create_user_mail_contact",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "create_user_mail_contact"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建个人邮件联系人",
 				UseWhen:      []string{"需要把一个邮件地址保存到自己的联系人列表时"},
 				AvoidWhen:    []string{"按姓名搜索企业邮箱用户时使用 mail user search"},
@@ -2565,13 +2592,14 @@ user 对象字段：
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "分页列出个人保存的邮件联系人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "list_user_mail_contacts",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_user_mail_contacts"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "分页列出个人保存的邮件联系人",
 				UseWhen:      []string{"需要浏览自己的联系人或取得 contactId 时"},
 				AvoidWhen:    []string{"搜索企业通讯录用户时使用 mail user search"},
@@ -2626,13 +2654,14 @@ user 对象字段：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新个人邮件联系人的资料",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "update_user_mail_contact",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "update_user_mail_contact"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新个人邮件联系人的资料",
 				UseWhen:      []string{"已知 contactId 并需要改显示名或邮箱信息时"},
 				AvoidWhen:    []string{"企业通讯录资料不能通过此命令修改"},
@@ -2672,13 +2701,14 @@ user 对象字段：
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量删除个人邮件联系人",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "mail", RPCName: "batch_delete_user_mail_contacts",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "batch_delete_user_mail_contacts"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量删除个人邮件联系人",
 				UseWhen:      []string{"需要从自己的联系人列表移除多个已知 contactId 时"},
 				AvoidWhen:    []string{"删除邮件或查询企业通讯录用户时不要使用"},

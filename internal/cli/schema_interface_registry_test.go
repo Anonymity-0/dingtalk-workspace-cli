@@ -14,10 +14,11 @@
 package cli
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func TestBuildInterfaceRegistryIndexesCanonicalAndSharedRef(t *testing.T) {

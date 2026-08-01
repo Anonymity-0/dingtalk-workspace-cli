@@ -3,12 +3,12 @@ package helpers
 import (
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func TestCalendarRecurrenceParamDeclsCoverHintPins(t *testing.T) {
 	decls := calendarRecurrenceParamDecls()
-	byName := map[string]corecmd.ParamDecl{}
+	byName := map[string]contract.ParamDecl{}
 	for _, d := range decls {
 		byName[d.Name] = d
 	}

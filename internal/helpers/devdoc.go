@@ -6,7 +6,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -91,13 +90,14 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "devdoc", RPCName: "search_open_platform_docs",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "devdoc", RPCName: "search_open_platform_docs"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
 				UseWhen:      []string{"查 OpenAPI、字段、错误码、OAuth2、接入指南等开放平台开发问题"},
 				AvoidWhen: []string{
@@ -109,7 +109,7 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 					"dws devdoc article search --query \"errcode 40078\" --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "query", Required: boolPtr(false)},
 			},
 		},
@@ -167,13 +167,14 @@ func newDevDocSearchCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "通过 dev 兼容入口搜索开放平台文档",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "devdoc", RPCName: "search_open_platform_docs",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "devdoc", RPCName: "search_open_platform_docs"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "通过 dev 兼容入口搜索开放平台文档",
 				UseWhen:      []string{"明确需要验证或使用 dev doc search 入口时"},
 				AvoidWhen:    []string{"常规开放平台文档检索优先使用可用的 devdoc article search"},

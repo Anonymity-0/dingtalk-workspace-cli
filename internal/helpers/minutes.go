@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -47,13 +46,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户自己创建的听记列表，支持分页、关键字和时间范围筛选。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "list_by_keyword_and_time_range",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_by_keyword_and_time_range"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户自己创建的听记列表，支持分页、关键字和时间范围筛选。",
 				UseWhen:      []string{"需要按关键词/时间范围查询我自己创建的听记并提取 taskUuid 时"},
 				AvoidWhen:    []string{"只要共享听记时改用 list shared；要覆盖全部可访问时改用 list all"},
@@ -78,13 +78,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询他人共享给当前用户的听记列表，支持分页、关键字和时间范围筛选。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "list_by_keyword_and_time_range",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_by_keyword_and_time_range"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询他人共享给当前用户的听记列表，支持分页、关键字和时间范围筛选。",
 				UseWhen:      []string{"需要查看别人共享给我的听记，或在共享范围内按关键词/时间搜索时"},
 				AvoidWhen:    []string{"只要自己创建时改用 list mine；要全部可访问时改用 list all"},
@@ -113,13 +114,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户有权限访问的全部听记，包括自己创建和他人共享的听记，并支持分页、关键字和时间范围筛选。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "list_by_keyword_and_time_range",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_by_keyword_and_time_range"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户有权限访问的全部听记，包括自己创建和他人共享的听记，并支持分页、关键字和时间范围筛选。",
 				UseWhen:      []string{"需要按关键词/时间范围覆盖全部可访问听记（含他人共享）时"},
 				AvoidWhen:    []string{"明确只要自己创建的听记时改用 list mine；只要共享给我的时改用 list shared"},
@@ -150,13 +152,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定听记的基础元数据信息。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "get_minutes_basic_info",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_basic_info"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定听记的基础元数据信息。",
 				UseWhen:      []string{"已知 taskUuid，需要获取创建人/起止时间/标题/访问链接等基础信息时"},
 				AvoidWhen:    []string{"要摘要或转写时改用 get summary/transcription"},
@@ -185,13 +188,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取由 AI 对听记转写原文进行结构化提炼生成的摘要，返回 Markdown 格式。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "get_minutes_ai_summary",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_ai_summary"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取由 AI 对听记转写原文进行结构化提炼生成的摘要，返回 Markdown 格式。",
 				UseWhen:      []string{"已知 taskUuid，需要获取 AI 生成的 Markdown 听记摘要时"},
 				AvoidWhen: []string{
@@ -203,7 +207,7 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes get summary --id <taskUuid> --format json",
 				},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "id", Required: boolPtr(true)},
 			},
 		},
@@ -227,13 +231,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定听记的关键字列表。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "get_minutes_keywords",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_keywords"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定听记的关键字列表。",
 				UseWhen:      []string{"已知 taskUuid，需要获取听记关键字列表时"},
 				AvoidWhen:    []string{"要摘要/转写/待办时改用对应 get 命令"},
@@ -281,13 +286,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定听记的语音转写原文。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "get_minutes_transcription",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_transcription"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定听记的语音转写原文。",
 				UseWhen:      []string{"已知 taskUuid，需要拉取完整语音转写原文（发言人/文本/时间戳）时"},
 				AvoidWhen:    []string{"只要结构化摘要时改用 get summary"},
@@ -319,13 +325,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定听记中由系统提取的待办事项列表。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "list_minutes_todos",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_minutes_todos"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定听记中由系统提取的待办事项列表。",
 				UseWhen:      []string{"已知 taskUuid，需要提取听记中的待办事项列表时"},
 				AvoidWhen:    []string{"要管理钉钉个人待办时改用 todo 产品命令"},
@@ -369,13 +376,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询听记的音频/视频文件地址（OSS 链接）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "query_minutes_audio_url",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_minutes_audio_url"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询听记的音频/视频文件地址（OSS 链接）。",
 				UseWhen:      []string{"已知 taskUuid 且有读权限，需要获取听记音视频地址以下载或播放时"},
 				AvoidWhen:    []string{"听记已删除、无痕模式或媒体未就绪时可能无地址；不要用本命令改内容"},
@@ -406,13 +414,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "根据 taskUuid 列表批量查询听记详情。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "batch_get_minutes_details",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "batch_get_minutes_details"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "根据 taskUuid 列表批量查询听记详情。",
 				UseWhen:      []string{"已知多个 taskUuid，需要批量查询听记标题/时长/参与人/状态等详情时"},
 				AvoidWhen: []string{
@@ -445,13 +454,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "修改指定听记的标题。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "update_minutes_title",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "update_minutes_title"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "修改指定听记的标题。",
 				UseWhen:      []string{"已知 taskUuid，需要重命名听记标题时"},
 				AvoidWhen:    []string{"要改纪要正文时改用 update summary"},
@@ -548,13 +558,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "发起听记并开始录音。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "发起听记并开始录音。",
 				UseWhen:      []string{"需要发起听记并开始录音，取得 taskUuid 时"},
 				AvoidWhen:    []string{"已有进行中的录音只需 pause/resume/stop 时不要重复 start"},
@@ -590,13 +601,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "暂停正在进行的听记录音。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "暂停正在进行的听记录音。",
 				UseWhen:      []string{"已知进行中的听记 taskUuid，需要暂停听记录音时"},
 				AvoidWhen:    []string{"要恢复时改用 record resume；要结束时改用 record stop；要开始新听记时改用 record start"},
@@ -632,13 +644,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "恢复已暂停的听记录音。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "恢复已暂停的听记录音。",
 				UseWhen:      []string{"已知已暂停的听记 taskUuid，需要恢复听记录音时"},
 				AvoidWhen:    []string{"要暂停/结束/新开始时改用 pause/stop/start"},
@@ -674,13 +687,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "结束正在进行的听记录音。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "结束正在进行的听记录音。",
 				UseWhen:      []string{"已知 taskUuid，需要结束听记录音时"},
 				AvoidWhen:    []string{"只需暂停时可改用 pause；尚未 start 时不要 stop"},
@@ -732,13 +746,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "用传入的摘要文本全量覆盖听记的纪要内容，不触发 AI 重新生成。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "update_minutes_summary",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "update_minutes_summary"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "用传入的摘要文本全量覆盖听记的纪要内容，不触发 AI 重新生成。",
 				UseWhen:      []string{"已知 taskUuid，需要用新文本全量覆盖纪要且不触发 AI 重算时"},
 				AvoidWhen: []string{
@@ -780,13 +795,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "触发创建听记思维导图任务。触发成功后，可通过 query_mind_graph_status 轮询任务状态。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "create_mind_graph",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "create_mind_graph"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "触发创建听记思维导图任务。触发成功后，可通过 query_mind_graph_status 轮询任务状态。",
 				UseWhen:      []string{"已知 taskUuid，需要触发听记思维导图生成任务时"},
 				AvoidWhen:    []string{"要查询任务状态时改用 mind-graph status 并轮询"},
@@ -825,13 +841,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定听记的思维导图生成状态。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "query_mind_graph_status",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_mind_graph_status"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定听记的思维导图生成状态。",
 				UseWhen:      []string{"已 create 思维导图后，需要查询任务状态（0进行中/1成功/2失败）时"},
 				AvoidWhen:    []string{"尚未触发创建时先用 mind-graph create"},
@@ -882,13 +899,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量替换听记转写中指定发言人，将源发言人（speakerNick）精确匹配的所有段落替换为目标发言人。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "replace_speaker",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "replace_speaker"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量替换听记转写中指定发言人，将源发言人（speakerNick）精确匹配的所有段落替换为目标发言人。",
 				UseWhen:      []string{"用户明确要求把转写中指定发言人昵称批量替换为目标发言人时"},
 				AvoidWhen:    []string{"源/目标发言人或 taskUuid 未确认时不要替换"},
@@ -933,13 +951,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "触发创建发言人的段落总结任务，将听记中每位发言人的所有发言内容汇总总结。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "create_speaker_summary",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "create_speaker_summary"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "触发创建发言人的段落总结任务，将听记中每位发言人的所有发言内容汇总总结。",
 				UseWhen:      []string{"已知听记 uuid，需要触发发言人段落总结异步任务时"},
 				AvoidWhen:    []string{"要取结果时改用 speaker summary get（需等待后轮询）"},
@@ -977,13 +996,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询发言人段落总结任务的结果，返回每位发言人的发言汇总。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "get_speaker_summary",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_speaker_summary"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询发言人段落总结任务的结果，返回每位发言人的发言汇总。",
 				UseWhen:      []string{"已触发 create_speaker_summary 后，需要查询发言人段落总结结果时"},
 				AvoidWhen:    []string{"尚未 create 任务时先 create；不要把本命令当触发器"},
@@ -1025,13 +1045,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "add_personal_hot_word",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "add_personal_hot_word"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。",
 				UseWhen:      []string{"需要添加听记个人热词以优化专有名词/人名识别时（单词不超过约10汉字）"},
 				AvoidWhen:    []string{"要查看已有热词时改用 dws minutes hot-word list"},
@@ -1060,13 +1081,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户配置的所有听记热词列表。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "list_my_hotwords",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_my_hotwords"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户配置的所有听记热词列表。",
 				UseWhen:      []string{"需要查看当前用户已配置的听记个人热词列表时"},
 				AvoidWhen:    []string{"要添加热词时改用 hot-word add"},
@@ -1100,13 +1122,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "把听记中所有出现的原文字替换为目标文字，包括转写段落和纪要摘要中出现的原文字都会被替换。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "replace_minutes_text",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "replace_minutes_text"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "把听记中所有出现的原文字替换为目标文字，包括转写段落和纪要摘要中出现的原文字都会被替换。",
 				UseWhen:      []string{"用户明确要求在转写段落与纪要中把原文精确替换为目标文字时"},
 				AvoidWhen: []string{
@@ -1194,13 +1217,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建文件上传会话，获取预签名上传URL。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "create_upload_session",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "create_upload_session"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建文件上传会话，获取预签名上传URL。",
 				UseWhen:      []string{"需要把本地音视频上传转成听记：先创建上传会话取得预签名 URL 与 sessionId 时"},
 				AvoidWhen:    []string{"会话已存在只需 complete/cancel 时不要重复 create"},
@@ -1247,13 +1271,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "文件上传完成后，创建听记。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "complete_upload_session",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "complete_upload_session"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "文件上传完成后，创建听记。",
 				UseWhen:      []string{"预签名 PUT 上传完成后，需要通知服务端完成会话并创建听记时（同 sessionId 幂等）"},
 				AvoidWhen: []string{
@@ -1291,13 +1316,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "取消 create 创建的上传会话，传入要取消的会话 ID。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "cancel_upload_session",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "cancel_upload_session"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "取消 create 创建的上传会话，传入要取消的会话 ID。",
 				UseWhen:      []string{"需要取消已创建的文件上传会话并释放资源时"},
 				AvoidWhen: []string{
@@ -1389,13 +1415,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量给多个听记增加成员，并设置成员的权限。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "add_member_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "add_member_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量给多个听记增加成员，并设置成员的权限。",
 				UseWhen:      []string{"已知听记 uuid，需要批量给听记增加成员并设置权限（policy 0管理员/1所有者/2可编辑/3可查看下载/4仅查看）时"},
 				AvoidWhen: []string{
@@ -1450,13 +1477,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "批量移除多个听记的成员权限。移除后，对应成员将失去对这些听记的访问权限。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "remove_member_permission",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "remove_member_permission"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "批量移除多个听记的成员权限。移除后，对应成员将失去对这些听记的访问权限。",
 				UseWhen:      []string{"用户明确要求批量移除听记成员权限，使其失去访问时"},
 				AvoidWhen: []string{
@@ -1506,13 +1534,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询当前用户的听记标签或分组列表。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "query_user_tag_list",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_user_tag_list"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户的听记标签或分组列表。",
 				UseWhen:      []string{"需要列出我的听记标签或分组时"},
 				AvoidWhen:    []string{"已知 tagId 要查听记时改用 tag query"},
@@ -1557,13 +1586,14 @@ func newMinutesCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "根据用户的标签或分组 ID 查询该标签下的听记列表。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "minutes", RPCName: "query_minutes_by_tag_id",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_minutes_by_tag_id"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "根据用户的标签或分组 ID 查询该标签下的听记列表。",
 				UseWhen:      []string{"已知 tagId，需要查询该标签/分组下的听记列表时"},
 				AvoidWhen:    []string{"不知道标签时先用 tag list"},

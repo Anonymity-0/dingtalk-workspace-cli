@@ -54,13 +54,14 @@ var UnreadMail = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "列出未读邮件并投影列表（主题/发件人/时间/messageId）",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "列出未读邮件并投影列表（主题/发件人/时间/messageId）",
 			UseWhen:      []string{"当你想快速看自己邮箱里有哪些未读邮件、并只看一份精简清单（主题、发件人、时间、邮件 messageId）而不想翻完整正文时使用；内部先确定要查的邮箱地址——你可以用 --email 指定，不指定时自动取你绑定的第一个邮箱——再用 KQL 过滤条件 isRead:false 搜索未读邮件，最后在本地把每封邮件投影成 {subject, from, date, messageId} 打印出来，可配合 --format/--jq/--fields。这是纯只读操作，只做搜索与本地投影，不会把邮件标记为已读，也不会修改、发送或删除任何邮件；若没有未读邮件则返回空列表。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

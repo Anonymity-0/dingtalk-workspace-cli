@@ -4,10 +4,10 @@
     "report.create_report": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "按模版提交一份新日报",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "aliases": [
         "report create"
       ],
@@ -44,7 +44,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "按模版提交一份新日报"
             }
           ],
@@ -52,7 +52,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "按模版提交一份新日报"
         },
         "availability": {
@@ -62,7 +62,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -70,7 +70,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -80,7 +80,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "尚未读取模板字段时先用 dws report template list / template get",
                 "只需查看已有日志正文时改用 dws report entry get"
@@ -91,7 +91,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "尚未读取模板字段时先用 dws report template list / template get",
             "只需查看已有日志正文时改用 dws report entry get"
@@ -104,7 +104,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.create_report"
             }
           ],
@@ -112,7 +112,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.create_report"
         },
         "confirmation": {
@@ -122,7 +122,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -130,25 +130,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "按模版提交一份日报。--contents 为 JSON 数组，每项需含 key、sort、content、contentType、type，\n与远程 create_report 一致；可先通过 report template list / template get 取得 templateId 与控件定义。\n\n长内容（含中文换行 / Markdown）建议走 --contents-file 避免 shell 引号问题；\n也可用 --contents - 从 stdin 读取。\n提交成功后会自动反查详情，并在返回中追加 dingtalkOpenUrl / dingtalkOpenMarkdownLink 跳转链接字段。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "按模版提交一份日报。--contents 为 JSON 数组，每项需含 key、sort、content、contentType、type，\n与远程 create_report 一致；可先通过 report template list / template get 取得 templateId 与控件定义。\n\n长内容（含中文换行 / Markdown）建议走 --contents-file 避免 shell 引号问题；\n也可用 --contents - 从 stdin 读取。\n提交成功后会自动反查详情，并在返回中追加 dingtalkOpenUrl / dingtalkOpenMarkdownLink 跳转链接字段。"
         },
         "effect": {
@@ -158,7 +158,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "write"
             }
           ],
@@ -166,7 +166,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "write"
         },
         "examples": {
@@ -176,7 +176,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report entry submit --template-id \u003ctemplateId\u003e --contents-file ./report.json --format json",
                 "dws report entry submit --template-id \u003ctemplateId\u003e --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json"
@@ -187,7 +187,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report entry submit --template-id \u003ctemplateId\u003e --contents-file ./report.json --format json",
             "dws report entry submit --template-id \u003ctemplateId\u003e --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json"
@@ -200,7 +200,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "unknown"
             }
           ],
@@ -208,7 +208,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "unknown"
         },
         "interface_mode": {
@@ -218,7 +218,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -226,7 +226,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -236,7 +236,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "create_report"
@@ -247,7 +247,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "create_report"
@@ -260,7 +260,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -268,7 +268,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -278,7 +278,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -286,7 +286,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -296,7 +296,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "medium"
             }
           ],
@@ -304,25 +304,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "medium"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "提交一份新日报（按模版）"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "提交一份新日报（按模版）"
         },
         "use_when": {
@@ -332,7 +332,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "已取得 templateId 与字段定义，需要按模版提交日报/周报（contents[].key 必须等于模板 field_name）时"
               ]
@@ -342,7 +342,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "已取得 templateId 与字段定义，需要按模版提交日报/周报（contents[].key 必须等于模板 field_name）时"
           ]
@@ -1067,10 +1067,10 @@
     "report.get_available_report_templates": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "获取当前员工可使用的日志模版列表",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "已知模版名称需要字段定义时改用 dws report template get"
@@ -1095,7 +1095,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "获取当前员工可使用的日志模版列表"
             }
           ],
@@ -1103,7 +1103,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "获取当前员工可使用的日志模版列表"
         },
         "availability": {
@@ -1113,7 +1113,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -1121,7 +1121,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -1131,7 +1131,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "已知模版名称需要字段定义时改用 dws report template get"
               ]
@@ -1141,7 +1141,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "已知模版名称需要字段定义时改用 dws report template get"
           ]
@@ -1153,7 +1153,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.get_available_report_templates"
             }
           ],
@@ -1161,7 +1161,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.get_available_report_templates"
         },
         "confirmation": {
@@ -1171,7 +1171,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -1179,7 +1179,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -1189,7 +1189,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "获取当前员工可使用的日志模版列表"
             }
           ],
@@ -1197,7 +1197,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "获取当前员工可使用的日志模版列表"
         },
         "effect": {
@@ -1207,7 +1207,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -1215,7 +1215,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -1225,7 +1225,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report template list",
                 "dws report template list --format json"
@@ -1236,7 +1236,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report template list",
             "dws report template list --format json"
@@ -1249,7 +1249,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -1257,7 +1257,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -1267,7 +1267,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -1275,7 +1275,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -1285,7 +1285,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "get_available_report_templates"
@@ -1296,7 +1296,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "get_available_report_templates"
@@ -1309,7 +1309,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -1317,7 +1317,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -1327,7 +1327,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -1335,7 +1335,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -1345,7 +1345,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -1353,25 +1353,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "获取当前用户可用的日志模版列表"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "获取当前用户可用的日志模版列表"
         },
         "use_when": {
@@ -1381,7 +1381,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "提交日志前需要列出可用模版名称与 templateId 时"
               ]
@@ -1391,7 +1391,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "提交日志前需要列出可用模版名称与 templateId 时"
           ]
@@ -1424,10 +1424,10 @@
     "report.get_received_report_list": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "查询当前人收到的日志列表",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "aliases": [
         "report list"
       ],
@@ -1455,7 +1455,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查询当前人收到的日志列表"
             }
           ],
@@ -1463,7 +1463,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查询当前人收到的日志列表"
         },
         "availability": {
@@ -1473,7 +1473,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -1481,7 +1481,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -1491,7 +1491,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "要看自己发出的日志时改用 dws report outbox list",
                 "已知 reportId 要看正文时改用 dws report entry get"
@@ -1502,7 +1502,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "要看自己发出的日志时改用 dws report outbox list",
             "已知 reportId 要看正文时改用 dws report entry get"
@@ -1515,7 +1515,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.get_received_report_list"
             }
           ],
@@ -1523,7 +1523,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.get_received_report_list"
         },
         "confirmation": {
@@ -1533,7 +1533,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -1541,7 +1541,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -1551,7 +1551,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查询当前人收到的日志列表"
             }
           ],
@@ -1559,7 +1559,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查询当前人收到的日志列表"
         },
         "effect": {
@@ -1569,7 +1569,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -1577,7 +1577,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -1587,7 +1587,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"
               ]
@@ -1597,7 +1597,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"
           ]
@@ -1609,7 +1609,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -1617,7 +1617,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -1627,7 +1627,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -1635,7 +1635,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -1645,7 +1645,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "get_received_report_list"
@@ -1656,7 +1656,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "get_received_report_list"
@@ -1669,7 +1669,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -1677,7 +1677,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -1687,7 +1687,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -1695,7 +1695,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -1705,7 +1705,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -1713,25 +1713,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "列出我收到的日报"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "列出我收到的日报"
         },
         "use_when": {
@@ -1741,7 +1741,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要按时间范围查看别人发给我的日志列表并提取 reportId 时"
               ]
@@ -1751,7 +1751,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要按时间范围查看别人发给我的日志列表并提取 reportId 时"
           ]
@@ -2427,10 +2427,10 @@
     "report.get_report_entry_details": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "获取指定一篇日志的详情信息",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "aliases": [
         "report detail"
       ],
@@ -2459,7 +2459,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "获取指定一篇日志的详情信息"
             }
           ],
@@ -2467,7 +2467,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "获取指定一篇日志的详情信息"
         },
         "availability": {
@@ -2477,7 +2477,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -2485,7 +2485,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -2495,7 +2495,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "要提交新日志时改用 dws report entry submit",
                 "要看已读/评论统计时改用 dws report entry stats"
@@ -2506,7 +2506,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "要提交新日志时改用 dws report entry submit",
             "要看已读/评论统计时改用 dws report entry stats"
@@ -2519,7 +2519,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.get_report_entry_details"
             }
           ],
@@ -2527,7 +2527,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.get_report_entry_details"
         },
         "confirmation": {
@@ -2537,7 +2537,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -2545,7 +2545,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -2555,7 +2555,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "获取指定一篇日志的详情信息"
             }
           ],
@@ -2563,7 +2563,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "获取指定一篇日志的详情信息"
         },
         "effect": {
@@ -2573,7 +2573,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -2581,7 +2581,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -2591,7 +2591,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report entry get --report-id \u003creportId\u003e --format json",
                 "dws report entry get --report-id \u003creportId\u003e"
@@ -2602,7 +2602,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report entry get --report-id \u003creportId\u003e --format json",
             "dws report entry get --report-id \u003creportId\u003e"
@@ -2615,7 +2615,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -2623,7 +2623,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -2633,7 +2633,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -2641,7 +2641,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -2651,7 +2651,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "get_report_entry_details"
@@ -2662,7 +2662,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "get_report_entry_details"
@@ -2675,7 +2675,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -2683,7 +2683,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -2693,7 +2693,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -2701,7 +2701,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -2711,7 +2711,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -2719,25 +2719,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "读取单份日报正文（含字段明细 + 钉钉跳转链接）"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "读取单份日报正文（含字段明细 + 钉钉跳转链接）"
         },
         "use_when": {
@@ -2747,7 +2747,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "已知 reportId，需要读取日志正文、字段明细或钉钉跳转链接时"
               ]
@@ -2757,7 +2757,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "已知 reportId，需要读取日志正文、字段明细或钉钉跳转链接时"
           ]
@@ -2900,10 +2900,10 @@
     "report.get_report_statistics_by_id": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "获取指定日志的统计数据",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "aliases": [
         "report stats"
       ],
@@ -2932,7 +2932,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "获取指定日志的统计数据"
             }
           ],
@@ -2940,7 +2940,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "获取指定日志的统计数据"
         },
         "availability": {
@@ -2950,7 +2950,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -2958,7 +2958,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -2968,7 +2968,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "要读正文时改用 dws report entry get",
                 "要提交新日志时改用 dws report entry submit"
@@ -2979,7 +2979,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "要读正文时改用 dws report entry get",
             "要提交新日志时改用 dws report entry submit"
@@ -2992,7 +2992,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.get_report_statistics_by_id"
             }
           ],
@@ -3000,7 +3000,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.get_report_statistics_by_id"
         },
         "confirmation": {
@@ -3010,7 +3010,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -3018,7 +3018,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -3028,7 +3028,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "获取指定日志的统计数据"
             }
           ],
@@ -3036,7 +3036,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "获取指定日志的统计数据"
         },
         "effect": {
@@ -3046,7 +3046,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -3054,7 +3054,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -3064,7 +3064,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report entry stats --report-id \u003creportId\u003e",
                 "dws report entry stats --report-id \u003creportId\u003e --format json"
@@ -3075,7 +3075,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report entry stats --report-id \u003creportId\u003e",
             "dws report entry stats --report-id \u003creportId\u003e --format json"
@@ -3088,7 +3088,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -3096,7 +3096,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -3106,7 +3106,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -3114,7 +3114,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -3124,7 +3124,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "get_report_statistics_by_id"
@@ -3135,7 +3135,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "get_report_statistics_by_id"
@@ -3148,7 +3148,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -3156,7 +3156,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -3166,7 +3166,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -3174,7 +3174,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -3184,7 +3184,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -3192,25 +3192,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "读取单份日报的已读统计"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "读取单份日报的已读统计"
         },
         "use_when": {
@@ -3220,7 +3220,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "已知 reportId，需要查看评论数、点赞数、已读数等统计时"
               ]
@@ -3230,7 +3230,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "已知 reportId，需要查看评论数、点赞数、已读数等统计时"
           ]
@@ -3373,10 +3373,10 @@
     "report.get_send_report_list": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "查询当前人创建的日志详情列表",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "aliases": [
         "report created",
         "report sent"
@@ -3406,7 +3406,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查询当前人创建的日志详情列表"
             }
           ],
@@ -3414,7 +3414,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查询当前人创建的日志详情列表"
         },
         "availability": {
@@ -3424,7 +3424,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -3432,7 +3432,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -3442,7 +3442,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "要看收到的日志时改用 dws report inbox list",
                 "已知 reportId 要完整正文时改用 dws report entry get"
@@ -3453,7 +3453,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "要看收到的日志时改用 dws report inbox list",
             "已知 reportId 要完整正文时改用 dws report entry get"
@@ -3466,7 +3466,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.get_send_report_list"
             }
           ],
@@ -3474,7 +3474,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.get_send_report_list"
         },
         "confirmation": {
@@ -3484,7 +3484,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -3492,7 +3492,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -3502,7 +3502,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "查询当前人创建的日志详情列表"
             }
           ],
@@ -3510,7 +3510,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "查询当前人创建的日志详情列表"
         },
         "effect": {
@@ -3520,7 +3520,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -3528,7 +3528,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -3538,7 +3538,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report outbox list --cursor 0 --size 20 --format json",
                 "dws report outbox list --cursor 0 --size 20"
@@ -3549,7 +3549,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report outbox list --cursor 0 --size 20 --format json",
             "dws report outbox list --cursor 0 --size 20"
@@ -3562,7 +3562,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -3570,7 +3570,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -3580,7 +3580,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -3588,7 +3588,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -3598,7 +3598,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "get_send_report_list"
@@ -3609,7 +3609,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "get_send_report_list"
@@ -3622,7 +3622,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -3630,7 +3630,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -3640,7 +3640,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -3648,7 +3648,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -3658,7 +3658,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -3666,25 +3666,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "列出我发出的日报"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "列出我发出的日报"
         },
         "use_when": {
@@ -3694,7 +3694,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要查看我发出/创建的日志列表（含内容摘要、创建时间、访问地址）时"
               ]
@@ -3704,7 +3704,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要查看我发出/创建的日志列表（含内容摘要、创建时间、访问地址）时"
           ]
@@ -4652,10 +4652,10 @@
     "report.get_template_details_by_name": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "按名称获取日志模版字段定义",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "aliases": [
         "report template detail"
       ],
@@ -4683,7 +4683,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "按名称获取日志模版字段定义"
             }
           ],
@@ -4691,7 +4691,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "按名称获取日志模版字段定义"
         },
         "availability": {
@@ -4701,7 +4701,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -4709,7 +4709,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -4719,7 +4719,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "不知道有哪些模版时先用 dws report template list"
               ]
@@ -4729,7 +4729,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "不知道有哪些模版时先用 dws report template list"
           ]
@@ -4741,7 +4741,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.get_template_details_by_name"
             }
           ],
@@ -4749,7 +4749,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.get_template_details_by_name"
         },
         "confirmation": {
@@ -4759,7 +4759,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -4767,7 +4767,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
@@ -4777,7 +4777,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "按名称获取日志模版字段定义"
             }
           ],
@@ -4785,7 +4785,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "按名称获取日志模版字段定义"
         },
         "effect": {
@@ -4795,7 +4795,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -4803,7 +4803,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -4813,7 +4813,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report template get --name \u003ctemplateName\u003e",
                 "dws report template get --name \"日报\" --format json"
@@ -4824,7 +4824,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report template get --name \u003ctemplateName\u003e",
             "dws report template get --name \"日报\" --format json"
@@ -4837,7 +4837,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -4845,7 +4845,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -4855,7 +4855,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "mcp"
             }
           ],
@@ -4863,7 +4863,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "mcp"
         },
         "interface_ref": {
@@ -4873,7 +4873,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": {
                 "product_id": "report",
                 "rpc_name": "get_template_details_by_name"
@@ -4884,7 +4884,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": {
             "product_id": "report",
             "rpc_name": "get_template_details_by_name"
@@ -4897,7 +4897,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -4905,7 +4905,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -4915,7 +4915,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -4923,7 +4923,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -4933,7 +4933,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -4941,25 +4941,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "读取单个日志模版的字段定义"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "读取单个日志模版的字段定义"
         },
         "use_when": {
@@ -4969,7 +4969,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "已知模版名称，提交前需要读取字段名称、类型与排序时"
               ]
@@ -4979,7 +4979,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "已知模版名称，提交前需要读取字段名称、类型与排序时"
           ]
@@ -5122,10 +5122,10 @@
     "report.shortcut_inbox_list": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "列出我收到的日报（按时间范围分页）",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -5149,7 +5149,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "列出我收到的日报（按时间范围分页）"
             }
           ],
@@ -5157,7 +5157,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "列出我收到的日报（按时间范围分页）"
         },
         "availability": {
@@ -5167,7 +5167,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -5175,7 +5175,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -5185,7 +5185,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ]
@@ -5195,7 +5195,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ]
@@ -5207,7 +5207,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.shortcut_inbox_list"
             }
           ],
@@ -5215,7 +5215,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.shortcut_inbox_list"
         },
         "confirmation": {
@@ -5225,7 +5225,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -5233,25 +5233,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
         },
         "effect": {
@@ -5261,7 +5261,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -5269,7 +5269,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -5279,7 +5279,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
               ]
@@ -5289,7 +5289,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report +inbox-list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20"
           ]
@@ -5301,7 +5301,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -5309,7 +5309,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -5319,7 +5319,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "composite"
             }
           ],
@@ -5327,7 +5327,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "composite"
         },
         "interface_reason": {
@@ -5337,7 +5337,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
             }
           ],
@@ -5345,7 +5345,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
         "interface_ref": {
@@ -5355,7 +5355,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": null
             }
           ],
@@ -5363,7 +5363,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": null
         },
         "metadata_source": {
@@ -5373,7 +5373,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -5381,7 +5381,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -5391,7 +5391,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -5399,7 +5399,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -5409,7 +5409,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -5417,25 +5417,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "列出我收到的日报（按时间范围分页）"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "列出我收到的日报（按时间范围分页）"
         },
         "use_when": {
@@ -5445,7 +5445,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
               ]
@@ -5455,7 +5455,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。"
           ]
@@ -5978,10 +5978,10 @@
     "report.shortcut_outbox_list": {
       "agent_metadata_source": "corecmd.contract",
       "agent_source_refs": [
-        "corecmd.SchemaDecl"
+        "corecmd.ContractDecl"
       ],
       "agent_summary": "列出我发出的日报（可选时间/模版名过滤）",
-      "agent_summary_source": "corecmd.SchemaDecl",
+      "agent_summary_source": "corecmd.ContractDecl",
       "availability": "available",
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -6006,7 +6006,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "列出我发出的日报（可选时间/模版名过滤）"
             }
           ],
@@ -6014,7 +6014,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "列出我发出的日报（可选时间/模版名过滤）"
         },
         "availability": {
@@ -6024,7 +6024,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "available"
             }
           ],
@@ -6032,7 +6032,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "available"
         },
         "avoid_when": {
@@ -6042,7 +6042,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
               ]
@@ -6052,7 +6052,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
           ]
@@ -6064,7 +6064,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "report.shortcut_outbox_list"
             }
           ],
@@ -6072,7 +6072,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "report.shortcut_outbox_list"
         },
         "confirmation": {
@@ -6082,7 +6082,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "not_required"
             }
           ],
@@ -6090,25 +6090,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "not_required"
         },
         "description": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_preferred",
+          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
         },
         "effect": {
@@ -6118,7 +6118,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "read"
             }
           ],
@@ -6126,7 +6126,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "read"
         },
         "examples": {
@@ -6136,7 +6136,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "dws report +outbox-list --cursor 0 --size 20",
                 "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
@@ -6147,7 +6147,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "dws report +outbox-list --cursor 0 --size 20",
             "dws report +outbox-list --cursor 0 --size 20 --template-name \"日报\""
@@ -6160,7 +6160,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "idempotent"
             }
           ],
@@ -6168,7 +6168,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "idempotent"
         },
         "interface_mode": {
@@ -6178,7 +6178,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "composite"
             }
           ],
@@ -6186,7 +6186,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "composite"
         },
         "interface_reason": {
@@ -6196,7 +6196,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
             }
           ],
@@ -6204,7 +6204,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref."
         },
         "interface_ref": {
@@ -6214,7 +6214,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": null
             }
           ],
@@ -6222,7 +6222,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": null
         },
         "metadata_source": {
@@ -6232,7 +6232,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "corecmd.contract"
             }
           ],
@@ -6240,7 +6240,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "corecmd.contract"
         },
         "reviewed": {
@@ -6250,7 +6250,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": true
             }
           ],
@@ -6258,7 +6258,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": true
         },
         "risk": {
@@ -6268,7 +6268,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": "low"
             }
           ],
@@ -6276,25 +6276,25 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": "low"
         },
         "title": {
           "candidates": [
             {
-              "precedence": "contract_final",
-              "review_reason": "Contract final Schema pass-through",
+              "precedence": "cobra_help",
+              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
               "selected": true,
-              "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source": "cobra_help",
+              "source_ref": "cobra_help",
               "value": "列出我发出的日报（可选时间/模版名过滤）"
             }
           ],
-          "precedence": "contract_final",
-          "resolution": "contract_pass_through",
-          "review_reason": "Contract final Schema pass-through",
-          "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "precedence": "cobra_help",
+          "resolution": "cobra_help_fallback",
+          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "source": "cobra_help",
+          "source_ref": "cobra_help",
           "value": "列出我发出的日报（可选时间/模版名过滤）"
         },
         "use_when": {
@@ -6304,7 +6304,7 @@
               "review_reason": "Contract final Schema pass-through",
               "selected": true,
               "source": "corecmd.contract",
-              "source_ref": "corecmd.SchemaDecl",
+              "source_ref": "corecmd.ContractDecl",
               "value": [
                 "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
               ]
@@ -6314,7 +6314,7 @@
           "resolution": "contract_pass_through",
           "review_reason": "Contract final Schema pass-through",
           "source": "corecmd.contract",
-          "source_ref": "corecmd.SchemaDecl",
+          "source_ref": "corecmd.ContractDecl",
           "value": [
             "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。"
           ]

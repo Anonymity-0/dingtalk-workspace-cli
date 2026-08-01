@@ -20,7 +20,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
-func TestCrossPlatformCoverageNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
+func TestCrossPlatformCoverageNewCommandEmbedsFullContractDeclAsFinalSource(t *testing.T) {
 	cmd := New(Spec{
 		Use:   "create",
 		Short: "short",
@@ -36,22 +36,23 @@ func TestCrossPlatformCoverageNewCommandEmbedsFullSchemaDeclAsFinalSource(t *tes
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "retryable",
 		},
-		Schema: SchemaDecl{
+		Contract: ContractDecl{
 			Title:       "Create Title",
 			Description: "Create Desc",
-			Positionals: []PositionalDecl{{Name: "id", Required: true, Index: 0}},
-			DryRun:      &DryRunDecl{PreviewKind: "invocation", RemoteReads: true},
-			Interface: &InterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "dev", RPCName: "create_thing",
+			Positionals: []contract.RuntimeSchemaPositional{{Name: "id", Required: true, Index: 0}},
+			DryRun:      &contract.DryRunSpec{PreviewKind: "invocation", RemoteReads: true},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "create_thing"},
 			},
-			Selection: SelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "summary",
 				UseWhen:      []string{"when create"},
 				AvoidWhen:    []string{"when read"},
 				Examples:     []string{"dws create --mode a"},
 			},
-			Identity: IdentityDecl{
+			Identity: contract.ToolIdentitySpec{
 				ProductID: "dev", Name: "create_thing",
 				CLIPath: "dev create", CanonicalPath: "dev.create_thing",
 			},
@@ -61,15 +62,15 @@ func TestCrossPlatformCoverageNewCommandEmbedsFullSchemaDeclAsFinalSource(t *tes
 
 	if cmd.Annotations != nil {
 		if _, ok := cmd.Annotations["dws.schema.final"]; ok {
-			t.Fatal("framework must convert typed SchemaDecl; must not write JSON dws.schema.final")
+			t.Fatal("framework must convert typed ContractDecl; must not write JSON dws.schema.final")
 		}
 	}
 	final, ok := contract.RuntimeContractFinal(cmd)
 	if !ok {
 		t.Fatal("expected typed ContractFinal registration")
 	}
-	if final.Title != "Create Title" || final.Description != "long" {
-		t.Fatalf("title/desc = %q %q", final.Title, final.Description)
+	if final.Title != "Create Title" || final.Description != "Create Desc" {
+		t.Fatalf("title/desc = %q %q (payload stores declared Contract text; Catalog may prefer Cobra Long)", final.Title, final.Description)
 	}
 	if final.Safety == nil || final.Safety.Confirmation != "user_required" || final.Safety.Idempotency != "retryable" {
 		t.Fatalf("safety = %#v", final.Safety)
@@ -117,14 +118,15 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: SchemaDecl{
+		Contract: ContractDecl{
 			Title:       "Create Title",
 			Description: "Create Desc",
-			Interface: &InterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "dev", RPCName: "create_thing",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "create_thing"},
 			},
-			Selection: SelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "summary",
 				UseWhen:      []string{"when create"},
 				AvoidWhen:    []string{"when read"},
@@ -142,38 +144,38 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
+func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		schema  SchemaDecl
+		schema  ContractDecl
 		wantSub string
 	}{
-		{"missing description", SchemaDecl{
-			Selection: SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
-		}, "Schema.Description"},
-		{"missing selection", SchemaDecl{
+		{"missing description", ContractDecl{
+			Selection: contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Contract.Description"},
+		{"missing selection", ContractDecl{
 			Description: "d",
-		}, "Schema.Selection.AgentSummary"},
-		{"missing examples", SchemaDecl{
+		}, "Contract.Selection.AgentSummary"},
+		{"missing examples", ContractDecl{
 			Description: "d",
-			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "get_thing"},
-			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
-		}, "Schema.Selection.Examples"},
-		{"missing interface", SchemaDecl{
+			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "get_thing"}},
+			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
+		}, "Contract.Selection.Examples"},
+		{"missing interface", ContractDecl{
 			Description: "d",
-			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
-		}, "Schema.Interface"},
-		{"composite without reason", SchemaDecl{
+			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Contract.Interface"},
+		{"composite without reason", ContractDecl{
 			Description: "d",
-			Interface:   &InterfaceDecl{Mode: "composite", Availability: "available"},
-			Selection:   SelectionDecl{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
-		}, "Schema.Interface.Reason"},
+			Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
+			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Contract.Interface.Reason"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
 				recovered := recover()
 				if recovered == nil {
-					t.Fatal("partial SchemaDecl must panic at construction")
+					t.Fatal("partial ContractDecl must panic at construction")
 				}
 				if msg, _ := recovered.(string); !strings.Contains(msg, tc.wantSub) {
 					t.Fatalf("panic = %v, want mention %s", recovered, tc.wantSub)
@@ -182,7 +184,7 @@ func TestCrossPlatformCoverageNewCommandPanicsOnPartialSchemaDecl(t *testing.T) 
 			New(Spec{
 				Use:    "x",
 				Short:  "x",
-				Schema: tc.schema,
+				Contract: tc.schema,
 				Invoke: func(*Ctx, map[string]any) error { return nil },
 			})
 		})
@@ -190,10 +192,10 @@ func TestCrossPlatformCoverageNewCommandPanicsOnPartialSchemaDecl(t *testing.T) 
 }
 
 func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
-	schema := SchemaDecl{
+	schema := ContractDecl{
 		Description: "desc",
-		Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "create_thing"},
-		Selection: SelectionDecl{
+		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "create_thing"}},
+		Selection: contract.SelectionSpec{
 			AgentSummary: "summary",
 			UseWhen:      []string{"when"},
 			AvoidWhen:    []string{"avoid"},
@@ -201,11 +203,11 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 		},
 	}
 	cmd := New(Spec{
-		Use:    "create",
-		Short:  "short",
-		Safety: testWriteSafety(),
-		Schema: schema,
-		Invoke: func(*Ctx, map[string]any) error { return nil },
+		Use:      "create",
+		Short:    "short",
+		Safety:   testWriteSafety(),
+		Contract: schema,
+		Invoke:   func(*Ctx, map[string]any) error { return nil },
 	})
 	want := "  dws create --mode a\n  dws create --mode b --dry-run"
 	if cmd.Example != want {
@@ -214,12 +216,12 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 
 	schema.Selection.Examples = []string{"dws create --mode a"}
 	explicit := New(Spec{
-		Use:     "create",
-		Short:   "short",
-		Example: "  dws create --custom",
-		Safety:  testWriteSafety(),
-		Schema:  schema,
-		Invoke:  func(*Ctx, map[string]any) error { return nil },
+		Use:      "create",
+		Short:    "short",
+		Example:  "  dws create --custom",
+		Safety:   testWriteSafety(),
+		Contract: schema,
+		Invoke:   func(*Ctx, map[string]any) error { return nil },
 	})
 	if explicit.Example != "  dws create --custom" {
 		t.Fatalf("authored Example must win over derivation, got %q", explicit.Example)
@@ -227,11 +229,11 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 }
 
 func TestNewCommandSafetySpecPassThrough(t *testing.T) {
-	schema := func() SchemaDecl {
-		return SchemaDecl{
+	schema := func() ContractDecl {
+		return ContractDecl{
 			Description: "desc",
-			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "op"},
-			Selection: SelectionDecl{
+			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
+			Selection: contract.SelectionSpec{
 				AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"},
 			},
 		}
@@ -249,21 +251,21 @@ func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 		Effect: "write", Risk: "low",
 		Confirmation: "not_required", Idempotency: "non_idempotent",
 	}
-	if got := build(Spec{Use: "w", Short: "w", Safety: declared, Schema: schema(),
+	if got := build(Spec{Use: "w", Short: "w", Safety: declared, Contract: schema(),
 		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != declared.Effect ||
 		got.Risk != declared.Risk || got.Confirmation != declared.Confirmation ||
 		got.Idempotency != declared.Idempotency {
 		t.Fatalf("SafetySpec must pass through without cross-field inference: %#v", got)
 	}
 	// A wholly empty declaration preserves the historical read-only default.
-	if got := build(Spec{Use: "r", Short: "r", Schema: schema(),
+	if got := build(Spec{Use: "r", Short: "r", Contract: schema(),
 		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "read" || got.Risk != "low" ||
 		got.Confirmation != "not_required" || got.Idempotency != "idempotent" {
 		t.Fatalf("empty Safety must use read default, = %#v", got)
 	}
 }
 
-func TestSchemaDeclEmptySkipsFinal(t *testing.T) {
+func TestContractDeclEmptySkipsFinal(t *testing.T) {
 	cmd := New(Spec{
 		Use:    "get",
 		Short:  "g",
@@ -296,32 +298,32 @@ func TestCrossPlatformCoverageNewCommandRejectsPartialSafetySpec(t *testing.T) {
 	})
 }
 
-func TestCrossPlatformCoverageSchemaDeclEmptyReportsEveryAuthoredSection(t *testing.T) {
-	if !(SchemaDecl{}).Empty() {
-		t.Fatal("zero SchemaDecl must be empty")
+func TestCrossPlatformCoverageContractDeclEmptyReportsEveryAuthoredSection(t *testing.T) {
+	if !(ContractDecl{}).Empty() {
+		t.Fatal("zero ContractDecl must be empty")
 	}
 
-	authored := map[string]SchemaDecl{
+	authored := map[string]ContractDecl{
 		"title":       {Title: "T"},
 		"description": {Description: "D"},
-		"positionals": {Positionals: []PositionalDecl{{Name: "id"}}},
-		"parameters":  {Parameters: []ParamDecl{{Name: "mode"}}},
-		"dry_run":     {DryRun: &DryRunDecl{PreviewKind: "request"}},
-		"interface":   {Interface: &InterfaceDecl{Mode: "mcp"}},
-		"selection":   {Selection: SelectionDecl{Tips: []string{"tip"}}},
-		"identity":    {Identity: IdentityDecl{Name: "tool"}},
+		"positionals": {Positionals: []contract.RuntimeSchemaPositional{{Name: "id"}}},
+		"parameters":  {Parameters: []contract.ParamDecl{{Name: "mode"}}},
+		"dry_run":     {DryRun: &contract.DryRunSpec{PreviewKind: "request"}},
+		"interface":   {Interface: &contract.InterfaceSpec{Mode: "mcp"}},
+		"selection":   {Selection: contract.SelectionSpec{Tips: []string{"tip"}}},
+		"identity":    {Identity: contract.ToolIdentitySpec{Name: "tool"}},
 	}
 	for name, decl := range authored {
 		if decl.Empty() {
-			t.Fatalf("%s: authored section must make SchemaDecl non-empty", name)
+			t.Fatalf("%s: authored section must make ContractDecl non-empty", name)
 		}
 	}
 
 	// Pointers without any authored payload still count as empty: a bare
-	// &DryRunDecl{} / &InterfaceDecl{} carries no final Schema fact.
-	unauthored := map[string]SchemaDecl{
-		"dry_run pointer":   {DryRun: &DryRunDecl{RemoteReads: true}},
-		"interface pointer": {Interface: &InterfaceDecl{}},
+	// &contract.DryRunSpec{} / &contract.InterfaceSpec{} carries no final Schema fact.
+	unauthored := map[string]ContractDecl{
+		"dry_run pointer":   {DryRun: &contract.DryRunSpec{RemoteReads: true}},
+		"interface pointer": {Interface: &contract.InterfaceSpec{}},
 	}
 	for name, decl := range unauthored {
 		if !decl.Empty() {

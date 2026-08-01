@@ -49,22 +49,26 @@ func aitableSafetyDestructive() contract.SafetySpec {
 	}
 }
 
-func aitableMCPInterface(rpc string) *LeafInterfaceDecl {
-	return &LeafInterfaceDecl{
-		Mode: "mcp", Availability: "available",
-		ProductID: "aitable", RPCName: rpc,
+func aitableMCPInterface(rpc string) *contract.InterfaceSpec {
+	return &contract.InterfaceSpec{
+		Mode:         "mcp",
+		Availability: "available",
+		Ref:          &contract.InterfaceRefSpec{ProductID: "aitable", RPCName: rpc},
 	}
 }
 
-func aitableHelperMCPInterface(rpc string) *LeafInterfaceDecl {
-	return &LeafInterfaceDecl{
-		Mode: "mcp", Availability: "available",
-		ProductID: "aitable-helper", RPCName: rpc,
+func aitableHelperMCPInterface(rpc string) *contract.InterfaceSpec {
+	return &contract.InterfaceSpec{
+		Mode:         "mcp",
+		Availability: "available",
+		Ref:          &contract.InterfaceRefSpec{ProductID: "aitable-helper", RPCName: rpc},
 	}
 }
 
-func aitableCompositeInterface(reason string) *LeafInterfaceDecl {
-	return &LeafInterfaceDecl{
-		Mode: "composite", Availability: "available", Reason: reason,
+func aitableCompositeInterface(reason string) *contract.InterfaceSpec {
+	return &contract.InterfaceSpec{
+		Mode:         "composite",
+		Availability: "available",
+		Reason:       reason,
 	}
 }

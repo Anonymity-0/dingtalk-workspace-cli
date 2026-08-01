@@ -38,7 +38,7 @@
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌─── Schema 声明 (Agent 可见的元数据) ──────────────────────────┐  │
-│  │  SchemaDecl                                                   │  │
+│  │  ContractDecl                                                   │  │
 │  │  ├─ Title / Description                                      │  │
 │  │  ├─ DryRunDecl     {PreviewKind, RemoteReads}                │  │
 │  │  ├─ InterfaceDecl  {Mode, Availability, Reason, Ref}         │  │
@@ -69,7 +69,7 @@ corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ───�
               构建时检查:              注册产物:                    执行上下文:
               • validateDispatchDecl   • Flags + Aliases            • Str(name)
               • validateSafetySpec     • Annotations (Schema)       • Int(name)
-              • validateSchemaDecl     • Long (约束 help)           • Bool(name)
+              • validateContractDecl     • Long (约束 help)           • Bool(name)
               • RegisterFlags          • RunE (管线)                • StrSlice(name)
               • ValidateConstraintDecls                            • Changed(name)
               • embedContractIntoSchema                            • DryRun() / Yes()
@@ -85,7 +85,7 @@ corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ───�
 | **FlagSpec** | struct | 一个参数的注册、回退链、绑定规则 |
 | **Constraint** | struct | 参数间的关系约束 |
 | **Safety** | contract.SafetySpec | 运行时与 Schema 共用的安全契约 |
-| **SchemaDecl** | struct | Agent 可见的完整工具规格声明 |
+| **ContractDecl** | struct | Agent 可见的完整工具规格声明 |
 | **SelectionDecl** | struct | Agent 选择该工具的语义指引 |
 | **InterfaceDecl** | struct | 工具的接口模式与可用性 |
 | **DryRunDecl** | struct | dry-run 能力声明 |
@@ -153,7 +153,7 @@ ArgDefault (兜底)
 
 "是否提供"的判定复用有效值回退链（显式主 flag → 别名 → env），注册默认值不算作已提供。
 
-## SchemaDecl 子结构
+## ContractDecl 子结构
 
 ### SelectionDecl（Agent 选择指引）
 

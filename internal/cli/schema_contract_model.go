@@ -17,10 +17,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // SchemaRegistry is the resolved, typed Agent contract. Source adapters and

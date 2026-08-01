@@ -23,7 +23,7 @@ corecmd.Spec
        dws.schema.contract=command
        dws.schema.property / type / required  (per flag)
        dws.schema.constraints
-  → RegisterRuntimeContractFinal(SafetySpec + SchemaDecl)
+  → RegisterRuntimeContractFinal(SafetySpec + ContractDecl)
   → Schema 组装透传 Contract Final
     （Catalog 生成时内存 inject Agent metadata）
   → go:embed schema_catalog
@@ -160,7 +160,7 @@ NewLeafCommand(LeafSpec{
 | Safety.`effect/risk/confirmation/idempotency` | **声明**完整 `Safety`，或迁移期 `runtime_gate` / reviewed Safety | 四字段独立；不得互相推导 |
 | DryRun | 评审源 | dry-run capabilities registry |
 | Interface | 评审源 | MCP + 内存 inject 的 Agent metadata |
-| Selection | 声明（ContractFinal / ProductDecl） | `SchemaDecl.Selection` / `ProductDecl` |
+| Selection | 声明（ContractFinal / ProductDecl） | `ContractDecl.Selection` / `ProductDecl` |
 | FieldProvenance / Extensions | 组装派生或评审扩展 | 组装器；与 delivered value 一致 |
 | （非 Schema parameter）ConstParams | **声明** | 载荷；不上 parameters 表 |
 
@@ -173,7 +173,7 @@ NewLeafCommand(LeafSpec{
 | flags / defaults / required / enum / 关系约束 / 运行时 Risk | Contract（LeafSpec / `corecmd.Spec` 门面） | cobra、`--help`、Schema `parameters` / constraints / confirmation |
 | ConstParams、Bind、OmitEmpty、Transform | 同上（载荷声明，不上 flag 表） | toolArgs；Schema 不把 ConstParams 伪装成用户 flag |
 | canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
-| use_when / avoid_when / examples / agent_summary 文案 | `SchemaDecl.Selection` / `ProductDecl` | Schema selection |
+| use_when / avoid_when / examples / agent_summary 文案 | `ContractDecl.Selection` / `ProductDecl` | Schema selection |
 | RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + `schema_parameter_bindings` | Schema `interface_*` 字段；**不得创建 flag** |
 | 参数描述 overlay（可选） | 生产 metadata 壳为空；参数事实走 ParamDecl / FlagSpec | **Contract/cobra 胜** |
 | 遗留 Safety 文案（迁移期） | 生产 metadata 壳为空；Safety 走 Contract | 以 Contract.Safety / runtime_gate 为准（见 §4） |
@@ -189,7 +189,7 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 - Flags / ConstParams / Constraints → 注册、校验与 `ConstraintHelp`；SafetySpec → 运行时 `ConfirmSafety`（command）；
 - Call / Execute 作为执行体；业务参数不得在 Call 内装配（helpers 门禁）；
-- **Contract → Schema 嵌入**：参数/约束写原生 annotation，SafetySpec 与 SchemaDecl 注册为类型化 Contract Final 并由 Schema 组装透传。
+- **Contract → Schema 嵌入**：参数/约束写原生 annotation，SafetySpec 与 ContractDecl 注册为类型化 Contract Final 并由 Schema 组装透传。
 
 仍缺：
 

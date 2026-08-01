@@ -22,7 +22,7 @@ import (
 
 // ProductDecl provenance labels. Assembly and Agent-metadata generation stamp
 // ProductSpec.Selection winners with these sources (symmetric to leaf
-// corecmd.contract / corecmd.SchemaDecl).
+// corecmd.contract / corecmd.ContractDecl).
 const (
 	ProductDeclProvenanceSource = "cli.product_decl"
 	ProductDeclSourceRef        = "cli.ProductDecl"

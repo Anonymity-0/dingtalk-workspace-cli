@@ -42,13 +42,14 @@ func newLiveCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查看当前用户发起的直播列表与基础统计",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "live", RPCName: "get_my_lives",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "live", RPCName: "get_my_lives"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查看当前用户发起的直播列表与基础统计",
 				UseWhen:      []string{"用户要看自己发起过的直播、状态或观看量等列表信息"},
 				AvoidWhen:    []string{"需要创建/开播/结束直播时不要使用；当前公开面仅列表查询"},

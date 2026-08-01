@@ -248,7 +248,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 	constraints := runtimeCommandConstraints(entry.Command)
 	embeddedMeta, _ := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
 	// Apply parameter declarations from the contract.ContractFinalPayload before the
-	// resolver reads them. The decls were put there by AttachSchema at
+	// resolver reads them. The decls were put there by AttachContract at
 	// DeclareLeafMetadata time; now that all flags exist on the fully-built
 	// command tree, they can be emitted as dws.schema.* annotations.
 	if err := ApplyParamDecls(entry.Command, final.Parameters); err != nil {
@@ -314,14 +314,19 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 		identity.SourceProductID = ""
 	}
 
-	title := strings.TrimSpace(final.Title)
-	description := strings.TrimSpace(final.Description)
-	if title == "" {
-		title = strings.TrimSpace(entry.Command.Short)
-	}
-	if description == "" {
-		description = strings.TrimSpace(entry.Command.Long)
-	}
+	// Text delivery: Cobra Long wins over declared Contract.Description when
+	// present (declared Description is mandatory and often a one-line restatement).
+	// Declared Title wins over Short. Provenance must name the real winner.
+	title, titleProv := contractFinalTextProvenance(
+		strings.TrimSpace(final.Title),
+		strings.TrimSpace(entry.Command.Short),
+		false, // prefer declared
+	)
+	description, descriptionProv := contractFinalTextProvenance(
+		strings.TrimSpace(final.Description),
+		strings.TrimSpace(entry.Command.Long),
+		true, // prefer cobra help
+	)
 
 	safety := contract.SafetySpec{}
 	if final.Safety != nil {
@@ -353,10 +358,10 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 	// legacy-path tools. Reviewed is assembly-derived (declarations are
 	// code-reviewed by construction), never author-provided.
 	if strings.TrimSpace(selection.AgentSummarySource) == "" && strings.TrimSpace(selection.AgentSummary) != "" {
-		selection.AgentSummarySource = "corecmd.SchemaDecl"
+		selection.AgentSummarySource = "corecmd.ContractDecl"
 	}
 	if selection.SourceRefs == nil {
-		selection.SourceRefs = []string{"corecmd.SchemaDecl"}
+		selection.SourceRefs = []string{"corecmd.ContractDecl"}
 	}
 	if strings.TrimSpace(selection.MetadataSource) == "" {
 		selection.MetadataSource = "corecmd.contract"
@@ -366,7 +371,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 		selection.Reviewed = &reviewed
 	}
 
-	provenance := contractFinalProvenance(identity, title, description, safety, interfaceSpec, selection, final.DryRun)
+	provenance := contractFinalProvenance(identity, title, description, titleProv, descriptionProv, safety, interfaceSpec, selection, final.DryRun)
 
 	return ToolSpecFromRuntime(RuntimeToolSpecInput{
 		Identity:        identity,
@@ -385,12 +390,46 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 	})
 }
 
+// contractFinalTextProvenance picks delivered title/description text and the
+// provenance that matches the real winner. preferCobra=true implements the
+// Long-over-declared-Description rule; preferCobra=false keeps declared Title
+// over Short.
+func contractFinalTextProvenance(declared, cobra string, preferCobra bool) (string, contract.FieldProvenance) {
+	decl := strings.TrimSpace(declared)
+	help := strings.TrimSpace(cobra)
+	switch {
+	case preferCobra && help != "":
+		return help, resolvedFieldProvenance(
+			help, "cobra_help", "cobra_help", "cobra_help",
+			"cobra_help_preferred", "Cobra Long/Short preferred over ContractDecl text",
+		)
+	case decl != "":
+		return decl, resolvedFieldProvenance(
+			decl, "corecmd.contract", "corecmd.ContractDecl", "contract_final",
+			"contract_pass_through", "Contract final Schema pass-through",
+		)
+	case help != "":
+		return help, resolvedFieldProvenance(
+			help, "cobra_help", "cobra_help", "cobra_help",
+			"cobra_help_fallback", "Cobra Long/Short fallback when ContractDecl text is empty",
+		)
+	default:
+		// Keep a winner even when both sides are empty so the final-delivery
+		// provenance gate (winner value == delivered value) still holds.
+		return "", resolvedFieldProvenance(
+			"", "corecmd.contract", "corecmd.ContractDecl", "contract_final",
+			"contract_pass_through", "Contract final Schema pass-through",
+		)
+	}
+}
+
 // contractFinalProvenance records one pass-through winner per delivered field.
 // The final Schema provenance gate requires a winner for every required tool
 // field (safety/interface/agent_summary unconditionally, selection slices and
 // dry_run when present), so declared leaves must emit the full set, not only
-// the fields they happened to author.
-func contractFinalProvenance(identity contract.ToolIdentitySpec, title, description string, safety contract.SafetySpec, iface contract.InterfaceSpec, selection contract.SelectionSpec, dryRun *contract.DryRunSpec) map[string]contract.FieldProvenance {
+// the fields they happened to author. Title/description provenance must match
+// the real text winner (cobra_help vs contract_final).
+func contractFinalProvenance(identity contract.ToolIdentitySpec, title, description string, titleProv, descriptionProv contract.FieldProvenance, safety contract.SafetySpec, iface contract.InterfaceSpec, selection contract.SelectionSpec, dryRun *contract.DryRunSpec) map[string]contract.FieldProvenance {
 	prov := func(value any, sourceRef string) contract.FieldProvenance {
 		return resolvedFieldProvenance(
 			value,
@@ -402,27 +441,27 @@ func contractFinalProvenance(identity contract.ToolIdentitySpec, title, descript
 		)
 	}
 	out := map[string]contract.FieldProvenance{
-		"canonical_path":  prov(identity.CanonicalPath, "corecmd.SchemaDecl"),
-		"title":           prov(title, "corecmd.SchemaDecl"),
-		"description":     prov(description, "corecmd.SchemaDecl"),
-		"metadata_source": prov("corecmd.contract", "corecmd.SchemaDecl"),
-		"effect":          prov(safety.Effect, "corecmd.SchemaDecl"),
-		"risk":            prov(safety.Risk, "corecmd.SchemaDecl"),
-		"confirmation":    prov(safety.Confirmation, "corecmd.SchemaDecl"),
-		"idempotency":     prov(safety.Idempotency, "corecmd.SchemaDecl"),
-		"interface_mode":  prov(iface.Mode, "corecmd.SchemaDecl"),
-		"availability":    prov(iface.Availability, "corecmd.SchemaDecl"),
-		"agent_summary":   prov(selection.AgentSummary, "corecmd.SchemaDecl"),
+		"canonical_path":  prov(identity.CanonicalPath, "corecmd.ContractDecl"),
+		"title":           titleProv,
+		"description":     descriptionProv,
+		"metadata_source": prov("corecmd.contract", "corecmd.ContractDecl"),
+		"effect":          prov(safety.Effect, "corecmd.ContractDecl"),
+		"risk":            prov(safety.Risk, "corecmd.ContractDecl"),
+		"confirmation":    prov(safety.Confirmation, "corecmd.ContractDecl"),
+		"idempotency":     prov(safety.Idempotency, "corecmd.ContractDecl"),
+		"interface_mode":  prov(iface.Mode, "corecmd.ContractDecl"),
+		"availability":    prov(iface.Availability, "corecmd.ContractDecl"),
+		"agent_summary":   prov(selection.AgentSummary, "corecmd.ContractDecl"),
 	}
 	var ref any
 	if iface.Ref != nil {
 		ref = *iface.Ref
 	}
-	out["interface_ref"] = prov(ref, "corecmd.SchemaDecl")
+	out["interface_ref"] = prov(ref, "corecmd.ContractDecl")
 	if strings.TrimSpace(iface.Reason) != "" ||
 		strings.TrimSpace(iface.Mode) == contract.InterfaceModeComposite ||
 		strings.TrimSpace(iface.Availability) == contract.InterfaceUnavailable {
-		out["interface_reason"] = prov(iface.Reason, "corecmd.SchemaDecl")
+		out["interface_reason"] = prov(iface.Reason, "corecmd.ContractDecl")
 	}
 	for field, values := range map[string][]string{
 		"use_when":      selection.UseWhen,
@@ -433,14 +472,14 @@ func contractFinalProvenance(identity contract.ToolIdentitySpec, title, descript
 		"examples":      selection.Examples,
 	} {
 		if values != nil {
-			out[field] = prov(values, "corecmd.SchemaDecl")
+			out[field] = prov(values, "corecmd.ContractDecl")
 		}
 	}
 	if selection.Reviewed != nil {
-		out["reviewed"] = prov(*selection.Reviewed, "corecmd.SchemaDecl")
+		out["reviewed"] = prov(*selection.Reviewed, "corecmd.ContractDecl")
 	}
 	if dryRun != nil {
-		out["dry_run"] = prov(*dryRun, "corecmd.SchemaDecl")
+		out["dry_run"] = prov(*dryRun, "corecmd.ContractDecl")
 	}
 	return out
 }

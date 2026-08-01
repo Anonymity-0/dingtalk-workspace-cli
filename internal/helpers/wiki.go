@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
@@ -196,13 +195,14 @@ func newWikiCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建一个新的钉钉文档知识库（WikiSpace）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "create_wikiSpace",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "create_wikiSpace"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建一个新的钉钉文档知识库（WikiSpace）",
 				UseWhen:      []string{"用户要新建一个知识库容器时"},
 				AvoidWhen:    []string{"在已有知识库内建文档/文件夹用 node create，不要反复 create space"},
@@ -212,7 +212,7 @@ func newWikiCommand() *cobra.Command {
 				},
 			},
 			// name is validated in RunE; publish required via ParamDecl
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
 		},
@@ -242,20 +242,21 @@ func newWikiCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "get_wikiSpace",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "get_wikiSpace"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等",
 				UseWhen:      []string{"查看指定知识库详情（名称、描述、创建者等）时"},
 				AvoidWhen:    []string{"列知识库用 list；删库用 space delete（需确认）"},
 				Examples:     []string{"dws wiki space get --workspace <workspaceId> --format json"},
 			},
 			// workspace is validated in RunE; publish required via ParamDecl
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "workspace", Required: boolPtr(true)},
 			},
 		},
@@ -314,13 +315,14 @@ func newWikiCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出当前用户可访问的知识库或钉盘空间",
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "The CLI command routes by --type between wiki/list_wikiSpaces and drive/list_spaces, so the reviewed executable wrapper has no single direct MCP interface.",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "The CLI command routes by --type between wiki/list_wikiSpaces and drive/list_spaces, so the reviewed executable wrapper has no single direct MCP interface.",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出当前用户可访问的知识库或钉盘空间",
 				UseWhen: []string{
 					"列出组织知识库（默认）、我的文档(--type myWikiSpace)、钉盘企业空间(--type orgSpace)或我的文件(--type mySpace)时",
@@ -373,13 +375,14 @@ func newWikiCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "search_wikiSpaces",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "search_wikiSpaces"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述",
 				UseWhen:      []string{"按关键词搜索有权访问的组织知识库时"},
 				AvoidWhen:    []string{"直接列全部知识库用 space list；我的文档用 list --type myWikiSpace"},
@@ -443,13 +446,14 @@ func newWikiCommand() *cobra.Command {
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将指定知识库移入回收站",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "delete_wikiSpace",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "delete_wikiSpace"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将指定知识库移入回收站",
 				UseWhen:      []string{"用户明确要求删除整个知识库（移入回收站），且已确认 workspace 与影响范围时"},
 				AvoidWhen: []string{
@@ -523,13 +527,14 @@ func newWikiCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "为指定知识库添加一个或多个成员，并授予指定角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "add_member",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "add_member"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "为指定知识库添加一个或多个成员，并授予指定角色",
 				UseWhen:      []string{"给知识库容器添加成员（USER + 角色）；新员工入职开通整库访问时"},
 				AvoidWhen: []string{
@@ -593,13 +598,14 @@ func newWikiCommand() *cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新指定知识库已有成员的角色",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "update_member",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "update_member"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新指定知识库已有成员的角色",
 				UseWhen:      []string{"调整知识库成员角色（如升为 EDITOR/MANAGER）时"},
 				AvoidWhen:    []string{"新加成员用 add；移除用 remove；OWNER 不可经此变更"},
@@ -654,13 +660,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "list_member",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "list_member"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息",
 				UseWhen:      []string{"查看知识库成员名单与角色时"},
 				AvoidWhen: []string{
@@ -711,13 +718,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "从指定知识库中移除一个或多个成员（仅支持 USER 类型）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "wiki", RPCName: "remove_member",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "remove_member"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "从指定知识库中移除一个或多个成员（仅支持 USER 类型）",
 				UseWhen:      []string{"从知识库移除成员访问（离职/清理）时"},
 				AvoidWhen: []string{
@@ -794,13 +802,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出指定知识库下的直接子节点（文档、文件夹、表格等）",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "list_nodes",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_nodes"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出指定知识库下的直接子节点（文档、文件夹、表格等）",
 				UseWhen:      []string{"在已知 workspace 下浏览知识库根目录或某文件夹子节点时"},
 				AvoidWhen: []string{
@@ -866,13 +875,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在指定知识库中创建文档、文件夹或其他类型的节点",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "create_file",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_file"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在指定知识库中创建文档、文件夹或其他类型的节点",
 				UseWhen:      []string{"在知识库内创建空节点：adoc/axls/appt/adraw/amind/able/folder（必须 --workspace）时"},
 				AvoidWhen: []string{
@@ -928,13 +938,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将知识库中的节点复制到指定位置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "copy_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "copy_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将知识库中的节点复制到指定位置",
 				UseWhen:      []string{"在知识库上下文内复制节点到同库某文件夹（需 --workspace + --node）时"},
 				AvoidWhen: []string{
@@ -987,13 +998,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将知识库中的节点移动到指定位置",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "move_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "move_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将知识库中的节点移动到指定位置",
 				UseWhen:      []string{"在知识库内移动节点到目标文件夹时"},
 				AvoidWhen:    []string{"要保留副本用 node copy / drive copy"},
@@ -1034,13 +1046,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "将知识库中的节点移入回收站",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "delete_document",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "将知识库中的节点移入回收站",
 				UseWhen:      []string{"用户确认后删除知识库内节点（移入回收站；需 --workspace 校验权限）时"},
 				AvoidWhen: []string{
@@ -1094,13 +1107,14 @@ ORG 类型授权不会出现在查询结果中。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "在指定知识库内搜索文档/文件夹/表格等节点",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "doc", RPCName: "search_documents",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "search_documents"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "在指定知识库内搜索文档/文件夹/表格等节点",
 				UseWhen:      []string{"在指定知识库内按关键词搜节点（可 --extensions）时"},
 				AvoidWhen:    []string{"全局/钉盘搜索用 drive search；浏览目录用 node list"},

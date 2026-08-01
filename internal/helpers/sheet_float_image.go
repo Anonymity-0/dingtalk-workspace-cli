@@ -81,13 +81,14 @@ func newFloatImageCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "创建浮动图片（src 必须来自 media-upload 的 resourceUrl）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "create_float_image",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_float_image"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "创建浮动图片（src 必须来自 media-upload 的 resourceUrl）。",
 				UseWhen:      []string{"需要在单元格上方悬浮图片、不占用单元格内容时"},
 				AvoidWhen:    []string{"单元格内嵌图片用 write-image；更新/删除浮动图用 update/delete-float-image"},
@@ -125,13 +126,14 @@ floatImageId 可通过 list-float-images 获取。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "获取单张浮动图片详情。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "get_float_image",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_float_image"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "获取单张浮动图片详情。",
 				UseWhen:      []string{"已知 float-image-id，需要查看锚点/尺寸/src 时"},
 				AvoidWhen:    []string{"列出全部浮动图用 list-float-images"},
@@ -162,13 +164,14 @@ floatImageId 可通过 list-float-images 获取。`,
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "列出工作表全部浮动图片。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "list_float_images",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "list_float_images"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "列出工作表全部浮动图片。",
 				UseWhen:      []string{"需要枚举浮动图 ID 以便后续 get/update/delete 时"},
 				AvoidWhen:    []string{"查单张详情用 get-float-image"},
@@ -255,13 +258,14 @@ floatImageId 可通过 list-float-images 获取。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "更新浮动图片锚点、尺寸、偏移或资源路径。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "update_float_image",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_float_image"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "更新浮动图片锚点、尺寸、偏移或资源路径。",
 				UseWhen:      []string{"需要移动/缩放/替换已有浮动图片时"},
 				AvoidWhen:    []string{"创建用 create-float-image；删除用 delete-float-image"},
@@ -300,13 +304,14 @@ floatImageId 可通过 list-float-images 获取。`,
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "删除浮动图片（需确认后加 --yes）。",
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "delete_float_image",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "delete_float_image"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "删除浮动图片（需确认后加 --yes）。",
 				UseWhen:      []string{"用户明确要求删除某张浮动图片时"},
 				AvoidWhen:    []string{"删除单元格内嵌图需改写单元格；列目录用 list-float-images"},

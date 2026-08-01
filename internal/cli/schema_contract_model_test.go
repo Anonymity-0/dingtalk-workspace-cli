@@ -15,10 +15,11 @@ package cli
 
 import (
 	"encoding/json"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func TestInterfaceSpecValidateDispositionMatrix(t *testing.T) {

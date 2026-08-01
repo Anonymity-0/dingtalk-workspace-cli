@@ -52,13 +52,14 @@ var RecordShareLinks = shortcut.Shortcut{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Schema: corecmd.SchemaDecl{
+	Contract: corecmd.ContractDecl{
 		Description: "批量（可 >20 条）获取多维表记录分享链接：去重+分片+合并",
-		Interface: &corecmd.InterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
-		Selection: corecmd.SelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: "批量（可 >20 条）获取多维表记录分享链接：去重+分片+合并",
 			UseWhen:      []string{"当你要一次性拿到很多条多维表记录的分享链接、数量可能超过底层工具单次 20 条上限时使用；内部先对 --record-ids 去重（保持顺序），再按每批 ≤20 条切片，逐批调用 get_record_share_url（在 aitable-helper 服务上），最后把各批返回的 {recordId, shareUrl} 合并成一个列表；某一批失败会记录错误但不影响其余批。这是只读操作，只生成/获取分享链接、不修改记录。可选 --view-id 生成带视图上下文的链接。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},

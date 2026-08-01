@@ -26,7 +26,7 @@ type schemaParameterMappingFlagAudit struct {
 }
 
 func TestEmbeddedCatalogMCPParameterMappingsAreComplete(t *testing.T) {
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
 	}
@@ -45,7 +45,7 @@ func TestEmbeddedCatalogMCPParameterMappingsAreComplete(t *testing.T) {
 }
 
 func TestEmbeddedCatalogDoesNotProjectHardRequiredFlagsAsOptional(t *testing.T) {
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
 	}
@@ -76,7 +76,7 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 		"event.schema":       "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
 		"pat.browser_policy": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
 	}
-	loaded := embeddedSchemaCatalog()
+	loaded := mustEmbeddedSchemaCatalogMaps(t)
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
 	}
@@ -444,7 +444,7 @@ func TestSchemaParameterBindingCorrectionsAreReviewed(t *testing.T) {
 			NewProperty: "maxResults",
 		},
 	}
-	flags := finalSchemaCatalogFlagIndex(embeddedSchemaCatalog().Snapshot.Tools)
+	flags := finalSchemaCatalogFlagIndex(mustEmbeddedSchemaCatalogMaps(t).Snapshot.Tools)
 	for key, correction := range snapshot.Corrections {
 		flag, exists := flags[key]
 		if !exists {

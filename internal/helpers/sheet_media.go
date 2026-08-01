@@ -291,14 +291,15 @@ func newMediaCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "上传附件到表格并返回 resourceUrl（浮动图片前置步骤）。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "composite", Availability: "available",
-				Reason: "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "上传附件到表格并返回 resourceUrl（浮动图片前置步骤）。",
 				UseWhen:      []string{"需要把本地文件上传为表格资源，或为 create-float-image 准备 src 时"},
 				AvoidWhen:    []string{"要把图片写入单元格内容用 write-image；AI 表格附件用 aitable attachment upload"},
@@ -343,14 +344,15 @@ func newMediaCmds() []*cobra.Command {
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
-		Schema: LeafSchema{
+		Contract: LeafContract{
 			Description: "上传图片并写入指定单元格（占单元格内容）。",
-			DryRun:      &LeafDryRunDecl{PreviewKind: "plan", RemoteReads: false},
-			Interface: &LeafInterfaceDecl{
-				Mode: "mcp", Availability: "available",
-				ProductID: "sheet", RPCName: "write_image",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "write_image"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "上传图片并写入指定单元格（占单元格内容）。",
 				UseWhen:      []string{"需要把图片嵌进某个单元格时"},
 				AvoidWhen:    []string{"悬浮在单元格上的浮动图用 create-float-image；禁止用 range update 写图片"},

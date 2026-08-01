@@ -45,7 +45,7 @@ const contractConfirmDeferredAnnotation = "dws.contract.confirm_deferred"
 //
 //   - 完全托管模式 NewLeafCommand：声明 + 执行都归 corecmd（flag 注册、
 //     参数投影、ConfirmSafety、派发）。新命令默认走此模式。
-//   - 声明元数据模式 DeclareLeafMetadata：声明 Safety + Schema（AttachSchema），
+//   - 声明元数据模式 DeclareLeafMetadata：声明 Safety + Contract（AttachContract），
 //     不注册 flag、不接管参数投影；可选 Validate 挂到 PreRunE（确认前）。
 //     当 Safety.Confirmation=user_required 时用**同一份** SafetySpec 包一层
 //     ConfirmSafety（在 PreRunE 之后），保证执行门禁与 Catalog 同源。
@@ -119,23 +119,16 @@ const (
 // 同时投影到 Agent Runtime Schema 并渲染进 --help 的「参数约束」段。
 type LeafConstraint = corecmd.Constraint
 
-// LeafSchema 是 Schema 最终载荷声明（corecmd.SchemaDecl 别名）。
-type LeafSchema = corecmd.SchemaDecl
-
-// SchemaDecl 嵌套类型别名（与 LeafSchema 配套使用）。
-type (
-	LeafPositionalDecl = corecmd.PositionalDecl
-	LeafDryRunDecl     = corecmd.DryRunDecl
-	LeafInterfaceDecl  = corecmd.InterfaceDecl
-	LeafSelectionDecl  = corecmd.SelectionDecl
-	LeafIdentityDecl   = corecmd.IdentityDecl
-)
+// LeafContract 是叶子 Contract 声明（corecmd.ContractDecl 别名）。
+// 嵌套字段直接使用 contract.*（InterfaceSpec / ParamDecl / SelectionSpec 等），
+// 不再保留平行 Decl 类型。
+type LeafContract = corecmd.ContractDecl
 
 // LeafSpec 是命令框架的 Leaf 声明门面（映射为 corecmd.Spec）。
 //
-// 声明面 = Schema 最终数据源：Flags（含 parameter Schema 字段）、Constraints、
-// Safety、ConstParams、Use/Short/Long/Example、Schema（ToolSpec 各组）。
-// Schema 组装透传嵌入值，声明路径不再引入评审并行字段。
+// 声明面 = Contract 最终数据源：Flags（含 parameter 字段）、Constraints、
+// Safety、ConstParams、Use/Short/Long/Example、Contract（Selection/Interface/…）。
+// Catalog 组装透传 ContractFinal；声明路径不再引入评审并行字段。
 //
 // 执行面（不算声明）：Validate、Call、RunE、PostMount；Server/Tool 仅路由。
 type LeafSpec struct {
@@ -168,8 +161,8 @@ type LeafSpec struct {
 	// 之后并入 toolArgs。载荷声明，不上用户 flag 表；从不满足 Required。
 	ConstParams map[string]any
 
-	// Schema 是 ToolSpec 最终载荷（identity/selection/safety/dry_run/…）。
-	Schema LeafSchema
+	// Contract 是叶子 ContractFinal 声明（identity/selection/interface/dry_run/…）。
+	Contract LeafContract
 
 	// Call 是执行体：非空时替代默认 MCP 派发。toolArgs 已由 Flags/ConstParams
 	// 装配完成；Call 不应再写业务参数。分页等横切由领域工具处理，不进声明。
@@ -241,17 +234,17 @@ func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 	if spec.Server != "" || spec.Tool != "" {
 		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Server/Tool must be empty (metadata-only mode)", name))
 	}
-	if spec.Schema.Empty() {
-		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Schema is required", name))
+	if spec.Contract.Empty() {
+		panic(fmt.Sprintf("DeclareLeafMetadata(%q): Contract is required", name))
 	}
-	corecmd.AttachSchema(cmd, spec.Safety, spec.Schema, cmd.Short, cmd.Long)
+	corecmd.AttachContract(cmd, spec.Safety, spec.Contract, cmd.Short, cmd.Long)
 
 	confirm := strings.TrimSpace(spec.Safety.Confirmation) == "user_required"
 	if spec.Validate == nil && !confirm {
 		return cmd
 	}
-	// cmd.Annotations is always non-nil here: AttachSchema above registers the
-	// runtime-contract annotation on every declared leaf.
+	// cmd.Annotations is always non-nil here: AttachContract above registers the
+	// runtime-contract annotation on every declared leaf via the cli seam.
 	rt := &contractRuntime{validate: spec.Validate, confirm: confirm}
 	if confirm {
 		rt.safety = spec.Safety
@@ -395,7 +388,7 @@ func FromLeafSpec(spec LeafSpec) corecmd.Spec {
 		Safety:       spec.Safety,
 		ConfirmFirst: spec.ConfirmFirst,
 		ConstParams:  spec.ConstParams,
-		Schema:       spec.Schema,
+		Contract:     spec.Contract,
 		Validate:     spec.Validate,
 		PostMount:    spec.PostMount,
 		RunE:         spec.RunE,

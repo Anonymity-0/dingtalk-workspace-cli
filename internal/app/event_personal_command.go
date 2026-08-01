@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"io"
 	"net/http"
 	"os"
@@ -29,6 +28,8 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -184,13 +185,14 @@ func newEventSchemaCommand() *cobra.Command {
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
-		Schema: helpers.LeafSchema{
+		Contract: helpers.LeafContract{
 			Description: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
-			Interface: &helpers.LeafInterfaceDecl{
-				Mode: "local", Availability: "available",
-				Reason: "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
 			},
-			Selection: helpers.LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
 				UseWhen:      []string{"已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"},
 				AvoidWhen: []string{

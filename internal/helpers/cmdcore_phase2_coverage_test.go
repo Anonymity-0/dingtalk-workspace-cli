@@ -27,16 +27,17 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
-// contractCoverageSchema returns a minimal LeafSchema accepted by
-// corecmd.AttachSchema's declaration completeness rules (test fixture).
-func contractCoverageSchema(desc string) LeafSchema {
-	return LeafSchema{
+// contractCoverageSchema returns a minimal LeafContract accepted by
+// corecmd.AttachContract's declaration completeness rules (test fixture).
+func contractCoverageSchema(desc string) LeafContract {
+	return LeafContract{
 		Description: desc,
-		Interface: &LeafInterfaceDecl{
-			Mode: "composite", Availability: "available",
-			Reason: "unit test fixture",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "unit test fixture",
 		},
-		Selection: LeafSelectionDecl{
+		Selection: contract.SelectionSpec{
 			AgentSummary: desc,
 			UseWhen:      []string{"unit test"},
 			AvoidWhen:    []string{"unit test"},
@@ -101,7 +102,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataPanicsOnExecutionFields(t *test
 		{"confirmFirst", &cobra.Command{Use: "leaf"}, LeafSpec{ConfirmFirst: true}, "ConfirmFirst must be false"},
 		{"server", &cobra.Command{Use: "leaf"}, LeafSpec{Server: "srv"}, "Server/Tool must be empty"},
 		{"tool", &cobra.Command{Use: "leaf"}, LeafSpec{Tool: "tool"}, "Server/Tool must be empty"},
-		{"empty schema", &cobra.Command{Use: "leaf"}, LeafSpec{}, "Schema is required"},
+		{"empty contract", &cobra.Command{Use: "leaf"}, LeafSpec{}, "Contract is required"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -169,7 +170,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataValidateWithoutConfirmRunsInner
 			}
 			return nil
 		},
-		Schema: contractCoverageSchema("test lookup"),
+		Contract: contractCoverageSchema("test lookup"),
 	})
 	if !HasContractValidate(cmd) {
 		t.Fatal("expected contract Validate annotation")
@@ -225,7 +226,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataConfirmFallbackWithoutCaller(t 
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: contractCoverageSchema("test purge"),
+		Contract: contractCoverageSchema("test purge"),
 	})
 	if !HasContractConfirmSafety(cmd) || !HasContractConfirmDeferred(cmd) {
 		t.Fatal("expected confirm + deferred-confirm annotations")
@@ -279,7 +280,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithout
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
-		Schema: contractCoverageSchema("test archive"),
+		Contract: contractCoverageSchema("test archive"),
 	})
 	cmd.SetIn(strings.NewReader(""))
 	cmd.SetOut(io.Discard)
@@ -473,7 +474,7 @@ func TestCrossPlatformCoverageSheetMutationGuardRunsContractValidateBeforeTarget
 			}
 			return nil
 		},
-		Schema: contractCoverageSchema("test clear range"),
+		Contract: contractCoverageSchema("test clear range"),
 	})
 	protectSheetMutationCommand(cmd, "清除范围", "文档和目标范围")
 	if !HasContractValidate(cmd) || !HasSheetMutationConfirmationGuard(cmd) {
