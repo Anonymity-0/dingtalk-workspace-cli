@@ -43,8 +43,9 @@ type ManualAgentSelectionCase struct {
 }
 
 // ManualAgentSelectionFixture is the stable input to an optional live Agent
-// evaluation. It is built from schema_hints/selection and the real bound
-// command tree; it is not a second authored hint source.
+// evaluation. It is built from ProductDecl/ContractFinal selection prose
+// (plus any residual selection HintFiles) and the real bound command tree;
+// it is not a second authored hint source.
 type ManualAgentSelectionFixture struct {
 	Version int                        `json:"version"`
 	Cases   []ManualAgentSelectionCase `json:"cases"`

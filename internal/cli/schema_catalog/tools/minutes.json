@@ -18344,22 +18344,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -18404,7 +18398,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": false,
           "type": "string"
         }
@@ -18972,22 +18966,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -19032,7 +19020,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": false,
           "type": "string"
         }
@@ -19600,22 +19588,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -19660,7 +19642,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": false,
           "type": "string"
         }

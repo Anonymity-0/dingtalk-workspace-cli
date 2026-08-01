@@ -119,7 +119,17 @@ fi
 
 if ! jq -e --arg registry_count "$registry_count" '
   (.tools | length) == ($registry_count | tonumber) and
-  all(.catalog.products[]; ((.agent_summary // "") | length) > 0) and
+  all(.catalog.products[];
+    ((.agent_summary // "") | length) > 0 and
+    (has("use_when") and (.use_when | type) == "array" and (.use_when | length) > 0) and
+    (has("avoid_when") and (.avoid_when | type) == "array" and (.avoid_when | length) > 0) and
+    (
+      ((.field_provenance.agent_summary.source // "") | test("schema_hints/selection/")) or
+      (.field_provenance.agent_summary.precedence // "") == "contract_final" or
+      (.field_provenance.agent_summary.source // "") == "corecmd.contract" or
+      (.field_provenance.agent_summary.source // "") == "cli.product_decl"
+    )
+  ) and
   all(.tools[];
     ((.agent_summary // "") | length) > 0 and
     (.effect == "read" or .effect == "write" or .effect == "destructive") and
@@ -146,7 +156,9 @@ if ! jq -e --arg registry_count "$registry_count" '
 	 else false end) and
 	(
 	  ((.agent_source_refs // []) | map(test("schema_hints/selection/")) | any) or
-	  .field_provenance.agent_summary.source == "corecmd.contract"
+	  .field_provenance.agent_summary.source == "corecmd.contract" or
+	  .field_provenance.agent_summary.source == "cli.product_decl" or
+	  (.field_provenance.agent_summary.precedence // "") == "contract_final"
 	)
   )
 ' "$catalog" >/dev/null; then

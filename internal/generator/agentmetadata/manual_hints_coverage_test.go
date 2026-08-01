@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
 func TestCrossPlatformCoverageReviewedSelectionRetentionAndDeliveryFailures(t *testing.T) {
@@ -49,7 +51,7 @@ func TestCrossPlatformCoverageReviewedSelectionRetentionAndDeliveryFailures(t *t
 		}},
 	}
 	err := validateReviewedSelectionDelivery(file, opts)
-	if err == nil || !strings.Contains(err.Error(), "source is not selection") || !strings.Contains(err.Error(), "is not reviewed_explicit") {
+	if err == nil || !strings.Contains(err.Error(), "source is not selection") || !strings.Contains(err.Error(), "is not reviewed_explicit/contract_final") {
 		t.Fatalf("invalid delivery error = %v", err)
 	}
 
@@ -71,6 +73,63 @@ func TestCrossPlatformCoverageReviewedSelectionRetentionAndDeliveryFailures(t *t
 	}
 	if err := validateReviewedSelectionDelivery(file, opts); err == nil || !strings.Contains(err.Error(), "provenance is not one") {
 		t.Fatalf("missing provenance error = %v", err)
+	}
+}
+
+func TestValidateReviewedSelectionDeliveryAcceptsProductContractFinal(t *testing.T) {
+	t.Cleanup(func() { cli.ClearProductDeclForTest("sample") })
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "sample",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "Manage samples",
+			UseWhen:      []string{"target is a sample"},
+			AvoidWhen:    []string{"target is another product"},
+		},
+	})
+
+	selected := []FieldCandidateProvenance{{Precedence: selectionPrecedenceContractFinal, Selected: true, Source: "cli.product_decl"}}
+	contractFinalProvenance := FieldProvenance{
+		Precedence: selectionPrecedenceContractFinal,
+		Source:     "cli.product_decl",
+		Candidates: selected,
+	}
+	trueValue := true
+	file := File{
+		Products: map[string]ProductMetadata{"sample": {
+			AgentSummary: "Manage samples", agentSummaryRank: selectionRankContractFinal,
+			UseWhen: []string{"target is a sample"}, useWhenRank: selectionRankContractFinal,
+			AvoidWhen: []string{"target is another product"}, avoidWhenRank: selectionRankContractFinal,
+			FieldProvenance: map[string]FieldProvenance{
+				"agent_summary": contractFinalProvenance,
+				"use_when":      contractFinalProvenance,
+				"avoid_when":    contractFinalProvenance,
+			},
+		}},
+		Tools: map[string]ToolMetadata{"sample tool": {
+			AgentSummary: "summary", agentSummaryRank: selectionRankContractFinal,
+			UseWhen: []string{"use"}, useWhenRank: selectionRankContractFinal,
+			AvoidWhen: []string{"avoid"}, avoidWhenRank: selectionRankContractFinal,
+			Examples: []string{"dws sample tool"}, examplesRank: selectionRankContractFinal,
+			Reviewed: &trueValue, reviewedRank: selectionRankContractFinal,
+			FieldProvenance: map[string]FieldProvenance{
+				"agent_summary": contractFinalProvenance,
+				"use_when":      contractFinalProvenance,
+				"avoid_when":    contractFinalProvenance,
+				"examples":      contractFinalProvenance,
+			},
+		}},
+	}
+	opts := Options{ProductIDs: map[string]bool{"sample": true}, CanonicalToolPaths: map[string]string{"sample.tool": "sample tool"}}
+	if err := validateReviewedSelectionDelivery(file, opts); err != nil {
+		t.Fatalf("contract_final product delivery rejected: %v", err)
+	}
+
+	// Declared products may omit selection products{} entirely.
+	if err := validateReviewedSelectionDelivery(File{
+		Products: map[string]ProductMetadata{},
+		Tools:    file.Tools,
+	}, opts); err != nil {
+		t.Fatalf("ProductDecl-exempt missing product rejected: %v", err)
 	}
 }
 

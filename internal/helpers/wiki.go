@@ -143,6 +143,20 @@ func proxySubCmd(use, targetProduct, targetPath string, flagRenames map[string]s
 // ──────────────────────────────────────────────────────────
 
 func newWikiCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/wiki.json
+	// products.wiki). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "wiki",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理钉钉知识库空间、节点与成员权限",
+			UseWhen: []string{
+				"查找或管理知识库、知识库内节点及知识库成员时",
+			},
+			AvoidWhen: []string{
+				"需要编辑在线文档正文时使用 doc；只管理钉盘普通文件时使用 drive",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "wiki",
 		Short: "知识库 / 空间管理 / 节点管理 / 成员管理",

@@ -19,6 +19,20 @@ import (
 var dingRemindTypeMap = map[string]int{"app": 1, "sms": 2, "call": 3}
 
 func newDingCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/ding.json
+	// products.ding). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "ding",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "以企业机器人发送或撤回应用内/短信/电话 DING",
+			UseWhen: []string{
+				"需要机器人身份发送或撤回 DING",
+			},
+			AvoidWhen: []string{
+				"普通聊天消息用 chat；用户身份 DING 不要走机器人命令",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "ding",
 		Short: "DING 消息 / 发送 / 撤回",

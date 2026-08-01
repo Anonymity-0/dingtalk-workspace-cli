@@ -152,7 +152,7 @@ func manualAgentExampleShouldExerciseDryRun(execution cli.ManualAgentExampleExec
 
 func manualAgentExampleExecutionPlan(t testing.TB) cli.ManualAgentExampleExecutionPlan {
 	t.Helper()
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS("../cli/schema_hints/selection"))
+	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
 	if err != nil {
 		t.Fatalf("LoadAgentHintsFromSelectionForValidation() error = %v", err)
 	}

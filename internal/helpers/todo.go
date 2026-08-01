@@ -56,6 +56,20 @@ func ensureTodoTaskExists(ctx context.Context, taskID string) error {
 }
 
 func newTodoCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/todo.json
+	// products.todo). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "todo",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理待办任务、标签、子任务、执行人、参与人、评论、附件与提醒",
+			UseWhen: []string{
+				"查询、创建或更新个人待办及其协作信息时",
+			},
+			AvoidWhen: []string{
+				"不要用于 OA 审批流转、工作日志提交或日历日程管理",
+			},
+		},
+	})
 	todoCmd := &cobra.Command{
 		Use:   "todo",
 		Short: "待办任务管理",

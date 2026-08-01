@@ -60,13 +60,13 @@ The Schema data flow is one way:
    └─ produces ParameterSpec and constraints
 
 4. Agent and interface semantics
-   schema_hints/selection/<product>.json   (selection prose)
-   + ContractFinal Safety / Interface on each leaf
+   ProductDecl + leaf ContractFinal Selection / Safety / Interface
    + pinned MCP metadata
    └─ resolves Agent metadata by source precedence
       Markdown is evidence only; it is not concatenated into final prose
-   └─ schema_hints/metadata/ is retired (directory may be absent;
-      index.metadata may be {}/omitted); not a parallel leaf-fact source
+   └─ schema_hints/selection/ and schema_hints/metadata/ are retired
+      (directories may be absent; index.selection / index.metadata may be
+      {}/omitted); not parallel leaf-fact sources
 
 5. One typed hub
    BoundCommandRegistry
@@ -119,9 +119,10 @@ The Schema system has two physically separated processes:
   (`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON`); it does
   not write `schema_agent_metadata/`. `cmd_schema_agent_metadata` may remain as
   a non-delivery helper/test binary and is not a `go:generate` entry.
-- Inputs: authored source groups (registry + required hints selection + MCP
+- Inputs: authored source groups (registry + ProductDecl/ContractFinal + MCP
   metadata + parameter bindings + reviewed parameter concepts + cobra tree).
-  `schema_hints/metadata/` is retired and may be absent.
+  `schema_hints/selection/` and `schema_hints/metadata/` are retired and may
+  be absent.
 - Output (delivery): `schema_catalog/` (per-product shards, `go:embed`) +
   `param_aliases_generated.go`. `schema_agent_metadata/` must not reappear.
 - Refresh MCP metadata: `make fetch-mcp-metadata` (iterates 26 MCP server
@@ -167,15 +168,14 @@ When adding or changing an Agent-visible command, review all relevant inputs:
   unknown fields, invalid visibility values, stale paths, and collisions fail
   Go validation and policy.
 - Leaf `Safety` / `Schema` / `ParamDecl` (helpers `LeafSpec` or shortcut
-  `Schema`) for parameter facts, interface disposition, and safety. Delivered
-  provenance is `contract_final` from `corecmd.contract`.
-- `internal/cli/schema_hints/selection/<product>.json` for reviewed Agent
-  selection prose (`agent_summary`, `use_when`, `avoid_when`, `examples`).
-- `internal/cli/schema_hints/metadata/` is retired (directory may be absent).
-  Do not reintroduce reviewed tool rows or parameter overlays; declare on the
-  leaf instead.
-- `internal/cli/schema_hints/index.json` maps product IDs to selection files;
-  `metadata` may be omitted or `{}`.
+  `Schema`) for parameter facts, interface disposition, safety, and Agent
+  selection prose. Delivered provenance is `contract_final` from
+  `corecmd.contract`. Product routing uses `ProductDecl` (`cli.product_decl`).
+- `internal/cli/schema_hints/selection/` and `schema_hints/metadata/` are
+  retired (directories may be absent). Do not reintroduce selection HintFiles
+  or metadata tool rows; declare on ProductDecl / the owning leaf instead.
+- `internal/cli/schema_hints/index.json` may keep `selection` / `metadata` as
+  `{}` or omit them; they are not leaf-fact sources.
 - Native Runtime Schema identity annotations, when present, as consistency
   assertions against `EffectiveCommandRegistry`. They must agree exactly and
   must never materialize, infer, or override registry identity.
@@ -196,12 +196,11 @@ that exercise precedence edges.
 For Agent-authored selection edits:
 
 1. Confirm the exact command and flag names in the current Cobra tree.
-2. Edit `selection/<product>.json` for selection prose; declare safety /
-   parameters / interface on the owning leaf (`LeafSpec` / `Shortcut.Schema`).
-3. Add the smallest possible entry; do not copy generated Catalog fields into
-   the input.
-4. Describe user-visible semantics in `review_reason`.
-5. Run generation, drift, Schema policy, and the focused CLI tests before
+2. Declare selection prose on the owning leaf (`Schema.Selection` /
+   `DeclareLeafMetadata`) and product routing via `ProductDecl`; declare
+   safety / parameters / interface on the same leaf.
+3. Do not copy generated Catalog fields into source inputs.
+4. Run generation, drift, Schema policy, and the focused CLI tests before
    proposing the change.
 
 ## Agent curation workflow (Schema hints)
@@ -214,19 +213,19 @@ Human-authored inputs are split as follows:
 
 | Block | Path | Owns |
 |---|---|---|
-| **declaration** | helpers / shortcut `Safety` + `Schema` / ParamDecl | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / parameter facts (`contract_final`) |
-| **selection** | `internal/cli/schema_hints/selection/<product>.json` | `agent_summary` / `use_when` / `avoid_when` / `examples` (+ product routing) |
+| **declaration** | helpers / shortcut `Safety` + `Schema` / ParamDecl + `ProductDecl` | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / parameter facts / selection prose (`contract_final`) |
+| **selection** (retired) | `internal/cli/schema_hints/selection/` may be absent | not a leaf-fact source; do not reintroduce HintFiles |
 | **metadata** (retired) | `internal/cli/schema_hints/metadata/` may be absent | not a leaf-fact source; do not reintroduce tool rows |
 
-`index.json` maps product IDs to selection files; `metadata` is optional
-(`{}` / omitted). Do not reintroduce metadata tool rows.
+`index.json` may omit `selection` / `metadata` or set them to `{}`. Do not
+reintroduce selection or metadata tool rows.
 
 ### Goals
 
 1. **Selection prose** is decision-oriented (Feishu/Lark style): trigger intent,
    sibling-command routing, and outcome shape — not a restatement of the
-   summary. Delivered Catalog provenance is `reviewed_explicit` from
-   `selection/`.
+   summary. Delivered Catalog provenance is `contract_final` from leaf
+   `Schema.Selection` / `ProductDecl`.
 2. **Safety** follows Runtime: `confirmation=user_required` when the leaf
    Contract/Safety (or remaining `runtime_gate` annotate) requires a user gate
    (for example `confirm_delete`, `typed_yes`, `confirm_dangerous`).
@@ -238,11 +237,10 @@ Human-authored inputs are split as follows:
 
 For every curated tool:
 
-1. Declare safety/interface/parameters on the owning leaf
-   (`DeclareLeafMetadata` / `Shortcut.Schema` / ParamDecl).
-2. Edit `selection/<product>.json` for selection prose (`reviewed: true`,
-   `review_reason`, `source_refs`).
-3. Run `make generate-schema`. Do not hand-edit generated `schema_catalog/`.
+1. Declare safety/interface/parameters/selection on the owning leaf
+   (`DeclareLeafMetadata` / `Shortcut.Schema` / ParamDecl) and product routing
+   via `ProductDecl` when needed.
+2. Run `make generate-schema`. Do not hand-edit generated `schema_catalog/`.
 
 ### Pull live MCP descriptions (personal token)
 
@@ -270,9 +268,9 @@ Split work by product groups. Each agent must:
 
 - Read Skill, Cobra/`--help`, Runtime confirmation sites, and live `dws schema`
   for its tools.
-- Hand-write selection prose and leaf Contract declarations; forbid wholesale
-  JSON merges from review dumps.
-- Edit only its product’s leaf declarations and `selection/<product>.json`.
+- Hand-write selection prose and leaf Contract / ProductDecl declarations;
+  forbid wholesale JSON merges from review dumps.
+- Edit only its product’s leaf declarations (and `ProductDecl` when needed).
 - **Never** `git checkout` unrelated product files to “clean scope”.
 
 ### Regenerate and gates
@@ -295,16 +293,15 @@ Example rules (fail generation otherwise):
 - Examples must match live Cobra argv (path, flags, required groups).
 - No shell comments in examples.
 
-After generation, spot-check Catalog: selection provenance is
-`reviewed_explicit` from `selection/`, and safety/interface provenance is
-`contract_final` from leaf declarations (`user_required` must match Runtime
-confirmation gates).
+After generation, spot-check Catalog: selection and safety/interface
+provenance are `contract_final` from ProductDecl / leaf declarations
+(`user_required` must match Runtime confirmation gates).
 
 `make generate-schema` is a full deterministic snapshot rebuild, not an
 incremental patch over the previous Catalog. It rereads every reviewed input,
 removes stale generated product metadata, and rewrites the exact metadata and
 Catalog projections. Incremental work happens only when an Agent or human
-edits selected leaf declarations or `selection/` entries; the next publication
+edits selected leaf / ProductDecl declarations; the next publication
 still recomputes all outputs. Generated files must never be read back as merge
 input, and byte guards fail generation if it changes the hint inputs or
 CommandRegistry.

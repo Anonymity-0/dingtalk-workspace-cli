@@ -133,7 +133,7 @@ func manualAgentSelectionLiveFixture(t testing.TB) (cli.ManualAgentSelectionFixt
 	if err != nil {
 		t.Fatalf("BindEffectiveCommandRegistry() error = %v", err)
 	}
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS("../cli/schema_hints/selection"))
+	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
 	if err != nil {
 		t.Fatalf("LoadAgentHintsFromSelectionForValidation() error = %v", err)
 	}

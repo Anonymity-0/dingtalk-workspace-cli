@@ -29,9 +29,16 @@ import (
 // field it carries. Non-declared tools are untouched.
 //
 // Runs after hint reconciliation so rank ordering decides the winner; the
-// contract rank outranks every file/manual source.
+// contract rank outranks every file/manual source. Product-level ProductDecl
+// routing is applied in the same pass.
 func applyContractFinalDeclarations(file *File, opts Options) error {
-	if file == nil || len(opts.BoundCommands.ByCanonical) == 0 {
+	if file == nil {
+		return nil
+	}
+	if err := applyContractFinalProductDeclarations(file, opts); err != nil {
+		return err
+	}
+	if len(opts.BoundCommands.ByCanonical) == 0 {
 		return nil
 	}
 	canonicals := make([]string, 0, len(opts.BoundCommands.ByCanonical))
@@ -59,6 +66,84 @@ func applyContractFinalDeclarations(file *File, opts Options) error {
 		file.Tools[primary] = merged
 	}
 	return nil
+}
+
+// applyContractFinalProductDeclarations merges each RegisterProductDecl into
+// the matching product record as the top-precedence (contract_final)
+// candidate. Declared products no longer require a selection/ products{} row.
+func applyContractFinalProductDeclarations(file *File, opts Options) error {
+	if file == nil {
+		return nil
+	}
+	if file.Products == nil {
+		file.Products = map[string]ProductMetadata{}
+	}
+	for _, productID := range cli.RegisteredProductDeclIDs() {
+		if len(opts.ProductIDs) > 0 && !opts.ProductIDs[productID] {
+			continue
+		}
+		decl, ok := cli.LookupProductDecl(productID)
+		if !ok {
+			continue
+		}
+		incoming := contractFinalProductMetadata(decl)
+		existing := file.Products[productID]
+		if err := mergeRankedStringValue(
+			&existing.AgentSummary, &existing.agentSummaryPresent, &existing.agentSummaryRank, &existing.agentSummaryOrigin,
+			incoming.AgentSummary, incoming.agentSummaryPresent, selectionRankContractFinal, productDeclOrigin, productID, "agent_summary",
+		); err != nil {
+			return err
+		}
+		if incoming.agentSummaryPresent && existing.agentSummaryOrigin == productDeclOrigin {
+			existing.AgentSummarySource = incoming.AgentSummarySource
+		}
+		recordProductListCandidate(&existing, "use_when", incoming.UseWhen, incoming.useWhenPresent, selectionRankContractFinal, productDeclOrigin)
+		if err := mergeRankedStringList(
+			&existing.UseWhen, &existing.useWhenPresent, &existing.useWhenRank, &existing.useWhenOrigin,
+			incoming.UseWhen, incoming.useWhenPresent, selectionRankContractFinal, productDeclOrigin, productID, "use_when",
+		); err != nil {
+			return err
+		}
+		recordProductListCandidate(&existing, "avoid_when", incoming.AvoidWhen, incoming.avoidWhenPresent, selectionRankContractFinal, productDeclOrigin)
+		if err := mergeRankedStringList(
+			&existing.AvoidWhen, &existing.avoidWhenPresent, &existing.avoidWhenRank, &existing.avoidWhenOrigin,
+			incoming.AvoidWhen, incoming.avoidWhenPresent, selectionRankContractFinal, productDeclOrigin, productID, "avoid_when",
+		); err != nil {
+			return err
+		}
+		existing.SourceRefs = append(existing.SourceRefs, incoming.SourceRefs...)
+		file.Products[productID] = existing
+	}
+	return nil
+}
+
+// productDeclOrigin labels ProductDecl candidates in Agent-metadata provenance.
+const productDeclOrigin = cli.ProductDeclProvenanceSource
+
+func contractFinalProductMetadata(decl cli.ProductDecl) ProductMetadata {
+	metadata := ProductMetadata{
+		AgentSummarySource: cli.ProductDeclSourceRef,
+		SourceRefs:         []string{cli.ProductDeclSourceRef},
+	}
+	if summary := strings.TrimSpace(decl.Selection.AgentSummary); summary != "" {
+		metadata.AgentSummary = summary
+		metadata.agentSummaryPresent = true
+		metadata.agentSummaryRank = selectionRankContractFinal
+		metadata.agentSummaryOrigin = productDeclOrigin
+	}
+	if decl.Selection.UseWhen != nil {
+		metadata.UseWhen = append([]string(nil), decl.Selection.UseWhen...)
+		metadata.useWhenPresent = true
+		metadata.useWhenRank = selectionRankContractFinal
+		metadata.useWhenOrigin = productDeclOrigin
+	}
+	if decl.Selection.AvoidWhen != nil {
+		metadata.AvoidWhen = append([]string(nil), decl.Selection.AvoidWhen...)
+		metadata.avoidWhenPresent = true
+		metadata.avoidWhenRank = selectionRankContractFinal
+		metadata.avoidWhenOrigin = productDeclOrigin
+	}
+	return metadata
 }
 
 // contractFinalToolMetadata maps a registered Contract final overlay to a

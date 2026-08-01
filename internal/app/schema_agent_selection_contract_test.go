@@ -14,7 +14,6 @@
 package app
 
 import (
-	"os"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -30,7 +29,7 @@ func TestManualAgentSelectionScenariosCoverEveryExecutableSchemaTool(t *testing.
 	if err != nil {
 		t.Fatalf("BindEffectiveCommandRegistry() error = %v", err)
 	}
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS("../cli/schema_hints/selection"))
+	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
 	if err != nil {
 		t.Fatalf("LoadAgentHintsFromSelectionForValidation() error = %v", err)
 	}

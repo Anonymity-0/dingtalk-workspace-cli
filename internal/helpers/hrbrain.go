@@ -15,6 +15,21 @@ import (
 // ──────────────────────────────────────────────────────────
 
 func newHrbrainCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/hrbrain.json
+	// products.hrbrain). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "hrbrain",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "钉钉组织大脑：人才池管理、员工档案查询与人才搜索",
+			UseWhen: []string{
+				"需要查询人才池、员工档案（元数据/标签/职业历程/绩效）或搜索员工时",
+			},
+			AvoidWhen: []string{
+				"要操作通讯录/组织架构基础信息时改用 contact 产品",
+				"要提交/查询战略解码、经营合约、目标等 OKR 能力时改用 agoal（CLI-only，未接入 Agent Schema）",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "hrbrain",
 		Short: "组织大脑：人才池、员工档案与人才搜索",

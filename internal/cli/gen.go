@@ -19,14 +19,14 @@
 //
 // Generation inputs (authored, reviewed):
 //   1. schema_command_registry/             identity (canonical/aliases/navigation)
-//   2. schema_hints/selection/*.json       selection (use_when/avoid_when) — required
+//   2. ProductDecl + leaf ContractFinal    Agent routing / selection prose
 //   3. schema_mcp_metadata.json            MCP server tool definitions
 //   4. schema_parameter_bindings.json      parameter type/property mappings
 //   5. param_concepts.json + schema       reviewed parameter synonym policy
 //   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //
-// schema_hints/metadata/ is retired (directory may be absent).
-// index.metadata may be omitted or {}; leaf safety/params come from Contract.
+// schema_hints/selection/ and schema_hints/metadata/ are retired (directories
+// may be absent). index.selection / index.metadata may be omitted or {}.
 // schema_agent_metadata/ is retired: Catalog generation injects Agent metadata
 // in-memory and does not write or embed that intermediate JSON directory.
 //

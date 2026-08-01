@@ -1102,19 +1102,25 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 		}
 	}
 
-	// shortcut +record-query Execute maps --query → keyword; without ParamDecl
-	// composite leaves published property=query via flag_name_inference.
+	// shortcut +record-query Execute maps --query → MCP keyword at runtime, but
+	// merge-base Schema published property=query (flag_name_inference). Keep that
+	// delivery for schema-compatibility; do not reintroduce ParamDecl keyword.
 	shortcutLeaf, err := embeddedSchemaPayload([]string{"aitable +record-query"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	shortcutQuery := schemaMap(shortcutLeaf["parameters"])["query"]
-	if shortcutQuery["property"] != "keyword" {
-		t.Fatalf("aitable +record-query --query property = %#v, want keyword", shortcutQuery["property"])
+	if shortcutQuery["property"] != "query" {
+		t.Fatalf("aitable +record-query --query property = %#v, want query (merge-base)", shortcutQuery["property"])
 	}
-	shortcutPropProv := schemaMap(shortcutQuery["field_provenance"])["property"]
-	if got, _ := shortcutPropProv["source"].(string); got != "native_annotation" {
-		t.Fatalf("aitable +record-query --query property source = %#v, want native_annotation", shortcutPropProv)
+	if _, has := shortcutQuery["interface_type"]; has {
+		t.Fatalf("aitable +record-query --query unexpectedly publishes interface_type: %#v", shortcutQuery["interface_type"])
+	}
+	for _, flagName := range []string{"filters", "sort"} {
+		param := schemaMap(shortcutLeaf["parameters"])[flagName]
+		if _, has := param["interface_type"]; has {
+			t.Fatalf("aitable +record-query --%s unexpectedly publishes interface_type: %#v", flagName, param["interface_type"])
+		}
 	}
 
 	// Former RegisterSchemaHints required pins that match runtime validation.
@@ -1145,38 +1151,16 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogSmartQueryMapsToKeyword(t *testing.T) {
-	// smart shortcuts whose Execute maps --query → MCP keyword need an explicit
-	// ParamDecl; without it composite leaves publish property=query via
-	// flag_name_inference. +minutes-search is not Schema-published yet, so it
-	// is covered by the declaration check in package smart.
+func TestEmbeddedCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
+	// Composite shortcuts whose Execute maps --query → MCP keyword still publish
+	// property=query at merge-base (flag_name_inference). Publishing keyword via
+	// ParamDecl breaks schema-compatibility; keep Schema delivery aligned.
 	for _, path := range []string{
 		"aitable +find-record",
 		"doc +find-doc",
 		"drive +find-file",
 		"mail +find-mail-user",
 		"chat +search-msg",
-	} {
-		leaf, err := embeddedSchemaPayload([]string{path})
-		if err != nil {
-			t.Fatalf("%s: %v", path, err)
-		}
-		query := schemaMap(leaf["parameters"])["query"]
-		if query["property"] != "keyword" {
-			t.Fatalf("%s --query property = %#v, want keyword", path, query["property"])
-		}
-		propProv := schemaMap(query["field_provenance"])["property"]
-		if got, _ := propProv["source"].(string); got != "native_annotation" {
-			t.Fatalf("%s --query property source = %#v, want native_annotation", path, propProv)
-		}
-	}
-}
-
-func TestEmbeddedCatalogShortcutQueryMapsToKeyword(t *testing.T) {
-	// Non-smart shortcuts whose Execute maps --query → MCP keyword must publish
-	// property=keyword via ParamDecl; without it, composite leaves fall back to
-	// flag_name_inference (property=query).
-	for _, path := range []string{
 		"doc +search",
 		"drive +search",
 		"drive +search-docs",
@@ -1193,12 +1177,8 @@ func TestEmbeddedCatalogShortcutQueryMapsToKeyword(t *testing.T) {
 			t.Fatalf("%s: %v", path, err)
 		}
 		query := schemaMap(leaf["parameters"])["query"]
-		if query["property"] != "keyword" {
-			t.Fatalf("%s --query property = %#v, want keyword", path, query["property"])
-		}
-		propProv := schemaMap(query["field_provenance"])["property"]
-		if got, _ := propProv["source"].(string); got != "native_annotation" {
-			t.Fatalf("%s --query property source = %#v, want native_annotation", path, propProv)
+		if query["property"] != "query" {
+			t.Fatalf("%s --query property = %#v, want query (merge-base)", path, query["property"])
 		}
 	}
 }

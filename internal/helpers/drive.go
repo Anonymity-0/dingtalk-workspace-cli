@@ -284,6 +284,20 @@ func parseDriveUploadInfo(text string) (resourceURL, uploadID string, headers ma
 }
 
 func newDriveCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/drive.json
+	// products.drive). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "drive",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理钉盘及文档空间中的文件、目录、上传下载、回收站与公开发布",
+			UseWhen: []string{
+				"浏览、搜索、上传、下载或整理钉盘和文档空间文件时",
+			},
+			AvoidWhen: []string{
+				"需要读取或编辑在线文档正文时使用 doc；需要管理知识库空间或成员时使用 wiki",
+			},
+		},
+	})
 	driveCmd := &cobra.Command{
 		Use:   "drive",
 		Short: "钉盘文件管理",
@@ -1047,6 +1061,12 @@ func newDriveCommand() *cobra.Command {
 					"dws drive list-spaces --space-type orgSpace --limit 20 --format json",
 					"dws drive list-spaces --space-type mySpace --format json",
 				},
+			},
+			// MCP pins maxResults as number while the Cobra flag is integer. Publishing
+			// interface_type=number is a merge-base contract change; declare integer so
+			// resolution equals cobra_flag_type and omits a separate interface_type field.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", InterfaceType: "integer"},
 			},
 		},
 	})

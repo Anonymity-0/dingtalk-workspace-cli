@@ -13,18 +13,15 @@ fails if present). Do not hand-edit generated Catalog files.
 
 Human-authored inputs:
 
-- `index.json` (`format: dws-agent-hint-index`) — maps product IDs to required
-  selection files and optional metadata map, plus reference review.
-  Strategy: `metadata` is optional (omitted or `{}`); the on-disk
-  `metadata/` directory is retired and may be absent.
-- `selection/<product>.json` — Agent selection prose (required)
+- `index.json` (`format: dws-agent-hint-index`) — optional maps plus reference
+  review. Strategy: `selection` and `metadata` are optional (omitted or `{}`);
+  on-disk `selection/` and `metadata/` directories are retired and may be absent.
 - `imported/` — sanitized baseline from a fixed external revision
 
 When `index.json` is present, the generator loads `imported/` plus any
-metadata files listed in `index.metadata` (optional) and the selection files
-listed in `index.selection` (required). Sibling review JSON files in this
-directory remain CI/audit inputs and are not applied as Agent metadata
-sources.
+metadata/selection files listed in the optional maps. Sibling review JSON
+files in this directory remain CI/audit inputs and are not applied as Agent
+metadata sources.
 
 For the end-to-end Agent curation workflow, see `AGENTS.md` § “Agent curation
 workflow (Schema hints)”.
@@ -32,17 +29,19 @@ workflow (Schema hints)”.
 ## Source kinds
 
 - `contract_final`: leaf-declared Safety / Schema / ParamDecl
-  (`DeclareLeafMetadata`, `Shortcut.Schema`). This is the production authority
-  for safety, interface disposition, and parameter facts.
-- `reviewed_explicit`: reviewed selection HintFiles under `selection/`
-  (`reviewed: true`) for Agent selection prose. Residual metadata tool rows are
-  not used in production shells.
+  (`DeclareLeafMetadata`, `Shortcut.Schema`) and product-level
+  `ProductDecl` routing prose. This is the production authority for safety,
+  interface disposition, parameter facts, and Agent selection / product
+  routing.
+- `reviewed_explicit`: residual HintFile prose only when a fixture or
+  temporary selection/metadata shell still exists; production directories are
+  retired and must not reintroduce tool rows.
 - `explicit`: explicit but not per-tool-reviewed DWS hints.
 - `imported`: sanitized metadata from a fixed external revision. It fills missing Agent semantics but cannot redefine command paths or parameter contracts.
 
 Skill Markdown and audit JSON in this directory remain authoring evidence.
 Normal generation does not semantically combine Markdown into the final Agent
-prose and never rewrites metadata/selection files.
+prose and never rewrites retired metadata/selection directories.
 
 The Agent metadata pipeline (invoked in-memory by Catalog generation) also reads the committed `internal/cli/schema_mcp_metadata.json` after Skill and Hint parsing. A sanitized MCP description can fill an otherwise empty `agent_summary`; it is marked `reviewed: false`, retains revision provenance, and cannot infer or override risk/effect fields.
 

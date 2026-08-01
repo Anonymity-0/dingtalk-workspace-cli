@@ -262,6 +262,24 @@ func TestDecodeManualSchemaHintsRequiresAgentHints(t *testing.T) {
 	}
 }
 
+func TestValidateManualAgentHintSetAllowsLingeringProductDeclRows(t *testing.T) {
+	t.Cleanup(func() { ClearProductDeclForTest("sample") })
+	RegisterProductDecl(ProductDecl{
+		ID: "sample",
+		Selection: ProductSelectionDecl{
+			AgentSummary: "Manage samples",
+			UseWhen:      []string{"target is a sample"},
+			AvoidWhen:    []string{"target is another product"},
+		},
+	})
+	hints := manualAgentHintSetFixture()
+	// Declared product may still appear in selection products{} during
+	// migration; with empty expected products it must not fail as unexpected.
+	if err := ValidateManualAgentHintSet(hints, map[string]bool{}, map[string]bool{"sample.search_items": true}); err != nil {
+		t.Fatalf("ValidateManualAgentHintSet() error = %v", err)
+	}
+}
+
 func TestValidateManualAgentHintSetRequiresReviewedExactCoverage(t *testing.T) {
 	hints := manualAgentHintSetFixture()
 	if err := ValidateManualAgentHintSet(hints, map[string]bool{"sample": true}, map[string]bool{"sample.search_items": true}); err != nil {

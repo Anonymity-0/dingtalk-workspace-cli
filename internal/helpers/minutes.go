@@ -14,6 +14,20 @@ import (
 // ──────────────────────────────────────────────────────────
 
 func newMinutesCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/minutes.json
+	// products.minutes). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "minutes",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。",
+			UseWhen: []string{
+				"用户要查找、读取、编辑或管理钉钉听记及其录音、转写、摘要和衍生内容。",
+			},
+			AvoidWhen: []string{
+				"用户要处理普通文档正文、群聊消息或日历会议安排，而不是钉钉听记。",
+			},
+		},
+	})
 	minutesListCmd := &cobra.Command{Use: "list", Short: "听记列表", RunE: groupRunE}
 
 	minutesListMineCmd := &cobra.Command{

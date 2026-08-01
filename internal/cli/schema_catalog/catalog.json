@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
-  "source_hash": "sha256:391e859404a4ff80a0d05bc35f4aa0ba8d90ffcf82b0ec5648356e7c33be0ef0",
+  "source_hash": "sha256:1a4edf80e10758e36d3efa16f470b596b7b396c35429e61e00eb16d80d885918",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:5397ea46c3681d39d4532dc18145e6b73d6900472cf6a88faa703d477b078ecb",
+      "source_hash": "sha256:12f65e8496a3ae727e0371204457848a4a686d4913c72a6661bc95536f25cba5",
       "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
       "surface_products": 26,
       "surface_tools": 845,
@@ -40,18 +40,12 @@
     "level": "catalog",
     "products": [
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=aisearch",
-          "Skill:skills/mono/references/products/aisearch.md",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/selection/aisearch.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/products/aisearch.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "企业内智能搜人、搜知识内容与搜行为记录",
-        "agent_summary_source": "dws-agent-selection/aisearch",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "已有明确资源 ID 要读写时改用对应产品；普通 OAuth 登录不用 aisearch"
         ],
@@ -60,31 +54,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/aisearch.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "企业内智能搜人、搜知识内容与搜行为记录"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/aisearch.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "企业内智能搜人、搜知识内容与搜行为记录"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/aisearch.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "已有明确资源 ID 要读写时改用对应产品；普通 OAuth 登录不用 aisearch"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/aisearch.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "已有明确资源 ID 要读写时改用对应产品；普通 OAuth 登录不用 aisearch"
             ]
@@ -92,17 +94,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/aisearch.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "语义找人、按主题搜企业知识，或追溯发送/创建/分享等行为"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/aisearch.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "语义找人、按主题搜企业知识，或追溯发送/创建/分享等行为"
             ]
@@ -216,19 +222,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "dws-schema-live:product-index",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.aitable.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/aitable.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md",
-          "skills/mono/references/products/aitable.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理 AI 表格 Base、数据表、字段、记录、视图、表单、仪表盘、权限、导入导出与自动化工作流。",
-        "agent_summary_source": "dws-agent-selection/aitable",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "目标是在线电子表格单元格读写时用 sheet；普通文档用 doc"
         ],
@@ -237,31 +236,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/aitable.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理 AI 表格 Base、数据表、字段、记录、视图、表单、仪表盘、权限、导入导出与自动化工作流。"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/aitable.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理 AI 表格 Base、数据表、字段、记录、视图、表单、仪表盘、权限、导入导出与自动化工作流。"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/aitable.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "目标是在线电子表格单元格读写时用 sheet；普通文档用 doc"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/aitable.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "目标是在线电子表格单元格读写时用 sheet；普通文档用 doc"
             ]
@@ -269,17 +276,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/aitable.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要读取或管理 AI 表格中的结构、数据、视图、权限、导入导出或工作流时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/aitable.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要读取或管理 AI 表格中的结构、数据、视图、权限、导入导出或工作流时"
             ]
@@ -4620,18 +4631,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "cobra-help:dws attendance --help",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.attendance.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/attendance.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/products/attendance.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查询考勤记录、排班、班次、考勤组、审批、报表、个人规则和假期，并执行经确认的考勤配置变更。",
-        "agent_summary_source": "dws-agent-selection/attendance",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "用户只需处理普通日历日程、非考勤类活动签到或通用审批流状态，而不是钉钉考勤业务。"
         ],
@@ -4640,31 +4645,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/attendance.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查询考勤记录、排班、班次、考勤组、审批、报表、个人规则和假期，并执行经确认的考勤配置变更。"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/attendance.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查询考勤记录、排班、班次、考勤组、审批、报表、个人规则和假期，并执行经确认的考勤配置变更。"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/attendance.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "用户只需处理普通日历日程、非考勤类活动签到或通用审批流状态，而不是钉钉考勤业务。"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/attendance.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "用户只需处理普通日历日程、非考勤类活动签到或通用审批流状态，而不是钉钉考勤业务。"
             ]
@@ -4672,17 +4685,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/attendance.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "用户要查询或管理钉钉考勤数据、规则、排班、考勤组、审批表单或假期余额。"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/attendance.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "用户要查询或管理钉钉考勤数据、规则、排班、考勤组、审批表单或假期余额。"
             ]
@@ -6355,15 +6372,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=audit",
-          "cobra-help:dws audit --help",
-          "internal/cli/schema_command_registry.json#audit",
-          "internal/cli/schema_hints/selection/audit.json"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查看、导出和校验本地操作审计日志",
-        "agent_summary_source": "dws-agent-selection/audit",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "查钉钉业务数据或发消息请用对应产品命令，不要用 audit"
         ],
@@ -6372,31 +6386,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/audit.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查看、导出和校验本地操作审计日志"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/audit.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查看、导出和校验本地操作审计日志"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/audit.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查钉钉业务数据或发消息请用对应产品命令，不要用 audit"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/audit.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查钉钉业务数据或发消息请用对应产品命令，不要用 audit"
             ]
@@ -6404,17 +6426,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/audit.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要排查本机 CLI 操作审计记录，或验证审计文件完整性"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/audit.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要排查本机 CLI 操作审计记录，或验证审计文件完整性"
             ]
@@ -6514,18 +6540,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.calendar.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/calendar.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md",
-          "skills/mono/references/products/calendar.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理日历本、日程、参与人、附件、会议室，并查询人员或会议室闲忙状态。",
-        "agent_summary_source": "dws-agent-selection/calendar",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "目标是聊天消息、待办或审批，而不是日历与日程资源时。"
         ],
@@ -6534,31 +6554,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/calendar.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理日历本、日程、参与人、附件、会议室，并查询人员或会议室闲忙状态。"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/calendar.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理日历本、日程、参与人、附件、会议室，并查询人员或会议室闲忙状态。"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/calendar.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "目标是聊天消息、待办或审批，而不是日历与日程资源时。"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/calendar.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "目标是聊天消息、待办或审批，而不是日历与日程资源时。"
             ]
@@ -6566,17 +6594,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/calendar.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要查询或管理钉钉日历、日程、参与人、会议室和闲忙信息时。"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/calendar.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要查询或管理钉钉日历、日程、参与人、会议室和闲忙信息时。"
             ]
@@ -7769,21 +7801,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=chat",
-          "Skill:skills/mono/references/products/chat.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.chat.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/chat.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md",
-          "skills/mono/references/products/chat.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理钉钉会话、群聊、群成员、机器人、消息检索与发送",
-        "agent_summary_source": "dws-agent-selection/chat",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "邮件用 mail；开放平台应用/机器人建号发布用 dev；企业语义找人优先 aisearch person"
         ],
@@ -7792,31 +7815,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/chat.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理钉钉会话、群聊、群成员、机器人、消息检索与发送"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/chat.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理钉钉会话、群聊、群成员、机器人、消息检索与发送"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/chat.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "邮件用 mail；开放平台应用/机器人建号发布用 dev；企业语义找人优先 aisearch person"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/chat.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "邮件用 mail；开放平台应用/机器人建号发布用 dev；企业语义找人优先 aisearch person"
             ]
@@ -7824,17 +7855,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/chat.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "请求涉及群聊管理、聊天记录、消息发送、会话设置或群机器人"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/chat.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "请求涉及群聊管理、聊天记录、消息发送、会话设置或群机器人"
             ]
@@ -11622,19 +11657,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=contact",
-          "Skill:skills/mono/references/products/contact.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.contact.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/contact.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查询通讯录与花名册，并管理企业、部门、员工及企业账号",
-        "agent_summary_source": "dws-agent-selection/contact",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "职责/上级等语义找人优先 aisearch person；不要用 contact 发消息；写操作前确认当前企业和目标信息"
         ],
@@ -11643,31 +11671,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/contact.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查询通讯录与花名册，并管理企业、部门、员工及企业账号"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/contact.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查询通讯录与花名册，并管理企业、部门、员工及企业账号"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/contact.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "职责/上级等语义找人优先 aisearch person；不要用 contact 发消息；写操作前确认当前企业和目标信息"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/contact.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "职责/上级等语义找人优先 aisearch person；不要用 contact 发消息；写操作前确认当前企业和目标信息"
             ]
@@ -11675,17 +11711,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/contact.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "按姓名/手机号/userId/部门条件做通讯录精确查询，或明确执行企业与员工入企管理"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/contact.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "按姓名/手机号/userId/部门条件做通讯录精确查询，或明确执行企业与员工入企管理"
             ]
@@ -12680,17 +12720,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=dev",
-          "Skill:skills/mono/references/products/dev.md",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/selection/dev.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/references/products/dev.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理开放平台应用、权限、机器人、版本发布与本地连接器",
-        "agent_summary_source": "dws-agent-selection/dev",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "只查开放平台文档用 devdoc；业务聊天/邮信用 chat/mail"
         ],
@@ -12699,31 +12734,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/dev.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理开放平台应用、权限、机器人、版本发布与本地连接器"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/dev.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理开放平台应用、权限、机器人、版本发布与本地连接器"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/dev.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "只查开放平台文档用 devdoc；业务聊天/邮信用 chat/mail"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/dev.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "只查开放平台文档用 devdoc；业务聊天/邮信用 chat/mail"
             ]
@@ -12731,17 +12774,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/dev.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "创建/配置开放平台应用、机器人、权限、事件订阅或发布版本"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/dev.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "创建/配置开放平台应用、机器人、权限、事件订阅或发布版本"
             ]
@@ -13809,15 +13856,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=devapp",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/selection/devapp.json",
-          "internal/shortcut/devapp"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理钉钉开放平台企业内部应用、成员、权限、机器人、事件与版本",
-        "agent_summary_source": "dws-agent-selection/devapp",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "开放平台接口文档搜索使用 devdoc；普通钉钉业务数据使用对应产品命令"
         ],
@@ -13826,31 +13870,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/devapp.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理钉钉开放平台企业内部应用、成员、权限、机器人、事件与版本"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/devapp.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理钉钉开放平台企业内部应用、成员、权限、机器人、事件与版本"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/devapp.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "开放平台接口文档搜索使用 devdoc；普通钉钉业务数据使用对应产品命令"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/devapp.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "开放平台接口文档搜索使用 devdoc；普通钉钉业务数据使用对应产品命令"
             ]
@@ -13858,17 +13910,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/devapp.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "请求涉及企业内部应用的查询、创建、配置、成员权限、机器人、事件订阅或版本管理"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/devapp.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "请求涉及企业内部应用的查询、创建、配置、成员权限、机器人、事件订阅或版本管理"
             ]
@@ -14398,19 +14454,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=devdoc",
-          "Skill:skills/mono/references/products/devdoc.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.devdoc.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/devdoc.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "搜索钉钉开放平台开发文档与错误排查资料",
-        "agent_summary_source": "dws-agent-selection/devdoc",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "搜索用户业务文档或读写业务数据时不要用 devdoc"
         ],
@@ -14419,31 +14468,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/devdoc.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "搜索钉钉开放平台开发文档与错误排查资料"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/devdoc.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "搜索钉钉开放平台开发文档与错误排查资料"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/devdoc.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "搜索用户业务文档或读写业务数据时不要用 devdoc"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/devdoc.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "搜索用户业务文档或读写业务数据时不要用 devdoc"
             ]
@@ -14451,17 +14508,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/devdoc.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查询 OpenAPI、字段、错误码、SDK、鉴权或接入指南"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/devdoc.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查询 OpenAPI、字段、错误码、SDK、鉴权或接入指南"
             ]
@@ -14510,18 +14571,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=ding",
-          "Skill:skills/mono/references/products/ding.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.ding.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/ding.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "以企业机器人发送或撤回应用内/短信/电话 DING",
-        "agent_summary_source": "dws-agent-selection/ding",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "普通聊天消息用 chat；用户身份 DING 不要走机器人命令"
         ],
@@ -14530,31 +14585,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/ding.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "以企业机器人发送或撤回应用内/短信/电话 DING"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/ding.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "以企业机器人发送或撤回应用内/短信/电话 DING"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/ding.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "普通聊天消息用 chat；用户身份 DING 不要走机器人命令"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/ding.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "普通聊天消息用 chat；用户身份 DING 不要走机器人命令"
             ]
@@ -14562,17 +14625,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/ding.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要机器人身份发送或撤回 DING"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/ding.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要机器人身份发送或撤回 DING"
             ]
@@ -14761,18 +14828,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=doc",
-          "Skill:skills/mono/references/products/doc.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.doc.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/doc.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理钉钉在线文档的正文、块、评论、导入导出、模板与版本",
-        "agent_summary_source": "dws-agent-selection/doc",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "文件、目录、上传下载及节点权限已迁移到 drive；知识库空间和成员使用 wiki；不要用于搜索开放平台开发文档"
         ],
@@ -14781,31 +14842,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/doc.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理钉钉在线文档的正文、块、评论、导入导出、模板与版本"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/doc.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理钉钉在线文档的正文、块、评论、导入导出、模板与版本"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/doc.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "文件、目录、上传下载及节点权限已迁移到 drive；知识库空间和成员使用 wiki；不要用于搜索开放平台开发文档"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/doc.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "文件、目录、上传下载及节点权限已迁移到 drive；知识库空间和成员使用 wiki；不要用于搜索开放平台开发文档"
             ]
@@ -14813,17 +14882,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/doc.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "创建、读取或编辑在线文档内容，或处理文档块、评论、导入导出、模板和版本时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/doc.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "创建、读取或编辑在线文档内容，或处理文档块、评论、导入导出、模板和版本时"
             ]
@@ -16621,17 +16694,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=drive",
-          "Skill:skills/mono/references/products/drive.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.drive.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/drive.json",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理钉盘及文档空间中的文件、目录、上传下载、回收站与公开发布",
-        "agent_summary_source": "dws-agent-selection/drive",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "需要读取或编辑在线文档正文时使用 doc；需要管理知识库空间或成员时使用 wiki"
         ],
@@ -16640,31 +16708,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/drive.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理钉盘及文档空间中的文件、目录、上传下载、回收站与公开发布"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/drive.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理钉盘及文档空间中的文件、目录、上传下载、回收站与公开发布"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/drive.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要读取或编辑在线文档正文时使用 doc；需要管理知识库空间或成员时使用 wiki"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/drive.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要读取或编辑在线文档正文时使用 doc；需要管理知识库空间或成员时使用 wiki"
             ]
@@ -16672,17 +16748,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/drive.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "浏览、搜索、上传、下载或整理钉盘和文档空间文件时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/drive.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "浏览、搜索、上传、下载或整理钉盘和文档空间文件时"
             ]
@@ -17930,19 +18010,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=event",
-          "Skill:skills/mono/references/products/event.md",
-          "cobra-help:dws event --help",
-          "internal/cli/schema_command_registry.json#event",
-          "internal/cli/schema_hints/selection/event.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/products/event.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期",
-        "agent_summary_source": "dws-agent-selection/event",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "查历史聊天或主动发消息分别用 chat 查询/发送命令"
         ],
@@ -17951,31 +18024,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/event.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/event.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/event.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查历史聊天或主动发消息分别用 chat 查询/发送命令"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/event.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查历史聊天或主动发消息分别用 chat 查询/发送命令"
             ]
@@ -17983,17 +18064,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/event.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/event.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期"
             ]
@@ -18157,16 +18242,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=hrbrain",
-          "Skill:skills/mono/references/products/hrbrain.md",
-          "Skill:skills/multi/dingtalk-hrbrain/SKILL.md",
-          "internal/cli/schema_hints/selection/hrbrain.json",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "钉钉组织大脑：人才池管理、员工档案查询与人才搜索",
-        "agent_summary_source": "dws-agent-selection/hrbrain",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "要操作通讯录/组织架构基础信息时改用 contact 产品",
           "要提交/查询战略解码、经营合约、目标等 OKR 能力时改用 agoal（CLI-only，未接入 Agent Schema）"
@@ -18176,32 +18257,40 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/hrbrain.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "钉钉组织大脑：人才池管理、员工档案查询与人才搜索"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/hrbrain.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "钉钉组织大脑：人才池管理、员工档案查询与人才搜索"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/hrbrain.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "要操作通讯录/组织架构基础信息时改用 contact 产品",
                   "要提交/查询战略解码、经营合约、目标等 OKR 能力时改用 agoal（CLI-only，未接入 Agent Schema）"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/hrbrain.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "要操作通讯录/组织架构基础信息时改用 contact 产品",
               "要提交/查询战略解码、经营合约、目标等 OKR 能力时改用 agoal（CLI-only，未接入 Agent Schema）"
@@ -18210,17 +18299,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/hrbrain.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要查询人才池、员工档案（元数据/标签/职业历程/绩效）或搜索员工时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/hrbrain.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要查询人才池、员工档案（元数据/标签/职业历程/绩效）或搜索员工时"
             ]
@@ -18550,18 +18643,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=live",
-          "Skill:skills/mono/references/products/live.md",
-          "Skill:skills/multi/dingtalk-live/SKILL.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.live.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/live.json",
-          "live-dws-schema:product-batch-2026-07-14"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查询当前用户发起的直播列表",
-        "agent_summary_source": "dws-agent-selection/live",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "当前公开面不支持创建/控制直播"
         ],
@@ -18570,31 +18657,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/live.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查询当前用户发起的直播列表"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/live.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查询当前用户发起的直播列表"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/live.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "当前公开面不支持创建/控制直播"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/live.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "当前公开面不支持创建/控制直播"
             ]
@@ -18602,17 +18697,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/live.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "用户要查看自己的直播列表或基础统计"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/live.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "用户要查看自己的直播列表或基础统计"
             ]
@@ -18660,21 +18759,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=mail",
-          "Skill:skills/mono/references/products/mail.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.mail.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/mail.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md",
-          "skills/mono/references/products/mail.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理邮箱、邮件、草稿、附件、文件夹、联系人与邮件模板",
-        "agent_summary_source": "dws-agent-selection/mail",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "即时消息用 chat；开放平台应用配置用 dev",
           "公开 catalog 不含 thread trash / sent-message recall 等硬 --yes 命令时不要臆造路径"
@@ -18684,32 +18774,40 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/mail.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理邮箱、邮件、草稿、附件、文件夹、联系人与邮件模板"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/mail.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理邮箱、邮件、草稿、附件、文件夹、联系人与邮件模板"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/mail.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "即时消息用 chat；开放平台应用配置用 dev",
                   "公开 catalog 不含 thread trash / sent-message recall 等硬 --yes 命令时不要臆造路径"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/mail.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "即时消息用 chat；开放平台应用配置用 dev",
               "公开 catalog 不含 thread trash / sent-message recall 等硬 --yes 命令时不要臆造路径"
@@ -18718,17 +18816,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/mail.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查收、搜索、阅读、回复、发送或整理邮件"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/mail.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查收、搜索、阅读、回复、发送或整理邮件"
             ]
@@ -19977,15 +20079,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=markdown",
-          "Wukong-parity:3306c3307",
-          "internal/cli/schema_hints/selection/markdown.json",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "跨钉盘与文档空间创建、获取、覆盖和局部修补原生 Markdown 文件",
-        "agent_summary_source": "dws-agent-selection/markdown",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "在线文档正文操作使用 doc；普通二进制文件上传下载使用 drive"
         ],
@@ -19994,31 +20093,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/markdown.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "跨钉盘与文档空间创建、获取、覆盖和局部修补原生 Markdown 文件"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/markdown.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "跨钉盘与文档空间创建、获取、覆盖和局部修补原生 Markdown 文件"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/markdown.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "在线文档正文操作使用 doc；普通二进制文件上传下载使用 drive"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/markdown.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "在线文档正文操作使用 doc；普通二进制文件上传下载使用 drive"
             ]
@@ -20026,17 +20133,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/markdown.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "目标是原生 .md 文件，并需要在 Drive/Doc 路由间安全处理内容时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/markdown.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "目标是原生 .md 文件，并需要在 Drive/Doc 路由间安全处理内容时"
             ]
@@ -20173,15 +20284,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=mcp",
-          "cobra-help:dws mcp --help",
-          "internal/cli/schema_command_registry.json#mcp",
-          "internal/cli/schema_hints/selection/mcp.json"
+          "cli.ProductDecl"
         ],
         "agent_summary": "解析和管理当前身份可用的 MCP 服务连接信息",
-        "agent_summary_source": "dws-agent-selection/mcp",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "查询普通钉钉业务数据时使用对应产品命令，不要使用 mcp"
         ],
@@ -20190,31 +20298,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/mcp.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "解析和管理当前身份可用的 MCP 服务连接信息"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/mcp.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "解析和管理当前身份可用的 MCP 服务连接信息"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/mcp.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查询普通钉钉业务数据时使用对应产品命令，不要使用 mcp"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/mcp.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查询普通钉钉业务数据时使用对应产品命令，不要使用 mcp"
             ]
@@ -20222,17 +20338,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/mcp.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要把钉钉 MCP 市场中的服务连接到支持 Streamable HTTP 的 Agent 或客户端"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/mcp.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要把钉钉 MCP 市场中的服务连接到支持 Streamable HTTP 的 Agent 或客户端"
             ]
@@ -20278,18 +20398,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "cobra-help:dws minutes --help",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.minutes.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/minutes.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/products/minutes.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。",
-        "agent_summary_source": "dws-agent-selection/minutes",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "用户要处理普通文档正文、群聊消息或日历会议安排，而不是钉钉听记。"
         ],
@@ -20298,31 +20412,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/minutes.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/minutes.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/minutes.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "用户要处理普通文档正文、群聊消息或日历会议安排，而不是钉钉听记。"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/minutes.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "用户要处理普通文档正文、群聊消息或日历会议安排，而不是钉钉听记。"
             ]
@@ -20330,17 +20452,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/minutes.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "用户要查找、读取、编辑或管理钉钉听记及其录音、转写、摘要和衍生内容。"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/minutes.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "用户要查找、读取、编辑或管理钉钉听记及其录音、转写、摘要和衍生内容。"
             ]
@@ -21475,17 +21601,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=oa",
-          "Skill:skills/mono/references/products/oa.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.oa.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/oa.json",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查询和处理 OA 审批实例、任务、记录、抄送与评论",
-        "agent_summary_source": "dws-agent-selection/oa",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "不要用于普通待办任务或工作日志；需要创建审批实例时先确认当前命令面是否支持"
         ],
@@ -21494,31 +21615,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/oa.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查询和处理 OA 审批实例、任务、记录、抄送与评论"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/oa.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查询和处理 OA 审批实例、任务、记录、抄送与评论"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/oa.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "不要用于普通待办任务或工作日志；需要创建审批实例时先确认当前命令面是否支持"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/oa.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "不要用于普通待办任务或工作日志；需要创建审批实例时先确认当前命令面是否支持"
             ]
@@ -21526,17 +21655,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/oa.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查看待审、已办、已发起或抄送审批，并执行同意、拒绝、撤销、转交等审批动作时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/oa.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查看待审、已办、已发起或抄送审批，并执行同意、拒绝、撤销、转交等审批动作时"
             ]
@@ -22221,16 +22354,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=pat",
-          "Skill:skills/mono/references/products/pat.md",
-          "internal/cli/schema_hints/selection/pat.json",
-          "live-dws-schema:product-batch-2026-07-14",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理 Agent 的 PAT 行为授权与本地浏览器策略",
-        "agent_summary_source": "dws-agent-selection/pat",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "普通登录用 auth；不要与开放平台应用权限或具体业务写操作混用"
         ],
@@ -22239,31 +22368,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/pat.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理 Agent 的 PAT 行为授权与本地浏览器策略"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/pat.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理 Agent 的 PAT 行为授权与本地浏览器策略"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/pat.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "普通登录用 auth；不要与开放平台应用权限或具体业务写操作混用"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/pat.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "普通登录用 auth；不要与开放平台应用权限或具体业务写操作混用"
             ]
@@ -22271,17 +22408,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/pat.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "缺少行为授权需要预览/授予 scope，或配置授权是否打开浏览器"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/pat.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "缺少行为授权需要预览/授予 scope，或配置授权是否打开浏览器"
             ]
@@ -22358,18 +22499,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=report",
-          "Skill:skills/mono/references/products/report.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/report.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "查询日志模板、收发日志、日志正文与统计，并按模板提交日志",
-        "agent_summary_source": "dws-agent-selection/report",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "不要用于待办任务、OA 审批或在线文档正文编辑"
         ],
@@ -22378,31 +22513,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/report.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "查询日志模板、收发日志、日志正文与统计，并按模板提交日志"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/report.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "查询日志模板、收发日志、日志正文与统计，并按模板提交日志"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/report.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "不要用于待办任务、OA 审批或在线文档正文编辑"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/report.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "不要用于待办任务、OA 审批或在线文档正文编辑"
             ]
@@ -22410,17 +22553,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/report.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查看或提交日报、周报等钉钉日志时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/report.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查看或提交日报、周报等钉钉日志时"
             ]
@@ -22732,20 +22879,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "cobra-help:dws sheet --help",
-          "dws-schema-live:product-index",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.sheet.prod.json",
-          "internal/cli/schema_command_registry.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/sheet.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md",
-          "skills/mono/references/products/sheet.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "导入本地 Excel，或创建、读取、编辑和导出钉钉在线电子表格（axls），并管理工作表、区域、筛选、图表、图片与格式。",
-        "agent_summary_source": "dws-agent-selection/sheet",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "目标是 AI 表格 Base 的结构化记录或钉钉文档正文时不要使用 sheet",
           "只读取已上传但未转换的 xlsx/xls 节点时先用 doc download；不要把文件节点直接传给单元格命令"
@@ -22755,32 +22894,40 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/sheet.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "导入本地 Excel，或创建、读取、编辑和导出钉钉在线电子表格（axls），并管理工作表、区域、筛选、图表、图片与格式。"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/sheet.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "导入本地 Excel，或创建、读取、编辑和导出钉钉在线电子表格（axls），并管理工作表、区域、筛选、图表、图片与格式。"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/sheet.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "目标是 AI 表格 Base 的结构化记录或钉钉文档正文时不要使用 sheet",
                   "只读取已上传但未转换的 xlsx/xls 节点时先用 doc download；不要把文件节点直接传给单元格命令"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/sheet.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "目标是 AI 表格 Base 的结构化记录或钉钉文档正文时不要使用 sheet",
               "只读取已上传但未转换的 xlsx/xls 节点时先用 doc download；不要把文件节点直接传给单元格命令"
@@ -22789,18 +22936,22 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/sheet.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "用户要处理钉钉在线电子表格中的工作表、单元格、范围、筛选、图表、图片或格式时",
                   "用户要把本地 xlsx/xls 转换为新的钉钉在线电子表格时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/sheet.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "用户要处理钉钉在线电子表格中的工作表、单元格、范围、筛选、图表、图片或格式时",
               "用户要把本地 xlsx/xls 转换为新的钉钉在线电子表格时"
@@ -25487,18 +25638,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=todo",
-          "Skill:skills/mono/references/products/todo.md",
-          "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.todo.prod.json",
-          "internal/cli/schema_hints/imported/wukong.json",
-          "internal/cli/schema_hints/selection/todo.json",
-          "skills/mono/SKILL.md",
-          "skills/mono/references/intent-guide.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理待办任务、标签、子任务、执行人、参与人、评论、附件与提醒",
-        "agent_summary_source": "dws-agent-selection/todo",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "不要用于 OA 审批流转、工作日志提交或日历日程管理"
         ],
@@ -25507,31 +25652,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/todo.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理待办任务、标签、子任务、执行人、参与人、评论、附件与提醒"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/todo.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理待办任务、标签、子任务、执行人、参与人、评论、附件与提醒"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/todo.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "不要用于 OA 审批流转、工作日志提交或日历日程管理"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/todo.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "不要用于 OA 审批流转、工作日志提交或日历日程管理"
             ]
@@ -25539,17 +25692,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/todo.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查询、创建或更新个人待办及其协作信息时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/todo.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查询、创建或更新个人待办及其协作信息时"
             ]
@@ -26584,15 +26741,12 @@
         ]
       },
       {
-        "agent_metadata_source": "embedded-skill-metadata",
+        "agent_metadata_source": "cli.product_decl",
         "agent_source_refs": [
-          "CommandRegistry:product=wiki",
-          "Skill:skills/mono/references/products/wiki.md",
-          "internal/cli/schema_hints/selection/wiki.json",
-          "skills/mono/SKILL.md"
+          "cli.ProductDecl"
         ],
         "agent_summary": "管理钉钉知识库空间、节点与成员权限",
-        "agent_summary_source": "dws-agent-selection/wiki",
+        "agent_summary_source": "cli.ProductDecl",
         "avoid_when": [
           "需要编辑在线文档正文时使用 doc；只管理钉盘普通文件时使用 drive"
         ],
@@ -26601,31 +26755,39 @@
           "agent_summary": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/wiki.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": "管理钉钉知识库空间、节点与成员权限"
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/wiki.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": "管理钉钉知识库空间、节点与成员权限"
           },
           "avoid_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/wiki.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "需要编辑在线文档正文时使用 doc；只管理钉盘普通文件时使用 drive"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/wiki.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "需要编辑在线文档正文时使用 doc；只管理钉盘普通文件时使用 drive"
             ]
@@ -26633,17 +26795,21 @@
           "use_when": {
             "candidates": [
               {
-                "precedence": "reviewed_explicit",
+                "precedence": "contract_final",
+                "review_reason": "ProductDecl final Schema pass-through",
                 "selected": true,
-                "source": "internal/cli/schema_hints/selection/wiki.json",
+                "source": "cli.product_decl",
+                "source_ref": "cli.ProductDecl",
                 "value": [
                   "查找或管理知识库、知识库内节点及知识库成员时"
                 ]
               }
             ],
-            "precedence": "reviewed_explicit",
-            "resolution": "highest_precedence",
-            "source": "internal/cli/schema_hints/selection/wiki.json",
+            "precedence": "contract_final",
+            "resolution": "contract_pass_through",
+            "review_reason": "ProductDecl final Schema pass-through",
+            "source": "cli.product_decl",
+            "source_ref": "cli.ProductDecl",
             "value": [
               "查找或管理知识库、知识库内节点及知识库成员时"
             ]

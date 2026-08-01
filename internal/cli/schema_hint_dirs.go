@@ -59,8 +59,10 @@ type hintDirTool struct {
 }
 
 func loadManualSchemaHintsFromHintDirs(metadataFS fs.FS, metadataGlob string, selectionFS fs.FS, selectionGlob string) (ManualSchemaHintSnapshot, error) {
-	// Metadata is optional and normally nil/empty after phase 5 deleted
-	// schema_hints/metadata/. Nil FS or empty glob = no parameter overlays.
+	// Metadata and selection HintFile dirs are both optional/retired.
+	// Production passes nil/"" for both; ProductDecl / ContractFinal own
+	// Agent routing and leaf facts. Nil FS or empty glob = no overlays and
+	// an empty Agent hint set (synthetic revision only).
 	var commands []ManualSchemaCommandHint
 	if metadataFS != nil && strings.TrimSpace(metadataGlob) != "" {
 		var err error
@@ -137,27 +139,38 @@ func loadParameterCommandsFromMetadata(metadataFS fs.FS, globPattern string) ([]
 }
 
 // LoadAgentHintsFromSelectionForValidation loads selection HintFiles from an
-// FS rooted at schema_hints/selection (so glob *.json).
+// FS rooted at schema_hints/selection (so glob *.json). A nil FS is treated
+// as an absent optional/retired directory and returns an empty hint set;
+// callers that rely on ProductDecl/ContractFinal should pass nil.
 func LoadAgentHintsFromSelectionForValidation(selectionFS fs.FS) (ManualAgentHintSet, error) {
 	return loadAgentHintsFromSelection(selectionFS, "*.json")
 }
 
-func loadAgentHintsFromSelection(selectionFS fs.FS, globPattern string) (ManualAgentHintSet, error) {
-	files, err := fs.Glob(selectionFS, globPattern)
-	if err != nil {
-		return ManualAgentHintSet{}, fmt.Errorf("list selection hints: %w", err)
-	}
-	sort.Strings(files)
-	hints := ManualAgentHintSet{
+func emptySelectionAgentHints() ManualAgentHintSet {
+	return ManualAgentHintSet{
 		Revisions: map[string]ManualAgentHintRevision{
 			selectionRevisionID: {
 				GeneratedBy: "human",
-				Reason:      "reviewed Agent selection prose under internal/cli/schema_hints/selection",
+				Reason:      "schema_hints/selection retired; Agent routing comes from ProductDecl/ContractFinal",
 			},
 		},
 		Products: map[string]ManualAgentProductHint{},
 		Tools:    map[string]ManualAgentToolHint{},
 	}
+}
+
+func loadAgentHintsFromSelection(selectionFS fs.FS, globPattern string) (ManualAgentHintSet, error) {
+	// Nil FS or empty glob = optional/absent selection directory. Zero matches
+	// (empty shells already deleted, or empty dir) also yield an empty set.
+	if selectionFS == nil || strings.TrimSpace(globPattern) == "" {
+		return emptySelectionAgentHints(), nil
+	}
+	files, err := fs.Glob(selectionFS, globPattern)
+	if err != nil {
+		return ManualAgentHintSet{}, fmt.Errorf("list selection hints: %w", err)
+	}
+	sort.Strings(files)
+	hints := emptySelectionAgentHints()
 	for _, name := range files {
 		data, err := fs.ReadFile(selectionFS, name)
 		if err != nil {

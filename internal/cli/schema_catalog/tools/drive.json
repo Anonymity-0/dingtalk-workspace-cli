@@ -12459,26 +12459,6 @@
               "source": "cobra_usage",
               "value": "每页返回数量 (默认 20，最大 50)，仅 spaceType 为 orgSpace 时有效"
             },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "mcp_metadata",
-                  "selected": true,
-                  "source": "mcp_metadata",
-                  "value": "number"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "integer"
-                }
-              ],
-              "precedence": "mcp_metadata",
-              "resolution": "highest_precedence",
-              "source": "mcp_metadata",
-              "value": "number"
-            },
             "property": {
               "candidates": [
                 {
@@ -12549,7 +12529,6 @@
             }
           },
           "interface_description": "每页返回数量，默认 20，最大 50。建议根据实际需求调整，较大的值可以减少请求次数，但会增加单次响应的数据量。仅 spaceType 为 orgSpace 时有效",
-          "interface_type": "number",
           "property": "maxResults",
           "required": false,
           "type": "integer"
@@ -22993,22 +22972,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -23065,7 +23038,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": true,
           "type": "string"
         }
@@ -26107,22 +26080,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -26179,7 +26146,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": true,
           "type": "string"
         },
@@ -26770,22 +26737,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -26842,7 +26803,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": true,
           "type": "string"
         }

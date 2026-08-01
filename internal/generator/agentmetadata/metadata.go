@@ -382,8 +382,9 @@ func Generate(opts Options) (File, Stats, error) {
 
 // generateFromSources retains the lower-precedence evidence parsers as a
 // package-internal seam for focused tests. Production callers must use Generate,
-// which requires the reviewed selection hint sources under HintsDir
-// (metadata map/files are optional; empty metadata is a valid end-state).
+// which reads HintsDir when set. Both metadata and selection maps/files are
+// optional once ProductDecl/ContractFinal cover routing; empty or absent
+// selection is a valid end-state.
 func generateFromSources(opts Options) (File, Stats, error) {
 	if opts.Root == "" {
 		opts.Root = "."

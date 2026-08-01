@@ -370,6 +370,20 @@ func newContactAccountUpdateCommand() *cobra.Command {
 }
 
 func newContactCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/contact.json
+	// products.contact). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "contact",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查询通讯录与花名册，并管理企业、部门、员工及企业账号",
+			UseWhen: []string{
+				"按姓名/手机号/userId/部门条件做通讯录精确查询，或明确执行企业与员工入企管理",
+			},
+			AvoidWhen: []string{
+				"职责/上级等语义找人优先 aisearch person；不要用 contact 发消息；写操作前确认当前企业和目标信息",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "contact",
 		Short: "通讯录 / 用户 / 部门 / 角色 / 人员关系",

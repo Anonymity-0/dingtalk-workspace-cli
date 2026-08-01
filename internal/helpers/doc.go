@@ -789,6 +789,20 @@ func renderDocOverwriteDiff(nodeID, before, after string) string {
 }
 
 func newDocCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/doc.json
+	// products.doc). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "doc",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理钉钉在线文档的正文、块、评论、导入导出、模板与版本",
+			UseWhen: []string{
+				"创建、读取或编辑在线文档内容，或处理文档块、评论、导入导出、模板和版本时",
+			},
+			AvoidWhen: []string{
+				"文件、目录、上传下载及节点权限已迁移到 drive；知识库空间和成员使用 wiki；不要用于搜索开放平台开发文档",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "doc",
 		Short: "钉钉文档管理",

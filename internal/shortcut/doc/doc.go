@@ -55,10 +55,6 @@ var Search = shortcut.Shortcut{
 				"dws doc +search --extensions pdf,docx",
 			},
 		},
-		// Execute maps --query → MCP keyword (not inferable from flag name).
-		Parameters: []corecmd.ParamDecl{
-			{Name: "query", Property: "keyword"},
-		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词，不传返回最近访问的文档"},

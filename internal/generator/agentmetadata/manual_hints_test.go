@@ -49,11 +49,11 @@ func TestGenerateUsesReviewedSelectionAsSingleDeliverySource(t *testing.T) {
 	product := file.Products["sample"]
 	for _, field := range []string{"agent_summary", "use_when", "avoid_when"} {
 		provenance := product.FieldProvenance[field]
-		if provenance.Precedence != selectionPrecedenceReviewedExplicit || selectedCandidateCount(provenance.Candidates) != 1 {
+		if !isReviewedSelectionPrecedence(provenance.Precedence) || selectedCandidateCount(provenance.Candidates) != 1 {
 			t.Fatalf("product %s provenance = %#v", field, provenance)
 		}
-		if !strings.Contains(provenance.Source, "/selection/") {
-			t.Fatalf("product %s source = %q, want selection/", field, provenance.Source)
+		if provenance.Precedence != selectionPrecedenceContractFinal && !strings.Contains(provenance.Source, "/selection/") {
+			t.Fatalf("product %s source = %q, want selection/ or contract_final", field, provenance.Source)
 		}
 	}
 	for _, field := range []string{"agent_summary", "use_when", "avoid_when", "examples"} {
@@ -82,6 +82,27 @@ func TestGenerateRejectsMaxExamplesThatWouldTruncateReviewedSelection(t *testing
 	_, _, err := Generate(opts)
 	if err == nil || !strings.Contains(err.Error(), "exceeding max-examples=1") {
 		t.Fatalf("Generate() error = %v", err)
+	}
+}
+
+func TestSelectionHintCoverageProductsExemptsProductDecl(t *testing.T) {
+	t.Cleanup(func() { cli.ClearProductDeclForTest("declared") })
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "declared",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "Declared product",
+			UseWhen:      []string{"use declared"},
+			AvoidWhen:    []string{"avoid declared"},
+		},
+	})
+	got := SelectionHintCoverageProducts(RegistryProjection{
+		ProductIDs: map[string]bool{"declared": true, "hinted": true},
+	})
+	if got["declared"] {
+		t.Fatal("ProductDecl product must be exempt from selection products coverage")
+	}
+	if !got["hinted"] {
+		t.Fatal("non-Decl product must remain required in selection products coverage")
 	}
 }
 

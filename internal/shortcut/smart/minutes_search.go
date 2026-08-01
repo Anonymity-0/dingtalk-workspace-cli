@@ -59,10 +59,6 @@ var MinutesSearch = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws minutes +minutes-search --query 周会"},
 		},
-		// Execute maps --query → MCP keyword (not inferable from flag name).
-		Parameters: []corecmd.ParamDecl{
-			{Name: "query", Property: "keyword"},
-		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "按关键词搜索听记（必填）", Required: true},

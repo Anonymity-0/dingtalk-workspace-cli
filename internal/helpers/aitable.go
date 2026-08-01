@@ -925,6 +925,20 @@ func runAitableViewUpdateArray(cmd *cobra.Command, blockKey string) error {
 }
 
 func newAitableCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/aitable.json
+	// products.aitable). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "aitable",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理 AI 表格 Base、数据表、字段、记录、视图、表单、仪表盘、权限、导入导出与自动化工作流。",
+			UseWhen: []string{
+				"需要读取或管理 AI 表格中的结构、数据、视图、权限、导入导出或工作流时",
+			},
+			AvoidWhen: []string{
+				"目标是在线电子表格单元格读写时用 sheet；普通文档用 doc",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "aitable",
 		Short: "AI 表格操作",
@@ -6370,9 +6384,24 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	formUpdateCmd.Flags().String("title", "", "表单标题（与 --name 等价，二选一）")
 	formUpdateCmd.Flags().String("name", "", "表单标题（与 --title 等价）")
 	formUpdateCmd.Flags().String("description", "", "表单描述")
-	// form questions create/delete 复用 field create/delete 的 flag（保持入参完全一致）
-	copyFlags(fieldCreateCmd, formQuestionsCreateCmd, "base-id", "table-id", "fields", "name", "type", "config", "ai-config", "field-name", "field-type")
-	copyFlags(fieldDeleteCmd, formQuestionsDeleteCmd, "base-id", "table-id", "field-id")
+	// form questions create/delete keep the same flag surface as field create/delete,
+	// but must not share flag pointers: field create ParamDecl annotates --fields as
+	// required+array, and sharing would leak that into form_questions_create and break
+	// merge-base schema-compatibility (fields was optional / no interface_type there).
+	formQuestionsCreateCmd.Flags().String("base-id", "", "Base ID（通过 base list 获取）(必填)")
+	formQuestionsCreateCmd.Flags().String("table-id", "", "Table ID（通过 base get 获取）(必填)")
+	formQuestionsCreateCmd.Flags().String("fields", "", "待新增字段列表 JSON 数组，至少包含 1 个字段，单次最多 15 个。系统会按数组顺序依次创建，返回结果顺序与入参保持一致，并逐项标明成功/失败状态。若是单个字段可直接使用 --name/--type/--config")
+	formQuestionsCreateCmd.Flags().String("name", "", "要创建的单字段名称（与 --type 配合使用，替代 --fields）")
+	formQuestionsCreateCmd.Flags().String("field-name", "", "--name 的别名（兼容 LLM 常见误用）")
+	_ = formQuestionsCreateCmd.Flags().MarkHidden("field-name")
+	formQuestionsCreateCmd.Flags().String("type", "", "要创建的单字段类型（需要配合 --name，参考 table create 的内置类型）")
+	formQuestionsCreateCmd.Flags().String("field-type", "", "--type 的别名（兼容 LLM 常见误用）")
+	_ = formQuestionsCreateCmd.Flags().MarkHidden("field-type")
+	formQuestionsCreateCmd.Flags().String("config", "", "单字段的额外配置 JSON（如 options，配合 --name/--type 使用）")
+	formQuestionsCreateCmd.Flags().String("ai-config", "", "单字段 AI 配置 JSON（如 outputType/prompt，配合 --name/--type 使用）")
+	formQuestionsDeleteCmd.Flags().String("base-id", "", "Base ID（通过 base list 获取）(必填)")
+	formQuestionsDeleteCmd.Flags().String("table-id", "", "Table ID（通过 base get 获取）(必填)")
+	formQuestionsDeleteCmd.Flags().String("field-id", "", "待删除字段 ID（通过 table get 获取）(必填)")
 	formFieldListCmd.Flags().String("base-id", "", "所属 Base ID (必填)")
 	formFieldListCmd.Flags().String("table-id", "", "所属 Table ID (必填)")
 	formFieldListCmd.Flags().String("view-id", "", "目标表单视图 ID (必填)")

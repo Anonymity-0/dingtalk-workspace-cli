@@ -516,6 +516,20 @@ func readGlobalSettingSaveFlagValue(cmd *cobra.Command, spec globalSettingSaveFl
 }
 
 func newAttendanceCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/attendance.json
+	// products.attendance). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "attendance",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查询考勤记录、排班、班次、考勤组、审批、报表、个人规则和假期，并执行经确认的考勤配置变更。",
+			UseWhen: []string{
+				"用户要查询或管理钉钉考勤数据、规则、排班、考勤组、审批表单或假期余额。",
+			},
+			AvoidWhen: []string{
+				"用户只需处理普通日历日程、非考勤类活动签到或通用审批流状态，而不是钉钉考勤业务。",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "attendance",
 		Short: "考勤打卡 / 排班 / 统计",

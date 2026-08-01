@@ -83,6 +83,20 @@ const (
 // backend contract (SupplementServers/StaticServers injection key and the
 // pinned op-app endpoint), decoupled from the user-facing command name.
 func newDevAppCommand(runner executor.Runner) *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/devapp.json
+	// products.devapp). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "devapp",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理钉钉开放平台企业内部应用、成员、权限、机器人、事件与版本",
+			UseWhen: []string{
+				"请求涉及企业内部应用的查询、创建、配置、成员权限、机器人、事件订阅或版本管理",
+			},
+			AvoidWhen: []string{
+				"开放平台接口文档搜索使用 devdoc；普通钉钉业务数据使用对应产品命令",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:               "app",
 		Short:             "开放平台应用",

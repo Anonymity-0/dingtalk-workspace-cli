@@ -165,6 +165,20 @@ func normalizeAisearchSearchTypes(values []string) []string {
 }
 
 func newAisearchCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/aisearch.json
+	// products.aisearch). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "aisearch",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "企业内智能搜人、搜知识内容与搜行为记录",
+			UseWhen: []string{
+				"语义找人、按主题搜企业知识，或追溯发送/创建/分享等行为",
+			},
+			AvoidWhen: []string{
+				"已有明确资源 ID 要读写时改用对应产品；普通 OAuth 登录不用 aisearch",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "aisearch",
 		Short: "AI 搜问",

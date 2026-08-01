@@ -21,6 +21,22 @@ func resolveSheetName(cmd *cobra.Command) string {
 }
 
 func newSheetCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/sheet.json
+	// products.sheet). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "sheet",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "导入本地 Excel，或创建、读取、编辑和导出钉钉在线电子表格（axls），并管理工作表、区域、筛选、图表、图片与格式。",
+			UseWhen: []string{
+				"用户要处理钉钉在线电子表格中的工作表、单元格、范围、筛选、图表、图片或格式时",
+				"用户要把本地 xlsx/xls 转换为新的钉钉在线电子表格时",
+			},
+			AvoidWhen: []string{
+				"目标是 AI 表格 Base 的结构化记录或钉钉文档正文时不要使用 sheet",
+				"只读取已上传但未转换的 xlsx/xls 节点时先用 doc download；不要把文件节点直接传给单元格命令",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "sheet",
 		Short: "钉钉表格管理",

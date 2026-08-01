@@ -84,20 +84,37 @@ func SelectionHintCoverageTools(projection RegistryProjection) map[string]bool {
 	return expectedTools
 }
 
+// SelectionHintCoverageProducts returns product IDs that still need a
+// selection/ products{} row. ProductDecl-registered products are exempt
+// because their routing prose lives on the in-code declaration.
+func SelectionHintCoverageProducts(projection RegistryProjection) map[string]bool {
+	return selectionHintCoverageProducts(projection.ProductIDs)
+}
+
 // ValidateSelectionHints validates selection/ against the projected registry.
 // metadata/ under HintsDir is optional and is not consulted here.
+// selection/ is optional when every projected product has ProductDecl and
+// every projected tool has ContractFinal (no residual hint-file coverage).
+// The directory may be absent in that end-state; when present, empty
+// products{}/tools{} shells remain valid.
 func ValidateSelectionHints(rootPath, hintsDir string, projection RegistryProjection) error {
 	hintsRoot := resolvePipelineRootPath(rootPath, hintsDir)
 	selectionRoot := filepath.Join(hintsRoot, "selection")
-	if info, err := os.Stat(selectionRoot); err != nil || !info.IsDir() {
-		return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
+	expectedTools := SelectionHintCoverageTools(projection)
+	expectedProducts := SelectionHintCoverageProducts(projection)
+	info, err := os.Stat(selectionRoot)
+	missing := err != nil || !info.IsDir()
+	if missing {
+		if selectionHintCoverageRequired(expectedProducts, expectedTools) {
+			return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
+		}
+		return nil
 	}
 	agentHints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS(selectionRoot))
 	if err != nil {
 		return fmt.Errorf("load selection Agent hints: %w", err)
 	}
-	expectedTools := SelectionHintCoverageTools(projection)
-	if err := cli.ValidateManualAgentHintSet(agentHints, projection.ProductIDs, expectedTools); err != nil {
+	if err := cli.ValidateManualAgentHintSet(agentHints, expectedProducts, expectedTools); err != nil {
 		return fmt.Errorf("validate selection Agent hints: %w", err)
 	}
 	if err := cli.ValidateManualAgentHintExamples(projection.Bound, agentHints); err != nil {
@@ -107,6 +124,20 @@ func ValidateSelectionHints(rootPath, hintsDir string, projection RegistryProjec
 		return fmt.Errorf("validate selection Agent selection contract: %w", err)
 	}
 	return nil
+}
+
+func selectionHintCoverageRequired(expectedProducts, expectedTools map[string]bool) bool {
+	for _, include := range expectedProducts {
+		if include {
+			return true
+		}
+	}
+	for _, include := range expectedTools {
+		if include {
+			return true
+		}
+	}
+	return false
 }
 
 // GenerateFromCommandRoot is the Catalog in-memory Agent-metadata pipeline.

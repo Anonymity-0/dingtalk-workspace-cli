@@ -10,6 +10,20 @@ import (
 )
 
 func newDevdocCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/devdoc.json
+	// products.devdoc). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "devdoc",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "搜索钉钉开放平台开发文档与错误排查资料",
+			UseWhen: []string{
+				"查询 OpenAPI、字段、错误码、SDK、鉴权或接入指南",
+			},
+			AvoidWhen: []string{
+				"搜索用户业务文档或读写业务数据时不要用 devdoc",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "devdoc",
 		Short: "开放平台文档搜索",

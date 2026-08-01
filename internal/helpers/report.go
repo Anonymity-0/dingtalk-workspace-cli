@@ -50,6 +50,20 @@ var (
 // ──────────────────────────────────────────────────────────
 
 func newReportCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/report.json
+	// products.report). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "report",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查询日志模板、收发日志、日志正文与统计，并按模板提交日志",
+			UseWhen: []string{
+				"查看或提交日报、周报等钉钉日志时",
+			},
+			AvoidWhen: []string{
+				"不要用于待办任务、OA 审批或在线文档正文编辑",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:     "report",
 		Aliases: []string{"log"},

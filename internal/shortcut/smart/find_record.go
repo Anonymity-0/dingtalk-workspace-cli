@@ -62,10 +62,6 @@ var FindRecord = shortcut.Shortcut{
 				"dws aitable +find-record --base B --table T --query 张三",
 			},
 		},
-		// Execute maps --query → MCP keyword (not inferable from flag name).
-		Parameters: []corecmd.ParamDecl{
-			{Name: "query", Property: "keyword"},
-		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base", Type: shortcut.FlagString, Desc: "Base ID（多维表所属 base）", Required: true},

@@ -87,24 +87,35 @@ func validateReviewedSelectionDelivery(file File, opts Options) error {
 	for _, productID := range productIDs {
 		metadata, ok := file.Products[productID]
 		if !ok {
+			// ProductDecl-registered products may omit selection/ products{}
+			// rows; their contract_final prose is applied outside hint files.
+			if cli.HasProductDecl(productID) {
+				continue
+			}
 			problems = append(problems, "missing product "+productID)
 			continue
 		}
-		if strings.TrimSpace(metadata.AgentSummary) == "" || metadata.agentSummaryRank != selectionRankReviewedExplicit {
-			problems = append(problems, productID+" agent_summary is not reviewed_explicit")
+		checks := []struct {
+			name  string
+			valid bool
+		}{
+			{"agent_summary", strings.TrimSpace(metadata.AgentSummary) != "" && isReviewedSelectionRank(metadata.agentSummaryRank)},
+			{"use_when", len(metadata.UseWhen) > 0 && isReviewedSelectionRank(metadata.useWhenRank)},
+			{"avoid_when", len(metadata.AvoidWhen) > 0 && isReviewedSelectionRank(metadata.avoidWhenRank)},
 		}
-		if len(metadata.UseWhen) == 0 || metadata.useWhenRank != selectionRankReviewedExplicit {
-			problems = append(problems, productID+" use_when is not reviewed_explicit")
-		}
-		if len(metadata.AvoidWhen) == 0 || metadata.avoidWhenRank != selectionRankReviewedExplicit {
-			problems = append(problems, productID+" avoid_when is not reviewed_explicit")
+		for _, check := range checks {
+			if !check.valid {
+				problems = append(problems, productID+" "+check.name+" is not reviewed_explicit/contract_final")
+			}
 		}
 		for _, field := range []string{"agent_summary", "use_when", "avoid_when"} {
 			provenance, ok := metadata.FieldProvenance[field]
-			if !ok || provenance.Precedence != selectionPrecedenceReviewedExplicit || selectedCandidateCount(provenance.Candidates) != 1 {
-				problems = append(problems, productID+" "+field+" provenance is not one reviewed_explicit winner")
+			if !ok || !isReviewedSelectionPrecedence(provenance.Precedence) || selectedCandidateCount(provenance.Candidates) != 1 {
+				problems = append(problems, productID+" "+field+" provenance is not one reviewed_explicit/contract_final winner")
 			}
-			if ok && !strings.Contains(provenance.Source, "/selection/") {
+			// File-based winners must come from a selection/ source file;
+			// contract_final winners are declared in code (no file path).
+			if ok && provenance.Precedence != selectionPrecedenceContractFinal && !strings.Contains(provenance.Source, "/selection/") {
 				problems = append(problems, productID+" "+field+" source is not selection/: "+provenance.Source)
 			}
 		}
@@ -189,6 +200,26 @@ func selectedCandidateCount(candidates []FieldCandidateProvenance) int {
 	return count
 }
 
+// selectionHintCoverageProducts returns product IDs that still need a
+// selection/ products{} row. ProductDecl-registered products are exempt.
+func selectionHintCoverageProducts(productIDs map[string]bool) map[string]bool {
+	if productIDs == nil {
+		return nil
+	}
+	expected := make(map[string]bool, len(productIDs))
+	for productID, include := range productIDs {
+		if !include {
+			continue
+		}
+		productID = strings.TrimSpace(productID)
+		if productID == "" || cli.HasProductDecl(productID) {
+			continue
+		}
+		expected[productID] = true
+	}
+	return expected
+}
+
 func expectedCanonicalToolSet(opts Options) map[string]bool {
 	if len(opts.CanonicalToolPaths) > 0 {
 		expected := make(map[string]bool, len(opts.CanonicalToolPaths))
@@ -214,10 +245,6 @@ func expectedCanonicalToolSet(opts Options) map[string]bool {
 
 func validateSelectionAuthoringContracts(opts Options) error {
 	selectionRoot := filepath.Join(resolvePath(opts.Root, opts.HintsDir), "selection")
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS(selectionRoot))
-	if err != nil {
-		return fmt.Errorf("load selection Agent hints: %w", err)
-	}
 	expectedTools := expectedCanonicalToolSet(opts)
 	// Declared tools carry their selection fields in the Contract final
 	// overlay (corecmd.SchemaDecl); they are exempt from hint-file coverage.
@@ -229,7 +256,20 @@ func validateSelectionAuthoringContracts(opts Options) error {
 			delete(expectedTools, canonical)
 		}
 	}
-	if err := cli.ValidateManualAgentHintSet(hints, opts.ProductIDs, expectedTools); err != nil {
+	expectedProducts := selectionHintCoverageProducts(opts.ProductIDs)
+	info, err := os.Stat(selectionRoot)
+	missing := err != nil || !info.IsDir()
+	if missing {
+		if selectionHintCoverageRequired(expectedProducts, expectedTools) {
+			return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
+		}
+		return nil
+	}
+	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS(selectionRoot))
+	if err != nil {
+		return fmt.Errorf("load selection Agent hints: %w", err)
+	}
+	if err := cli.ValidateManualAgentHintSet(hints, expectedProducts, expectedTools); err != nil {
 		return fmt.Errorf("validate selection Agent hints: %w", err)
 	}
 	if opts.MaxExamples > 0 {

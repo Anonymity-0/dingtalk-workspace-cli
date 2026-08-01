@@ -32,6 +32,20 @@ import (
 var markdownUploadStat = os.Stat
 
 func newMarkdownCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/markdown.json
+	// products.markdown). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "markdown",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "跨钉盘与文档空间创建、获取、覆盖和局部修补原生 Markdown 文件",
+			UseWhen: []string{
+				"目标是原生 .md 文件，并需要在 Drive/Doc 路由间安全处理内容时",
+			},
+			AvoidWhen: []string{
+				"在线文档正文操作使用 doc；普通二进制文件上传下载使用 drive",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "markdown",
 		Short: "Markdown 文件处理",

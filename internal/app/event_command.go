@@ -73,6 +73,20 @@ var (
 // newEventCommand returns the `event` parent command and all its subcommands.
 // Wired into root.go's utilityCommands list.
 func newEventCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/event.json
+	// products.event). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "event",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期",
+			UseWhen: []string{
+				"需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期",
+			},
+			AvoidWhen: []string{
+				"查历史聊天或主动发消息分别用 chat 查询/发送命令",
+			},
+		},
+	})
 	cmd := &cobra.Command{
 		Use:               "event",
 		Short:             "事件订阅 (DingTalk Stream 长连接)",

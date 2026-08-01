@@ -51,10 +51,12 @@ func TestCrossPlatformCoverageHintUnmarshalAndIndexValidationEdges(t *testing.T)
 		{"version", `{"version":2}`, nil, "unsupported version"},
 		{"format", `{"version":1,"format":"other"}`, nil, "unsupported format"},
 		{"source kind", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"imported"}}`, nil, "unsupported source kind"},
-		{"selection required", `{"version":1,"format":"dws-agent-hint-index","metadata":{"sample":"metadata.json"}}`, nil, "selection map is required"},
 		{"empty metadata path", validCoverageIndex("", "selection.json"), map[string]string{"selection.json": validHint}, "missing path"},
 		{"escaping metadata path", validCoverageIndex("../outside.json", "selection.json"), map[string]string{"selection.json": validHint}, "escapes hints root"},
 		{"missing metadata file", validCoverageIndex("metadata.json", "selection.json"), map[string]string{"selection.json": validHint}, "file missing"},
+		{"empty selection path", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{"sample":""}}`, nil, "missing path"},
+		{"escaping selection path", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{"sample":"../outside.json"}}`, nil, "escapes hints root"},
+		{"missing selection file", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{"sample":"selection.json"}}`, nil, "file missing"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -69,17 +71,27 @@ func TestCrossPlatformCoverageHintUnmarshalAndIndexValidationEdges(t *testing.T)
 		})
 	}
 
-	// Metadata map may be omitted or empty; selection alone is enough.
+	// Metadata and selection maps may each be omitted or empty.
 	for _, tc := range []struct {
 		name  string
 		index string
+		files map[string]string
+		used  bool
 	}{
-		{"metadata omitted", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{"sample":"selection.json"}}`},
-		{"metadata empty", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"metadata":{},"selection":{"sample":"selection.json"}}`},
+		{"metadata omitted", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{"sample":"selection.json"}}`, map[string]string{"selection.json": validHint}, true},
+		{"metadata empty", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"metadata":{},"selection":{"sample":"selection.json"}}`, map[string]string{"selection.json": validHint}, true},
+		{"selection omitted", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"metadata":{}}`, nil, false},
+		{"selection empty", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{}}`, nil, false},
+		{"both empty", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"metadata":{},"selection":{}}`, nil, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if used, err := parseCoverageHints(root, map[string]string{"index.json": tc.index, "selection.json": validHint}); err != nil || !used {
-				t.Fatalf("optional metadata = %v, %v", used, err)
+			bodies := map[string]string{"index.json": tc.index}
+			for path, body := range tc.files {
+				bodies[path] = body
+			}
+			used, err := parseCoverageHints(root, bodies)
+			if err != nil || used != tc.used {
+				t.Fatalf("optional maps = used=%v err=%v, want used=%v", used, err, tc.used)
 			}
 		})
 	}

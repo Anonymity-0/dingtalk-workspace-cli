@@ -32359,26 +32359,6 @@
               "source": "cobra_usage",
               "value": "待新增字段列表 JSON 数组，至少包含 1 个字段，单次最多 15 个。系统会按数组顺序依次创建，返回结果顺序与入参保持一致，并逐项标明成功/失败状态。若是单个字段可直接使用 --name/--type/--config"
             },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "array"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "native_annotation",
-              "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "array"
-            },
             "property": {
               "candidates": [
                 {
@@ -32396,22 +32376,16 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": true
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "native_annotation",
-              "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": true
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
             },
             "required_when": {
               "candidates": [
@@ -32442,9 +32416,8 @@
               "value": "string"
             }
           },
-          "interface_type": "array",
           "property": "fields",
-          "required": true,
+          "required": false,
           "type": "string"
         },
         "name": {
@@ -57902,22 +57875,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -57962,7 +57929,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": false,
           "type": "string"
         },
@@ -61859,26 +61826,6 @@
               "source": "cobra_usage",
               "value": "结构化过滤条件 JSON（可选）"
             },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "object"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "native_annotation",
-              "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "object"
-            },
             "property": {
               "candidates": [
                 {
@@ -61936,7 +61883,6 @@
               "value": "string"
             }
           },
-          "interface_type": "object",
           "property": "filters",
           "required": false,
           "type": "string"
@@ -62057,22 +62003,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "keyword"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "keyword"
+              "source": "flag_name_inference",
+              "value": "query"
             },
             "required": {
               "candidates": [
@@ -62117,7 +62057,7 @@
               "value": "string"
             }
           },
-          "property": "keyword",
+          "property": "query",
           "required": false,
           "type": "string"
         },
@@ -62228,26 +62168,6 @@
               "source": "cobra_usage",
               "value": "排序条件 JSON 数组（可选）"
             },
-            "interface_type": {
-              "candidates": [
-                {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "array"
-                },
-                {
-                  "precedence": "fallback",
-                  "selected": false,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "native_annotation",
-              "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "array"
-            },
             "property": {
               "candidates": [
                 {
@@ -62305,7 +62225,6 @@
               "value": "string"
             }
           },
-          "interface_type": "array",
           "property": "sort",
           "required": false,
           "type": "string"

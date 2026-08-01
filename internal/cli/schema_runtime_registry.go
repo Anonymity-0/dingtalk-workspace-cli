@@ -144,7 +144,16 @@ func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtim
 		}
 		product := byProduct[entry.ProductID]
 		if product == nil {
-			selection, provenance, _ := agentProductContractForIDsFromMetadata(metadata.Agent, entry.ProductID, entry.SourceProductID)
+			var selection SelectionSpec
+			var provenance map[string]FieldProvenance
+			// ProductDecl is the final product routing source (contract_final),
+			// symmetric to leaf RuntimeContractFinal. Selection JSON remains a
+			// fallback only when no Decl is registered.
+			if decl, ok := LookupProductDecl(entry.ProductID); ok {
+				selection, provenance = ProductSelectionFromDecl(decl)
+			} else {
+				selection, provenance, _ = agentProductContractForIDsFromMetadata(metadata.Agent, entry.ProductID, entry.SourceProductID)
+			}
 			product = &ProductSpec{
 				ID:              entry.ProductID,
 				Name:            entry.ProductName,

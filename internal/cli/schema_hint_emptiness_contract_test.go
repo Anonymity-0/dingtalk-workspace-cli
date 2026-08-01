@@ -110,6 +110,68 @@ func TestEmbeddedMetadataHintShellsHaveEmptyTools(t *testing.T) {
 	}
 }
 
+// TestEmbeddedSelectionHintShellsHaveEmptyProductsAndTools locks the
+// selection retired end-state: directory may be absent. Production embed
+// loading always passes nil/empty. When residual shells are present,
+// products{} and tools{} must stay empty under ProductDecl/ContractFinal.
+func TestEmbeddedSelectionHintShellsHaveEmptyProductsAndTools(t *testing.T) {
+	hints, err := loadAgentHintsFromSelection(nil, "")
+	if err != nil {
+		t.Fatalf("loadAgentHintsFromSelection(nil, \"\"): %v", err)
+	}
+	if len(hints.Products) != 0 || len(hints.Tools) != 0 {
+		t.Fatalf("nil selection hints products=%d tools=%d, want 0/0", len(hints.Products), len(hints.Tools))
+	}
+	if len(hints.Revisions) == 0 {
+		t.Fatal("nil selection hints must keep a synthetic revision")
+	}
+
+	const selectionDir = "schema_hints/selection"
+	entries, err := os.ReadDir(selectionDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		t.Fatalf("read %s: %v", selectionDir, err)
+	}
+	if len(entries) == 0 {
+		return
+	}
+
+	selectionFS := os.DirFS(selectionDir)
+	files, err := fs.Glob(selectionFS, "*.json")
+	if err != nil {
+		t.Fatalf("list selection shells: %v", err)
+	}
+	sort.Strings(files)
+
+	nonEmpty := make([]string, 0)
+	for _, name := range files {
+		data, err := fs.ReadFile(selectionFS, name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		var file hintDirFile
+		if err := json.Unmarshal(data, &file); err != nil {
+			t.Fatalf("decode %s: %v", name, err)
+		}
+		if len(file.Products) != 0 || len(file.Tools) != 0 {
+			nonEmpty = append(nonEmpty, filepath.Base(name))
+		}
+	}
+	if len(nonEmpty) != 0 {
+		t.Fatalf("selection shells must keep products:{} tools:{} ; nonempty=%v", nonEmpty)
+	}
+
+	hints, err = LoadAgentHintsFromSelectionForValidation(selectionFS)
+	if err != nil {
+		t.Fatalf("LoadAgentHintsFromSelectionForValidation: %v", err)
+	}
+	if len(hints.Products) != 0 || len(hints.Tools) != 0 {
+		t.Fatalf("on-disk selection hints products=%d tools=%d, want 0/0", len(hints.Products), len(hints.Tools))
+	}
+}
+
 // TestEmbeddedCatalogHasNoToolSchemaHintProvenance asserts the published
 // Catalog no longer selects tool_schema_hint as a provenance winner or
 // retained candidate after RegisterSchemaHints → ParamDecl migration.

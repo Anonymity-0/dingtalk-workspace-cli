@@ -6,6 +6,20 @@ import (
 )
 
 func newLiveCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/live.json
+	// products.live). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "live",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查询当前用户发起的直播列表",
+			UseWhen: []string{
+				"用户要查看自己的直播列表或基础统计",
+			},
+			AvoidWhen: []string{
+				"当前公开面不支持创建/控制直播",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "live",
 		Short: "直播列表 / 信息",

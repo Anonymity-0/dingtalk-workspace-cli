@@ -76,10 +76,6 @@ var FindMailUser = shortcut.Shortcut{
 				"dws mail +find-mail-user --query alice --limit 10",
 			},
 		},
-		// Execute maps --query → MCP keyword (not inferable from flag name).
-		Parameters: []corecmd.ParamDecl{
-			{Name: "query", Property: "keyword"},
-		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词（姓名/花名/邮箱片段，必填）", Required: true},

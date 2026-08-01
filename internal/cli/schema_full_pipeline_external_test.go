@@ -4,7 +4,6 @@
 package cli_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
@@ -55,7 +54,7 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS("schema_hints/selection"))
+	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

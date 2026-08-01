@@ -28,6 +28,20 @@ var (
 )
 
 func newAuditCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/audit.json
+	// products.audit). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "audit",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查看、导出和校验本地操作审计日志",
+			UseWhen: []string{
+				"需要排查本机 CLI 操作审计记录，或验证审计文件完整性",
+			},
+			AvoidWhen: []string{
+				"查钉钉业务数据或发消息请用对应产品命令，不要用 audit",
+			},
+		},
+	})
 	cmd := &cobra.Command{
 		Use:   "audit",
 		Short: "操作审计日志管理",

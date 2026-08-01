@@ -15,7 +15,6 @@ package cli
 
 import (
 	"bytes"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,11 +35,6 @@ const (
 	runtimeSchemaManualParameterAnnotation = "dws.schema.manual.parameter"
 	runtimeSchemaManualReasonAnnotation    = "dws.schema.manual.reason"
 )
-
-//go:embed schema_hints/selection/*.json
-var embeddedSelectionFS embed.FS
-
-const embeddedSelectionGlob = "schema_hints/selection/*.json"
 
 // ManualSchemaHintSnapshot is the human-owned bridge from an existing
 // public Cobra leaf to Schema. It cannot create commands, flags, exclusions, or
@@ -214,10 +208,9 @@ var (
 
 // ApplyEmbeddedManualSchemaHints loads committed hint dirs and applies any
 // residual metadata parameter overlays to an already-built Cobra tree.
-// Selection prose is loaded (and validated) as part of the same snapshot for
-// generators/tests; this function only annotates Commands. Metadata overlays
-// are optional: empty tools shells produce an empty Commands list. The
-// operation is deterministic and idempotent.
+// Selection HintFiles are retired in production (nil/empty load); Agent routing
+// comes from ProductDecl/ContractFinal. This function only annotates Commands.
+// The operation is deterministic and idempotent.
 func ApplyEmbeddedManualSchemaHints(root *cobra.Command) (ManualSchemaHintReport, error) {
 	snapshot, err := loadManualSchemaHints()
 	if err != nil {
@@ -228,12 +221,12 @@ func ApplyEmbeddedManualSchemaHints(root *cobra.Command) (ManualSchemaHintReport
 
 func embeddedManualSchemaHints() (ManualSchemaHintSnapshot, error) {
 	manualSchemaHintsOnce.Do(func() {
-		// Selection FS/glob are required. Metadata overlays are retired:
-		// pass nil/empty so loadManualSchemaHintsFromHintDirs yields no
-		// parameter Commands (schema_hints/metadata/ may be absent).
+		// Metadata and selection HintFile dirs are both retired (nil/empty).
+		// ProductDecl / ContractFinal own Agent routing prose; residual
+		// schema_hints/selection/ must not reappear as an embed source.
 		manualSchemaHintsSnapshot, manualSchemaHintsErr = loadManualSchemaHintsFromHintDirs(
 			nil, "",
-			embeddedSelectionFS, embeddedSelectionGlob,
+			nil, "",
 		)
 	})
 	return manualSchemaHintsSnapshot, manualSchemaHintsErr
@@ -340,13 +333,35 @@ func ValidateManualAgentHintSet(hints ManualAgentHintSet, expectedProducts, expe
 		}
 	}
 
-	if err := validateManualAgentHintExactSet("products", expectedProducts, mapKeysManualAgentProducts(hints.Products)); err != nil {
+	actualProducts := mapKeysManualAgentProducts(hints.Products)
+	if expectedProducts != nil {
+		// Declared products may keep a selection/ products{} row during
+		// migration; count those leftovers as covered so exact-set passes.
+		expectedProducts = cloneManualAgentHintBoolSet(expectedProducts)
+		for productID := range actualProducts {
+			if HasProductDecl(productID) {
+				expectedProducts[productID] = true
+			}
+		}
+	}
+	if err := validateManualAgentHintExactSet("products", expectedProducts, actualProducts); err != nil {
 		return err
 	}
 	if err := validateManualAgentHintExactSet("tools", expectedTools, mapKeysManualAgentTools(hints.Tools)); err != nil {
 		return err
 	}
 	return nil
+}
+
+func cloneManualAgentHintBoolSet(values map[string]bool) map[string]bool {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]bool, len(values))
+	for key, include := range values {
+		out[key] = include
+	}
+	return out
 }
 
 func validateManualAgentExampleDispositions(canonical string, examples []string, dispositions []ManualAgentExampleDisposition) error {

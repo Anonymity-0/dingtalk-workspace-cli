@@ -98,6 +98,21 @@ func validateMailRuleConditions(conditions []any) error {
 }
 
 func newMailCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/mail.json
+	// products.mail). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "mail",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理邮箱、邮件、草稿、附件、文件夹、联系人与邮件模板",
+			UseWhen: []string{
+				"查收、搜索、阅读、回复、发送或整理邮件",
+			},
+			AvoidWhen: []string{
+				"即时消息用 chat；开放平台应用配置用 dev",
+				"公开 catalog 不含 thread trash / sent-message recall 等硬 --yes 命令时不要臆造路径",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "mail",
 		Short: "邮箱 / 邮件收发",

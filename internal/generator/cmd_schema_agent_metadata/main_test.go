@@ -248,9 +248,20 @@ func TestValidateAgentMetadataOutputIsolationProtectsAllSourceKinds(t *testing.T
 	}
 }
 
-func TestValidateSelectionHintInputRequiresHintDirs(t *testing.T) {
+func TestValidateSelectionHintInputAllowsMissingWhenCoverageEmpty(t *testing.T) {
 	root := t.TempDir()
-	err := validateSelectionHintInput(root, "internal/cli/schema_hints", commandRegistryProjection{})
+	if err := validateSelectionHintInput(root, "internal/cli/schema_hints", commandRegistryProjection{}); err != nil {
+		t.Fatalf("missing selection/ must be optional when coverage is empty: %v", err)
+	}
+}
+
+func TestValidateSelectionHintInputRequiresHintDirsWhenCoverageRemains(t *testing.T) {
+	root := t.TempDir()
+	registry := commandRegistryProjection{
+		CanonicalToolPaths: map[string]string{"sample.run": "sample run"},
+		ProductIDs:         map[string]bool{"sample": true},
+	}
+	err := validateSelectionHintInput(root, "internal/cli/schema_hints", registry)
 	if err == nil || !strings.Contains(err.Error(), "required Agent hint directory missing") {
 		t.Fatalf("validateSelectionHintInput() error = %v", err)
 	}

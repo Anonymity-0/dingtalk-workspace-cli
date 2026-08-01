@@ -308,3 +308,21 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.
 		t.Fatalf("declared tool must be exempt from hint coverage, expected = %#v", expected)
 	}
 }
+
+func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredProducts(t *testing.T) {
+	t.Cleanup(func() { cli.ClearProductDeclForTest("declared") })
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "declared",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "Declared product",
+			UseWhen:      []string{"use declared"},
+			AvoidWhen:    []string{"avoid declared"},
+		},
+	})
+	expected := agentmetadata.SelectionHintCoverageProducts(commandRegistryProjection{
+		ProductIDs: map[string]bool{"declared": true, "hinted": true},
+	})
+	if expected["declared"] || !expected["hinted"] {
+		t.Fatalf("ProductDecl product must be exempt from hint coverage, expected = %#v", expected)
+	}
+}

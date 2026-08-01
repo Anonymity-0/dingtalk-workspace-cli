@@ -60,10 +60,6 @@ var SearchMsg = shortcut.Shortcut{
 				"dws chat +search-msg --group <openConversationId> --message-type file --download-resources --output-dir ./downloads",
 			},
 		},
-		// Execute maps --query (or hidden --keyword) → MCP keyword.
-		Parameters: []corecmd.ParamDecl{
-			{Name: "query", Property: "keyword"},
-		},
 	},
 	Flags: append([]shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词"},

@@ -19,6 +19,20 @@ import (
 // ──────────────────────────────────────────────────────────
 
 func newOaCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/oa.json
+	// products.oa). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "oa",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "查询和处理 OA 审批实例、任务、记录、抄送与评论",
+			UseWhen: []string{
+				"查看待审、已办、已发起或抄送审批，并执行同意、拒绝、撤销、转交等审批动作时",
+			},
+			AvoidWhen: []string{
+				"不要用于普通待办任务或工作日志；需要创建审批实例时先确认当前命令面是否支持",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "oa",
 		Short: "OA 审批 / 同意 / 拒绝 / 撤销",

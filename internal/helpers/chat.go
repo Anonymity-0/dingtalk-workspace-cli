@@ -1064,6 +1064,20 @@ func firstStringField(data map[string]any, keys ...string) string {
 // ──────────────────────────────────────────────────────────
 
 func newChatCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/chat.json
+	// products.chat). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "chat",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理钉钉会话、群聊、群成员、机器人、消息检索与发送",
+			UseWhen: []string{
+				"请求涉及群聊管理、聊天记录、消息发送、会话设置或群机器人",
+			},
+			AvoidWhen: []string{
+				"邮件用 mail；开放平台应用/机器人建号发布用 dev；企业语义找人优先 aisearch person",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:     "chat",
 		Aliases: []string{"im"},

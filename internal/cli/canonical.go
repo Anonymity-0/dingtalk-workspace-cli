@@ -55,6 +55,20 @@ type FlagSpec struct {
 // surface has been removed. The command tree is now built from plugins
 // and static endpoint registration only.
 func NewMCPCommand(_ context.Context, _ CatalogLoader, _ executor.Runner, _ *pipeline.Engine) *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/mcp.json
+	// products.mcp). Catalog assembly stamps provenance contract_final.
+	RegisterProductDecl(ProductDecl{
+		ID: "mcp",
+		Selection: ProductSelectionDecl{
+			AgentSummary: "解析和管理当前身份可用的 MCP 服务连接信息",
+			UseWhen: []string{
+				"需要把钉钉 MCP 市场中的服务连接到支持 Streamable HTTP 的 Agent 或客户端",
+			},
+			AvoidWhen: []string{
+				"查询普通钉钉业务数据时使用对应产品命令，不要使用 mcp",
+			},
+		},
+	})
 	cmd := &cobra.Command{
 		Use:               "mcp",
 		Short:             "Canonical MCP-derived CLI surface (static mode)",

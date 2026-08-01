@@ -210,6 +210,20 @@ func findUnknownFlag(cmd *cobra.Command) string {
 }
 
 func newCalendarCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/calendar.json
+	// products.calendar). Catalog assembly stamps provenance contract_final.
+	cli.RegisterProductDecl(cli.ProductDecl{
+		ID: "calendar",
+		Selection: cli.ProductSelectionDecl{
+			AgentSummary: "管理日历本、日程、参与人、附件、会议室，并查询人员或会议室闲忙状态。",
+			UseWhen: []string{
+				"需要查询或管理钉钉日历、日程、参与人、会议室和闲忙信息时。",
+			},
+			AvoidWhen: []string{
+				"目标是聊天消息、待办或审批，而不是日历与日程资源时。",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "calendar",
 		Short: "日历日程 / 会议室 / 闲忙",
