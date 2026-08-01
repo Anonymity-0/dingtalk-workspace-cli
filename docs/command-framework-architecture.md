@@ -242,10 +242,14 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 
 ## 文件结构
 
-| 文件 | 职责 |
+| 文件 / 包 | 职责 |
 |------|------|
 | `internal/corecmd/corecmd.go` | 核心类型 + `New` 构建器 + 运行时管线 |
 | `internal/corecmd/contract_decl.go` | ContractDecl 载荷类型 + 声明完整性守卫 |
+| `internal/corecmd/contract/` | 契约 DTO（`SafetySpec` / `ParamDecl` / `ProductDecl` / `ContractFinalPayload`）；**无** Cobra-keyed Final store |
+| `internal/cli/runtimeannotate/` | `AnnotateRuntime*` 写注解；`corecmd` 可导入，**不得**反向依赖 `internal/cli` 根 |
+| `internal/cli/contractfinal/` | ContractFinal Cobra store + `RegisterRuntimeContractFinal` |
+| `internal/cli/homology/` | flag/help/schema 同源门禁（`HOM-*`） |
 | `internal/helpers/leaf.go` | LeafSpec 门面：`NewLeafCommand`（完全托管）+ `DeclareLeafMetadata`（声明元数据） |
 | `internal/shortcut/adapter.go` | FromShortcut 完整映射与 Risk 兼容边界 |
 | `internal/shortcut/runner.go` | RuntimeContext；live mount 委托 `corecmd.New(FromShortcut(s))` |
@@ -254,12 +258,12 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 
 声明即 review：代码中的 Contract 声明经过 code review 后直接投影为：
 
-- **Agent Runtime Schema** (dws.schema.* cobra annotations)
-- **Agent Metadata** (agent-metadata JSON, 消费方为 Agent 选择器)
-- **Catalog** (catalog.json, 命令注册表)
-- **Dry-run Capabilities** (声明自动索引为 reviewed 能力)
+- **Agent Runtime Schema**（`dws.schema.*` Cobra annotations；经 `runtimeannotate` / ContractFinal 嵌入）
+- **Catalog ToolSpec wire**（`internal/cli/schema_catalog/` = `catalog.json` + per-product `tools/<product>.json`；`dws schema` / `--all` / 完整 leaf 载荷）
+- **`schema_meta_index.json`**（CommandMeta 摘要；`ResolveMeta` / `SafetyForCLIPath` / leaf `--help` Safety 只读此索引）
+- **Dry-run Capabilities**（声明自动索引为 reviewed 能力）
 
-不再需要外部 hint 文件维护 selection/metadata/dry-run 信息。
+Agent selection / Safety 文案随 Catalog 生成时内存 inject，不落盘、不 embed；`schema_agent_metadata/` 与 `schema_hints/` 已退役。不再需要外部 hint 文件维护 selection/metadata/dry-run 信息。
 
 ## 设计原则
 

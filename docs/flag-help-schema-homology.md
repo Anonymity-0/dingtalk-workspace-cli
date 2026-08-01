@@ -42,6 +42,13 @@ command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 - 在声明体系里再挂「评审字段」并行权威；
 - 用 hints/registry 盖写已声明字段。
 
+**declare-vs-delivery 例外（Title / Description）**：构造期 `ContractDecl.Description` **必填**（声明证据），但这不是「declare = wire 最终值」。Catalog **交付**时：
+
+- **description**：有 Cobra Long → 交付 Long（provenance `cobra_help` / `cobra_help_preferred`）；无 Long → 交付声明（`contract_final`）。**Short 不进入 description**。
+- **title**：声明 `ContractDecl.Title` 优先，否则 Cobra Short，再 MCP；组装 stamp 真实 winner。
+
+这是一条权威链上的显式交付偏好，不是双权威（见 RFC §5.0.4）。
+
 迁移期未迁完的叶子可暂走旧组装路径；**新声明面不含 review_reason / reviewed 字段**。写命令未设 `Safety` 时，过渡期仍可用 `runtime_gate` annotate（`HOM-S2`）。
 
 **不采用**路径 B（以 `schema_mcp_metadata` 生成全部 CLI flag/help/schema）作为主权威。钉钉 MCP meta 不是飞书 OAPI：粒度与 CLI 特有语义（二选一、OmitEmpty、ConstParams、write guard）无法从裸 meta 推出；强行生成会违反「Schema 描述 CLI，不制造 CLI」。
@@ -155,6 +162,7 @@ NewLeafCommand(LeafSpec{
 | ToolSpec 组 | 权威类 | 框架声明字段 / 其它源 |
 |---|---|---|
 | Identity | 评审源 | `schema_command_registry` |
+| Display / Title / Description | 声明证据 + 交付偏好（非双权威） | **title**：ContractDecl 优先，否则 Cobra Short，再 MCP；**description**：构造期 Description 必填；Catalog 交付 Long→`cobra_help`，无 Long→`contract_final`；**Short 不进 description**（RFC §5.0.4） |
 | Parameters.`name/type/required/default/property` | **声明**（或同形 annotate） | `Flags` / `Bind` |
 | Parameters.`description` | 声明 usage（`FlagSpec.Usage` / ParamDecl） | `schema_hints/` 已退役；不得用 overlay 改 type/required/default |
 | Parameters.`interface_*` | 评审源 | MCP meta / bindings；**不造 flag** |

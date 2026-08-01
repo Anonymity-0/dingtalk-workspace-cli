@@ -1211,15 +1211,16 @@ func embedContractDecl(cmd *cobra.Command, spec Spec) {
 // (product code).
 //
 // Title/Description stored on the payload are the declared Contract values
-// only. Catalog assembly may prefer Cobra Short/Long for the delivered text
-// and must stamp provenance to the real winner (cobra_help vs contract_final).
+// only. Catalog assembly may prefer Cobra Long for delivered description
+// (Short never enters description) and must stamp provenance to the real
+// winner (cobra_help vs contract_final). Declared Title still wins over Short.
 func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl ContractDecl, short, long string) {
 	if cmd == nil || decl.empty() {
 		return
 	}
 	// short/long remain in the signature so call sites keep passing Cobra prose;
-	// Catalog assembly (not this store) prefers Long/Short when stamping
-	// description/title provenance.
+	// Catalog assembly (not this store) prefers Long for description and may
+	// use Short only as a title fallback after declared Title.
 	_, _ = short, long
 	// Reuse NewCommand's completeness rules so bind-time attaches cannot ship
 	// a partial declaration that would only fail in generated artifacts.
