@@ -90,7 +90,8 @@ func embeddedSchemaCatalog() loadedSchemaCatalog {
 
 // materializeEmbeddedSchemaCatalogMaps fills Snapshot.Catalog/Tools from the
 // typed Registry for callers that still need the untyped delivery maps.
-// Production ResolveMeta does not call this; cold start stays on the typed path.
+// Production ResolveMeta does not call this (or embeddedSchemaCatalog); it
+// reads schema_meta_index.json instead.
 func materializeEmbeddedSchemaCatalogMaps() (loadedSchemaCatalog, error) {
 	_ = embeddedSchemaCatalog()
 	if runtimeEmbeddedSchemaCatalogErr != nil {
@@ -385,9 +386,9 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 	// check-generated-drift.sh, which regenerates and byte-compares the whole
 	// artifact set — strictly stronger than this hash, since it also catches a
 	// shard set that is self-consistent but stale. Recomputing it here re-marshals
-	// every decoded map (measured: 86.9ms, 65MB, 997k allocs) on each invocation
-	// that touches ResolveMeta, to re-derive a fact about an embedded artifact
-	// that cannot change at runtime.
+	// every decoded map (measured: 86.9ms, 65MB, 997k allocs) on each full
+	// Catalog load, to re-derive a fact about an embedded artifact that cannot
+	// change at runtime. ResolveMeta no longer loads this path.
 	registry, index, err := schemaRegistryFromSnapshot(snapshot)
 	if err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("load typed Schema registry: %w", err)

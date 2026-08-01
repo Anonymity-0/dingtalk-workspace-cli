@@ -21,10 +21,10 @@ import (
 )
 
 // CommandSafety holds the safety metadata for a CLI command, resolved at
-// runtime from the embedded schema catalog. This is a read-only view over the
-// catalog — NOT a second safety source. The catalog remains the single
-// authoritative reviewed source; this struct merely provides typed access for
-// consumers (help rendering, skill generation).
+// runtime via ResolveMeta (embedded schema_meta_index.json). This is a
+// read-only view — NOT a second safety source. The Catalog remains the
+// authoritative reviewed ToolSpec wire; the meta index is its Identity /
+// Safety / Selection projection for help and selection consumers.
 type CommandSafety struct {
 	Effect       string // read / write / destructive
 	Risk         string // low / medium / high

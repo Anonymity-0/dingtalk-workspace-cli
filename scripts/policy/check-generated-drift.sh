@@ -30,6 +30,8 @@ cp internal/cli/param_concepts.json "$concepts_guard"
 cp internal/cli/param_concepts.schema.json "$concepts_schema_guard"
 catalog_tmp="$tmp/schema_catalog"
 catalog_tmp_second="$tmp/schema_catalog-second"
+meta_index_tmp="$tmp/schema_meta_index.json"
+meta_index_tmp_second="$tmp/schema_meta_index-second.json"
 param_aliases_tmp="$tmp/param_aliases_generated.go"
 param_aliases_tmp_second="$tmp/param_aliases_generated-second.go"
 
@@ -43,11 +45,13 @@ fi
 
 "$catalog_generator" \
 	-root . \
-	-output "$catalog_tmp"
+	-output "$catalog_tmp" \
+	-meta-index "$meta_index_tmp"
 
 "$catalog_generator" \
 	-root . \
-	-output "$catalog_tmp_second"
+	-output "$catalog_tmp_second" \
+	-meta-index "$meta_index_tmp_second"
 
 "$param_aliases_generator" \
 	-root . \
@@ -84,10 +88,23 @@ if ! diff -qr "$catalog_tmp" "$catalog_tmp_second" >/dev/null; then
 	exit 1
 fi
 
+if ! cmp -s "$meta_index_tmp" "$meta_index_tmp_second"; then
+	printf '%s\n' 'generated drift: consecutive CommandMeta index generations are not byte-identical' >&2
+	diff -u "$meta_index_tmp" "$meta_index_tmp_second" || true
+	exit 1
+fi
+
 if ! diff -qr internal/cli/schema_catalog "$catalog_tmp" >/dev/null; then
 	printf '%s\n' 'generated drift: internal/cli/schema_catalog is stale' >&2
 	printf '%s\n' 'run: make generate-schema' >&2
 	diff -ru internal/cli/schema_catalog "$catalog_tmp" || true
+	exit 1
+fi
+
+if ! cmp -s internal/cli/schema_meta_index.json "$meta_index_tmp"; then
+	printf '%s\n' 'generated drift: internal/cli/schema_meta_index.json is stale' >&2
+	printf '%s\n' 'run: make generate-schema' >&2
+	diff -u internal/cli/schema_meta_index.json "$meta_index_tmp" || true
 	exit 1
 fi
 

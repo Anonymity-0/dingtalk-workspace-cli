@@ -4,7 +4,8 @@
 // Package catalogcodegen is a throwaway feasibility probe: it measures what it
 // costs to store one product's Schema catalog as compiled-in Go literals rather
 // than embedded JSON, which is how internal/shortcut stores its 376 definitions
-// (measured at 1.9ms/3MB versus the catalog's 1400ms/740MB).
+// (measured at 1.9ms/3MB versus the full catalog assemble ~294–360ms/~175MB;
+// ResolveMeta itself now uses schema_meta_index.json instead).
 //
 // The struct shape mirrors the runtime-consumed subset of schemaToolWire. It is
 // structurally equivalent rather than shared, because the real type is

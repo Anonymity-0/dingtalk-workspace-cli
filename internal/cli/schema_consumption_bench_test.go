@@ -20,25 +20,26 @@ import (
 	"testing"
 )
 
-// These benchmarks attribute the Schema consumption cost that ResolveMeta pays
-// on its first hit. Both production entry points are sync.Once memoized, so the
-// benchmarks call the underlying work directly — measuring the exported wrappers
-// would time one real run followed by N no-ops.
+// These benchmarks attribute Schema consumption cost. sync.Once wrappers are
+// memoized, so cold-path benches call the underlying work directly — measuring
+// the exported wrappers would time one real run followed by N no-ops.
 //
 // Cold-start attribution (Apple M3 Pro, benchtime=3x, 2026-08-01):
 //
-// Before (map[string]any + per-tool remarshal + typed round-trip):
+// Full Catalog (dws schema / --all only — not ResolveMeta):
 //
-//	BenchmarkAssembleEmbeddedSchemaCatalog     ~1091ms  732MB  9.6M allocs
-//	BenchmarkCatalogStageDecodeShards           ~154ms  145MB  1.4M allocs
-//	BenchmarkCatalogStageTypedRegistry          ~892ms  582MB  8.1M allocs
+//	BenchmarkAssembleEmbeddedSchemaCatalog      ~294–360ms  ~175MB  ~1.2M allocs
+//	BenchmarkCatalogStageDecodeTyped            ~160–173ms  ~117MB
+//	BenchmarkCatalogStageTypedRegistryFromWire  ~80–120ms    ~40MB
 //
-// After (JSON → schemaToolWire → ToolSpec; round-trip off in production):
+// CommandMeta summary index (ResolveMeta / leaf --help Safety):
 //
-//	BenchmarkAssembleEmbeddedSchemaCatalog      ~294ms  174MB  1.2M allocs  (~3.7× / ~4.2× / ~7.8×)
-//	BenchmarkCatalogStageDecodeTyped            ~173ms  117MB  0.55M allocs
-//	BenchmarkCatalogStageTypedRegistryFromWire  ~120ms   40MB  0.45M allocs
-//	BenchmarkResolveMetaSteadyState             ~222ns    0B   0 allocs
+//	BenchmarkResolveMetaFirstHit                ~5.8ms  ~3.5MB  ~18k allocs
+//	BenchmarkResolveMetaSteadyState             ~24–167ns    0B  0 allocs
+//
+// Historical (pre typed-wire / pre meta index): AssembleEmbedded ~1091ms/732MB;
+// first ResolveMeta paid that full Catalog cost. loadcost_bench_test.go's old
+// ~1.4s/740MB figure is obsolete.
 //
 // Package tests still enable validateSnapshotTypedRoundTrip via
 // schema_snapshot_roundtrip_test.go; benches force it off so they measure the
@@ -92,8 +93,8 @@ func BenchmarkSchemaRegistryFromSnapshot(b *testing.B) {
 	}
 }
 
-// BenchmarkBuildMetaByCLIPath measures turning the decoded snapshot into the
-// ResolveMeta lookup map, isolated from the decode above.
+// BenchmarkBuildMetaByCLIPath measures projecting CommandMeta from a decoded
+// Catalog registry (consistency-gate path), isolated from Catalog decode.
 func BenchmarkBuildMetaByCLIPath(b *testing.B) {
 	loaded := embeddedSchemaCatalog()
 	if len(loaded.Registry.Products) == 0 {
@@ -108,11 +109,30 @@ func BenchmarkBuildMetaByCLIPath(b *testing.B) {
 	}
 }
 
+// BenchmarkResolveMetaFirstHit measures decoding the committed CommandMeta
+// summary index into the ResolveMeta lookup. This is the cold cost leaf
+// --help Safety / ResolveMeta pay; it must not assemble the full Catalog.
+func BenchmarkResolveMetaFirstHit(b *testing.B) {
+	if len(embeddedSchemaMetaIndexJSON) == 0 {
+		b.Skip("embedded meta index unavailable")
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexJSON)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if _, ok := lookup["dev app delete"]; !ok {
+			b.Fatal("first-hit lookup missed")
+		}
+	}
+}
+
 // BenchmarkResolveMetaSteadyState measures a warm lookup, i.e. what every
 // --help Safety annotation costs once the map exists.
 func BenchmarkResolveMetaSteadyState(b *testing.B) {
 	if _, ok := ResolveMeta("dev app delete"); !ok {
-		b.Skip("embedded catalog unavailable")
+		b.Skip("embedded meta index unavailable")
 	}
 	b.ResetTimer()
 	b.ReportAllocs()

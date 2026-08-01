@@ -134,9 +134,10 @@ mock-mcp-smoke:
 test-schema-agent-examples:
 	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestManualAgentExamplesDryRun$$'
 
-# generate-schema rebuilds schema_catalog/ (+ param aliases). Agent metadata is
-# injected in-memory during catalog generation; schema_agent_metadata/ is retired
-# and must not remain as a delivery artifact (any temp write is removed below).
+# generate-schema rebuilds schema_catalog/, schema_meta_index.json (+ param
+# aliases). Agent metadata is injected in-memory during catalog generation;
+# schema_agent_metadata/ is retired and must not remain as a delivery artifact
+# (any temp write is removed below).
 generate-schema:
 	@set -e; \
 	registry_guard=$$(mktemp -d); \
@@ -170,7 +171,8 @@ generate-schema:
 generate-schema-catalog:
 	$(GO) run -a ./internal/generator/cmd_schema_catalog \
 		-root . \
-		-output internal/cli/schema_catalog
+		-output internal/cli/schema_catalog \
+		-meta-index internal/cli/schema_meta_index.json
 	@rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json
 
 fetch-mcp-metadata:

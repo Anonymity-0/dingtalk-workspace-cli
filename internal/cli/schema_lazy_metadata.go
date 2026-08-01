@@ -8,6 +8,7 @@ package cli
 // parsed for the first time.
 type SchemaMetadataLoadCounts struct {
 	Catalog          uint64
+	MetaIndex        uint64
 	AgentMetadata    uint64
 	MCPMetadata      uint64
 	ParameterBinding uint64
@@ -18,6 +19,7 @@ type SchemaMetadataLoadCounts struct {
 func RuntimeSchemaMetadataLoadCounts() SchemaMetadataLoadCounts {
 	return SchemaMetadataLoadCounts{
 		Catalog:          runtimeEmbeddedSchemaCatalogLazyLoadCount.Load(),
+		MetaIndex:        runtimeEmbeddedSchemaMetaIndexLazyCount.Load(),
 		AgentMetadata:    runtimeEmbeddedAgentMetadataLazyLoadCount.Load(),
 		MCPMetadata:      runtimeEmbeddedMCPMetadataLazyLoadCount.Load(),
 		ParameterBinding: runtimeSchemaParameterBindingsLazyLoadCount.Load(),

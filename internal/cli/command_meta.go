@@ -17,8 +17,10 @@
 // of the 6 generation layers a field comes from.
 //
 // This is the "simple consumption" half of the generation/consumption split:
-//   - Generation (gen.go + internal/generator/): 6 inputs → catalog snapshot.
-//   - Consumption (this file): catalog snapshot → ResolveMeta → CommandMeta.
+//   - Generation (gen.go + internal/generator/): 6 inputs → catalog snapshot
+//     + schema_meta_index.json (CommandMeta summary).
+//   - Consumption (this file): meta index → ResolveMeta → CommandMeta.
+//     Full embeddedSchemaCatalog() is reserved for dws schema / ToolSpec paths.
 
 package cli
 
@@ -59,9 +61,16 @@ var (
 )
 
 // initMetaByCLIPath builds the cli_path → CommandMeta lookup from the embedded
-// catalog. Runs once (sync.Once); the catalog is already decoded at package init.
+// CommandMeta summary index. It does not decode the full schema_catalog/.
 func initMetaByCLIPath() {
-	metaByCLIPath = buildMetaByCLIPath(embeddedSchemaCatalog())
+	runtimeEmbeddedSchemaMetaIndexLazyCount.Add(1)
+	lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexJSON)
+	if err != nil {
+		runtimeEmbeddedSchemaMetaIndexErr = err
+		metaByCLIPath = map[string]CommandMeta{}
+		return
+	}
+	metaByCLIPath = lookup
 }
 
 // buildMetaByCLIPath constructs the lookup from a loaded catalog.
@@ -173,7 +182,10 @@ func registerCommandMetaAliases(lookup map[string]CommandMeta, metas []CommandMe
 // ResolveMeta returns the complete metadata for a command identified by its CLI
 // path (e.g. "dev app delete") or one of its compat aliases (e.g. "report list"
 // for "report inbox list"). Returns ok=false for commands not in the embedded
-// catalog (utility commands, hidden commands, shortcuts).
+// meta index (utility commands, hidden commands, shortcuts).
+//
+// ResolveMeta reads schema_meta_index.json only; it never triggers the full
+// embeddedSchemaCatalog() decode used by dws schema / --all.
 func ResolveMeta(cliPath string) (CommandMeta, bool) {
 	metaByCLIPathOnce.Do(initMetaByCLIPath)
 	m, ok := metaByCLIPath[strings.TrimSpace(cliPath)]

@@ -40,17 +40,20 @@ func main() {
 	var rootPath string
 	var surfacePath string
 	var outputPath string
+	var metaIndexPath string
 	flag.StringVar(&rootPath, "root", ".", "Repository root used to protect Schema generator inputs")
 	flag.StringVar(&surfacePath, "surface", "", "Deprecated compatibility input relative to --root; when set it must equal the embedded reviewed CommandRegistry")
 	flag.StringVar(&outputPath, "output", "internal/cli/schema_catalog", "Output directory for the split embedded schema catalog (catalog.json + tools/<product>.json)")
+	flag.StringVar(&metaIndexPath, "meta-index", "", "Output path for CommandMeta summary index JSON (default: sibling schema_meta_index.json next to --output)")
 	flag.Parse()
 	resolvedSurfacePath := resolveCatalogRootPath(rootPath, surfacePath)
-	if err := validateCatalogOutputIsolation(rootPath, outputPath, resolvedSurfacePath); err != nil {
+	resolvedMetaIndexPath := resolveSchemaMetaIndexPath(outputPath, metaIndexPath)
+	if err := validateCatalogOutputIsolation(rootPath, outputPath, resolvedMetaIndexPath, resolvedSurfacePath); err != nil {
 		fail(err)
 	}
 
 	root := app.NewSchemaSourceRootCommand()
-	if err := generateSchemaCatalog(rootPath, root, resolvedSurfacePath, outputPath); err != nil {
+	if err := generateSchemaCatalog(rootPath, root, resolvedSurfacePath, outputPath, resolvedMetaIndexPath); err != nil {
 		fail(err)
 	}
 }
@@ -63,7 +66,15 @@ func resolveCatalogRootPath(rootPath, path string) string {
 	return filepath.Join(rootPath, path)
 }
 
-func validateCatalogOutputIsolation(rootPath, outputPath, surfacePath string) error {
+func resolveSchemaMetaIndexPath(outputPath, metaIndexPath string) string {
+	metaIndexPath = strings.TrimSpace(metaIndexPath)
+	if metaIndexPath != "" {
+		return metaIndexPath
+	}
+	return filepath.Join(filepath.Dir(outputPath), "schema_meta_index.json")
+}
+
+func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surfacePath string) error {
 	inputs := []outputguard.Input{
 		{Name: "main Skill metadata source", Path: "skills/mono/SKILL.md"},
 		{Name: "product Skill metadata source directory", Path: "skills/mono/references/products"},
@@ -77,12 +88,22 @@ func validateCatalogOutputIsolation(rootPath, outputPath, surfacePath string) er
 	if strings.TrimSpace(surfacePath) != "" {
 		inputs = append(inputs, outputguard.Input{Name: "deprecated Registry compatibility input", Path: surfacePath})
 	}
-	if err := outputguard.Validate(rootPath, inputs, []outputguard.Target{{Name: "--output", Path: outputPath, Directory: true}}); err != nil {
+	targets := []outputguard.Target{
+		{Name: "--output", Path: outputPath, Directory: true},
+		{Name: "--meta-index", Path: metaIndexPath},
+	}
+	if err := outputguard.Validate(rootPath, inputs, targets); err != nil {
+		return err
+	}
+	if err := outputguard.ValidateRepoTargetAllowlist(rootPath,
+		outputguard.Target{Name: "--output", Path: outputPath, Directory: true},
+		"internal/cli/schema_catalog",
+	); err != nil {
 		return err
 	}
 	return outputguard.ValidateRepoTargetAllowlist(rootPath,
-		outputguard.Target{Name: "--output", Path: outputPath, Directory: true},
-		"internal/cli/schema_catalog",
+		outputguard.Target{Name: "--meta-index", Path: metaIndexPath},
+		"internal/cli/schema_meta_index.json",
 	)
 }
 
@@ -91,8 +112,8 @@ func validateCatalogOutputIsolation(rootPath, outputPath, surfacePath string) er
 // --surface flag is validated against the embedded registry and can never
 // replace it as an input source. Agent metadata is generated in-memory and
 // injected for assembly; schema_agent_metadata/ is not a delivery artifact.
-func generateSchemaCatalog(rootPath string, root *cobra.Command, surfacePath, outputPath string) error {
-	return generateSchemaCatalogWithResolver(rootPath, root, surfacePath, outputPath, cli.ResolveSchemaBuild)
+func generateSchemaCatalog(rootPath string, root *cobra.Command, surfacePath, outputPath, metaIndexPath string) error {
+	return generateSchemaCatalogWithResolver(rootPath, root, surfacePath, outputPath, metaIndexPath, cli.ResolveSchemaBuild)
 }
 
 type schemaBuildResolver func(*cobra.Command) (cli.ResolvedSchemaBuild, error)
@@ -101,13 +122,14 @@ type schemaBuildResolver func(*cobra.Command) (cli.ResolvedSchemaBuild, error)
 // contract observable in tests. Production passes cli.ResolveSchemaBuild; the
 // returned Effective/Bound/SchemaRegistry views then travel together through
 // every gate and the final serializer.
-func generateSchemaCatalogWithResolver(rootPath string, root *cobra.Command, surfacePath, outputPath string, resolve schemaBuildResolver) error {
+func generateSchemaCatalogWithResolver(rootPath string, root *cobra.Command, surfacePath, outputPath, metaIndexPath string, resolve schemaBuildResolver) error {
 	if root == nil {
 		return fmt.Errorf("schema source root is nil")
 	}
 	if resolve == nil {
 		return fmt.Errorf("schema build resolver is nil")
 	}
+	metaIndexPath = resolveSchemaMetaIndexPath(outputPath, metaIndexPath)
 	if err := validateDeprecatedSurface(surfacePath); err != nil {
 		return err
 	}
@@ -132,8 +154,32 @@ func generateSchemaCatalogWithResolver(rootPath string, root *cobra.Command, sur
 	if err := writeSchemaCatalogShards(snapshot, outputPath); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "generated schema catalog: output=%s registry_commands=%d tools=%d products=%d registry_hash=%s source_hash=%s\n",
-		outputPath, resolved.CommandCount(), len(snapshot.Tools), countSchemaCatalogProducts(snapshot), snapshot.SurfaceHash, snapshot.SourceHash)
+	if err := writeSchemaMetaIndex(snapshot, metaIndexPath); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(os.Stderr, "generated schema catalog: output=%s meta_index=%s registry_commands=%d tools=%d products=%d registry_hash=%s source_hash=%s\n",
+		outputPath, metaIndexPath, resolved.CommandCount(), len(snapshot.Tools), countSchemaCatalogProducts(snapshot), snapshot.SurfaceHash, snapshot.SourceHash)
+	return nil
+}
+
+func writeSchemaMetaIndex(snapshot cli.SchemaCatalogSnapshot, outputPath string) error {
+	index, err := cli.BuildSchemaMetaIndex(snapshot)
+	if err != nil {
+		return fmt.Errorf("build schema meta index: %w", err)
+	}
+	if err := cli.ValidateSchemaMetaIndexAgainstSnapshot(index, snapshot); err != nil {
+		return fmt.Errorf("validate schema meta index against catalog: %w", err)
+	}
+	encoded, err := cli.EncodeSchemaMetaIndex(index)
+	if err != nil {
+		return err
+	}
+	if err := makeCatalogDirectory(filepath.Dir(outputPath), 0o755); err != nil {
+		return fmt.Errorf("create schema meta index directory: %w", err)
+	}
+	if err := writeCatalogFile(outputPath, encoded, 0o644); err != nil {
+		return fmt.Errorf("write schema meta index: %w", err)
+	}
 	return nil
 }
 

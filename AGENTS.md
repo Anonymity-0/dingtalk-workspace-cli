@@ -12,9 +12,10 @@ unrelated work, and use `gofmt` for every modified Go file.
 - Check generated drift: `./scripts/policy/check-generated-drift.sh`
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
 
-Generated Schema JSON is committed under `schema_catalog/` only (`go:embed`).
-Change its source inputs and generators, then regenerate; do not hand-edit
-generated Catalog files. `schema_agent_metadata/` is retired: if that directory
+Generated Schema JSON is committed under `schema_catalog/` (ToolSpec wire) and
+`schema_meta_index.json` (CommandMeta summary for ResolveMeta), both
+`go:embed`. Change source inputs and generators, then regenerate; do not
+hand-edit generated Catalog or meta-index files. `schema_agent_metadata/` is retired: if that directory
 (or `schema_agent_metadata_audit.json`) is present, policy fails.
 `internal/cli/schema_command_registry.json` is different: it is a reviewed
 `CommandRegistry` source, not a generated snapshot. It is the single reviewed
@@ -81,13 +82,16 @@ The Schema data flow is one way:
    └─ internal/cli/schema_catalog/
       (catalog.json + tools/<product>.json; split per product so
        concurrent feature PRs only rewrite their own shard)
-      └─ dws schema list/product/group/leaf/--all
+   └─ internal/cli/schema_meta_index.json
+      (CommandMeta summary for ResolveMeta / leaf --help Safety)
+   └─ dws schema list/product/group/leaf/--all
 
 7. Runtime consumption (unified API)
    ResolveMeta(cliPath) → CommandMeta{Identity, Safety, Selection}
    └─ internal/cli/command_meta.go
-   └─ all consumers (help, schema, agent, skill-gen) call this one function
-   └─ backed by embedded catalog (sync.Once lazy map, O(1) lookup)
+   └─ help / agent / skill-gen call this one function
+   └─ backed by embedded schema_meta_index.json (sync.Once, O(1))
+   └─ full ToolSpec / dws schema still use embedded schema_catalog/
 ```
 
 After binding there is no second identity source and no identity precedence
@@ -123,6 +127,7 @@ The Schema system has two physically separated processes:
   metadata + parameter bindings + reviewed parameter concepts + cobra tree).
   `schema_hints/` is fully retired and must not reappear.
 - Output (delivery): `schema_catalog/` (per-product shards, `go:embed`) +
+  `schema_meta_index.json` (CommandMeta summary) +
   `param_aliases_generated.go`. `schema_agent_metadata/` must not reappear.
 - Refresh MCP metadata: `make fetch-mcp-metadata` (iterates 26 MCP server
   endpoints, merges with previous data for cross-server interface_ref).
@@ -132,9 +137,10 @@ The Schema system has two physically separated processes:
 **Consumption** (runtime, fast, read-only, unified API):
 - Entry point: `ResolveMeta(cliPath) → CommandMeta{Identity, Safety, Selection}`
   in `internal/cli/command_meta.go`.
-- Backed by embedded catalog (`embeddedSchemaCatalog()`, sync.Once, O(1) map).
+- Backed by embedded `schema_meta_index.json` (sync.Once, O(1) map). Full
+  `embeddedSchemaCatalog()` loads only for `dws schema` / `--all` / ToolSpec.
 - Consumers: `--help` (Safety annotation via `RenderSafetyAnnotation`),
-  `dws schema`, agent selection, future skill generation.
+  agent selection, future skill generation; `dws schema` uses the Catalog.
 - `SafetyForCLIPath` delegates to `ResolveMeta` (backward compatible).
 
 This split is architecturally isomorphic to Lark's typed metadata registry,

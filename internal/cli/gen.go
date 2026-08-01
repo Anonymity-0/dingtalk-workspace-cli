@@ -30,10 +30,11 @@
 // in-memory and does not write or embed that intermediate JSON directory.
 //
 // Generation outputs (embedded at build):
-//   - schema_catalog/                      per-product catalog shards
+//   - schema_catalog/                      per-product catalog shards (ToolSpec wire)
+//   - schema_meta_index.json               CommandMeta summary for ResolveMeta
 //   - param_aliases_generated.go           per-command parameter normalization
 
 package cli
 
-//go:generate go run -a ../generator/cmd_schema_catalog -root ../.. -output schema_catalog
+//go:generate go run -a ../generator/cmd_schema_catalog -root ../.. -output schema_catalog -meta-index schema_meta_index.json
 //go:generate go run ../generator/cmd_param_aliases -root ../.. -output param_aliases_generated.go

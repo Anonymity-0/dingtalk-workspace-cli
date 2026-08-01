@@ -12,8 +12,9 @@ import (
 // BenchmarkShortcutCommands measures the Go-literal storage model: the 376
 // shortcut definitions are compiled-in struct literals registered from init(),
 // so there is no parse step at all — this times only turning them into the Cobra
-// tree. It is the comparison point for the embedded JSON catalog, whose first
-// ResolveMeta hit spends ~1.4s and ~740MB decoding.
+// tree. ResolveMeta no longer pays full Catalog decode (~294–360ms / ~175MB);
+// it reads schema_meta_index.json (BenchmarkResolveMetaFirstHit). Full Catalog
+// assemble remains the dws schema / --all path.
 func BenchmarkShortcutCommands(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
