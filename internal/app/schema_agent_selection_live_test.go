@@ -133,15 +133,11 @@ func manualAgentSelectionLiveFixture(t testing.TB) (cli.ManualAgentSelectionFixt
 	if err != nil {
 		t.Fatalf("BindEffectiveCommandRegistry() error = %v", err)
 	}
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
+	fixture, _, err := cli.BuildAgentSelectionEvalFixture(bound)
 	if err != nil {
-		t.Fatalf("LoadAgentHintsFromSelectionForValidation() error = %v", err)
+		t.Fatalf("BuildAgentSelectionEvalFixture() error = %v", err)
 	}
-	fixture, _, err := cli.BuildManualAgentSelectionEvalFixture(bound, hints)
-	if err != nil {
-		t.Fatalf("BuildManualAgentSelectionEvalFixture() error = %v", err)
-	}
-	return fixture, hints
+	return fixture, cli.ManualAgentHintSet{}
 }
 
 func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.ManualAgentSelectionCase) []cli.ManualAgentSelectionCase {

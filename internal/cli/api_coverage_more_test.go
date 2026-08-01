@@ -62,7 +62,7 @@ func TestCrossPlatformCoverageRuntimeAnnotationAPIsCoverage(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageRuntimeRegistriesAndSchemaHintsCoverage(t *testing.T) {
+func TestCrossPlatformCoverageRuntimeRegistriesCoverage(t *testing.T) {
 	originalConstraints := runtimeSchemaConstraintsByCanonical
 	originalParameters := runtimeSchemaParameterMetadataByCanonical
 	t.Cleanup(func() {
@@ -96,21 +96,6 @@ func TestCrossPlatformCoverageRuntimeRegistriesAndSchemaHintsCoverage(t *testing
 		t.Fatal("cloneRuntimeSchemaStringMap(nil) != nil")
 	}
 	assertPanics(t, func() { RegisterRuntimeSchemaParameterMetadata("sample.run", metadata) })
-
-	registry := newSchemaHintRegistry()
-	assertPanics(t, func() { registry.RegisterProduct("", nil) })
-	assertPanics(t, func() { registry.RegisterProduct("sample", map[string]ToolSchemaHint{"": {}}) })
-	registry.RegisterProduct(" sample ", map[string]ToolSchemaHint{"run": {Title: "Run"}, "other.path": {Title: "Other"}})
-	assertPanics(t, func() { registry.RegisterProduct("sample", map[string]ToolSchemaHint{"run": {}}) })
-	if _, ok := registry.Lookup(" "); ok {
-		t.Fatal("Lookup(empty) succeeded")
-	}
-	if hint, ok := registry.Lookup(" sample.run "); !ok || hint.Title != "Run" {
-		t.Fatalf("Lookup(sample.run) = %#v, %v", hint, ok)
-	}
-	if canonicalHintPath("sample", "") != "" || canonicalHintPath("sample", "other.path") != "other.path" || canonicalHintPath("sample", "run") != "sample.run" {
-		t.Fatal("canonicalHintPath mismatch")
-	}
 }
 
 func assertPanics(t *testing.T, fn func()) {

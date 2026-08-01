@@ -398,7 +398,7 @@ func TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance(t *
 	cmd := &cobra.Command{Use: "query"}
 	cmd.Flags().Bool("all", false, "fetch every page")
 
-	parameters, err := runtimeCommandParameterSpecs(cmd, "aitable.query_records", nil, nil, RuntimeSchemaConstraints{})
+	parameters, err := runtimeCommandParameterSpecs(cmd, "aitable.query_records", nil, RuntimeSchemaConstraints{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,7 +35,6 @@ type runtimeSchemaExclusionGroup struct {
 
 var (
 	completenessLoadExclusions = EmbeddedRuntimeSchemaExclusions
-	completenessApplyManual    = ApplyEmbeddedManualSchemaHints
 	completenessBuildEffective = BuildEffectiveCommandRegistry
 	completenessBindEffective  = BindEffectiveCommandRegistry
 	completenessRuntimeReport  = runtimeSchemaCompletenessFromBound
@@ -92,9 +91,6 @@ func EmbeddedRuntimeSchemaExclusions() ([]RuntimeSchemaExclusion, error) {
 // ValidateEmbeddedRuntimeSchemaCompleteness enforces the reviewed reverse
 // command-tree contract used by generation and CI.
 func ValidateEmbeddedRuntimeSchemaCompleteness(root *cobra.Command) error {
-	if _, err := completenessApplyManual(root); err != nil {
-		return err
-	}
 	effective, err := completenessBuildEffective(root)
 	if err != nil {
 		return err

@@ -45,23 +45,6 @@ func commandRegistryIdentityProvenance(command BoundCommandSpec) FieldProvenance
 				Selected:   &unselected,
 			})
 		}
-		if productID, toolName, reason, ok := runtimeManualSchemaIdentity(leaf); ok {
-			manualValue, _ := json.Marshal(productID + "." + toolName)
-			// A manual-only CommandSpec is already represented by the selected
-			// candidate above. Keep a second candidate only when manual review is
-			// corroborating a registry-owned identity.
-			if command.Source != "reviewed_manual_hint" {
-				unselected := false
-				candidates = append(candidates, FieldCandidateProvenance{
-					Value:        manualValue,
-					Source:       "reviewed_manual_hint",
-					SourceRef:    path,
-					Precedence:   "reviewed_manual",
-					ReviewReason: reason,
-					Selected:     &unselected,
-				})
-			}
-		}
 	}
 
 	appendEvidence(command.PrimaryCLIPath, command.PrimaryCommand)

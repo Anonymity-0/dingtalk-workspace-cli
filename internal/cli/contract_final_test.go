@@ -321,7 +321,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSafetyAnnotationFa
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalParameterResolutionError(t *testing.T) {
 	oldParameters := resolveRuntimeParameters
 	t.Cleanup(func() { resolveRuntimeParameters = oldParameters })
-	resolveRuntimeParameters = func(*cobra.Command, string, map[string]ParameterSchemaHint, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+	resolveRuntimeParameters = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 		return nil, errors.New("parameters failed")
 	}
 	entry := runtimeSchemaEntry{

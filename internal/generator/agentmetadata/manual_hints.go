@@ -9,8 +9,6 @@ package agentmetadata
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -244,12 +242,7 @@ func expectedCanonicalToolSet(opts Options) map[string]bool {
 }
 
 func validateSelectionAuthoringContracts(opts Options) error {
-	selectionRoot := filepath.Join(resolvePath(opts.Root, opts.HintsDir), "selection")
 	expectedTools := expectedCanonicalToolSet(opts)
-	// Declared tools carry their selection fields in the Contract final
-	// overlay (corecmd.SchemaDecl); they are exempt from hint-file coverage.
-	// Hint rows for them may still exist during migration, but are no longer
-	// required and never win over the declaration.
 	for canonical := range expectedTools {
 		bound, ok := opts.BoundCommands.ByCanonical[canonical]
 		if ok && cli.HasRuntimeContractFinal(bound.PrimaryCommand) {
@@ -257,33 +250,26 @@ func validateSelectionAuthoringContracts(opts Options) error {
 		}
 	}
 	expectedProducts := selectionHintCoverageProducts(opts.ProductIDs)
-	info, err := os.Stat(selectionRoot)
-	missing := err != nil || !info.IsDir()
-	if missing {
-		if selectionHintCoverageRequired(expectedProducts, expectedTools) {
-			return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
-		}
-		return nil
-	}
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS(selectionRoot))
-	if err != nil {
-		return fmt.Errorf("load selection Agent hints: %w", err)
-	}
-	if err := cli.ValidateManualAgentHintSet(hints, expectedProducts, expectedTools); err != nil {
-		return fmt.Errorf("validate selection Agent hints: %w", err)
-	}
-	if opts.MaxExamples > 0 {
-		for canonical, hint := range hints.Tools {
-			if len(hint.Examples) > opts.MaxExamples {
-				return fmt.Errorf("selection Agent hint %s has %d reviewed examples, exceeding max-examples=%d", canonical, len(hint.Examples), opts.MaxExamples)
+	if selectionHintCoverageRequired(expectedProducts, expectedTools) {
+		missingProducts := make([]string, 0)
+		for productID, include := range expectedProducts {
+			if include {
+				missingProducts = append(missingProducts, productID)
 			}
 		}
+		missingTools := make([]string, 0)
+		for tool, include := range expectedTools {
+			if include {
+				missingTools = append(missingTools, tool)
+			}
+		}
+		sort.Strings(missingProducts)
+		sort.Strings(missingTools)
+		return fmt.Errorf("ProductDecl/ContractFinal selection coverage incomplete: missing_products=%v missing_tools=%v", missingProducts, missingTools)
 	}
-	if err := cli.ValidateManualAgentHintExamples(opts.BoundCommands, hints); err != nil {
-		return fmt.Errorf("validate selection Agent hint examples: %w", err)
+	if len(opts.BoundCommands.Commands) == 0 {
+		return nil
 	}
-	if _, err := cli.ValidateManualAgentSelectionContract(opts.BoundCommands, hints); err != nil {
-		return fmt.Errorf("validate selection Agent selection contract: %w", err)
-	}
-	return nil
+	_, err := cli.ValidateAgentSelectionContract(opts.BoundCommands)
+	return err
 }

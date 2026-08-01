@@ -269,18 +269,8 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 
 	root := t.TempDir()
 	registry := commandRegistryProjection{CanonicalToolPaths: map[string]string{"sample.run": "sample run"}}
-	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "required Agent hint directory missing") {
-		t.Fatalf("missing selection/ error = %v", err)
-	}
-	selection := filepath.Join(root, "hints", "selection")
-	if err := os.MkdirAll(selection, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(selection, "sample.json"), []byte("{"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "load selection") {
-		t.Fatalf("selection load error = %v", err)
+	if err := validateSelectionHintInput(root, "", registry); err == nil || !strings.Contains(err.Error(), "ProductDecl/ContractFinal selection coverage incomplete") {
+		t.Fatalf("missing ContractFinal coverage error = %v", err)
 	}
 
 	abs := filepath.Join(t.TempDir(), "absolute")

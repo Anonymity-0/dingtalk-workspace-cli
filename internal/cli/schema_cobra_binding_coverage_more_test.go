@@ -160,9 +160,7 @@ func TestCrossPlatformCoverageCompatibilityLeafContractDependencyAndMetadataEdge
 	command.Flags().String("id", "", "id")
 	flag := command.Flags().Lookup("id")
 	flag.Annotations = map[string][]string{
-		runtimeSchemaManualParameterAnnotation: {"remove"},
-		runtimeSchemaManualReasonAnnotation:    {"remove"},
-		"keep":                                 {"value"},
+		"keep": {"value"},
 	}
 	metadata := RuntimeSchemaParameterMetadata{
 		Required:     []string{" id "},
@@ -360,10 +358,5 @@ func TestCrossPlatformCoverageCompatibilityPathAndHelperRemainingEdges(t *testin
 	incomplete := &cobra.Command{Annotations: map[string]string{runtimeSchemaProductAnnotation: "sample"}}
 	if err := validateCommandRegistryAnnotation(incomplete, "sample run", spec); err == nil || !strings.Contains(err.Error(), "incomplete native") {
 		t.Fatalf("incomplete annotation error = %v", err)
-	}
-	manual := &cobra.Command{}
-	annotateManualSchemaIdentity(manual, "other.run", "reason")
-	if err := validateCommandRegistryAnnotation(manual, "sample run", spec); err == nil || !strings.Contains(err.Error(), "manual identity") {
-		t.Fatalf("manual annotation error = %v", err)
 	}
 }

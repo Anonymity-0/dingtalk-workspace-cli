@@ -184,9 +184,9 @@ that works through `dws <path>` but cannot be found through the matching
 `dws schema` lookup is a contract failure unless it has a reviewed exact
 exclusion.
 
-Production `RegisterSchemaHints` maps must stay empty after ParamDecl
-migration. Temporary hint injection is allowed only inside unit-test fixtures
-that exercise precedence edges.
+`RegisterSchemaHints` / `ToolSchemaHint` overlays are fully removed. Parameter
+and selection facts must be declared on the owning leaf (`ParamDecl` /
+`Schema`) or via `ProductDecl`; do not reintroduce overlay registries.
 
 For Agent-authored selection edits:
 
@@ -222,8 +222,8 @@ Human-authored inputs:
    Contract/Safety (or remaining `runtime_gate` annotate) requires a user gate
    (for example `confirm_delete`, `typed_yes`, `confirm_dangerous`).
 3. **Parameter facts** are declared on the leaf (`ParamDecl` /
-   `Schema.Parameters` / FlagSpec). Do not add production
-   `RegisterSchemaHints` overlays or metadata tool parameter rows.
+   `Schema.Parameters` / FlagSpec). Do not reintroduce HintFile or
+   `RegisterSchemaHints` overlays.
 
 ### Authoring
 
@@ -364,14 +364,15 @@ Preserve all candidates and the selected source in provenance, and fail
 same-precedence conflicts rather than silently merging them.
 
 `required` is the exception. Cobra `MarkFlagRequired` is a hard floor: the
-final Agent projection must keep `required=true` and cannot be lowered by
-manual/hint overlays. Overlays may still raise an optional flag to required.
-`cli_required` continues to mirror the executable Cobra marker.
+final Agent projection must keep `required=true` and cannot be lowered by a
+lower-precedence source. A higher-precedence declaration may still raise an
+optional flag to required. `cli_required` continues to mirror the executable
+Cobra marker.
 
-For command text, reviewed `ToolSchemaHint` wins first, then command-specific
-Cobra Help, then MCP metadata. Generic RPC prose may remain an unselected
-provenance candidate (and parameter-level `interface_description`); it must not
-overwrite a specialized leaf's title or description.
+For command text, ContractFinal / native declaration wins first, then
+command-specific Cobra Help, then MCP metadata. Generic RPC prose may remain an
+unselected provenance candidate (and parameter-level `interface_description`);
+it must not overwrite a specialized leaf's title or description.
 
 For every delivered `ToolSpec` and `ParameterSpec` field, the provenance
 winner value must exactly equal the delivered value. Checking only source,

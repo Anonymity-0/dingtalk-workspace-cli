@@ -152,14 +152,7 @@ func manualAgentExampleShouldExerciseDryRun(execution cli.ManualAgentExampleExec
 
 func manualAgentExampleExecutionPlan(t testing.TB) cli.ManualAgentExampleExecutionPlan {
 	t.Helper()
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
-	if err != nil {
-		t.Fatalf("LoadAgentHintsFromSelectionForValidation() error = %v", err)
-	}
 	contractRoot := NewRootCommand()
-	if _, err := cli.ApplyEmbeddedManualSchemaHints(contractRoot); err != nil {
-		t.Fatalf("ApplyEmbeddedManualSchemaHints() error = %v", err)
-	}
 	effective, err := cli.BuildEffectiveCommandRegistry(contractRoot)
 	if err != nil {
 		t.Fatalf("BuildEffectiveCommandRegistry() error = %v", err)
@@ -175,7 +168,7 @@ func manualAgentExampleExecutionPlan(t testing.TB) cli.ManualAgentExampleExecuti
 	if err := cli.ValidateReviewedDryRunCapabilityDelivery(registry); err != nil {
 		t.Fatalf("ValidateReviewedDryRunCapabilityDelivery() error = %v", err)
 	}
-	plan, err := cli.BuildManualAgentExampleExecutionPlan(bound, registry, hints)
+	plan, err := cli.BuildAgentExampleExecutionPlan(bound, registry)
 	if err != nil {
 		t.Fatalf("BuildManualAgentExampleExecutionPlan() error = %v", err)
 	}

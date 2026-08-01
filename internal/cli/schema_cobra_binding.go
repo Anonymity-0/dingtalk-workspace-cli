@@ -159,14 +159,6 @@ func BindEffectiveCommandRegistry(root *cobra.Command, effective EffectiveComman
 		for _, alias := range item.Aliases {
 			bound.ByCLIPath[alias] = item
 		}
-		// Migrate reviewed hint facts onto undeclared leaves without replacing
-		// their Execute/RunE bodies. Already-declared ContractFinal (e.g. LeafSpec
-		// Schema) wins and is left untouched — execution stays the control variable.
-		if !HasRuntimeContractFinal(item.PrimaryCommand) {
-			if decl, ok := lookupSchemaHintDecl(item.CanonicalPath); ok {
-				attachSchemaHintDecl(item.PrimaryCommand, decl)
-			}
-		}
 		// Index Contract-declared dry_run capabilities at bind time: every
 		// process that resolves the command tree gets the reviewed set, not
 		// only processes that also run Schema assembly.
@@ -569,14 +561,6 @@ func effectiveCompatibilityFlagContracts(command *cobra.Command, canonicalPath s
 // binding order-independent while still exposing path-specific drift.
 func effectiveCompatibilityFlagAnnotations(flag *pflag.Flag, bindings map[string]string, metadata RuntimeSchemaParameterMetadata) map[string][]string {
 	annotations := cloneCompatibilityFlagAnnotations(flag.Annotations)
-	// Reviewed Manual Schema hints are canonical ToolSpec projection inputs,
-	// not executable facts owned by each Cobra path. They are intentionally
-	// attached to and resolved from the primary command once; a compatibility
-	// leaf remains a navigation view of that same ToolSpec. Keep every other
-	// native/typed annotation in the equivalence check so real command drift
-	// still fails closed.
-	delete(annotations, runtimeSchemaManualParameterAnnotation)
-	delete(annotations, runtimeSchemaManualReasonAnnotation)
 	if len(annotations) == 0 {
 		annotations = nil
 	}
@@ -896,12 +880,6 @@ func validateCommandRegistryAnnotation(command *cobra.Command, path string, spec
 		nativeCanonical := nativeProduct + "." + nativeTool
 		if nativeCanonical != spec.CanonicalPath {
 			return fmt.Errorf("schema command registry %s path %q conflicts with native annotation %s", spec.CanonicalPath, path, nativeCanonical)
-		}
-	}
-	if manualProduct, manualTool, _, ok := runtimeManualSchemaIdentity(command); ok {
-		manualCanonical := strings.TrimSpace(manualProduct + "." + manualTool)
-		if manualCanonical != spec.CanonicalPath {
-			return fmt.Errorf("schema command registry %s path %q conflicts with reviewed manual identity %s", spec.CanonicalPath, path, manualCanonical)
 		}
 	}
 	return nil

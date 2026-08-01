@@ -95,7 +95,6 @@ var (
 	embeddedSchemaCommandRegistryErr  error
 	loadReviewedCommandRegistry       = loadEmbeddedCommandRegistry
 	validateReviewedParameterBindings = ValidateEmbeddedSchemaParameterBindings
-	loadReviewedManualSchemaHints     = embeddedManualSchemaHints
 )
 
 func loadEmbeddedCommandRegistry() (CommandRegistry, error) {
@@ -496,11 +495,9 @@ func normalizeCommandAliases(aliases []string, primary string) []string {
 	return sortedUniqueStrings(normalized)
 }
 
-// BuildEffectiveCommandRegistry loads the reviewed registry and merges the
-// embedded manual additions. Manual entries may only name an exact existing
-// public runnable leaf. They may add a new command identity, but can never
-// rewrite an existing registry identity or create an alias; aliases belong in
-// the reviewed base CommandRegistry.
+// BuildEffectiveCommandRegistry loads the reviewed CommandRegistry. Manual
+// Schema hint overlays are retired; every public Schema identity must already
+// exist in the reviewed registry.
 func BuildEffectiveCommandRegistry(root *cobra.Command) (EffectiveCommandRegistry, error) {
 	if root == nil {
 		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")
@@ -512,94 +509,14 @@ func BuildEffectiveCommandRegistry(root *cobra.Command) (EffectiveCommandRegistr
 	if err != nil {
 		return EffectiveCommandRegistry{}, err
 	}
-	manual, err := loadReviewedManualSchemaHints()
-	if err != nil {
-		return EffectiveCommandRegistry{}, err
-	}
-	return buildEffectiveCommandRegistry(root, reviewed, manual)
+	return buildEffectiveCommandRegistry(root, reviewed)
 }
 
-func buildEffectiveCommandRegistry(root *cobra.Command, reviewed CommandRegistry, manual ManualSchemaHintSnapshot) (EffectiveCommandRegistry, error) {
+func buildEffectiveCommandRegistry(root *cobra.Command, reviewed CommandRegistry) (EffectiveCommandRegistry, error) {
 	if root == nil {
 		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")
 	}
-	if manual.Version != manualSchemaHintVersion {
-		return EffectiveCommandRegistry{}, fmt.Errorf("unsupported manual Schema hint version %d", manual.Version)
-	}
-	base, err := newCommandRegistry(reviewed.Commands)
-	if err != nil {
-		return EffectiveCommandRegistry{}, err
-	}
-	commands := append([]CommandSpec(nil), base.Commands...)
-	byCanonical := base.ByCanonical
-	byPath := base.ByCLIPath
-	seenManualPaths := map[string]bool{}
-
-	for _, raw := range manual.Commands {
-		path := normalizeSchemaCLIPath(raw.CLIPath)
-		canonical := strings.TrimSpace(raw.CanonicalPath)
-		reason := strings.TrimSpace(raw.Reason)
-		if path == "" || strings.ContainsAny(path, "*?[]") {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint has invalid exact cli_path %q", raw.CLIPath)
-		}
-		if seenManualPaths[path] {
-			return EffectiveCommandRegistry{}, fmt.Errorf("duplicate manual Schema hint for %q", path)
-		}
-		seenManualPaths[path] = true
-		if !raw.Reviewed || reason == "" {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q is not reviewed or has no reason", path)
-		}
-		productID, _, ok := splitManualSchemaCanonicalPath(canonical)
-		if !ok {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q has invalid canonical_path %q", path, canonical)
-		}
-		match, resolveErr := resolveExactCobraPath(root, path)
-		if resolveErr != nil {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q cannot be resolved exactly: %w", path, resolveErr)
-		}
-		command := match.Command
-		if command == nil {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q does not resolve to an existing Cobra command", path)
-		}
-		if !publicRunnableSchemaLeaf(command) {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q must target a public runnable Cobra leaf", path)
-		}
-		namePath := normalizeSchemaCLIPath(strings.Join(commandPathParts(command), " "))
-		if match.UsedAlias {
-			nameSpec, nameExists := byPath[namePath]
-			if !nameExists {
-				return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q uses a Cobra alias, but real command path %q is not present in reviewed CommandRegistry", path, namePath)
-			}
-			if nameSpec.CanonicalPath != canonical {
-				return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q canonical path %q conflicts with real command path %q canonical path %q", path, canonical, namePath, nameSpec.CanonicalPath)
-			}
-		}
-
-		pathSpec, pathExists := byPath[path]
-		canonicalSpec, canonicalExists := byCanonical[canonical]
-		if pathExists && pathSpec.CanonicalPath != canonical {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q canonical path %q conflicts with command registry canonical path %q", path, canonical, pathSpec.CanonicalPath)
-		}
-		if pathExists {
-			continue
-		}
-		if canonicalExists {
-			return EffectiveCommandRegistry{}, fmt.Errorf("manual Schema hint %q cannot create an alias for %s; add the alias to the reviewed CommandRegistry", path, canonicalSpec.CanonicalPath)
-		}
-		commands = append(commands, CommandSpec{
-			CanonicalPath:   canonical,
-			SourceProductID: productID,
-			PrimaryCLIPath:  path,
-			Visibility:      SchemaVisibilityPublic,
-			Source:          "reviewed_manual_hint",
-			ReviewReason:    reason,
-		})
-		// Update the working indexes so later manual entries cannot collide.
-		added := commands[len(commands)-1]
-		byCanonical[canonical] = added
-		byPath[path] = added
-	}
-	return newEffectiveCommandRegistry(commands)
+	return newEffectiveCommandRegistry(reviewed.Commands)
 }
 
 func cloneCommandRegistry(registry CommandRegistry) CommandRegistry {

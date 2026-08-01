@@ -22,14 +22,8 @@ func boundTestCommandRegistry(root *cobra.Command) (BoundCommandRegistry, error)
 		}
 		path := normalizeSchemaCLIPath(strings.Join(commandPathParts(leaf), " "))
 		productID, toolName, source := runtimeSchemaAnnotations(leaf)
-		reason := ""
 		if productID == "" || toolName == "" {
-			var ok bool
-			productID, toolName, reason, ok = runtimeManualSchemaIdentity(leaf)
-			if !ok {
-				return
-			}
-			source = "reviewed_manual_hint"
+			return
 		}
 		canonical := productID + "." + toolName
 		grouped[canonical] = append(grouped[canonical], CommandSpec{
@@ -37,7 +31,7 @@ func boundTestCommandRegistry(root *cobra.Command) (BoundCommandRegistry, error)
 			SourceProductID: productID,
 			PrimaryCLIPath:  path,
 			Source:          defaultString(strings.TrimSpace(source), "test_registry"),
-			ReviewReason:    reason,
+			ReviewReason:    "test fixture native identity",
 		})
 	})
 

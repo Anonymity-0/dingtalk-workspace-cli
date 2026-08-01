@@ -43,9 +43,6 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 		t.Fatalf("ValidateEmbeddedRuntimeSchemaCompleteness() error = %v", err)
 	}
 	root = app.NewSchemaSourceRootCommand()
-	if _, err := cli.ApplyEmbeddedManualSchemaHints(root); err != nil {
-		t.Fatal(err)
-	}
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
 	if err != nil {
 		t.Fatal(err)
@@ -54,15 +51,11 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hints, err := cli.LoadAgentHintsFromSelectionForValidation(nil)
-	if err != nil {
-		t.Fatal(err)
+	if _, err := cli.ValidateAgentSelectionContract(bound); err != nil {
+		t.Fatalf("ValidateAgentSelectionContract() error = %v", err)
 	}
-	if _, err := cli.ValidateManualAgentSelectionContract(bound, hints); err != nil {
-		t.Fatalf("ValidateManualAgentSelectionContract() error = %v", err)
-	}
-	if _, _, err := cli.BuildManualAgentSelectionEvalFixture(bound, hints); err != nil {
-		t.Fatalf("BuildManualAgentSelectionEvalFixture() error = %v", err)
+	if _, _, err := cli.BuildAgentSelectionEvalFixture(bound); err != nil {
+		t.Fatalf("BuildAgentSelectionEvalFixture() error = %v", err)
 	}
 	if _, err := cli.ValidateEmbeddedManualAgentExampleDelivery(bound, registry); err != nil {
 		t.Fatalf("ValidateEmbeddedManualAgentExampleDelivery() error = %v", err)

@@ -203,15 +203,15 @@ JSON 输入契约、禁用旧 native materialization 符号，并从 Registry �
 实现中的参数字段顺序固定为：
 
 ```text
-reviewed manual > versioned binding > command constraint > typed metadata
-                > native/Cobra contract > ToolSchemaHint > MCP metadata
-                > inference/default
+versioned binding > command constraint > typed metadata
+                > native/Cobra contract (ParamDecl / ContractFinal)
+                > MCP metadata > inference/default
 ```
 
 命令 `title` / `description` 使用独立但同样确定的文本顺序：
 
 ```text
-reviewed ToolSchemaHint > command-specific Cobra Help > MCP metadata > inference
+ContractFinal / native declaration > command-specific Cobra Help > MCP metadata > inference
 ```
 
 因此多个 CLI leaf 复用同一个 RPC 时，通用 RPC 文案只能作为未选中的

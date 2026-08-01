@@ -40,7 +40,7 @@ func TestCrossPlatformCoverageMetadataMarshalAndProjectionEdges(t *testing.T) {
 		t.Fatal("unexpected tool projection succeeded")
 	}
 	if _, _, err := Generate(Options{
-		HintsDir:           "hints",
+		HintsDir:           "",
 		CanonicalToolPaths: map[string]string{"sample": "sample get"},
 		ToolPaths:          map[string]string{"sample": "sample get"},
 		ProductIDs:         map[string]bool{"sample": true},
@@ -483,93 +483,6 @@ func TestCrossPlatformCoverageMetadataParserConflictEdges(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageGenerateFromSourcesFailureEdges(t *testing.T) {
-	base := func(t *testing.T) (string, Options) {
-		t.Helper()
-		root := t.TempDir()
-		if err := os.MkdirAll(filepath.Join(root, "products"), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		writeManualFixtureFile(t, root, "empty.md", "# empty")
-		return root, Options{Root: root, ProductsDir: "products", SkillPath: "empty.md", IntentGuidePath: "empty.md"}
-	}
-
-	t.Run("danger rules", func(t *testing.T) {
-		root, opts := base(t)
-		opts.SkillPath = "skill.md"
-		writeManualFixtureFile(t, root, "skill.md", "## 危险操作确认\n| 产品 | 命令 | 风险 |\n|---|---|---|\n| `sample` | `get` | 删除 |\n| `sample` | `get` | 高风险写入 |")
-		if _, _, err := generateFromSources(opts); err == nil {
-			t.Fatal("conflicting danger source succeeded")
-		}
-	})
-
-	t.Run("examples", func(t *testing.T) {
-		root, opts := base(t)
-		opts.SkillPath = "skill.md"
-		writeManualFixtureFile(t, root, "skill.md", "## 危险操作确认\n| 产品 | 命令 | 风险 |\n|---|---|---|\n| `sample` | `delete` | 删除且不可逆 |")
-		body := "## 使用场景\n- 用户提到“delete” → `sample delete`\n\n```bash\n# 高风险需要确认\ndws sample delete\n```"
-		writeManualFixtureFile(t, root, "products/sample/guide.md", body)
-		if _, _, err := generateFromSources(opts); err == nil {
-			t.Fatal("conflicting example source succeeded")
-		}
-	})
-
-	t.Run("interface metadata", func(t *testing.T) {
-		root, opts := base(t)
-		opts.InterfaceMetadataPath = "interface.json"
-		writeManualFixtureFile(t, root, "interface.json", "{")
-		if _, _, err := generateFromSources(opts); err == nil {
-			t.Fatal("invalid interface metadata succeeded")
-		}
-	})
-
-	t.Run("projected count", func(t *testing.T) {
-		_, opts := base(t)
-		opts.ToolPaths = map[string]string{"sample.tool": "sample get"}
-		opts.SurfaceToolCount = 2
-		if _, _, err := generateFromSources(opts); err == nil {
-			t.Fatal("invalid projected count succeeded")
-		}
-	})
-
-	t.Run("reviewed delivery", func(t *testing.T) {
-		root := t.TempDir()
-		writeSelectionFixture(t, root, true, `["dws sample item search --query value"]`)
-		writeManualFixtureFile(t, root, "skills/mono/SKILL.md", "# empty")
-		writeManualFixtureFile(t, root, "skills/mono/references/intent-guide.md", "# empty")
-		if err := os.MkdirAll(filepath.Join(root, "skills/mono/references/products"), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		opts := selectionFixtureOptions(root)
-		opts.ToolPaths = map[string]string{"other.tool": "other get"}
-		opts.SurfaceToolCount = 1
-		if _, _, err := generateFromSources(opts); err == nil || !strings.Contains(err.Error(), "selection Agent delivery") {
-			t.Fatalf("reviewed delivery error = %v", err)
-		}
-	})
-
-	t.Run("interface disposition", func(t *testing.T) {
-		root := t.TempDir()
-		writeSelectionFixture(t, root, true, `["dws sample item search --query value"]`)
-		writeManualFixtureFile(t, root, "skills/mono/SKILL.md", "# empty")
-		writeManualFixtureFile(t, root, "skills/mono/references/intent-guide.md", "# empty")
-		if err := os.MkdirAll(filepath.Join(root, "skills/mono/references/products"), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		path := filepath.Join(root, "internal/cli/schema_hints/metadata/sample.json")
-		body, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		body = []byte(strings.Replace(string(body), `"runtime_gate":"none",`, `"runtime_gate":"none","interface_mode":"mcp","availability":"available",`, 1))
-		if err := os.WriteFile(path, body, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if _, _, err := generateFromSources(selectionFixtureOptions(root)); err == nil || !strings.Contains(err.Error(), "invalid final Agent interface disposition") {
-			t.Fatalf("interface disposition error = %v", err)
-		}
-	})
-}
 
 func TestCrossPlatformCoverageContractFinalDeclarationFailureEdges(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}

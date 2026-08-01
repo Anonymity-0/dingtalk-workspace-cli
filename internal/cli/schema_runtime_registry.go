@@ -19,7 +19,6 @@ type runtimeSchemaMetadataSources struct {
 }
 
 var (
-	resolveApplyManualSchemaHints    = ApplyEmbeddedManualSchemaHints
 	resolveEffectiveCommandRegistry  = BuildEffectiveCommandRegistry
 	resolveBoundCommandRegistry      = BindEffectiveCommandRegistry
 	resolveAssembleSchemaRegistry    = AssembleSchemaRegistryFromBound
@@ -76,16 +75,13 @@ func embeddedRuntimeSchemaMetadataSources() runtimeSchemaMetadataSources {
 }
 
 // ResolveSchemaBuild is the only assembly path from executable Cobra commands
-// and reviewed metadata into the typed Agent contract. It applies reviewed
-// manual annotations once, resolves identity once, binds Cobra once, and
-// assembles one SchemaRegistry. Catalog gates and serialization consume the
-// returned value directly; they never re-read annotations or merge sources.
+// and reviewed metadata into the typed Agent contract. It resolves identity
+// once, binds Cobra once, and assembles one SchemaRegistry from ContractFinal /
+// ProductDecl leaf declarations. Catalog gates and serialization consume the
+// returned value directly; they never re-read overlays or merge sources.
 func ResolveSchemaBuild(root *cobra.Command) (ResolvedSchemaBuild, error) {
 	if root == nil {
 		return ResolvedSchemaBuild{}, fmt.Errorf("resolve Schema build: root is nil")
-	}
-	if _, err := resolveApplyManualSchemaHints(root); err != nil {
-		return ResolvedSchemaBuild{}, fmt.Errorf("apply reviewed manual Schema hints: %w", err)
 	}
 	effective, err := resolveEffectiveCommandRegistry(root)
 	if err != nil {
@@ -207,15 +203,13 @@ func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchem
 func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)
-	hint := runtimeSchemaHintForEntry(entry)
 	embeddedMeta, _ := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
 	// Apply parameter declarations from the ContractFinalPayload before the
 	// resolver reads them. The decls were put there by AttachSchema at
 	// DeclareLeafMetadata time; now that all flags exist on the fully-built
-	// command tree, they can be emitted as dws.schema.* annotations (rank
-	// native_annotation 620, outranking tool_schema_hint 500).
+	// command tree, they can be emitted as dws.schema.* annotations.
 	ApplyParamDecls(entry.Command, final.Parameters)
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, hint.Parameters, embeddedMeta.Parameters, constraints)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, embeddedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
 	}
@@ -461,14 +455,13 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve reviewed dry-run capability for %s: %w", canonicalPath, err)
 	}
-	hint := runtimeSchemaHintForEntry(entry)
 	embeddedMeta, hasEmbeddedMeta := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
 	title, description, metadataSource, textProvenance, err := resolveRuntimeToolText(entry, metadata)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Schema text metadata for %s: %w", canonicalPath, err)
 	}
 	constraints := runtimeCommandConstraints(entry.Command)
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, hint.Parameters, embeddedMeta.Parameters, constraints)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, embeddedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Schema parameters for %s: %w", canonicalPath, err)
 	}

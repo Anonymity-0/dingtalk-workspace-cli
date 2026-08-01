@@ -164,28 +164,6 @@ func TestSchemaCatalogDeliveryCompletenessAcceptsDeliveredAlias(t *testing.T) {
 	}
 }
 
-func TestSchemaRegistryRejectsIdentityConflictOnAliasLeaf(t *testing.T) {
-	root := &cobra.Command{Use: "dws"}
-	product := &cobra.Command{Use: "sample"}
-	current := &cobra.Command{Use: "current", Run: func(*cobra.Command, []string) {}}
-	legacy := &cobra.Command{Use: "legacy", Run: func(*cobra.Command, []string) {}}
-	AttachRuntimeSchema(current, "sample", "current", "test")
-	AttachRuntimeSchema(legacy, "sample", "current", "test")
-	annotateManualSchemaIdentity(legacy, "sample.wrong", "reviewed conflict fixture")
-	product.AddCommand(current, legacy)
-	root.AddCommand(product)
-
-	if _, err := schemaRegistryForTest(root); err == nil || !strings.Contains(err.Error(), "sample legacy") || !strings.Contains(err.Error(), "conflicts") {
-		t.Fatalf("schemaRegistryForTest() error = %v, want alias identity conflict", err)
-	}
-	report := schemaCatalogDeliveryCompletenessForTest(root, schemaDeliveryTestSnapshot(schemaDeliveryTestTool{
-		Canonical: "sample.current", CLIPath: "sample current", Aliases: []string{"sample legacy"},
-	}), nil)
-	if len(report.DeliveryErrors) == 0 || !strings.Contains(strings.Join(report.DeliveryErrors, " "), "sample legacy") {
-		t.Fatalf("delivery errors = %v, want alias identity conflict", report.DeliveryErrors)
-	}
-}
-
 func TestSchemaCatalogDeliveryCompletenessRejectsWrongCanonical(t *testing.T) {
 	root := schemaDeliveryTestRoot(
 		schemaDeliveryTestTool{Canonical: "sample.expected", CLIPath: "sample run"},

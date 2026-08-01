@@ -370,9 +370,6 @@ func schemaContractStringSlice(value any) []string {
 // delivered set must always equal the public EffectiveCommandRegistry set.
 func schemaContractPayloadForBoundCanonicals(t *testing.T, root *cobra.Command, canonicals ...string) cli.SchemaSnapshotPayload {
 	t.Helper()
-	if _, err := cli.ApplyEmbeddedManualSchemaHints(root); err != nil {
-		t.Fatalf("apply manual Schema hints: %v", err)
-	}
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
 	if err != nil {
 		t.Fatalf("build effective CommandRegistry: %v", err)

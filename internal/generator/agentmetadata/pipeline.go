@@ -15,8 +15,8 @@ package agentmetadata
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
@@ -91,41 +91,36 @@ func SelectionHintCoverageProducts(projection RegistryProjection) map[string]boo
 	return selectionHintCoverageProducts(projection.ProductIDs)
 }
 
-// ValidateSelectionHints validates optional residual selection/ HintFiles
-// against the projected registry. Production no longer requires
-// schema_hints/: when every projected product has ProductDecl and every
-// projected tool has ContractFinal, an empty or absent HintsDir is valid.
-// When residual coverage remains, selection/ must exist under HintsDir.
-func ValidateSelectionHints(rootPath, hintsDir string, projection RegistryProjection) error {
+// ValidateSelectionCoverage requires every projected product to have
+// ProductDecl and every projected tool to have ContractFinal. Residual
+// schema_hints/ HintFiles are not accepted.
+func ValidateSelectionCoverage(projection RegistryProjection) error {
 	expectedTools := SelectionHintCoverageTools(projection)
 	expectedProducts := SelectionHintCoverageProducts(projection)
 	if !selectionHintCoverageRequired(expectedProducts, expectedTools) {
 		return nil
 	}
-	if strings.TrimSpace(hintsDir) == "" {
-		return fmt.Errorf("Agent selection HintFiles required for undeclared tools/products, but HintsDir is empty; declare ProductDecl/ContractFinal or provide residual selection/")
+	missingProducts := make([]string, 0)
+	for productID, include := range expectedProducts {
+		if include {
+			missingProducts = append(missingProducts, productID)
+		}
 	}
-	hintsRoot := resolvePipelineRootPath(rootPath, hintsDir)
-	selectionRoot := filepath.Join(hintsRoot, "selection")
-	info, err := os.Stat(selectionRoot)
-	missing := err != nil || !info.IsDir()
-	if missing {
-		return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
+	missingTools := make([]string, 0)
+	for tool, include := range expectedTools {
+		if include {
+			missingTools = append(missingTools, tool)
+		}
 	}
-	agentHints, err := cli.LoadAgentHintsFromSelectionForValidation(os.DirFS(selectionRoot))
-	if err != nil {
-		return fmt.Errorf("load selection Agent hints: %w", err)
-	}
-	if err := cli.ValidateManualAgentHintSet(agentHints, expectedProducts, expectedTools); err != nil {
-		return fmt.Errorf("validate selection Agent hints: %w", err)
-	}
-	if err := cli.ValidateManualAgentHintExamples(projection.Bound, agentHints); err != nil {
-		return fmt.Errorf("validate selection Agent hint examples: %w", err)
-	}
-	if _, err := cli.ValidateManualAgentSelectionContract(projection.Bound, agentHints); err != nil {
-		return fmt.Errorf("validate selection Agent selection contract: %w", err)
-	}
-	return nil
+	sort.Strings(missingProducts)
+	sort.Strings(missingTools)
+	return fmt.Errorf("ProductDecl/ContractFinal selection coverage incomplete: missing_products=%v missing_tools=%v", missingProducts, missingTools)
+}
+
+// ValidateSelectionHints is a compatibility wrapper that ignores HintsDir and
+// enforces ContractFinal/ProductDecl coverage only.
+func ValidateSelectionHints(_ string, _ string, projection RegistryProjection) error {
+	return ValidateSelectionCoverage(projection)
 }
 
 func selectionHintCoverageRequired(expectedProducts, expectedTools map[string]bool) bool {
@@ -143,10 +138,9 @@ func selectionHintCoverageRequired(expectedProducts, expectedTools map[string]bo
 }
 
 // GenerateFromCommandRoot is the Catalog in-memory Agent-metadata pipeline.
-// It applies reviewed manual Schema overlays, binds the EffectiveCommandRegistry,
-// validates that ProductDecl/ContractFinal cover selection (residual HintFiles
-// optional), and Generate()s metadata without reading or writing
-// schema_agent_metadata/. Production leaves HintsDir empty.
+// It binds the EffectiveCommandRegistry, validates that ProductDecl/ContractFinal
+// cover selection, and Generate()s metadata without reading or writing
+// schema_agent_metadata/ or schema_hints/.
 func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts Options) (File, Stats, RegistryProjection, error) {
 	if commandRoot == nil {
 		return File{}, Stats{}, RegistryProjection{}, fmt.Errorf("schema source root is nil")
@@ -154,9 +148,6 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 	rootPath = strings.TrimSpace(rootPath)
 	if rootPath == "" {
 		rootPath = "."
-	}
-	if _, err := cli.ApplyEmbeddedManualSchemaHints(commandRoot); err != nil {
-		return File{}, Stats{}, RegistryProjection{}, fmt.Errorf("apply reviewed manual Schema hints for Agent metadata: %w", err)
 	}
 	effective, err := cli.BuildEffectiveCommandRegistry(commandRoot)
 	if err != nil {
@@ -179,8 +170,7 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 	if strings.TrimSpace(opts.IntentGuidePath) == "" {
 		opts.IntentGuidePath = "skills/mono/references/intent-guide.md"
 	}
-	// HintsDir defaults empty: schema_hints/ is retired. Fixture tests may still
-	// pass a temporary HintsDir to exercise residual HintFile parsing.
+	// HintsDir must stay empty: schema_hints/ is retired and non-empty values fail closed.
 	if strings.TrimSpace(opts.InterfaceMetadataPath) == "" {
 		opts.InterfaceMetadataPath = "internal/cli/schema_mcp_metadata.json"
 	}
@@ -197,7 +187,7 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 	opts.SurfaceHash = projection.Hash
 	opts.SurfaceToolCount = projection.ToolCount
 
-	if err := ValidateSelectionHints(rootPath, opts.HintsDir, projection); err != nil {
+	if err := ValidateSelectionCoverage(projection); err != nil {
 		return File{}, Stats{}, RegistryProjection{}, err
 	}
 	metadata, stats, err := Generate(opts)

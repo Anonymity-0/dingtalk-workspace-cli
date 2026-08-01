@@ -255,18 +255,14 @@ func TestValidateSelectionHintInputAllowsMissingWhenCoverageEmpty(t *testing.T) 
 	}
 }
 
-func TestValidateSelectionHintInputRequiresHintDirsWhenCoverageRemains(t *testing.T) {
+func TestValidateSelectionHintInputRequiresContractFinalWhenCoverageRemains(t *testing.T) {
 	root := t.TempDir()
 	registry := commandRegistryProjection{
 		CanonicalToolPaths: map[string]string{"sample.run": "sample run"},
 		ProductIDs:         map[string]bool{"sample": true},
 	}
 	err := validateSelectionHintInput(root, "", registry)
-	if err == nil || !strings.Contains(err.Error(), "HintsDir is empty") {
-		t.Fatalf("validateSelectionHintInput() error = %v", err)
-	}
-	err = validateSelectionHintInput(root, "internal/cli/schema_hints", registry)
-	if err == nil || !strings.Contains(err.Error(), "required Agent hint directory missing") {
+	if err == nil || !strings.Contains(err.Error(), "ProductDecl/ContractFinal selection coverage incomplete") {
 		t.Fatalf("validateSelectionHintInput() error = %v", err)
 	}
 }
