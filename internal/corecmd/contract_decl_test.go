@@ -146,9 +146,9 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 
 func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		schema  ContractDecl
-		wantSub string
+		name     string
+		contract ContractDecl
+		wantSub  string
 	}{
 		{"missing description", ContractDecl{
 			Selection: contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
@@ -182,17 +182,17 @@ func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T
 				}
 			}()
 			New(Spec{
-				Use:    "x",
-				Short:  "x",
-				Contract: tc.schema,
-				Invoke: func(*Ctx, map[string]any) error { return nil },
+				Use:      "x",
+				Short:    "x",
+				Contract: tc.contract,
+				Invoke:   func(*Ctx, map[string]any) error { return nil },
 			})
 		})
 	}
 }
 
 func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
-	schema := ContractDecl{
+	decl := ContractDecl{
 		Description: "desc",
 		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "create_thing"}},
 		Selection: contract.SelectionSpec{
@@ -206,7 +206,7 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 		Use:      "create",
 		Short:    "short",
 		Safety:   testWriteSafety(),
-		Contract: schema,
+		Contract: decl,
 		Invoke:   func(*Ctx, map[string]any) error { return nil },
 	})
 	want := "  dws create --mode a\n  dws create --mode b --dry-run"
@@ -214,13 +214,13 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 		t.Fatalf("derived Example = %q, want %q", cmd.Example, want)
 	}
 
-	schema.Selection.Examples = []string{"dws create --mode a"}
+	decl.Selection.Examples = []string{"dws create --mode a"}
 	explicit := New(Spec{
 		Use:      "create",
 		Short:    "short",
 		Example:  "  dws create --custom",
 		Safety:   testWriteSafety(),
-		Contract: schema,
+		Contract: decl,
 		Invoke:   func(*Ctx, map[string]any) error { return nil },
 	})
 	if explicit.Example != "  dws create --custom" {
@@ -229,7 +229,7 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 }
 
 func TestNewCommandSafetySpecPassThrough(t *testing.T) {
-	schema := func() ContractDecl {
+	decl := func() ContractDecl {
 		return ContractDecl{
 			Description: "desc",
 			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
@@ -251,14 +251,14 @@ func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 		Effect: "write", Risk: "low",
 		Confirmation: "not_required", Idempotency: "non_idempotent",
 	}
-	if got := build(Spec{Use: "w", Short: "w", Safety: declared, Contract: schema(),
+	if got := build(Spec{Use: "w", Short: "w", Safety: declared, Contract: decl(),
 		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != declared.Effect ||
 		got.Risk != declared.Risk || got.Confirmation != declared.Confirmation ||
 		got.Idempotency != declared.Idempotency {
 		t.Fatalf("SafetySpec must pass through without cross-field inference: %#v", got)
 	}
 	// A wholly empty declaration preserves the historical read-only default.
-	if got := build(Spec{Use: "r", Short: "r", Contract: schema(),
+	if got := build(Spec{Use: "r", Short: "r", Contract: decl(),
 		Invoke: func(*Ctx, map[string]any) error { return nil }}); got.Effect != "read" || got.Risk != "low" ||
 		got.Confirmation != "not_required" || got.Idempotency != "idempotent" {
 		t.Fatalf("empty Safety must use read default, = %#v", got)
@@ -274,7 +274,7 @@ func TestContractDeclEmptySkipsFinal(t *testing.T) {
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
 	if contract.HasRuntimeContractFinal(cmd) {
-		t.Fatal("Safety without Schema must not register Final (keep runtime write light)")
+		t.Fatal("Safety without Contract must not register Final (keep runtime write light)")
 	}
 	if _, ok := cmd.Annotations["dws.schema.risk"]; ok {
 		t.Fatal("Safety must not use the removed dws.schema.risk annotation")
