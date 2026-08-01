@@ -28,7 +28,8 @@ changes must not rewrite it mechanically.
 - Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
 - Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Schema`) → `corecmd.New`
 - **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Schema` (ToolSpec groups)
-- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract`; `cli.SafetySpec` is a thin alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); assembly **pass-throughs** Final.
+- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `contract.RegisterRuntimeContractFinal` (map store, no JSON/deep-clone) after `cli.AnnotateRuntimeContract`; assembly **pass-throughs** Final.
+- Package seam: types/registries → `corecmd/contract`; Cobra annotation helpers (`AnnotateRuntime*`) and Catalog/`ResolveMeta` delivery → `internal/cli`. Framework may call annotation helpers; cli does not redefine contract types.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
 - Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
 

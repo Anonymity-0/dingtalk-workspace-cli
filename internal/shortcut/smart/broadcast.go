@@ -16,10 +16,10 @@ package smart
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -42,7 +42,7 @@ var Broadcast = shortcut.Shortcut{
 		"内部把姓名列表逐个解析成唯一用户后，用 openDingTalkId 对每个人单独发一条单聊消息，并汇总成功/失败人数。" +
 		"某个姓名匹配不到人或匹配到多人时，会跳过该人并在结尾报出，不影响其他人收到消息。会真实发出多条消息。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

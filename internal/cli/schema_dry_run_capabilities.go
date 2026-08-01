@@ -5,6 +5,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"sort"
 	"strings"
 	"sync"
@@ -32,7 +33,7 @@ var reviewedDryRunCapabilityGroups = []dryRunCapabilityGroup{
 
 var reviewedDryRunCapabilitiesLazy struct {
 	once        sync.Once
-	byCanonical map[string]DryRunSpec
+	byCanonical map[string]contract.DryRunSpec
 	err         error
 }
 
@@ -42,12 +43,12 @@ var reviewedDryRunCapabilitiesLazy struct {
 // that resolves the tree gets the reviewed set, not only processes that run
 // Schema assembly. A declaration in reviewed code is itself the reviewed
 // capability, so no manual allowlist entry is required.
-var declaredDryRunCapabilities sync.Map // string → DryRunSpec
+var declaredDryRunCapabilities sync.Map // string → contract.DryRunSpec
 
 // recordDeclaredDryRunCapability registers one Contract-declared dry_run
 // capability. Conflicting re-declaration of the same canonical is a
 // programming error surfaced at the next delivery gate read.
-func recordDeclaredDryRunCapability(canonical string, spec DryRunSpec) {
+func recordDeclaredDryRunCapability(canonical string, spec contract.DryRunSpec) {
 	canonical = strings.TrimSpace(canonical)
 	if canonical == "" {
 		return
@@ -63,11 +64,11 @@ func clearDeclaredDryRunCapabilitiesForTest() {
 	})
 }
 
-func loadManualDryRunCapabilities() (map[string]DryRunSpec, error) {
+func loadManualDryRunCapabilities() (map[string]contract.DryRunSpec, error) {
 	reviewedDryRunCapabilitiesLazy.once.Do(func() {
-		byCanonical := make(map[string]DryRunSpec)
+		byCanonical := make(map[string]contract.DryRunSpec)
 		for _, group := range reviewedDryRunCapabilityGroups {
-			spec := DryRunSpec{PreviewKind: group.PreviewKind}
+			spec := contract.DryRunSpec{PreviewKind: group.PreviewKind}
 			if err := spec.Validate("<reviewed-dry-run-registry>"); err != nil {
 				reviewedDryRunCapabilitiesLazy.err = err
 				return
@@ -96,14 +97,14 @@ func loadManualDryRunCapabilities() (map[string]DryRunSpec, error) {
 	if reviewedDryRunCapabilitiesLazy.err != nil {
 		return nil, reviewedDryRunCapabilitiesLazy.err
 	}
-	out := make(map[string]DryRunSpec, len(reviewedDryRunCapabilitiesLazy.byCanonical))
+	out := make(map[string]contract.DryRunSpec, len(reviewedDryRunCapabilitiesLazy.byCanonical))
 	for canonical, spec := range reviewedDryRunCapabilitiesLazy.byCanonical {
 		out[canonical] = spec
 	}
 	return out, nil
 }
 
-func loadReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
+func loadReviewedDryRunCapabilities() (map[string]contract.DryRunSpec, error) {
 	out, err := loadManualDryRunCapabilities()
 	if err != nil {
 		return nil, err
@@ -115,9 +116,9 @@ func loadReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
 			mergeErr = fmt.Errorf("declared dry-run capability has non-string key %v", key)
 			return false
 		}
-		spec, ok := value.(DryRunSpec)
+		spec, ok := value.(contract.DryRunSpec)
 		if !ok {
-			mergeErr = fmt.Errorf("declared dry-run capability %s has non-DryRunSpec value", canonical)
+			mergeErr = fmt.Errorf("declared dry-run capability %s has non-contract.DryRunSpec value", canonical)
 			return false
 		}
 		if manual, exists := out[canonical]; exists && manual != spec {
@@ -135,11 +136,11 @@ func loadReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
 
 // ReviewedDryRunCapabilities returns a defensive copy of the positive,
 // reviewed capability registry for delivery gates.
-func ReviewedDryRunCapabilities() (map[string]DryRunSpec, error) {
+func ReviewedDryRunCapabilities() (map[string]contract.DryRunSpec, error) {
 	return loadReviewedDryRunCapabilities()
 }
 
-func reviewedDryRunCapability(canonical string) (*DryRunSpec, error) {
+func reviewedDryRunCapability(canonical string) (*contract.DryRunSpec, error) {
 	capabilities, err := loadReviewedDryRunCapabilities()
 	if err != nil {
 		return nil, err
@@ -159,7 +160,7 @@ func ValidateReviewedDryRunCapabilityDelivery(registry SchemaRegistry) error {
 	if err != nil {
 		return err
 	}
-	actual := make(map[string]DryRunSpec)
+	actual := make(map[string]contract.DryRunSpec)
 	for _, product := range registry.Products {
 		for _, tool := range product.Tools {
 			if tool.DryRun != nil {

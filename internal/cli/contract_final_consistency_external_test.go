@@ -16,6 +16,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog walks every
@@ -81,10 +82,10 @@ func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing
 			rows = append(rows, row{canonical, cliPath, "FAIL", "absent from embedded full leaf shard"})
 			continue
 		}
-		final, has := cli.RuntimeContractFinal(cmd.PrimaryCommand)
+		final, has := contract.RuntimeContractFinal(cmd.PrimaryCommand)
 		if !has {
 			failCount++
-			rows = append(rows, row{canonical, cliPath, "FAIL", "no RuntimeContractFinal on PrimaryCommand"})
+			rows = append(rows, row{canonical, cliPath, "FAIL", "no contract.RuntimeContractFinal on PrimaryCommand"})
 			continue
 		}
 		checked++
@@ -259,7 +260,7 @@ func loadEmbeddedFullLeafTools() (map[string]embedToolView, error) {
 	return out, nil
 }
 
-func compareFinalToLive(canonical string, final cli.ContractFinalPayload, tool liveToolView) []string {
+func compareFinalToLive(canonical string, final contract.ContractFinalPayload, tool liveToolView) []string {
 	var problems []string
 	add := func(field, want, got string) {
 		if strings.TrimSpace(want) == "" {

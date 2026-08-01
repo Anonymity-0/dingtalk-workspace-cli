@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 	cmd.Flags().Int("max-cells", 0, "最多扫描的单元格数")
 	cmd.Flags().Bool("exit-on-error", false, "发现公式错误时返回非 0 退出码，便于 CI/自动化使用")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

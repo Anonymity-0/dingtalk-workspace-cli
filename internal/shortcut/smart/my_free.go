@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -46,7 +46,7 @@ var MyFree = shortcut.Shortcut{
 		"默认查今天（本地时区 00:00 到次日 00:00），也可用 --start/--end 指定 ISO8601 时间范围。" +
 		"只读操作，只查忙闲、不创建或修改任何日程；返回按时间排列的忙碌时段，空则表示这段时间全空。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

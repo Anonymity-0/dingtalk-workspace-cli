@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -43,7 +43,7 @@ var Reschedule = shortcut.Shortcut{
 		"如果 eventId 查不到会直接报错，不会误改别的日程。" +
 		"会真实修改该日程的时间。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

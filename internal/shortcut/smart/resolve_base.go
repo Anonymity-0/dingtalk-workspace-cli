@@ -14,8 +14,8 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -46,7 +46,7 @@ var ResolveBase = shortcut.Shortcut{
 		"如果只命中一个 Base 就直接返回它的 baseId；如果命中多个则列出全部候选让你消歧，绝不替你瞎猜；如果一个都没命中则提示未找到。" +
 		"这是纯只读操作，只做搜索与本地投影，不会修改任何 Base。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

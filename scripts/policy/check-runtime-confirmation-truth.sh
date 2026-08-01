@@ -1,11 +1,16 @@
 #!/bin/sh
 set -eu
 
-# Ensure catalog confirmation=user_required exactly matches executable truth:
-# typed corecmd Contract SafetySpec declarations.
+# Ensure confirmation=user_required matches live typed Contract SafetySpec and
+# that every such leaf has an executable confirmation gate (DeclareLeafMetadata,
+# Sheet protect marker, or framework ConfirmSafety / RunE).
 #
-# schema_hints/ is retired; residual metadata runtime_gate overlays are gone.
-# Contract SafetySpec is the sole production truth source for confirmation.
+# Do NOT compare Catalog fields to Catalog provenance labels: that is a tautology
+# (both sides read the same embedded snapshot). The real homology gate is
+# TestUserRequiredSafetyHomologyWithRuntimeGate in
+# internal/cli/contract_safety_homology_external_test.go — it walks the live
+# Cobra tree, reads ContractFinal.Safety, compares to AssembleSchemaRegistry
+# ToolSpec.Confirmation, and probes the runtime gate.
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -15,34 +20,8 @@ if [ -e internal/cli/schema_hints ]; then
 	exit 1
 fi
 
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+go test ./internal/cli \
+	-run '^TestUserRequiredSafetyHomologyWithRuntimeGate$' \
+	-count=1
 
-# The release Catalog is committed as a per-product split; reassemble it into
-# the single-document shape these jq queries consume.
-catalog="$tmp/catalog-combined.json"
-scripts/policy/with-catalog.sh >"$catalog"
-
-jq -r '
-  .tools
-  | to_entries[]
-  | select(.value.confirmation == "user_required")
-  | select(.value.field_provenance.confirmation.source == "corecmd.contract")
-  | .key
-' "$catalog" | sort -u >"$tmp/truth_gated"
-
-jq -r '
-  .tools
-  | to_entries[]
-  | select(.value.confirmation == "user_required")
-  | .key
-' "$catalog" | sort >"$tmp/catalog_required"
-
-if ! cmp -s "$tmp/truth_gated" "$tmp/catalog_required"; then
-	printf '%s\n' 'catalog confirmation=user_required differs from Contract SafetySpec truth' >&2
-	printf '%s\n' 'declare corecmd Safety.Confirmation, then regenerate schema' >&2
-	diff -u "$tmp/truth_gated" "$tmp/catalog_required" || true
-	exit 1
-fi
-
-printf '%s\n' "runtime confirmation truth ok ($(wc -l <"$tmp/truth_gated" | tr -d ' ') gated)"
+printf '%s\n' 'runtime confirmation truth ok (live Contract SafetySpec homology)'

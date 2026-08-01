@@ -3,11 +3,11 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -76,7 +76,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(findCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -158,7 +158,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(replaceCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -218,7 +218,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(appendCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -296,7 +296,7 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 		},
 	}
 	DeclareLeafMetadata(csvPutCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -369,7 +369,7 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 		},
 	}
 	DeclareLeafMetadata(csvGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // parseBoolFlag reads a string flag and parses it as a boolean, accepting the
@@ -927,9 +928,9 @@ func runAitableViewUpdateArray(cmd *cobra.Command, blockKey string) error {
 func newAitableCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/aitable.json
 	// products.aitable). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "aitable",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理 AI 表格 Base、数据表、字段、记录、视图、表单、仪表盘、权限、导入导出与自动化工作流。",
 			UseWhen: []string{
 				"需要读取或管理 AI 表格中的结构、数据、视图、权限、导入导出或工作流时",
@@ -1656,8 +1657,7 @@ config 结构参考：
 				AvoidWhen:    []string{"改字段名/配置用 field update（不可改类型）；删字段用 field delete；调列顺序用 view update"},
 				Examples:     []string{"dws aitable field create --base-id <BASE_ID> --table-id <TABLE_ID> --name \"状态\" --type singleSelect"},
 			},
-			// fields required was RegisterSchemaHints tool_schema_hint; publish via
-			// ParamDecl (Agent may still use --name/--type as a single-field path).
+			// Agent may still use --name/--type as a single-field path.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "fields", Required: boolPtr(true), InterfaceType: "array"},
 			},
@@ -2636,7 +2636,6 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				Examples:     []string{"dws aitable attachment upload --base-id BASE_ID --file-name report.xlsx --size 204800"},
 			},
 			// size is validated in RunE (Int64); publish required via ParamDecl
-			// instead of relying on RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "size", Required: boolPtr(true)},
 			},
@@ -3246,7 +3245,6 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				AvoidWhen:    []string{"没有独立 field reorder；只读用 get visible-fields；首列字段须保留第一位"},
 				Examples:     []string{"dws aitable view update visible-fields --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --field-ids fld1,fld2,fld3"},
 			},
-			// field-ids required was RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "field-ids", Required: boolPtr(true)},
 			},
@@ -4135,7 +4133,7 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 		},
 	}
 	DeclareLeafMetadata(formFieldHideCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -4268,7 +4266,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 		},
 	}
 	DeclareLeafMetadata(workflowCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -4404,7 +4402,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 		},
 	}
 	DeclareLeafMetadata(workflowDisableCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -4610,8 +4608,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				AvoidWhen:    []string{"配置模板先看 config-example；删仪表盘用 delete"},
 				Examples:     []string{"dws aitable dashboard create --base-id <BASE_ID> --name \"运营看板\""},
 			},
-			// name required was RegisterSchemaHints tool_schema_hint (Agent prefers
-			// --name; runtime still accepts --config alone).
+			// Agent prefers --name; runtime still accepts --config alone.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
@@ -4669,8 +4666,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				AvoidWhen:    []string{"排版布局用 dashboard arrange；删用 delete"},
 				Examples:     []string{"dws aitable dashboard update --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --name \"新看板\""},
 			},
-			// name required was RegisterSchemaHints tool_schema_hint (Agent prefers
-			// --name; runtime still accepts --config alone).
+			// Agent prefers --name; runtime still accepts --config alone.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
@@ -5294,7 +5290,7 @@ message: "the current user must be a manager (administrator) of this base to man
 		},
 	}
 	DeclareLeafMetadata(advpermDisableCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

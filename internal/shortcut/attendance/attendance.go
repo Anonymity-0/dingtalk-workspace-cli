@@ -26,12 +26,12 @@ package attendance
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -170,7 +170,7 @@ var CheckResult = shortcut.Shortcut{
 	Description: "查询用户打卡结果（迟到/早退/缺卡等）",
 	Intent:      "当你需要批量统计一批员工在某段时间的打卡结果（正常/迟到/早退/缺卡等判定结论）时使用，例如做月度考勤汇总或异常人员排查；输入多个 userId（最多 100 人）和不超过 1 个月的日期区间，返回每人每天的打卡结果状态，支持分页。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -224,7 +224,7 @@ var CheckRecord = shortcut.Shortcut{
 	Description: "查询用户打卡流水（打卡时间/地点/定位方式）",
 	Intent:      "当你要查看员工每一次实际打卡的原始记录（具体打卡时刻、打卡地点、定位/Wifi/蓝牙等方式）而不是判定结论时使用，例如核实某人是否在指定地点打卡；输入 userId 列表和不超过 1 个月的日期区间，返回逐条打卡流水。与 +check-result 的区别是这里返回明细流水而非迟到早退结论。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -276,7 +276,7 @@ var ListApprove = shortcut.Shortcut{
 	Description: "查询用户考勤审批单（补卡/加班/请假/出差外出）",
 	Intent:      "当你想查看某些员工已提交的考勤类审批单（加班、请假、出差外出、补卡）时使用，例如核对某人这段时间请了几次假或有没有补卡审批；输入 userId 列表、审批类型（overtime/加班、leave/请假、trip/出差外出、patch/补卡）和日期区间，返回匹配的审批单记录。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -340,7 +340,7 @@ var GetApproveTemplate = shortcut.Shortcut{
 	Description: "查询补卡/请假/加班/外出/出差审批提交链接",
 	Intent:      "当用户想自己发起一条考勤审批（补卡、请假、加班、外出、出差）、需要拿到对应审批表单的提交入口链接时使用；输入审批类型（如 leave/请假），返回可直接打开填写并提交的审批链接。本命令只返回链接、不代替用户提交审批。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -391,7 +391,7 @@ var GetSchedule = shortcut.Shortcut{
 	Description: "获取指定用户一段时间内的排班记录",
 	Intent:      "当你要查看排班制考勤组下员工在某段时间的排班记录（含排班 id、班次、是否休息）时使用，尤其是需要拿到排班 id 用于后续 BOSS 改签打卡（+boss-check）的场景；输入 userId 列表和起止时间，返回逐日排班明细。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -491,7 +491,7 @@ var SearchClass = shortcut.Shortcut{
 	Description: "查询当前用户可管理的班次详情列表",
 	Intent:      "当你要浏览或按名称查找当前用户能管理的班次、以便拿到班次 ID 用于建组、排班或改班次时使用；可选按班次名关键字模糊搜索、按 ALL/我负责的过滤并分页，返回班次列表及详情。要看某个具体班次的完整配置用 +get-class。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -721,7 +721,7 @@ var GetAdjustmentRule = shortcut.Shortcut{
 	Description: "根据补卡规则主键 ID 查询补卡规则详情",
 	Intent:      "当你已知某条补卡规则的主键 ID、想查看它的具体规则内容（每月可补卡次数、时限、适用范围等）时使用；输入 adjustmentId，返回该补卡规则的完整详情。不知道 ID 时先用 +search-adjustment-rule 列出。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -757,7 +757,7 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 	Description: "查询当前用户可管理的补卡规则列表",
 	Intent:      "当你要浏览或按名称查找当前用户可管理的补卡规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回补卡规则列表。要看某条规则的完整内容用 +get-adjustment-rule。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -851,7 +851,7 @@ var GetOvertimeRule = shortcut.Shortcut{
 	Description: "根据加班规则主键 ID 查询加班规则详情",
 	Intent:      "当你已知某条加班规则的主键 ID、想查看它的具体内容（工作日/休息日/节假日加班计算方式、适用范围等）时使用；输入 overtimeId，返回该加班规则的完整详情。不知道 ID 时先用 +search-overtime-rule 列出。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -887,7 +887,7 @@ var SearchOvertimeRule = shortcut.Shortcut{
 	Description: "查询当前用户可管理的加班规则列表",
 	Intent:      "当你要浏览或按名称查找当前用户可管理的加班规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回加班规则列表。要看某条规则的完整内容用 +get-overtime-rule。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -946,7 +946,7 @@ var SearchGroup = shortcut.Shortcut{
 	Description: "查询当前用户可管理的考勤组列表",
 	Intent:      "当你要浏览或按名称查找当前用户可管理的考勤组、以便拿到考勤组 ID 用于查看详情、改成员或改配置时使用；可选按名称关键字、考勤组类型（固定班制/排班制/自由工时）过滤，并可选带出定位/Wifi/蓝牙信息，分页返回考勤组简要列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1254,7 +1254,7 @@ var GetSummary = shortcut.Shortcut{
 	Description: "查询某个人的考勤统计摘要（周/月）",
 	Intent:      "当你想快速了解某个人一周或一月的考勤汇总（出勤天数、迟到早退次数、加班、请假时长等统计口径）而不是逐天明细时使用；输入 userId、所在周期内的任意日期和统计类型（week/month），返回该周期的考勤统计摘要。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1303,7 +1303,7 @@ var GetSelfSetting = shortcut.Shortcut{
 	Description: "查询个人规则设置（打卡提醒/极速打卡/缺卡提醒等）",
 	Intent:      "当你想查看某个用户在指定场景下的个人考勤规则开关配置（如打卡提醒、极速打卡、缺卡提醒、考勤结果通知等是否开启）时使用；输入设置场景 settingScene 和用户 userId，返回该用户对应场景的个人设置。查企业全局设置用 +get-global-setting。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1383,7 +1383,7 @@ var QueryReportData = shortcut.Shortcut{
 	Description: "根据字段查询考勤报表数据（仅管理员）",
 	Intent:      "当你要按指定考勤字段导出/查询一批员工在某时间段的报表数值（如各人的出勤天数、迟到次数、加班时长）时使用，常用于做考勤汇总或核算；输入 userId 列表（最多 20 人）、字段 ID 列表（来自 +list-report-columns）和不超过 32 天的时间区间，返回对应字段的数据。仅管理员可用。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1484,7 +1484,7 @@ var ListLeaveTypes = shortcut.Shortcut{
 	Description: "查询当前用户可用的假期规则列表",
 	Intent:      "当你想知道企业有哪些假期类型（年假、事假、病假等）及其对应的假期编码 code、单位、是否带薪时使用，通常是查余额或改假期规则前先拿到 leaveCode；无需参数，返回当前用户可用的假期规则列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1543,7 +1543,7 @@ var GetLeaveRecords = shortcut.Shortcut{
 	Description: "查询指定员工的假期余额变更记录",
 	Intent:      "当你想追溯某个员工假期额度的变动流水（何时发放、扣减、因请假消耗多少）以核对余额来龙去脉时使用；输入单个 userId、日期区间，可选假期 code（不传查所有假期），返回该员工在该时间段的余额变更记录。只想看当前余额用 +get-leave-balance。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1718,7 +1718,7 @@ var GetCheckinRecord = shortcut.Shortcut{
 	Description: "查询指定员工一段时间内的签到记录",
 	Intent:      "当你要查看员工的外勤/移动办公签到记录（signin/checkin，区别于考勤打卡）时使用，例如核实业务员的拜访签到轨迹；需提供操作者企业 ID 与员工 ID、目标员工 ID 列表（最多 100 人）以及不超过 7 天的时间区间，返回这些人的签到明细。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

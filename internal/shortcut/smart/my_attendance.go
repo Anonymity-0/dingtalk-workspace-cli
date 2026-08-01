@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -48,7 +48,7 @@ var MyAttendance = shortcut.Shortcut{
 		"再手动填写今天的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出今天 00:00 到次日 00:00 的时间窗，" +
 		"最后查询你今天的打卡流水记录。只读操作，不会修改任何考勤数据；今天若还没有任何打卡则返回空结果。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

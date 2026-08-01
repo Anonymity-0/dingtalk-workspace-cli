@@ -17,8 +17,8 @@
 package wiki
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -134,7 +134,7 @@ var SpaceSearch = shortcut.Shortcut{
 	Description: "搜索知识库",
 	Intent:      "当你只记得知识库名称的部分关键词、想快速按名称定位某个知识库时使用；输入关键词返回匹配的知识库列表，比逐页 +space-list 更快找到目标 workspaceId。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -65,7 +65,7 @@ func FromShortcut(s Shortcut) corecmd.Spec {
 	}
 }
 
-func safetySpecDeclared(safety cli.SafetySpec) bool {
+func safetySpecDeclared(safety contract.SafetySpec) bool {
 	return strings.TrimSpace(safety.Effect) != "" ||
 		strings.TrimSpace(safety.Risk) != "" ||
 		strings.TrimSpace(safety.Confirmation) != "" ||
@@ -91,20 +91,20 @@ func fromShortcutValidate(s Shortcut) func(*cobra.Command, []string) error {
 // shortcutSafetySpec is the temporary compatibility boundary while the live
 // Shortcut framework still owns its legacy Risk enum. command and Leaf do not
 // retain that enum: the adapter expands it once into the existing Schema model.
-func shortcutSafetySpec(risk Risk) cli.SafetySpec {
+func shortcutSafetySpec(risk Risk) contract.SafetySpec {
 	switch risk {
 	case RiskWrite:
-		return cli.SafetySpec{
+		return contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		}
 	case RiskHighWrite:
-		return cli.SafetySpec{
+		return contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		}
 	default:
-		return cli.SafetySpec{
+		return contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		}

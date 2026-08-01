@@ -2,8 +2,8 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ func newSheetTemplateCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(templateListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -91,7 +91,7 @@ func newSheetTemplateCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(templateSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -145,7 +145,7 @@ func newSheetTemplateCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(templateApplyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

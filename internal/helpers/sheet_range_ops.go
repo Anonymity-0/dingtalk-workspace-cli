@@ -3,8 +3,8 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -71,7 +71,7 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 		},
 	}
 	DeclareLeafMetadata(rangeReadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -228,7 +228,7 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 		},
 	}
 	DeclareLeafMetadata(rangeUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -286,7 +286,7 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 		},
 	}
 	DeclareLeafMetadata(rangeClearCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -348,7 +348,7 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 		},
 	}
 	DeclareLeafMetadata(rangeSortCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -405,7 +405,7 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 		},
 	}
 	DeclareLeafMetadata(rangeFillCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -466,7 +466,7 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 		},
 	}
 	DeclareLeafMetadata(rangeCopyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -525,7 +525,7 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 		},
 	}
 	DeclareLeafMetadata(rangeMoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

@@ -17,8 +17,8 @@
 package sheet
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -33,7 +33,7 @@ var ListSheets = shortcut.Shortcut{
 	Description: "获取表格文档中全部工作表列表",
 	Intent:      "当你拿到一个表格文档、想先了解它里面有哪些工作表（sheet）以及各自的 sheetId 时使用，通常作为读写具体数据前的第一步；传入表格文档 ID 或 URL，返回工作表清单。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -155,7 +155,7 @@ var Read = shortcut.Shortcut{
 	Description: "读取工作表指定范围的结构化单元格数据",
 	Intent:      "当你需要按单元格逐格获取数据（含类型、公式或格式化值等结构化信息）以便程序处理时使用；传入表格与可选范围（A1 表示法，不传则全部），可指定取格式化值/原始值/公式，返回结构化单元格数组。若只想要纯文本可改用 +csv-get。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

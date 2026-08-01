@@ -21,11 +21,21 @@
 //     positionals / ParamDecl
 //   - FieldProvenance / FieldCandidateProvenance
 //
-// Boundary:
-//   - Authoring / registration: corecmd.SchemaDecl → ContractFinalPayload;
-//     ProductDecl for product-level Agent routing.
-//   - Delivery / assembly (catalog embed, ResolveMeta, ToolSpec projection)
-//     stays in internal/cli and consumes these types and registries.
+// Package boundary (corecmd → cli seam):
 //
-// Provenance stamp for declared leaf Safety remains "corecmd.contract".
+//   - Types and registries → corecmd/contract (this package). Callers author
+//     contract.SafetySpec / contract.ParamDecl / contract.ProductDecl /
+//     contract.ContractFinalPayload directly; there is no cli type-alias layer.
+//   - Cobra annotation seam (AnnotateRuntime*) → internal/cli. Framework code
+//     (corecmd.New / AttachSchema) may call those helpers to embed
+//     dws.schema.* facts; cli must not redefine the contract types.
+//   - Delivery helpers that must emit annotations
+//     (cli.RegisterRuntimeContractFinal, cli.ApplyParamDecls) stay in cli but
+//     accept contract.* payloads.
+//   - Catalog assembly / ResolveMeta / go:embed → internal/cli (delivery
+//     boundary; not moved into contract).
+//
+// Authoring path: corecmd.SchemaDecl → ContractFinalPayload; ProductDecl for
+// product-level Agent routing. Provenance stamp for declared leaf Safety
+// remains "corecmd.contract".
 package contract

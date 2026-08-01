@@ -14,7 +14,7 @@
 package helpers
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/spf13/cobra"
 )
@@ -47,9 +47,9 @@ func (devHandler) Name() string {
 func (devHandler) Command(runner executor.Runner) *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/dev.json
 	// products.dev). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "dev",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理开放平台应用、权限、机器人、版本发布与本地连接器",
 			UseWhen: []string{
 				"创建/配置开放平台应用、机器人、权限、事件订阅或发布版本",

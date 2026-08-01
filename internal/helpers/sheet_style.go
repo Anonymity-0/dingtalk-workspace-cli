@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -358,7 +358,7 @@ func newRangeSetStyleCmd() *cobra.Command {
 	cmd.Flags().String("range", "", "目标单元格区域地址，如 A1:B3 (必填)")
 	bindStyleFlags(cmd)
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -564,7 +564,7 @@ func newRangeBatchSetStyleCmd() *cobra.Command {
 	cmd.Flags().String("batch", "", "批次配置 JSON 文件路径 (必填)")
 	cmd.Flags().Bool("continue-on-error", false, "遇到失败时继续执行后续条目（默认遇错即停）")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

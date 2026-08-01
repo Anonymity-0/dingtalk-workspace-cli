@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"io"
 	"sort"
 	"strings"
@@ -26,82 +27,82 @@ type schemaCatalogWire struct {
 }
 
 type schemaProductWire struct {
-	ID                 string                     `json:"id"`
-	Name               string                     `json:"name"`
-	Description        string                     `json:"description"`
-	Runtime            bool                       `json:"runtime"`
-	ToolCount          int                        `json:"tool_count"`
-	Tools              []schemaToolWire           `json:"tools"`
-	AgentSummary       string                     `json:"agent_summary"`
-	AgentSummarySource string                     `json:"agent_summary_source"`
-	UseWhen            []string                   `json:"use_when"`
-	AvoidWhen          []string                   `json:"avoid_when"`
-	SourceRefs         []string                   `json:"agent_source_refs"`
-	MetadataSource     string                     `json:"agent_metadata_source"`
-	FieldProvenance    map[string]FieldProvenance `json:"field_provenance"`
+	ID                 string                              `json:"id"`
+	Name               string                              `json:"name"`
+	Description        string                              `json:"description"`
+	Runtime            bool                                `json:"runtime"`
+	ToolCount          int                                 `json:"tool_count"`
+	Tools              []schemaToolWire                    `json:"tools"`
+	AgentSummary       string                              `json:"agent_summary"`
+	AgentSummarySource string                              `json:"agent_summary_source"`
+	UseWhen            []string                            `json:"use_when"`
+	AvoidWhen          []string                            `json:"avoid_when"`
+	SourceRefs         []string                            `json:"agent_source_refs"`
+	MetadataSource     string                              `json:"agent_metadata_source"`
+	FieldProvenance    map[string]contract.FieldProvenance `json:"field_provenance"`
 }
 
 type schemaToolWire struct {
-	Name                string                     `json:"name"`
-	CLIName             string                     `json:"cli_name"`
-	CanonicalPath       string                     `json:"canonical_path"`
-	Path                string                     `json:"path"`
-	CLIPath             string                     `json:"cli_path"`
-	PrimaryCLIPath      string                     `json:"primary_cli_path"`
-	Aliases             []string                   `json:"aliases"`
-	IsAlias             bool                       `json:"is_alias"`
-	Source              string                     `json:"source"`
-	ProductID           string                     `json:"product_id"`
-	SourceProductID     string                     `json:"source_product_id"`
-	Group               string                     `json:"group"`
-	Display             string                     `json:"display"`
-	Title               string                     `json:"title"`
-	Description         string                     `json:"description"`
-	MetadataSource      string                     `json:"metadata_source"`
-	Parameters          map[string]schemaParamWire `json:"parameters"`
-	HasParameters       bool                       `json:"has_parameters"`
-	ParameterCount      int                        `json:"parameter_count"`
-	Constraints         RuntimeSchemaConstraints   `json:"constraints"`
-	Positionals         []RuntimeSchemaPositional  `json:"positionals"`
-	DryRun              *DryRunSpec                `json:"dry_run"`
-	Effect              string                     `json:"effect"`
-	EffectSource        string                     `json:"effect_source"`
-	Risk                string                     `json:"risk"`
-	Confirmation        string                     `json:"confirmation"`
-	Idempotency         string                     `json:"idempotency"`
-	InterfaceRef        *InterfaceRefSpec          `json:"interface_ref"`
-	InterfaceMode       string                     `json:"interface_mode"`
-	Availability        string                     `json:"availability"`
-	InterfaceReason     string                     `json:"interface_reason"`
-	AgentSummary        string                     `json:"agent_summary"`
-	AgentSummarySource  string                     `json:"agent_summary_source"`
-	UseWhen             []string                   `json:"use_when"`
-	AvoidWhen           []string                   `json:"avoid_when"`
-	Prerequisites       []string                   `json:"prerequisites"`
-	Tips                []string                   `json:"tips"`
-	WorkflowRefs        []string                   `json:"workflow_refs"`
-	Examples            []string                   `json:"examples"`
-	Reviewed            *bool                      `json:"reviewed"`
-	SourceRefs          []string                   `json:"agent_source_refs"`
-	AgentMetadataSource string                     `json:"agent_metadata_source"`
-	FieldProvenance     map[string]FieldProvenance `json:"field_provenance"`
+	Name                string                              `json:"name"`
+	CLIName             string                              `json:"cli_name"`
+	CanonicalPath       string                              `json:"canonical_path"`
+	Path                string                              `json:"path"`
+	CLIPath             string                              `json:"cli_path"`
+	PrimaryCLIPath      string                              `json:"primary_cli_path"`
+	Aliases             []string                            `json:"aliases"`
+	IsAlias             bool                                `json:"is_alias"`
+	Source              string                              `json:"source"`
+	ProductID           string                              `json:"product_id"`
+	SourceProductID     string                              `json:"source_product_id"`
+	Group               string                              `json:"group"`
+	Display             string                              `json:"display"`
+	Title               string                              `json:"title"`
+	Description         string                              `json:"description"`
+	MetadataSource      string                              `json:"metadata_source"`
+	Parameters          map[string]schemaParamWire          `json:"parameters"`
+	HasParameters       bool                                `json:"has_parameters"`
+	ParameterCount      int                                 `json:"parameter_count"`
+	Constraints         RuntimeSchemaConstraints            `json:"constraints"`
+	Positionals         []contract.RuntimeSchemaPositional  `json:"positionals"`
+	DryRun              *contract.DryRunSpec                `json:"dry_run"`
+	Effect              string                              `json:"effect"`
+	EffectSource        string                              `json:"effect_source"`
+	Risk                string                              `json:"risk"`
+	Confirmation        string                              `json:"confirmation"`
+	Idempotency         string                              `json:"idempotency"`
+	InterfaceRef        *contract.InterfaceRefSpec          `json:"interface_ref"`
+	InterfaceMode       string                              `json:"interface_mode"`
+	Availability        string                              `json:"availability"`
+	InterfaceReason     string                              `json:"interface_reason"`
+	AgentSummary        string                              `json:"agent_summary"`
+	AgentSummarySource  string                              `json:"agent_summary_source"`
+	UseWhen             []string                            `json:"use_when"`
+	AvoidWhen           []string                            `json:"avoid_when"`
+	Prerequisites       []string                            `json:"prerequisites"`
+	Tips                []string                            `json:"tips"`
+	WorkflowRefs        []string                            `json:"workflow_refs"`
+	Examples            []string                            `json:"examples"`
+	Reviewed            *bool                               `json:"reviewed"`
+	SourceRefs          []string                            `json:"agent_source_refs"`
+	AgentMetadataSource string                              `json:"agent_metadata_source"`
+	FieldProvenance     map[string]contract.FieldProvenance `json:"field_provenance"`
 }
 
 type schemaParamWire struct {
-	Type                 string                     `json:"type"`
-	Description          string                     `json:"description"`
-	Property             string                     `json:"property"`
-	Required             bool                       `json:"required"`
-	CLIRequired          bool                       `json:"cli_required"`
-	RequiredWhen         string                     `json:"required_when"`
-	Default              json.RawMessage            `json:"default"`
-	InterfaceDefault     json.RawMessage            `json:"interface_default"`
-	Example              json.RawMessage            `json:"example"`
-	Format               string                     `json:"format"`
-	Enum                 []string                   `json:"enum"`
-	InterfaceDescription string                     `json:"interface_description"`
-	InterfaceType        string                     `json:"interface_type"`
-	FieldProvenance      map[string]FieldProvenance `json:"field_provenance"`
+	Type                 string                              `json:"type"`
+	Description          string                              `json:"description"`
+	Property             string                              `json:"property"`
+	Required             bool                                `json:"required"`
+	CLIRequired          bool                                `json:"cli_required"`
+	RequiredWhen         string                              `json:"required_when"`
+	Default              json.RawMessage                     `json:"default"`
+	InterfaceDefault     json.RawMessage                     `json:"interface_default"`
+	Example              json.RawMessage                     `json:"example"`
+	Format               string                              `json:"format"`
+	Enum                 []string                            `json:"enum"`
+	InterfaceDescription string                              `json:"interface_description"`
+	InterfaceType        string                              `json:"interface_type"`
+	FieldProvenance      map[string]contract.FieldProvenance `json:"field_provenance"`
 }
 
 func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry, SchemaIndex, error) {
@@ -122,7 +123,7 @@ func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry,
 			Description:     productWire.Description,
 			Runtime:         productWire.Runtime,
 			FieldProvenance: cloneFieldProvenance(productWire.FieldProvenance),
-			Selection: SelectionSpec{
+			Selection: contract.SelectionSpec{
 				AgentSummary:       productWire.AgentSummary,
 				AgentSummarySource: productWire.AgentSummarySource,
 				UseWhen:            productWire.UseWhen,
@@ -214,7 +215,7 @@ func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
 		})
 	}
 	return toolSpecFromSnapshot(RuntimeToolSpecInput{
-		Identity: ToolIdentitySpec{
+		Identity: contract.ToolIdentitySpec{
 			ProductID:       wire.ProductID,
 			SourceProductID: wire.SourceProductID,
 			Name:            wire.Name,
@@ -236,20 +237,20 @@ func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
 		Constraints:    wire.Constraints,
 		Positionals:    wire.Positionals,
 		DryRun:         wire.DryRun,
-		Safety: SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect:       wire.Effect,
 			EffectSource: wire.EffectSource,
 			Risk:         wire.Risk,
 			Confirmation: wire.Confirmation,
 			Idempotency:  wire.Idempotency,
 		},
-		Interface: InterfaceSpec{
+		Interface: contract.InterfaceSpec{
 			Ref:          wire.InterfaceRef,
 			Mode:         wire.InterfaceMode,
 			Availability: wire.Availability,
 			Reason:       wire.InterfaceReason,
 		},
-		Selection: SelectionSpec{
+		Selection: contract.SelectionSpec{
 			AgentSummary:       wire.AgentSummary,
 			AgentSummarySource: wire.AgentSummarySource,
 			UseWhen:            wire.UseWhen,

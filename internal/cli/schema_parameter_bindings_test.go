@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -212,7 +213,7 @@ func TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys(t *testi
 	parameter := ParameterSpec{
 		Name:     "item-id",
 		Property: "itemId",
-		FieldProvenance: map[string]FieldProvenance{
+		FieldProvenance: map[string]contract.FieldProvenance{
 			"property": {
 				Value:      json.RawMessage(`"itemId"`),
 				Source:     "versioned_parameter_binding",
@@ -221,7 +222,7 @@ func TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys(t *testi
 		},
 	}
 	registry := SchemaRegistry{Products: []ProductSpec{{ID: "sample", Tools: []ToolSpec{{
-		Identity:   ToolIdentitySpec{CanonicalPath: "sample.read"},
+		Identity:   contract.ToolIdentitySpec{CanonicalPath: "sample.read"},
 		Parameters: []ParameterSpec{parameter},
 	}}}}}
 	valid := schemaParameterBindingSnapshot{Bindings: map[string]map[string]string{

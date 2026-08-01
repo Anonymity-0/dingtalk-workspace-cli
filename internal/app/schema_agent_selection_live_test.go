@@ -98,7 +98,7 @@ func TestManualAgentSelectionArkLive(t *testing.T) {
 	}
 }
 
-func buildManualAgentSelectionLiveInput(batch []cli.ManualAgentSelectionCase, hints cli.ManualAgentHintSet) manualAgentSelectionLiveInput {
+func buildManualAgentSelectionLiveInput(batch []cli.AgentSelectionCase, hints cli.ManualAgentHintSet) manualAgentSelectionLiveInput {
 	input := manualAgentSelectionLiveInput{Cases: make([]manualAgentSelectionLiveCase, 0, len(batch))}
 	if len(batch) == 0 {
 		return input
@@ -122,7 +122,7 @@ func buildManualAgentSelectionLiveInput(batch []cli.ManualAgentSelectionCase, hi
 	return input
 }
 
-func manualAgentSelectionLiveFixture(t testing.TB) (cli.ManualAgentSelectionFixture, cli.ManualAgentHintSet) {
+func manualAgentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, cli.ManualAgentHintSet) {
 	t.Helper()
 	root := NewRootCommand()
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
@@ -140,7 +140,7 @@ func manualAgentSelectionLiveFixture(t testing.TB) (cli.ManualAgentSelectionFixt
 	return fixture, cli.ManualAgentHintSet{}
 }
 
-func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.ManualAgentSelectionCase) []cli.ManualAgentSelectionCase {
+func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.AgentSelectionCase) []cli.AgentSelectionCase {
 	t.Helper()
 	if raw := strings.TrimSpace(os.Getenv("DWS_AGENT_SELECTION_CASES")); raw != "" {
 		selected := map[string]bool{}
@@ -149,7 +149,7 @@ func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.ManualAgentSe
 				selected[id] = true
 			}
 		}
-		result := make([]cli.ManualAgentSelectionCase, 0, len(selected))
+		result := make([]cli.AgentSelectionCase, 0, len(selected))
 		for _, selectionCase := range cases {
 			if selected[selectionCase.ID] {
 				result = append(result, selectionCase)
@@ -167,13 +167,13 @@ func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.ManualAgentSe
 		return result
 	}
 	if os.Getenv("DWS_AGENT_SELECTION_FULL") == "1" {
-		return append([]cli.ManualAgentSelectionCase(nil), cases...)
+		return append([]cli.AgentSelectionCase(nil), cases...)
 	}
 
 	// Smoke mode exercises one positive and one negative scenario per product.
 	seenPositive := map[string]bool{}
 	seenNegative := map[string]bool{}
-	result := make([]cli.ManualAgentSelectionCase, 0)
+	result := make([]cli.AgentSelectionCase, 0)
 	for _, selectionCase := range cases {
 		if selectionCase.ExpectedCanonical != "" && !seenPositive[selectionCase.ProductID] {
 			seenPositive[selectionCase.ProductID] = true
@@ -187,11 +187,11 @@ func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.ManualAgentSe
 	return result
 }
 
-func batchManualAgentSelectionLiveCases(cases []cli.ManualAgentSelectionCase, batchSize int) [][]cli.ManualAgentSelectionCase {
+func batchManualAgentSelectionLiveCases(cases []cli.AgentSelectionCase, batchSize int) [][]cli.AgentSelectionCase {
 	if batchSize <= 0 {
 		batchSize = 1
 	}
-	grouped := map[string][]cli.ManualAgentSelectionCase{}
+	grouped := map[string][]cli.AgentSelectionCase{}
 	products := make([]string, 0)
 	for _, selectionCase := range cases {
 		if _, ok := grouped[selectionCase.ProductID]; !ok {
@@ -200,7 +200,7 @@ func batchManualAgentSelectionLiveCases(cases []cli.ManualAgentSelectionCase, ba
 		grouped[selectionCase.ProductID] = append(grouped[selectionCase.ProductID], selectionCase)
 	}
 	sort.Strings(products)
-	result := make([][]cli.ManualAgentSelectionCase, 0)
+	result := make([][]cli.AgentSelectionCase, 0)
 	for _, productID := range products {
 		productCases := grouped[productID]
 		for start := 0; start < len(productCases); start += batchSize {
@@ -208,7 +208,7 @@ func batchManualAgentSelectionLiveCases(cases []cli.ManualAgentSelectionCase, ba
 			if end > len(productCases) {
 				end = len(productCases)
 			}
-			result = append(result, append([]cli.ManualAgentSelectionCase(nil), productCases[start:end]...))
+			result = append(result, append([]cli.AgentSelectionCase(nil), productCases[start:end]...))
 		}
 	}
 	return result
@@ -290,7 +290,7 @@ func marshalManualAgentSelectionLiveRequest(baseURL, model string, input manualA
 	return json.Marshal(requestBody)
 }
 
-func assertManualAgentSelectionLiveResults(t testing.TB, cases []cli.ManualAgentSelectionCase, results []manualAgentSelectionLiveResult) {
+func assertManualAgentSelectionLiveResults(t testing.TB, cases []cli.AgentSelectionCase, results []manualAgentSelectionLiveResult) {
 	t.Helper()
 	byID := make(map[string]manualAgentSelectionLiveResult, len(results))
 	for _, result := range results {
@@ -387,7 +387,7 @@ func sanitizeManualAgentSelectionLiveTestID(value string) string {
 }
 
 func TestManualAgentSelectionLiveResultContract(t *testing.T) {
-	cases := []cli.ManualAgentSelectionCase{
+	cases := []cli.AgentSelectionCase{
 		{ID: "sample.search/use_when/0", Scenario: "find an item", ExpectedCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 		{ID: "sample.search/avoid_when/0", Scenario: "create an item", ForbiddenCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 	}
@@ -400,7 +400,7 @@ func TestManualAgentSelectionLiveResultContract(t *testing.T) {
 }
 
 func TestManualAgentSelectionLiveInputDoesNotLeakAssertionsOrRepeatCandidates(t *testing.T) {
-	batch := []cli.ManualAgentSelectionCase{
+	batch := []cli.AgentSelectionCase{
 		{ID: "sample.search/use_when/0", Scenario: "find an item", ExpectedCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 		{ID: "sample.search/avoid_when/0", Scenario: "create an item", ForbiddenCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 	}

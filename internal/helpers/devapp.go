@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/spf13/cobra"
@@ -85,9 +85,9 @@ const (
 func newDevAppCommand(runner executor.Runner) *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/devapp.json
 	// products.devapp). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "devapp",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理钉钉开放平台企业内部应用、成员、权限、机器人、事件与版本",
 			UseWhen: []string{
 				"请求涉及企业内部应用的查询、创建、配置、成员权限、机器人、事件订阅或版本管理",
@@ -1492,35 +1492,34 @@ func devAppMeta(tool string) func(*cobra.Command) {
 }
 
 // devAppCompositeInterfaceReason 是 devapp 全树共用的评审 interface 说明（非 pin
-// MCP 元数据的远程适配器）。从 schema_hints/metadata/dev.json 逐字迁入，作为
-// InterfaceDecl.Reason 的最终发布值。
+// MCP 元数据的远程适配器），作为 InterfaceDecl.Reason 的最终发布值。
 const devAppCompositeInterfaceReason = "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
 
 // devapp 的 SafetySpec 直接对齐 Agent Runtime Schema。函数每次返回一个值
 // 副本，避免共享可变状态；四个字段彼此独立，不从 effect 或 risk 推导。
-func devAppSafetyRead() cli.SafetySpec {
-	return cli.SafetySpec{
+func devAppSafetyRead() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	}
 }
 
-func devAppSafetyWrite() cli.SafetySpec {
-	return cli.SafetySpec{
+func devAppSafetyWrite() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "write", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }
 
-func devAppSafetyHighWrite() cli.SafetySpec {
-	return cli.SafetySpec{
+func devAppSafetyHighWrite() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "write", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }
 
-func devAppSafetyDestructive() cli.SafetySpec {
-	return cli.SafetySpec{
+func devAppSafetyDestructive() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}

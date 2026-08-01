@@ -19,11 +19,11 @@ package calendar
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -48,7 +48,7 @@ var EventList = shortcut.Shortcut{
 	Description: "查询日程列表（不传时间默认查询今天）",
 	Intent:      "当你想了解某人（默认自己）在某段时间内的日程安排、看看今天/本周有哪些会时使用；可传 --start/--end 圈定时间范围、--calendar-id 指定日历，返回该区间内的日程列表（含日程 ID，可配合 +get 看详情）。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -209,7 +209,7 @@ var AttendeeList = shortcut.Shortcut{
 	Description: "查看日程参会人",
 	Intent:      "当你想知道某个日程都有谁参加、各人的出席响应状态时使用；输入 --event 日程 ID，返回参会人列表（userId 及其接受/拒绝等状态）。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -323,7 +323,7 @@ var RoomSearch = shortcut.Shortcut{
 	Description: "按名称模糊搜索会议室（不检查可用性）",
 	Intent:      "当你只知道会议室名字、想拿到它的 roomId 以便后续预定时使用；输入 --room-name 名称关键词（建议只填核心专名，去掉“会议室”等后缀），返回名称匹配的会议室列表。它只按名字找、不判断该时段是否空闲，查可用性请用 +room-find。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -495,7 +495,7 @@ var RoomGroups = shortcut.Shortcut{
 	Description: "会议室分组列表",
 	Intent:      "当你想按楼层/园区等分组浏览会议室、或需要拿到 groupId 以便在 +room-find 里按分组过滤时使用；返回会议室分组列表，支持 --limit/--page 分页。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -610,7 +610,7 @@ var BusySearch = shortcut.Shortcut{
 	Description: "查询用户 / 会议室闲忙状态（--users 与 --rooms 至少其一）",
 	Intent:      "当你要在约会前确认某些人或会议室在指定时间段是否有空、避免冲突时使用；传入 --start/--end 时间段并至少给出 --users 或 --rooms 其一，返回各对象在该区间的忙/闲时段。只看忙闲结果、不看具体日程内容，需要系统给出建议时段可用 +suggestion。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -680,7 +680,7 @@ var BookList = shortcut.Shortcut{
 	Description: "查询用户的日历本列表",
 	Intent:      "当你想知道自己有哪些日历本（主日历、项目日历、订阅日历等）、或需要拿到某个日历的 calendarId 以便在 +agenda/+create 中指定时使用；无需参数，返回全部日历本列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -743,7 +743,7 @@ var BookSearch = shortcut.Shortcut{
 	Description: "按名称模糊搜索日历本",
 	Intent:      "当你只记得日历本名字的一部分、想据此找到对应的 calendarId 时使用；输入 --query 名称关键词，返回名称匹配的日历本列表，便于后续在其它命令里指定 --calendar-id。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

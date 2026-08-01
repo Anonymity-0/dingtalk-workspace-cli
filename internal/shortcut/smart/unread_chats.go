@@ -14,11 +14,11 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -52,7 +52,7 @@ var UnreadChats = shortcut.Shortcut{
 		"用 --exclude-muted 排除你已设置免打扰的会话；再在本地把每个会话投影成会话名、未读数和会话 ID 三个关键字段。" +
 		"这是纯只读操作，只做列表与本地投影，不会把任何会话标记为已读或未读；若没有未读会话则返回空列表。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -38,7 +38,7 @@ var Invite = shortcut.Shortcut{
 		"内部先把 --with 里每个姓名解析成唯一 userId，再一次性把他们全部加到 --event 指定的日程里。" +
 		"会真实修改日程并发出参会邀请。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

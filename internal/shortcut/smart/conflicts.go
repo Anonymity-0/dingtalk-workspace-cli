@@ -14,12 +14,12 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -43,7 +43,7 @@ var Conflicts = shortcut.Shortcut{
 		"再在本地两两比对开始/结束时间，找出所有时间段重叠的日程对并报告。" +
 		"只读操作，不修改任何日程；没有冲突时明确告诉你「无冲突」。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

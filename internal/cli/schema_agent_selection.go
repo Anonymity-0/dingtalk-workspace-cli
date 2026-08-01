@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -42,19 +43,13 @@ type AgentSelectionCase struct {
 	CandidateCanonicals []string `json:"candidate_canonicals"`
 }
 
-// ManualAgentSelectionCase is a compatibility alias for AgentSelectionCase.
-type ManualAgentSelectionCase = AgentSelectionCase
-
 // AgentSelectionFixture is the stable input to an optional live Agent
-// evaluation. It is built from ProductDecl/ContractFinal selection prose and
+// evaluation. It is built from contract.ProductDecl/ContractFinal selection prose and
 // the real bound command tree; it is not a second authored hint source.
 type AgentSelectionFixture struct {
 	Version int                  `json:"version"`
 	Cases   []AgentSelectionCase `json:"cases"`
 }
-
-// ManualAgentSelectionFixture is a compatibility alias for AgentSelectionFixture.
-type ManualAgentSelectionFixture = AgentSelectionFixture
 
 // AgentSelectionReport records deterministic coverage and the exact fixture
 // digest. It proves that all reviewed assertions are well-formed and
@@ -67,9 +62,6 @@ type AgentSelectionReport struct {
 	FixtureSHA256      string
 }
 
-// ManualAgentSelectionReport is a compatibility alias for AgentSelectionReport.
-type ManualAgentSelectionReport = AgentSelectionReport
-
 // BuildAgentSelectionEvalFixture turns every ContractFinal use_when and
 // avoid_when entry into a typed, reproducible evaluation case and validates it
 // against the exact BoundCommandRegistry.
@@ -81,7 +73,7 @@ func BuildAgentSelectionEvalFixture(bound BoundCommandRegistry) (AgentSelectionF
 	for _, command := range bound.Commands {
 		canonical := strings.TrimSpace(command.CanonicalPath)
 		expectedTools[canonical] = true
-		if !HasRuntimeContractFinal(command.PrimaryCommand) {
+		if !contract.HasRuntimeContractFinal(command.PrimaryCommand) {
 			return fixture, report, fmt.Errorf("agent selection expected canonical %q has no ContractFinal declaration", canonical)
 		}
 		productID, _, ok := strings.Cut(canonical, ".")
@@ -167,28 +159,17 @@ func BuildAgentSelectionEvalFixture(bound BoundCommandRegistry) (AgentSelectionF
 	return fixture, report, nil
 }
 
-// BuildManualAgentSelectionEvalFixture is a compatibility wrapper that ignores
-// residual ManualAgentHintSet input and builds from ContractFinal only.
-func BuildManualAgentSelectionEvalFixture(bound BoundCommandRegistry, _ ManualAgentHintSet) (AgentSelectionFixture, AgentSelectionReport, error) {
-	return BuildAgentSelectionEvalFixture(bound)
-}
-
 // ValidateAgentSelectionContract is the lightweight generator-facing gate.
 func ValidateAgentSelectionContract(bound BoundCommandRegistry) (AgentSelectionReport, error) {
 	_, report, err := BuildAgentSelectionEvalFixture(bound)
 	return report, err
 }
 
-// ValidateManualAgentSelectionContract is a compatibility wrapper.
-func ValidateManualAgentSelectionContract(bound BoundCommandRegistry, _ ManualAgentHintSet) (AgentSelectionReport, error) {
-	return ValidateAgentSelectionContract(bound)
-}
-
 // contractFinalSelectionHint synthesizes selection assertions of a declared
 // tool from its ContractFinal overlay.
 func contractFinalSelectionHint(command *cobra.Command) ManualAgentToolHint {
 	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.SchemaDecl)"}
-	payload, ok := RuntimeContractFinal(command)
+	payload, ok := contract.RuntimeContractFinal(command)
 	if !ok || payload.Selection == nil {
 		return hint
 	}

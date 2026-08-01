@@ -15,10 +15,10 @@ package smart
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -41,7 +41,7 @@ var Remind = shortcut.Shortcut{
 	Intent: "当你想给自己记一件事、并（可选）设一个截止时间，又不想先查自己的 userId 时使用；" +
 		"内部先解析当前登录用户的 userId，再显式设置 executorIds，--at 只会按 ISO8601 写入截止时间 dueTime，不会创建独立提醒规则。会真实创建待办。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

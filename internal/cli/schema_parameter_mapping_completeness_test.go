@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -81,7 +82,7 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 	}
 	gotLocal := make(map[string]bool)
 	for canonical, tool := range loaded.Snapshot.Tools {
-		if schemaString(tool["interface_mode"]) != InterfaceModeLocal {
+		if schemaString(tool["interface_mode"]) != contract.InterfaceModeLocal {
 			continue
 		}
 		gotLocal[canonical] = true
@@ -90,7 +91,7 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 			t.Errorf("%s is classified local without a reviewed pure-local implementation", canonical)
 			continue
 		}
-		if schemaString(tool["availability"]) != InterfaceAvailable {
+		if schemaString(tool["availability"]) != contract.InterfaceAvailable {
 			t.Errorf("%s local availability = %q, want available", canonical, schemaString(tool["availability"]))
 		}
 		if tool["interface_ref"] != nil {
@@ -207,7 +208,7 @@ func TestSchemaParameterMappingAuditExclusionRules(t *testing.T) {
 				"parameters":     map[string]any{"selector": parameter},
 			},
 		}
-		if mode == InterfaceModeComposite {
+		if mode == contract.InterfaceModeComposite {
 			tools["sample.read"]["interface_ref"] = nil
 			tools["sample.read"]["interface_reason"] = "Reviewed composite fixture"
 			tools["sample.read"]["field_provenance"] = map[string]any{
@@ -229,32 +230,32 @@ func TestSchemaParameterMappingAuditExclusionRules(t *testing.T) {
 	}{
 		{
 			name:     "reviewed MCP mismatch",
-			tools:    tool(InterfaceModeMCP, excludedParameter("cliOnly")),
+			tools:    tool(contract.InterfaceModeMCP, excludedParameter("cliOnly")),
 			metadata: directMetadata,
 			snapshot: schemaParameterBindingSnapshot{MappingExclusions: map[string]string{key: "CLI selector is resolved before the RPC"}},
 		},
 		{
 			name:        "redundant MCP exclusion",
-			tools:       tool(InterfaceModeMCP, excludedParameter("request.child")),
+			tools:       tool(contract.InterfaceModeMCP, excludedParameter("request.child")),
 			metadata:    directMetadata,
 			snapshot:    schemaParameterBindingSnapshot{MappingExclusions: map[string]string{key: "stale"}},
 			wantProblem: "already resolves",
 		},
 		{
 			name:     "local selector",
-			tools:    tool(InterfaceModeLocal, excludedParameter("selector")),
+			tools:    tool(contract.InterfaceModeLocal, excludedParameter("selector")),
 			metadata: embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}},
 			snapshot: schemaParameterBindingSnapshot{MappingExclusions: map[string]string{key: "local planner input"}},
 		},
 		{
 			name:     "composite selector",
-			tools:    tool(InterfaceModeComposite, excludedParameter("selector")),
+			tools:    tool(contract.InterfaceModeComposite, excludedParameter("selector")),
 			metadata: embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}},
 			snapshot: schemaParameterBindingSnapshot{MappingExclusions: map[string]string{key: "fans out to multiple calls"}},
 		},
 		{
 			name:     "binding conflict",
-			tools:    tool(InterfaceModeLocal, excludedParameter("selector")),
+			tools:    tool(contract.InterfaceModeLocal, excludedParameter("selector")),
 			metadata: embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}},
 			snapshot: schemaParameterBindingSnapshot{
 				MappingExclusions: map[string]string{key: "local planner input"},
@@ -264,7 +265,7 @@ func TestSchemaParameterMappingAuditExclusionRules(t *testing.T) {
 		},
 		{
 			name:        "unknown exact key",
-			tools:       tool(InterfaceModeLocal, excludedParameter("selector")),
+			tools:       tool(contract.InterfaceModeLocal, excludedParameter("selector")),
 			metadata:    embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}},
 			snapshot:    schemaParameterBindingSnapshot{MappingExclusions: map[string]string{"sample.read --missing": "not exact"}},
 			wantProblem: "does not reference an exact final Catalog parameter",
@@ -328,7 +329,7 @@ func TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty(t *testing.T)
 	}
 	payload, err := (ParameterSpec{
 		Name: "local-only", Type: "boolean", Description: "test", Property: "",
-		FieldProvenance: map[string]FieldProvenance{"property": provenance},
+		FieldProvenance: map[string]contract.FieldProvenance{"property": provenance},
 	}).ToPayload()
 	if err != nil {
 		t.Fatal(err)
@@ -353,9 +354,12 @@ func TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty(t *testing.T)
 	if rank != runtimeSchemaRankVersionedBinding || precedence != runtimeSchemaPrecedenceMappingExclusion {
 		t.Fatalf("mapping exclusion precedence = %d/%q", rank, precedence)
 	}
-	manualWinner, err := resolveRuntimeSchemaCandidate("property", exclusion, runtimeSchemaManualCandidate("reviewedProperty", true, "reviewed override"))
-	if err != nil || manualWinner.Source != "reviewed_manual_hint" || manualWinner.Value != "reviewedProperty" {
-		t.Fatalf("reviewed manual must remain above mapping exclusion: winner=%#v err=%v", manualWinner, err)
+	// Mapping exclusion (650) outranks native_annotation (620); retired
+	// reviewed_manual_hint / tool_schema_hint ranks are gone.
+	native := runtimeSchemaCandidate("nativeProperty", true, "native_annotation")
+	exclusionWinner, err := resolveRuntimeSchemaCandidate("property", exclusion, native)
+	if err != nil || exclusionWinner.Source != "reviewed_mapping_exclusion" || exclusionWinner.Value != "" {
+		t.Fatalf("mapping exclusion must outrank native_annotation: winner=%#v err=%v", exclusionWinner, err)
 	}
 }
 
@@ -377,11 +381,11 @@ func TestReviewedCompositeParameterMappingRejectsInference(t *testing.T) {
 		want      bool
 	}{
 		{name: "versioned binding", parameter: parameter("request.id", "versioned_parameter_binding", ""), want: true},
-		{name: "reviewed manual", parameter: parameter("request.id", "reviewed_manual_hint", "reviewed mapping"), want: true},
-		{name: "reviewed tool hint", parameter: parameter("request.id", "tool_schema_hint", "reviewed mapping"), want: true},
+		{name: "native annotation", parameter: parameter("request.id", "native_annotation", ""), want: true},
 		{name: "mapping exclusion", parameter: parameter("", "reviewed_mapping_exclusion", "reviewed CLI-only input"), want: true},
 		{name: "flag inference", parameter: parameter("requestId", "flag_name_inference", ""), want: false},
-		{name: "unreviewed tool hint", parameter: parameter("request.id", "tool_schema_hint", ""), want: false},
+		{name: "retired tool hint", parameter: parameter("request.id", "tool_schema_hint", "reviewed mapping"), want: false},
+		{name: "retired manual hint", parameter: parameter("request.id", "reviewed_manual_hint", "reviewed mapping"), want: false},
 		{name: "nonempty exclusion", parameter: parameter("request.id", "reviewed_mapping_exclusion", "reviewed"), want: false},
 	}
 	for _, test := range tests {
@@ -484,7 +488,7 @@ func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embe
 		tool := tools[canonical]
 		mode := strings.TrimSpace(schemaString(tool["interface_mode"]))
 		availability := strings.TrimSpace(schemaString(tool["availability"]))
-		if mode == InterfaceModeComposite && availability == InterfaceAvailable {
+		if mode == contract.InterfaceModeComposite && availability == contract.InterfaceAvailable {
 			problems = append(problems, auditCompositeSchemaDisposition(canonical, tool)...)
 			if strings.HasPrefix(strings.TrimSpace(schemaString(tool["interface_reason"])), "Reviewed unpinned remote adapter:") {
 				parameters := schemaMap(tool["parameters"])
@@ -499,7 +503,7 @@ func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embe
 			}
 			continue
 		}
-		if mode != InterfaceModeMCP || availability != InterfaceAvailable {
+		if mode != contract.InterfaceModeMCP || availability != contract.InterfaceAvailable {
 			continue
 		}
 		metadataKey, pinned, resolveProblems := pinnedMCPParameterMetadata(canonical, tool, metadata)
@@ -558,12 +562,12 @@ func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embe
 			problems = append(problems, fmt.Sprintf("mapping_exclusions %q must deliver an omitted property, got %q", key, flag.property))
 		}
 		switch flag.mode {
-		case InterfaceModeLocal, InterfaceModeComposite:
+		case contract.InterfaceModeLocal, contract.InterfaceModeComposite:
 			// These modes do not claim one direct MCP parameter map. The exact,
 			// reviewed reason and omitted final property are the whole contract.
 			continue
-		case InterfaceModeMCP:
-			if flag.availability != InterfaceAvailable || len(flag.metadataParams) == 0 {
+		case contract.InterfaceModeMCP:
+			if flag.availability != contract.InterfaceAvailable || len(flag.metadataParams) == 0 {
 				problems = append(problems, fmt.Sprintf("mapping_exclusions %q is not attached to an available pinned MCP parameter map", key))
 				continue
 			}
@@ -589,19 +593,10 @@ func reviewedCompositeParameterMapping(parameter map[string]any) (bool, string) 
 	property := strings.TrimSpace(schemaString(parameter["property"]))
 	provenance := schemaMap(parameter["field_provenance"])["property"]
 	source := strings.TrimSpace(schemaString(provenance["source"]))
-	reviewReason := strings.TrimSpace(schemaString(provenance["review_reason"]))
 	switch source {
 	case "versioned_parameter_binding", "typed_parameter_metadata", "native_annotation":
 		if property == "" {
 			return false, fmt.Sprintf("%s selected an empty property", source)
-		}
-		return true, ""
-	case "reviewed_manual_hint", "tool_schema_hint":
-		if reviewReason == "" {
-			return false, fmt.Sprintf("%s has no review_reason", source)
-		}
-		if property == "" {
-			return false, fmt.Sprintf("%s selected an empty property without a mapping exclusion", source)
 		}
 		return true, ""
 	case "reviewed_mapping_exclusion":

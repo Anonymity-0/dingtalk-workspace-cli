@@ -18,7 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // contractRuntime holds DeclareLeafMetadata execution hooks keyed by command
@@ -26,7 +26,7 @@ import (
 // confirmation without relying on PreRunE (direct RunE calls skip PreRunE).
 type contractRuntime struct {
 	validate func(*cobra.Command, []string) error
-	safety   cli.SafetySpec // zero when Confirmation is not user_required
+	safety   contract.SafetySpec // zero when Confirmation is not user_required
 	confirm  bool
 }
 

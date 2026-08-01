@@ -22,8 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -409,7 +409,7 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("dry-run", false, "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -476,7 +476,7 @@ func TestDeclareLeafMetadataDefersConfirmUntilCallTool(t *testing.T) {
 	cmd.Flags().Bool("dry-run", false, "")
 	cmd.Flags().String("id", "", "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -532,7 +532,7 @@ func TestDeclareLeafMetadataValidateRunsBeforeConfirmSafety(t *testing.T) {
 	cmd.Flags().Bool("dry-run", false, "")
 	cmd.Flags().String("id", "", "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

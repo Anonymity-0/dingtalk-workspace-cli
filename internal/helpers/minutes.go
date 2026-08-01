@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -16,9 +16,9 @@ import (
 func newMinutesCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/minutes.json
 	// products.minutes). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "minutes",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。",
 			UseWhen: []string{
 				"用户要查找、读取、编辑或管理钉钉听记及其录音、转写、摘要和衍生内容。",
@@ -43,7 +43,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesListMineCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -74,7 +74,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesListSharedCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -109,7 +109,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesListAllCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -146,7 +146,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetInfoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -181,7 +181,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetSummaryCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -223,7 +223,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetKeywordsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -277,7 +277,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetTranscriptionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -315,7 +315,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetTodosCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -365,7 +365,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetAudioCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -402,7 +402,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesGetBatchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -441,7 +441,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesUpdateTitleCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -544,7 +544,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesRecordStartCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -586,7 +586,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesRecordPauseCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -628,7 +628,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesRecordResumeCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -670,7 +670,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesRecordStopCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -728,7 +728,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(minutesUpdateSummaryCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -776,7 +776,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(mindGraphCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -821,7 +821,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(mindGraphStatusCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -878,7 +878,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(speakerReplaceCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -929,7 +929,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(speakerSummaryCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -973,7 +973,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(speakerSummaryGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1021,7 +1021,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(hotWordAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1056,7 +1056,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(hotWordListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1096,7 +1096,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(replaceTextCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1190,7 +1190,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(uploadCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1243,7 +1243,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(uploadCompleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1287,7 +1287,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(uploadCancelCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1385,7 +1385,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(permissionAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1446,7 +1446,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(permissionRemoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1502,7 +1502,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(tagListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1553,7 +1553,7 @@ func newMinutesCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(tagQueryCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

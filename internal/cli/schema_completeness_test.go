@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -267,7 +268,7 @@ type schemaDeliveryTestTool struct {
 	CLIPath    string
 	Aliases    []string
 	Parameters []ParameterSpec
-	Selection  SelectionSpec
+	Selection  contract.SelectionSpec
 }
 
 func schemaDeliveryTestRoot(tools ...schemaDeliveryTestTool) *cobra.Command {
@@ -337,7 +338,7 @@ func schemaDeliveryTestRegistry(tools ...schemaDeliveryTestTool) SchemaRegistry 
 			provenanceValues["reviewed"] = *tool.Selection.Reviewed
 		}
 		spec, err := ToolSpecFromRuntime(RuntimeToolSpecInput{
-			Identity: ToolIdentitySpec{
+			Identity: contract.ToolIdentitySpec{
 				ProductID:      parts[0],
 				Name:           parts[1],
 				CLIName:        strings.Fields(tool.CLIPath)[len(strings.Fields(tool.CLIPath))-1],
@@ -348,7 +349,7 @@ func schemaDeliveryTestRegistry(tools ...schemaDeliveryTestTool) SchemaRegistry 
 				Source:         "test",
 			},
 			Parameters:      append([]ParameterSpec(nil), tool.Parameters...),
-			Interface:       InterfaceSpec{Mode: "local", Availability: "available", Reason: interfaceReason},
+			Interface:       contract.InterfaceSpec{Mode: "local", Availability: "available", Reason: interfaceReason},
 			Selection:       tool.Selection,
 			FieldProvenance: schemaDeliveryTestProvenance(provenanceValues),
 		})
@@ -373,20 +374,20 @@ func schemaDeliveryTestRegistry(tools ...schemaDeliveryTestTool) SchemaRegistry 
 	return registry
 }
 
-func schemaDeliveryTestProvenance(fields map[string]any) map[string]FieldProvenance {
-	provenance := make(map[string]FieldProvenance, len(fields))
+func schemaDeliveryTestProvenance(fields map[string]any) map[string]contract.FieldProvenance {
+	provenance := make(map[string]contract.FieldProvenance, len(fields))
 	for field, value := range fields {
 		encoded, err := json.Marshal(value)
 		if err != nil {
 			panic(err)
 		}
 		selected := true
-		provenance[field] = FieldProvenance{
+		provenance[field] = contract.FieldProvenance{
 			Value:      encoded,
 			Source:     "test",
 			Precedence: "test",
 			Resolution: "test",
-			Candidates: []FieldCandidateProvenance{{Value: append(json.RawMessage(nil), encoded...), Source: "test", Precedence: "test", Selected: &selected}},
+			Candidates: []contract.FieldCandidateProvenance{{Value: append(json.RawMessage(nil), encoded...), Source: "test", Precedence: "test", Selected: &selected}},
 		}
 	}
 	return provenance

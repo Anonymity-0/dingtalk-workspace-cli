@@ -5,6 +5,7 @@ package cli
 
 import (
 	"encoding/json"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"strings"
 	"testing"
 )
@@ -56,7 +57,7 @@ func TestValidateSchemaDeliveryInvariantsRejectsSelectionProvenanceOmission(t *t
 	fixture := schemaDeliveryTestTool{
 		Canonical: "sample.run",
 		CLIPath:   "sample run",
-		Selection: SelectionSpec{Examples: []string{"dws sample run"}},
+		Selection: contract.SelectionSpec{Examples: []string{"dws sample run"}},
 	}
 	source := schemaDeliveryTestRegistry(fixture)
 	snapshot := schemaDeliveryTestSnapshot(fixture)
@@ -111,7 +112,7 @@ func TestSelectionExplicitEmptyListSurvivesFinalDelivery(t *testing.T) {
 		Canonical: "sample.run",
 		CLIPath:   "sample category run",
 		Aliases:   []string{"sample legacy execute"},
-		Selection: SelectionSpec{UseWhen: []string{}},
+		Selection: contract.SelectionSpec{UseWhen: []string{}},
 	})
 
 	full, ok := snapshot.Tools["sample.run"]["use_when"].([]string)

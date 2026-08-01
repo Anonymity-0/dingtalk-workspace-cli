@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -162,7 +163,7 @@ func BindEffectiveCommandRegistry(root *cobra.Command, effective EffectiveComman
 		// Index Contract-declared dry_run capabilities at bind time: every
 		// process that resolves the command tree gets the reviewed set, not
 		// only processes that also run Schema assembly.
-		if payload, ok := RuntimeContractFinal(item.PrimaryCommand); ok && payload.DryRun != nil {
+		if payload, ok := contract.RuntimeContractFinal(item.PrimaryCommand); ok && payload.DryRun != nil {
 			recordDeclaredDryRunCapability(item.CanonicalPath, *payload.DryRun)
 		}
 	}
@@ -293,7 +294,7 @@ func validateCompatibilityLeafContract(spec CommandSpec, primary, alias *cobra.C
 }
 
 // filterSchemaAnnotations returns a copy of annotations without dws.schema.*
-// keys. Those are Schema-level metadata (ParamDecl / AttachSchema) that do not
+// keys. Those are Schema-level metadata (contract.ParamDecl / AttachSchema) that do not
 // affect command execution and are resolved through the shared assembly path.
 func filterSchemaAnnotations(annotations map[string][]string) map[string][]string {
 	if len(annotations) == 0 {
@@ -313,7 +314,7 @@ func filterSchemaAnnotations(annotations map[string][]string) map[string][]strin
 
 // requiredContractEquivalent compares two Required contracts, tolerating
 // NativeRequired / NativeRequiredWhen being present on one side but empty on
-// the other. This happens when a ParamDecl annotation exists on the primary
+// the other. This happens when a contract.ParamDecl annotation exists on the primary
 // command but not on its compatibility alias. Genuine drift (both non-empty
 // but different) is still caught.
 func requiredContractEquivalent(a, b compatibilityFlagRequiredContract) bool {
@@ -486,7 +487,7 @@ func compatibilityFlagContractProblems(canonicalPath string, primary, alias *cob
 				name, compatibilityJSON(primaryFlag.Required), compatibilityJSON(aliasFlag.Required)))
 		}
 		// Compare annotations excluding dws.schema.* keys: those are Schema-level
-		// metadata declarations (ParamDecl / AttachSchema) that do not affect
+		// metadata declarations (contract.ParamDecl / AttachSchema) that do not affect
 		// command execution. The compatibility check verifies executable equivalence;
 		// Schema facts are resolved through the shared assembly path.
 		primaryExecAnnotations := filterSchemaAnnotations(primaryFlag.Annotations)
@@ -753,7 +754,7 @@ func canonicalCompatibilityGroups(groups [][]string) [][]string {
 	return canonical
 }
 
-func strictCompatibilityPositionals(command *cobra.Command) ([]RuntimeSchemaPositional, error) {
+func strictCompatibilityPositionals(command *cobra.Command) ([]contract.RuntimeSchemaPositional, error) {
 	if command == nil || command.Annotations == nil {
 		return nil, nil
 	}
@@ -761,7 +762,7 @@ func strictCompatibilityPositionals(command *cobra.Command) ([]RuntimeSchemaPosi
 	if raw == "" {
 		return nil, nil
 	}
-	var positionals []RuntimeSchemaPositional
+	var positionals []contract.RuntimeSchemaPositional
 	if err := decodeStrictSchemaJSON([]byte(raw), &positionals); err != nil {
 		return nil, err
 	}

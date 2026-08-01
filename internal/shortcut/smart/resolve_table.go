@@ -14,11 +14,11 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -53,7 +53,7 @@ var ResolveTable = shortcut.Shortcut{
 		"如果只命中一张表就直接返回它的 tableId；如果命中多张则列出全部候选让你消歧，绝不替你瞎猜；如果一张都没命中则提示未找到。" +
 		"这是纯只读操作，只做列举、本地匹配与投影，不会创建、修改或删除任何数据表。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

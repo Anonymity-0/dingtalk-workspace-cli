@@ -273,9 +273,10 @@ Definition（仅声明；不可编译）
 
 | 层 | 含义 | 今日落点 |
 |---|---|---|
-| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `SchemaDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Schema` |
-| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedSchemaDecl` → `RegisterRuntimeContractFinal` |
-| **Schema 透传** | 组装读取注册表，原样投影为 `ToolSpec` | `runtimeToolSpecFromContractFinal` |
+| **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `SchemaDecl` **数据字段** = Schema 最终值 | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Schema`；类型真身在 `corecmd/contract`（`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`） |
+| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedSchemaDecl` → `cli.AnnotateRuntimeContract` + `contract.RegisterRuntimeContractFinal` |
+| **注解 seam** | Cobra `dws.schema.*` 写入 | `cli.AnnotateRuntime*`（framework 可调用；**不**在 cli 再定义 contract 类型） |
+| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；Catalog embed / `ResolveMeta` | `internal/cli`（交付边界，不搬入 contract） |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
 
 硬规则：
@@ -351,7 +352,7 @@ Definition（仅声明；不可编译）
 | | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
 | **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
 | **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
-| **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `cli.SafetySpec`）**或标注**（`runtime_gate`） | `Safety` / `AnnotateRuntimeGate`（metadata 壳 `tools: {}`，不再承载 reviewed Safety） | 四字段独立；confirmation 单独驱动运行时 |
+| **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `contract.SafetySpec`）**或标注**（`runtime_gate`） | `Safety` / `AnnotateRuntimeGate`（metadata 壳 `tools: {}`，不再承载 reviewed Safety） | 四字段独立；confirmation 单独驱动运行时 |
 | | `idempotency` | 评审源（或未来 Contract） | reviewed metadata | 今日非框架声明；不得推断 |
 | | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
 | **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |
@@ -1162,7 +1163,7 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 | 非 Shortcut 受管定义的 Cobra 命令 Hidden | 可执行 Contract | 挂载的命令可见性与声明匹配 |
 | Shortcut 列表成员资格与语义 disposition | 经评审的 Shortcut 可见性解析器 | public/all 列表成员资格与经评审决策匹配 |
 | Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
-| Safety 与运行时确认 | 可执行 Contract 的完整 `cli.SafetySpec`，或迁移期显式 annotate（如 `runtime_gate`）；见 §5.0 | `confirmation` 单独驱动运行时门，`effect` / `risk` / `idempotency` 原样发布，禁止跨字段机械推导；任一 Safety 字段非空时四字段必须齐全，否则构造期 panic；`ConfirmFirst` 只在 `confirmation=user_required` 时合法 |
+| Safety 与运行时确认 | 可执行 Contract 的完整 `contract.SafetySpec`，或迁移期显式 annotate（如 `runtime_gate`）；见 §5.0 | `confirmation` 单独驱动运行时门，`effect` / `risk` / `idempotency` 原样发布，禁止跨字段机械推导；任一 Safety 字段非空时四字段必须齐全，否则构造期 panic；`ConfirmFirst` 只在 `confirmation=user_required` 时合法 |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
 | Agent 选择文案（`use_when`、`avoid_when`、摘要） | 经评审的 hints/catalog | 身份解析到活契约 |
 

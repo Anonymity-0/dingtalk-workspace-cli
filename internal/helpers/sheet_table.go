@@ -16,7 +16,6 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"os"
 	"strings"
@@ -24,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func newTableCmds() []*cobra.Command {
@@ -59,7 +59,7 @@ func newTableCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(tableGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -124,7 +124,7 @@ func newTableCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(tablePutCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

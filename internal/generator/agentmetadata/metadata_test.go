@@ -292,7 +292,6 @@ func TestValidateEffectiveToolProjectionRejectsCountOnlyFalseGreen(t *testing.T)
 	}
 }
 
-
 func TestMergeToolMetadataUsesSourcePrecedenceAcrossAliases(t *testing.T) {
 	merged, err := mergeToolMetadata(
 		ToolMetadata{Risk: "medium", riskRank: selectionRankImported, Confirmation: "not_required", confirmationRank: selectionRankImported},
@@ -318,7 +317,6 @@ func TestMergeToolMetadataUsesSourcePrecedenceAcrossAliases(t *testing.T) {
 		t.Fatalf("lower-precedence safety replaced the winner: %s/%s", merged.Risk, merged.Confirmation)
 	}
 }
-
 
 func TestClassifyEffectPathUsesActionSegment(t *testing.T) {
 	tests := map[string]string{

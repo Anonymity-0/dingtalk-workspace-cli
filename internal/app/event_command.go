@@ -32,6 +32,7 @@ import (
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/busctl"
@@ -75,9 +76,9 @@ var (
 func newEventCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/event.json
 	// products.event). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "event",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期",
 			UseWhen: []string{
 				"需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期",
@@ -367,7 +368,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 	f.StringVar(&streamOpts.TicketURL, "stream-ticket-url", strings.TrimSpace(os.Getenv("DWS_STREAM_TICKET_URL")),
 		"个人 Stream 取票 URL；默认由 MCP base 派生 /stream/connections/ticket")
 	hideEventInternalFlags(cmd, "as")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "event_key",
 		Type:        "string",
 		Description: "要消费的一个或多个个人事件码；多个事件必须共享同一目标和过滤上下文",
@@ -376,7 +377,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 		Index:       0,
 	})
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -775,7 +776,7 @@ func newEventListCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&includePending, "include-pending", false, "个人事件目录包含 pending 项")
 	hideEventInternalFlags(cmd, "as", "all", "all-editions", "client-id")
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -865,7 +866,7 @@ func newEventStatusCommand() *cobra.Command {
 		"个人事件 sourceId；开源版默认 open，可由 edition 覆盖")
 	hideEventInternalFlags(cmd, "as", "all", "all-editions", "client-id", "fail-on-orphan")
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1165,7 +1166,7 @@ func newEventStopCommand() *cobra.Command {
 		"个人事件 sourceId；开源版默认 open，可由 edition 覆盖")
 	cmd.Flags().BoolVar(&opts.All, "all", false, "取消当前身份下本地记录的所有个人订阅")
 	hideEventInternalFlags(cmd, "as")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "subscribe_id",
 		Type:        "string",
 		Description: "要取消的个人事件订阅 ID；与 --all 二选一",
@@ -1173,7 +1174,7 @@ func newEventStopCommand() *cobra.Command {
 		Index:       0,
 	})
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

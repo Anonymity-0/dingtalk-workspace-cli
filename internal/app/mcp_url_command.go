@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -75,7 +76,7 @@ func newMCPURLGetCommand(caller edition.ToolCaller) *cobra.Command {
 			return writeMCPURLResult(cmd, result)
 		},
 	}
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "mcp_id",
 		Type:        "string",
 		Description: "钉钉 MCP 市场中的 mcpId",
@@ -83,7 +84,7 @@ func newMCPURLGetCommand(caller edition.ToolCaller) *cobra.Command {
 		Index:       0,
 	})
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

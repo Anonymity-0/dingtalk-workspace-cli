@@ -15,6 +15,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"sort"
 	"strings"
 )
@@ -31,7 +32,7 @@ type InterfaceRefKey struct {
 // MCP metadata. CanonicalPath is a metadata lookup key, not command identity.
 type InterfaceRegistryEntry struct {
 	CanonicalPath string
-	Ref           InterfaceRefSpec
+	Ref           contract.InterfaceRefSpec
 	Metadata      embeddedMCPToolMetadata
 }
 
@@ -86,7 +87,7 @@ func buildInterfaceRegistry(tools map[string]embeddedMCPToolMetadata) (Interface
 
 		entry := InterfaceRegistryEntry{
 			CanonicalPath: canonical,
-			Ref:           InterfaceRefSpec(key),
+			Ref:           contract.InterfaceRefSpec(key),
 			Metadata:      metadata,
 		}
 		registry.ByCanonical[canonical] = entry
@@ -127,7 +128,7 @@ func validateSchemaRegistryInterfacesWithMetadata(schema SchemaRegistry, metadat
 				problems = append(problems, err.Error())
 				continue
 			}
-			if mode := strings.TrimSpace(tool.Interface.Mode); mode == InterfaceModeMCP && tool.Interface.AgentExecutable() {
+			if mode := strings.TrimSpace(tool.Interface.Mode); mode == contract.InterfaceModeMCP && tool.Interface.AgentExecutable() {
 				if err := validateToolInterfaceRef(canonical, mode, tool.Interface.Ref, interfaces); err != nil {
 					problems = append(problems, err.Error())
 				}
@@ -141,7 +142,7 @@ func validateSchemaRegistryInterfacesWithMetadata(schema SchemaRegistry, metadat
 	return nil
 }
 
-func validateToolInterfaceRef(canonical, mode string, ref *InterfaceRefSpec, interfaces InterfaceRegistry) error {
+func validateToolInterfaceRef(canonical, mode string, ref *contract.InterfaceRefSpec, interfaces InterfaceRegistry) error {
 	if ref == nil {
 		return fmt.Errorf("schema tool %s with interface mode %s has no interface_ref", canonical, mode)
 	}

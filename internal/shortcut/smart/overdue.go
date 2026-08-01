@@ -14,11 +14,11 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -49,7 +49,7 @@ var Overdue = shortcut.Shortcut{
 		"最后只打印这些逾期待办的标题(subject)、截止时间(dueTime) 和任务 ID(taskId)。" +
 		"这是纯只读操作，只做列表与本地过滤，不会修改或完成任何待办；若没有逾期待办则返回空列表。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

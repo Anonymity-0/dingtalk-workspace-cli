@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -43,7 +43,7 @@ var FindRecord = shortcut.Shortcut{
 		"却不想手写结构化过滤条件时使用；内部直接调用 query_records，把 --query 作为全文关键词(keyword)在该表里检索并打印匹配记录。" +
 		"不传 --query 时则返回该表的前若干条记录。这是只读操作，不会修改任何数据。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -15,10 +15,10 @@ package smart
 
 import (
 	"encoding/json"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -41,7 +41,7 @@ var ShareDoc = shortcut.Shortcut{
 		"内部先按姓名搜通讯录解析出唯一用户，再用 openDingTalkId 把链接拼成一条 Markdown 消息发出去，" +
 		"姓名匹配到多人时会列出候选让你区分。只发链接、不读取或改动文档本身，会真实发出消息。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

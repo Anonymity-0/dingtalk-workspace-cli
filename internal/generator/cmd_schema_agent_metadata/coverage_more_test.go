@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/agentmetadata"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/outputguard"
 	"github.com/spf13/cobra"
@@ -281,8 +282,8 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 
 func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
-	cli.RegisterRuntimeContractFinal(declared, cli.ContractFinalPayload{})
-	t.Cleanup(func() { cli.ClearRuntimeContractFinalForTest(declared) })
+	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{})
+	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(declared) })
 
 	registry := commandRegistryProjection{
 		CanonicalToolPaths: map[string]string{
@@ -300,10 +301,10 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.
 }
 
 func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredProducts(t *testing.T) {
-	t.Cleanup(func() { cli.ClearProductDeclForTest("declared") })
-	cli.RegisterProductDecl(cli.ProductDecl{
+	t.Cleanup(func() { contract.ClearProductDeclForTest("declared") })
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "declared",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "Declared product",
 			UseWhen:      []string{"use declared"},
 			AvoidWhen:    []string{"avoid declared"},

@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -372,9 +373,9 @@ func newContactAccountUpdateCommand() *cobra.Command {
 func newContactCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/contact.json
 	// products.contact). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "contact",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询通讯录与花名册，并管理企业、部门、员工及企业账号",
 			UseWhen: []string{
 				"按姓名/手机号/userId/部门条件做通讯录精确查询，或明确执行企业与员工入企管理",
@@ -433,7 +434,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactUserGetSelfCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -467,7 +468,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactRelationListMyFollowingsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -502,7 +503,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactUserSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -539,7 +540,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactUserSearchMobileCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -595,7 +596,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactUserGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -727,7 +728,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactDeptSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -762,7 +763,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactDeptListChildrenCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -797,7 +798,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactDeptGetInfoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -842,7 +843,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactDeptListMembersCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -894,7 +895,7 @@ func newContactCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(contactUserProfileFieldsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -951,7 +952,7 @@ contact user profile fields 获取可用字段列表。
 		},
 	}
 	DeclareLeafMetadata(contactUserProfileGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1064,7 +1065,7 @@ contact user profile fields 获取可用字段列表。
 		},
 	}
 	DeclareLeafMetadata(contactUserDismissionSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1132,7 +1133,7 @@ contact user profile fields 获取可用字段列表。
 		},
 	}
 	DeclareLeafMetadata(contactUserInviteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -1160,7 +1161,7 @@ contact user profile fields 获取可用字段列表。
 	contactUserInviteCmd.Flags().String("depts", "", "员工所属部门列表 JSON 数组（可选），格式: [{\"deptId\":1}]")
 	contactUserUpdateCmd := newContactUserUpdateCommand()
 	DeclareLeafMetadata(contactUserUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1188,7 +1189,7 @@ contact user profile fields 获取可用字段列表。
 	})
 	contactUserUpdateSelfCmd := newContactUserUpdateSelfCommand()
 	DeclareLeafMetadata(contactUserUpdateSelfCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1253,7 +1254,7 @@ contact user profile fields 获取可用字段列表。
 	}
 	contactDeptCreateCmd := newContactDeptCreateCommand()
 	DeclareLeafMetadata(contactDeptCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
@@ -1281,7 +1282,7 @@ contact user profile fields 获取可用字段列表。
 	})
 	contactDeptUpdateCmd := newContactDeptUpdateCommand()
 	DeclareLeafMetadata(contactDeptUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1368,7 +1369,7 @@ contact user profile fields 获取可用字段列表。
 		},
 	}
 	DeclareLeafMetadata(contactOrgCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -1451,7 +1452,7 @@ contact user profile fields 获取可用字段列表。
 		},
 	}
 	DeclareLeafMetadata(contactAccountCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -1485,7 +1486,7 @@ contact user profile fields 获取可用字段列表。
 	contactAccountCreateCmd.Flags().Bool("send-pwd-via-sms", false, "是否通过手机短信/邮件发送登录邀请（可选）")
 	contactAccountUpdateCmd := newContactAccountUpdateCommand()
 	DeclareLeafMetadata(contactAccountUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

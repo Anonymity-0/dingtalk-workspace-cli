@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -117,9 +118,9 @@ func TestCrossPlatformCoverageSchemaParameterBindingDeliveryRemainingEdges(t *te
 	command.Flags().String("id", "", "id")
 	boundSpec := BoundCommandSpec{CommandSpec: CommandSpec{CanonicalPath: "sample.read", Visibility: SchemaVisibilityPublic}, PrimaryCommand: command}
 	bound := BoundCommandRegistry{Commands: []BoundCommandSpec{boundSpec}, ByCanonical: map[string]BoundCommandSpec{"sample.read": boundSpec}}
-	versioned := FieldProvenance{Value: json.RawMessage(`"itemId"`), Source: "versioned_parameter_binding", Resolution: "selected"}
-	parameter := ParameterSpec{Name: "id", Property: "itemId", FieldProvenance: map[string]FieldProvenance{"property": versioned}}
-	registry := SchemaRegistry{Products: []ProductSpec{{ID: "sample", Tools: []ToolSpec{{Identity: ToolIdentitySpec{CanonicalPath: "sample.read"}, Parameters: []ParameterSpec{parameter}}}}}}
+	versioned := contract.FieldProvenance{Value: json.RawMessage(`"itemId"`), Source: "versioned_parameter_binding", Resolution: "selected"}
+	parameter := ParameterSpec{Name: "id", Property: "itemId", FieldProvenance: map[string]contract.FieldProvenance{"property": versioned}}
+	registry := SchemaRegistry{Products: []ProductSpec{{ID: "sample", Tools: []ToolSpec{{Identity: contract.ToolIdentitySpec{CanonicalPath: "sample.read"}, Parameters: []ParameterSpec{parameter}}}}}}
 
 	cases := []struct {
 		name     string
@@ -134,8 +135,8 @@ func TestCrossPlatformCoverageSchemaParameterBindingDeliveryRemainingEdges(t *te
 			snapshot: schemaParameterBindingSnapshot{},
 			bound:    bound,
 			registry: SchemaRegistry{Products: []ProductSpec{{Tools: []ToolSpec{
-				{Identity: ToolIdentitySpec{CanonicalPath: "sample.read"}},
-				{Identity: ToolIdentitySpec{CanonicalPath: "sample.read"}},
+				{Identity: contract.ToolIdentitySpec{CanonicalPath: "sample.read"}},
+				{Identity: contract.ToolIdentitySpec{CanonicalPath: "sample.read"}},
 			}}}},
 			want: "duplicate canonical",
 		},
@@ -147,7 +148,7 @@ func TestCrossPlatformCoverageSchemaParameterBindingDeliveryRemainingEdges(t *te
 			snapshot: schemaParameterBindingSnapshot{Bindings: map[string]map[string]string{"sample.read": {"id": "itemId"}}},
 			bound:    bound,
 			registry: SchemaRegistry{Products: []ProductSpec{{Tools: []ToolSpec{{
-				Identity:   ToolIdentitySpec{CanonicalPath: "sample.read"},
+				Identity:   contract.ToolIdentitySpec{CanonicalPath: "sample.read"},
 				Parameters: []ParameterSpec{{Name: "id", Property: "itemId"}},
 			}}}}},
 			want: "no exact versioned",
@@ -162,8 +163,8 @@ func TestCrossPlatformCoverageSchemaParameterBindingDeliveryRemainingEdges(t *te
 			snapshot: schemaParameterBindingSnapshot{},
 			bound:    bound,
 			registry: SchemaRegistry{Products: []ProductSpec{{Tools: []ToolSpec{{
-				Identity: ToolIdentitySpec{CanonicalPath: "sample.read"},
-				Parameters: []ParameterSpec{{Name: "id", FieldProvenance: map[string]FieldProvenance{
+				Identity: contract.ToolIdentitySpec{CanonicalPath: "sample.read"},
+				Parameters: []ParameterSpec{{Name: "id", FieldProvenance: map[string]contract.FieldProvenance{
 					"property": {Source: "reviewed_mapping_exclusion"},
 				}}},
 			}}}}},
@@ -180,7 +181,7 @@ func TestCrossPlatformCoverageSchemaParameterBindingDeliveryRemainingEdges(t *te
 	}
 
 	noPropertyProvenance := registry
-	noPropertyProvenance.Products[0].Tools[0].Parameters[0].FieldProvenance = map[string]FieldProvenance{}
+	noPropertyProvenance.Products[0].Tools[0].Parameters[0].FieldProvenance = map[string]contract.FieldProvenance{}
 	if err := validateSchemaParameterBindingDelivery(schemaParameterBindingSnapshot{}, bound, noPropertyProvenance); err != nil {
 		t.Fatalf("absent optional property provenance rejected: %v", err)
 	}
@@ -190,14 +191,14 @@ func TestCrossPlatformCoverageSchemaParameterBindingHelpersAndLoaderErrors(t *te
 	if _, ok := finalSchemaParameterByName(ToolSpec{}, "missing"); ok {
 		t.Fatal("missing parameter found")
 	}
-	selected := FieldProvenance{Value: json.RawMessage(`"value"`), Source: "source"}
+	selected := contract.FieldProvenance{Value: json.RawMessage(`"value"`), Source: "source"}
 	if !schemaParameterProvenanceHasStringCandidate(selected, "source", "value") {
 		t.Fatal("selected provenance not found")
 	}
-	if schemaParameterProvenanceHasStringCandidate(FieldProvenance{Value: json.RawMessage(`{`), Source: "source"}, "source", "value") {
+	if schemaParameterProvenanceHasStringCandidate(contract.FieldProvenance{Value: json.RawMessage(`{`), Source: "source"}, "source", "value") {
 		t.Fatal("invalid selected provenance matched")
 	}
-	candidates := FieldProvenance{Candidates: []FieldCandidateProvenance{{Source: "other", Value: json.RawMessage(`"value"`)}, {Source: "source", Value: json.RawMessage(`{`)}, {Source: "source", Value: json.RawMessage(`"value"`)}}}
+	candidates := contract.FieldProvenance{Candidates: []contract.FieldCandidateProvenance{{Source: "other", Value: json.RawMessage(`"value"`)}, {Source: "source", Value: json.RawMessage(`{`)}, {Source: "source", Value: json.RawMessage(`"value"`)}}}
 	if !schemaParameterProvenanceHasStringCandidate(candidates, "source", "value") || schemaParameterProvenanceHasStringCandidate(candidates, "missing", "value") {
 		t.Fatal("candidate provenance lookup failed")
 	}

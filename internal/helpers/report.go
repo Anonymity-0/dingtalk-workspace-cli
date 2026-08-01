@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 const (
@@ -52,9 +53,9 @@ var (
 func newReportCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/report.json
 	// products.report). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "report",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询日志模板、收发日志、日志正文与统计，并按模板提交日志",
 			UseWhen: []string{
 				"查看或提交日报、周报等钉钉日志时",
@@ -96,7 +97,7 @@ func newReportCommand() *cobra.Command {
 		RunE:    runReportTemplateList,
 	}
 	DeclareLeafMetadata(templateListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -125,7 +126,7 @@ func newReportCommand() *cobra.Command {
 		RunE:    runReportTemplateDetail,
 	}
 	DeclareLeafMetadata(templateGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -169,7 +170,7 @@ func newReportCommand() *cobra.Command {
 		RunE: runReportDetail,
 	}
 	DeclareLeafMetadata(entryGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -203,7 +204,7 @@ func newReportCommand() *cobra.Command {
 		RunE: runReportStats,
 	}
 	DeclareLeafMetadata(entryStatsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -247,7 +248,7 @@ func newReportCommand() *cobra.Command {
 		RunE: runReportCreate,
 	}
 	DeclareLeafMetadata(entrySubmitCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -296,7 +297,7 @@ func newReportCommand() *cobra.Command {
 		RunE: runReportList,
 	}
 	DeclareLeafMetadata(inboxListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -333,7 +334,7 @@ func newReportCommand() *cobra.Command {
 		RunE: runReportSent,
 	}
 	DeclareLeafMetadata(outboxListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -373,9 +374,11 @@ func newReportCommand() *cobra.Command {
 	// create alias. Schema assembly still reads ContractFinal from the primary
 	// leaf; this keeps compatibility-equivalence NativeRequired annotations
 	// symmetric instead of relying only on one-sided tolerance.
-	cli.ApplyParamDecls(createCmd, []cli.ParamDecl{
+	if err := cli.ApplyParamDecls(createCmd, []contract.ParamDecl{
 		{Name: "to-chat", Required: boolPtr(false)},
-	})
+	}); err != nil {
+		panic(err)
+	}
 
 	detailCmd := &cobra.Command{
 		Use:     "detail",

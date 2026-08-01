@@ -25,10 +25,10 @@
 package devapp
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -66,7 +66,7 @@ var ListApp = shortcut.Shortcut{
 	Description: "查询开放平台企业内部应用列表",
 	Intent:      "当你要在开发者后台盘点或定位某个企业内部应用（例如按应用名、appKey、创建人或机器人名搜索，拿到其 unifiedAppId 以便后续查看详情、配置或发布）时使用；支持关键词过滤、排序和分页，返回应用列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -215,7 +215,7 @@ var GetApp = shortcut.Shortcut{
 	Description: "查询开放平台企业内部应用详情",
 	Intent:      "当你已知某应用的 unifiedAppId、需要查看它的完整配置信息（如名称、描述、图标、能力开关等）以便核对现状或作为修改前的依据时使用；输入 unifiedAppId，返回单个应用的详情。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -248,7 +248,7 @@ var CreateApp = shortcut.Shortcut{
 	Description: "创建开放平台企业内部应用",
 	Intent:      "当你要在开放平台从零新建一个企业内部应用（H5/机器人等的载体）时使用；传入应用名称、可选描述与图标 mediaId，会实际创建出一个新应用并返回其 unifiedAppId 供后续配置。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -290,7 +290,7 @@ var UpdateApp = shortcut.Shortcut{
 	Description: "修改开放平台企业内部应用基础信息",
 	Intent:      "当你要改动一个已存在应用的基础信息（更名、改描述或换图标）时使用；指定 unifiedAppId 及要更新的字段，会实际写回并覆盖对应的应用基础资料。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -336,7 +336,7 @@ var DeleteApp = shortcut.Shortcut{
 	Description: "删除开放平台企业内部应用（不可逆）",
 	Intent:      "当你确认要彻底废弃某个企业内部应用时使用；传入 unifiedAppId 会真实且不可逆地删除该应用及其配置，执行前务必确认无误。",
 	Risk:        shortcut.RiskHighWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -369,7 +369,7 @@ var EnableApp = shortcut.Shortcut{
 	Description: "启用开放平台企业内部应用",
 	Intent:      "当某个应用处于停用状态、你要让它重新生效可用时使用；传入 unifiedAppId 会实际将应用状态切换为启用。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -402,7 +402,7 @@ var DisableApp = shortcut.Shortcut{
 	Description: "停用开放平台企业内部应用",
 	Intent:      "当你要临时下线某个应用、让它对用户不可用又不删除时使用；传入 unifiedAppId 会实际将应用状态切换为停用，可日后再启用恢复。",
 	Risk:        shortcut.RiskHighWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -455,7 +455,7 @@ var WebappGet = shortcut.Shortcut{
 	Description: "查询网页应用配置",
 	Intent:      "当你要查看某应用的网页（H5）能力现状，如移动端/PC 首页地址、管理后台地址等，以便核对或作为改配置前的参考时使用；输入 unifiedAppId，返回当前网页应用配置。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -488,7 +488,7 @@ var WebappConfig = shortcut.Shortcut{
 	Description: "配置网页应用能力",
 	Intent:      "当你要为应用开通或调整网页（H5）入口，如设置移动端/PC 端首页 URL、管理后台地址或页面类型时使用；指定 unifiedAppId 及相应地址，会实际写入该应用的网页应用配置。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -542,7 +542,7 @@ var PermissionList = shortcut.Shortcut{
 	Description: "查询开放平台应用权限列表",
 	Intent:      "当你要查看某应用已申请/可申请的 API 权限点及其授权状态（用于排查接口报权限错、或确认某 scopeValue 是否已开通）时使用；可按关键词、scopeValue、授权状态等过滤，返回权限点列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -719,7 +719,7 @@ var MemberList = shortcut.Shortcut{
 	Description: "查询开放平台应用成员",
 	Intent:      "当你要查看某应用有哪些成员及其角色（如谁是开发者/管理员），用于核对协作人员或权限归属时使用；输入 unifiedAppId，返回成员列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -752,7 +752,7 @@ var MemberAdd = shortcut.Shortcut{
 	Description: "添加开放平台应用成员",
 	Intent:      "当你要给某应用增加协作人员（如把某人加为开发者）时使用；传入 unifiedAppId、userId 列表和成员类型（如 DEVELOPER），会实际把这些人加入应用成员并赋予对应角色。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -792,7 +792,7 @@ var MemberRemove = shortcut.Shortcut{
 	Description: "移除开放平台应用成员",
 	Intent:      "当某人离职或不再参与、你要取消其对应用的访问/协作权限时使用；传入 unifiedAppId、userId 列表和成员类型，会实际把这些人从应用成员中移除。",
 	Risk:        shortcut.RiskHighWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -869,7 +869,7 @@ var RobotGet = shortcut.Shortcut{
 	Description: "查询现有应用的机器人配置",
 	Intent:      "当你要查看某应用已有的机器人配置（名称、回调地址、模式 HTTPS/STREAM/AISKILL、技能等）以核对现状或作为改配置前的依据时使用；输入 unifiedAppId，返回当前机器人配置。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -996,7 +996,7 @@ var EventList = shortcut.Shortcut{
 	Description: "查询应用已订阅的事件列表",
 	Intent:      "当你要确认某应用当前订阅了哪些事件回调（用于排查漏收事件、或退订前先查事件码）时使用；输入 unifiedAppId，可按事件码/名称关键词过滤并分页，返回已订阅事件列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1179,7 +1179,7 @@ var VersionList = shortcut.Shortcut{
 	Description: "分页查询应用版本列表",
 	Intent:      "当你要查看某应用的历史版本（找某个 versionId、看各版本发布状态或回顾迭代记录）时使用；输入 unifiedAppId 并分页，返回版本列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1290,7 +1290,7 @@ var VersionGet = shortcut.Shortcut{
 	Description: "查询指定版本详情",
 	Intent:      "当你已知某个 versionId、要查看该版本的具体内容（版本号、描述、包含的配置等）以核对发布内容时使用；输入 unifiedAppId 和 versionId，返回单个版本的详情。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1329,7 +1329,7 @@ var VersionCheckApproval = shortcut.Shortcut{
 	Description: "预检版本发布是否需要审批（不实际发布）",
 	Intent:      "当你在正式发布某版本前想先确认它是否会触发审批、是否含高敏权限等发布前置要求时使用；传入 unifiedAppId 和 versionId，仅做预检返回审批要求，不会真正发布。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1399,7 +1399,7 @@ var VersionStatus = shortcut.Shortcut{
 	Description: "查询版本发布/审批状态",
 	Intent:      "当你已提交发布、想跟进某版本当前处于什么阶段（审批中、已发布、被驳回等）时使用；输入 unifiedAppId 和 versionId，返回该版本的发布/审批状态。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

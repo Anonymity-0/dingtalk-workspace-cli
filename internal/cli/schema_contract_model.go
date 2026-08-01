@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"reflect"
 	"sort"
 	"strings"
@@ -43,8 +44,8 @@ type ProductSpec struct {
 	Description     string
 	Runtime         bool
 	Tools           []ToolSpec
-	Selection       SelectionSpec
-	FieldProvenance map[string]FieldProvenance
+	Selection       contract.SelectionSpec
+	FieldProvenance map[string]contract.FieldProvenance
 	Extensions      map[string]json.RawMessage
 }
 
@@ -52,19 +53,19 @@ type ProductSpec struct {
 // Safety, interface and selection are typed sub-models even though ToPayload
 // preserves the historical flat JSON shape for compatibility.
 type ToolSpec struct {
-	Identity        ToolIdentitySpec
+	Identity        contract.ToolIdentitySpec
 	Display         string
 	Title           string
 	Description     string
 	MetadataSource  string
 	Parameters      []ParameterSpec
 	Constraints     RuntimeSchemaConstraints
-	Positionals     []RuntimeSchemaPositional
-	DryRun          *DryRunSpec
-	Safety          SafetySpec
-	Interface       InterfaceSpec
-	Selection       SelectionSpec
-	FieldProvenance map[string]FieldProvenance
+	Positionals     []contract.RuntimeSchemaPositional
+	DryRun          *contract.DryRunSpec
+	Safety          contract.SafetySpec
+	Interface       contract.InterfaceSpec
+	Selection       contract.SelectionSpec
+	FieldProvenance map[string]contract.FieldProvenance
 	Extensions      map[string]json.RawMessage
 }
 
@@ -87,7 +88,7 @@ type ParameterSpec struct {
 	Enum                 []string
 	InterfaceDescription string
 	InterfaceType        string
-	FieldProvenance      map[string]FieldProvenance
+	FieldProvenance      map[string]contract.FieldProvenance
 	Extensions           map[string]json.RawMessage
 }
 
@@ -127,19 +128,19 @@ var requiredParameterProvenanceFields = [...]string{
 // contract assembly. Adapters resolve candidates first, then call
 // ToolSpecFromRuntime exactly once; payload rendering does no further merging.
 type RuntimeToolSpecInput struct {
-	Identity        ToolIdentitySpec
+	Identity        contract.ToolIdentitySpec
 	Display         string
 	Title           string
 	Description     string
 	MetadataSource  string
 	Parameters      []ParameterSpec
 	Constraints     RuntimeSchemaConstraints
-	Positionals     []RuntimeSchemaPositional
-	DryRun          *DryRunSpec
-	Safety          SafetySpec
-	Interface       InterfaceSpec
-	Selection       SelectionSpec
-	FieldProvenance map[string]FieldProvenance
+	Positionals     []contract.RuntimeSchemaPositional
+	DryRun          *contract.DryRunSpec
+	Safety          contract.SafetySpec
+	Interface       contract.InterfaceSpec
+	Selection       contract.SelectionSpec
+	FieldProvenance map[string]contract.FieldProvenance
 	Extensions      map[string]json.RawMessage
 }
 
@@ -569,7 +570,7 @@ func (t ToolSpec) Validate() error {
 	return nil
 }
 
-func validateFinalFieldProvenance(owner, field string, provenance FieldProvenance, finalValue any) error {
+func validateFinalFieldProvenance(owner, field string, provenance contract.FieldProvenance, finalValue any) error {
 	expected, err := json.Marshal(finalValue)
 	if err != nil {
 		return fmt.Errorf("%s field %s cannot encode final provenance value: %w", owner, field, err)
@@ -733,7 +734,7 @@ func (t ToolSpec) normalized() ToolSpec {
 		dryRun.PreviewKind = strings.TrimSpace(dryRun.PreviewKind)
 		out.DryRun = &dryRun
 	}
-	out.Positionals = append([]RuntimeSchemaPositional(nil), t.Positionals...)
+	out.Positionals = append([]contract.RuntimeSchemaPositional(nil), t.Positionals...)
 	sort.Slice(out.Positionals, func(i, j int) bool {
 		if out.Positionals[i].Index != out.Positionals[j].Index {
 			return out.Positionals[i].Index < out.Positionals[j].Index
@@ -1079,7 +1080,7 @@ func (p ParameterSpec) ToPayload() (map[string]any, error) {
 	return payload, nil
 }
 
-func applySafetyPayload(payload map[string]any, safety SafetySpec) {
+func applySafetyPayload(payload map[string]any, safety contract.SafetySpec) {
 	setOptionalString(payload, "effect", safety.Effect)
 	setOptionalString(payload, "effect_source", safety.EffectSource)
 	setOptionalString(payload, "risk", safety.Risk)
@@ -1087,7 +1088,7 @@ func applySafetyPayload(payload map[string]any, safety SafetySpec) {
 	setOptionalString(payload, "idempotency", safety.Idempotency)
 }
 
-func applyInterfacePayload(payload map[string]any, spec InterfaceSpec) {
+func applyInterfacePayload(payload map[string]any, spec contract.InterfaceSpec) {
 	if spec.Ref != nil {
 		payload["interface_ref"] = map[string]any{
 			"product_id": spec.Ref.ProductID,
@@ -1099,7 +1100,7 @@ func applyInterfacePayload(payload map[string]any, spec InterfaceSpec) {
 	setOptionalString(payload, "interface_reason", spec.Reason)
 }
 
-func applySelectionPayload(payload map[string]any, selection SelectionSpec, full bool) {
+func applySelectionPayload(payload map[string]any, selection contract.SelectionSpec, full bool) {
 	setOptionalString(payload, "agent_summary", selection.AgentSummary)
 	setOptionalString(payload, "agent_summary_source", selection.AgentSummarySource)
 	setOptionalStrings(payload, "use_when", selection.UseWhen)

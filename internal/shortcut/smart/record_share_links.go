@@ -14,8 +14,8 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -48,7 +48,7 @@ var RecordShareLinks = shortcut.Shortcut{
 		"最后把各批返回的 {recordId, shareUrl} 合并成一个列表；某一批失败会记录错误但不影响其余批。" +
 		"这是只读操作，只生成/获取分享链接、不修改记录。可选 --view-id 生成带视图上下文的链接。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

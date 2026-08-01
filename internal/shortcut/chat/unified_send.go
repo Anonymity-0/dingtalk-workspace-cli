@@ -8,12 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -32,7 +32,7 @@ var MessagesSend = shortcut.Shortcut{
 	Description: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
 	Intent:      "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

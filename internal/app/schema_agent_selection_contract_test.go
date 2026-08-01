@@ -31,7 +31,7 @@ func TestManualAgentSelectionScenariosCoverEveryExecutableSchemaTool(t *testing.
 	}
 	fixture, report, err := cli.BuildAgentSelectionEvalFixture(bound)
 	if err != nil {
-		t.Fatalf("BuildManualAgentSelectionEvalFixture() error = %v", err)
+		t.Fatalf("BuildAgentSelectionEvalFixture() error = %v", err)
 	}
 	if report.Tools != len(bound.Commands) {
 		t.Fatalf("selection tools = %d, bound commands = %d", report.Tools, len(bound.Commands))

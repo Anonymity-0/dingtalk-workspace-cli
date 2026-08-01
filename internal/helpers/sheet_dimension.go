@@ -3,9 +3,9 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +60,7 @@ func newDimensionCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(insertDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -144,7 +144,7 @@ func newDimensionCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(moveDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -206,7 +206,7 @@ func newDimensionCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(addDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -271,7 +271,7 @@ rangeAddress 也支持带工作表前缀的写法，如 Sheet1!A1:B3，此时将
 		},
 	}
 	DeclareLeafMetadata(mergeCellsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -318,7 +318,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(unmergeRangeCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -388,7 +388,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(deleteDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -483,7 +483,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(updateDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -551,7 +551,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(groupDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -602,7 +602,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(ungroupDimensionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -682,7 +682,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(setDropdownCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -734,7 +734,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(getDropdownCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -780,7 +780,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(deleteDropdownCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

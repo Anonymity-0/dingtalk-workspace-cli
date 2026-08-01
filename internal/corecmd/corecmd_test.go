@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -36,22 +36,22 @@ func newTestCommand() *cobra.Command {
 	return cmd
 }
 
-func testReadSafety() cli.SafetySpec {
-	return cli.SafetySpec{
+func testReadSafety() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	}
 }
 
-func testWriteSafety() cli.SafetySpec {
-	return cli.SafetySpec{
+func testWriteSafety() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }
 
-func testDestructiveSafety() cli.SafetySpec {
-	return cli.SafetySpec{
+func testDestructiveSafety() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
@@ -628,7 +628,7 @@ func TestCrossPlatformCoverageConfirmSafety(t *testing.T) {
 	if err := ConfirmSafety(newSafetyCmd(""), testReadSafety()); err != nil {
 		t.Fatal("not_required safety must pass")
 	}
-	if err := ConfirmSafety(newSafetyCmd(""), cli.SafetySpec{Effect: "destructive", Risk: "high"}); err != nil {
+	if err := ConfirmSafety(newSafetyCmd(""), contract.SafetySpec{Effect: "destructive", Risk: "high"}); err != nil {
 		t.Fatal("effect/risk must not imply confirmation")
 	}
 	// --yes and --dry-run bypass the prompt
@@ -1559,7 +1559,7 @@ func TestCrossPlatformCoverageEmbedContractCobraProjection(t *testing.T) {
 		t.Fatalf("hidden flag must not be projected, got %#v", got)
 	}
 	// The authored SchemaDecl still lands as the typed ContractFinal.
-	final, ok := cli.RuntimeContractFinal(cmd)
+	final, ok := contract.RuntimeContractFinal(cmd)
 	if !ok || final.Description != "desc" {
 		t.Fatalf("cobra projection must still embed SchemaDecl, final=%#v ok=%v", final, ok)
 	}
@@ -1570,18 +1570,18 @@ func TestCrossPlatformCoverageAttachSchemaNilAndEmptyGuards(t *testing.T) {
 	AttachSchema(nil, testWriteSafety(), SchemaDecl{Description: "d"}, "s", "l")
 	cmd := newTestCommand()
 	AttachSchema(cmd, testWriteSafety(), SchemaDecl{}, "s", "l")
-	if cli.HasRuntimeContractFinal(cmd) {
+	if contract.HasRuntimeContractFinal(cmd) {
 		t.Fatal("empty SchemaDecl must not register a ContractFinal")
 	}
 }
 
 func TestCrossPlatformCoverageEffectiveSafetySpecZeroValueDefaultsToRead(t *testing.T) {
-	got := effectiveSafetySpec(cli.SafetySpec{})
-	want := cli.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
+	got := effectiveSafetySpec(contract.SafetySpec{})
+	want := contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
 	if got != want {
 		t.Fatalf("effectiveSafetySpec(zero) = %+v, want %+v", got, want)
 	}
-	partial := effectiveSafetySpec(cli.SafetySpec{Effect: " write ", Risk: "high", Confirmation: "user_required", Idempotency: "unknown"})
+	partial := effectiveSafetySpec(contract.SafetySpec{Effect: " write ", Risk: "high", Confirmation: "user_required", Idempotency: "unknown"})
 	if partial.Effect != "write" || partial.Risk != "high" {
 		t.Fatalf("effectiveSafetySpec(trim) = %+v", partial)
 	}

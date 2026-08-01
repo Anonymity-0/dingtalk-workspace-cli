@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -14,12 +15,12 @@ import (
 // any agreeing implementation evidence. Native/manual annotations never
 // compete for identity here: the Cobra binder has already rejected every
 // disagreement before a ToolSpec can be assembled.
-func commandRegistryIdentityProvenance(command BoundCommandSpec) FieldProvenance {
+func commandRegistryIdentityProvenance(command BoundCommandSpec) contract.FieldProvenance {
 	canonical := strings.TrimSpace(command.CanonicalPath)
 	value, _ := json.Marshal(canonical)
 	selected := true
-	precedence := commandIdentityPrecedence(command.Source)
-	candidates := []FieldCandidateProvenance{{
+	precedence := "command_registry"
+	candidates := []contract.FieldCandidateProvenance{{
 		Value:        append(json.RawMessage(nil), value...),
 		Source:       command.Source,
 		SourceRef:    command.PrimaryCLIPath,
@@ -37,7 +38,7 @@ func commandRegistryIdentityProvenance(command BoundCommandSpec) FieldProvenance
 		if productID, toolName, sourceRef := runtimeSchemaAnnotations(leaf); productID != "" && toolName != "" {
 			nativeValue, _ := json.Marshal(productID + "." + toolName)
 			unselected := false
-			candidates = append(candidates, FieldCandidateProvenance{
+			candidates = append(candidates, contract.FieldCandidateProvenance{
 				Value:      nativeValue,
 				Source:     "native_annotation",
 				SourceRef:  defaultString(strings.TrimSpace(sourceRef), path),
@@ -51,7 +52,7 @@ func commandRegistryIdentityProvenance(command BoundCommandSpec) FieldProvenance
 	for _, alias := range command.AliasCommands {
 		appendEvidence(alias.Path, alias.Command)
 	}
-	return FieldProvenance{
+	return contract.FieldProvenance{
 		Value:        value,
 		Source:       command.Source,
 		SourceRef:    command.PrimaryCLIPath,
@@ -59,14 +60,5 @@ func commandRegistryIdentityProvenance(command BoundCommandSpec) FieldProvenance
 		Resolution:   "registry_identity",
 		ReviewReason: command.ReviewReason,
 		Candidates:   candidates,
-	}
-}
-
-func commandIdentityPrecedence(source string) string {
-	switch strings.TrimSpace(source) {
-	case "reviewed_manual_hint":
-		return "reviewed_manual"
-	default:
-		return "command_registry"
 	}
 }

@@ -25,6 +25,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -309,8 +310,7 @@ func AnnotateRuntimeFlagFormat(cmd *cobra.Command, flagName, format string) {
 
 // AnnotateRuntimeFlagInterfaceType records the wire type for a flag's interface
 // property (e.g. "string", "integer", "boolean", "array"). The resolver reads
-// this as a native_annotation candidate for interface_type, outranking
-// tool_schema_hint.
+// this as a native_annotation candidate for interface_type.
 func AnnotateRuntimeFlagInterfaceType(cmd *cobra.Command, flagName, interfaceType string) {
 	if cmd == nil {
 		return
@@ -407,10 +407,10 @@ func RuntimeContractGate(cmd *cobra.Command) (string, bool) {
 }
 
 // HasDeclaredOrAnnotatedConfirmation reports whether confirmation semantics are
-// covered by a typed Contract SafetySpec, the legacy Shortcut Risk bridge, or
+// covered by a typed Contract contract.SafetySpec, the legacy Shortcut Risk bridge, or
 // an explicit runtime_gate annotation.
 func HasDeclaredOrAnnotatedConfirmation(cmd *cobra.Command) bool {
-	if final, ok := RuntimeContractFinal(cmd); ok && final.Safety != nil &&
+	if final, ok := contract.RuntimeContractFinal(cmd); ok && final.Safety != nil &&
 		strings.TrimSpace(final.Safety.Confirmation) != "" {
 		return true
 	}
@@ -424,7 +424,7 @@ func HasDeclaredOrAnnotatedConfirmation(cmd *cobra.Command) bool {
 // applyContractRiskToSafety overlays Schema Safety fields from an embedded
 // Contract Risk value. Path A: Contract wins effect/risk/confirmation for the
 // managed surface; other Safety fields (e.g. idempotency) are preserved.
-func applyContractRiskToSafety(base SafetySpec, contractRisk string) SafetySpec {
+func applyContractRiskToSafety(base contract.SafetySpec, contractRisk string) contract.SafetySpec {
 	out := base
 	switch strings.TrimSpace(contractRisk) {
 	case "write":
@@ -448,7 +448,7 @@ func applyContractRiskToSafety(base SafetySpec, contractRisk string) SafetySpec 
 
 // applyContractGateToSafety ensures a write-guard annotation cannot leave Schema
 // claiming confirmation is not required. Reviewed effect/risk are kept when set.
-func applyContractGateToSafety(base SafetySpec, gate string) SafetySpec {
+func applyContractGateToSafety(base contract.SafetySpec, gate string) contract.SafetySpec {
 	out := base
 	if strings.TrimSpace(gate) == "" {
 		return out
@@ -484,11 +484,11 @@ func AnnotateRuntimeConstraints(cmd *cobra.Command, constraints RuntimeSchemaCon
 }
 
 // AnnotateRuntimePositionals records ordered positional arguments for agents.
-func AnnotateRuntimePositionals(cmd *cobra.Command, positionals ...RuntimeSchemaPositional) {
+func AnnotateRuntimePositionals(cmd *cobra.Command, positionals ...contract.RuntimeSchemaPositional) {
 	if cmd == nil {
 		return
 	}
-	clean := make([]RuntimeSchemaPositional, 0, len(positionals))
+	clean := make([]contract.RuntimeSchemaPositional, 0, len(positionals))
 	for _, positional := range positionals {
 		positional.Name = strings.TrimSpace(positional.Name)
 		positional.Type = strings.TrimSpace(positional.Type)
@@ -570,7 +570,7 @@ type runtimeSchemaEntry struct {
 	PrimaryCLIPath  string
 	Aliases         []string
 	IsAlias         bool
-	IdentityField   FieldProvenance
+	IdentityField   contract.FieldProvenance
 }
 
 func collectRuntimeSchemaEntries(root *cobra.Command) ([]runtimeSchemaEntry, error) {
@@ -758,7 +758,7 @@ func schemaProductToolCount(product map[string]any) int {
 	return 0
 }
 
-func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (title, description, metadataSource string, provenance map[string]FieldProvenance, err error) {
+func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (title, description, metadataSource string, provenance map[string]contract.FieldProvenance, err error) {
 	baseSource := "cobra_help"
 	baseTitle := runtimeSchemaStringCandidate(entry.Title, baseSource)
 	baseDescription := runtimeSchemaStringCandidate(entry.Description, baseSource)
@@ -789,8 +789,6 @@ func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runt
 		selectedSource = titleWinner.Source
 	}
 	switch selectedSource {
-	case "tool_schema_hint":
-		metadataSource = "tool-schema-hint"
 	case "mcp_metadata", "pinned_mcp_metadata":
 		metadataSource = "embedded-mcp-metadata"
 	case "cobra_help":
@@ -798,7 +796,7 @@ func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runt
 	default:
 		metadataSource = strings.TrimSpace(selectedSource)
 	}
-	provenance = map[string]FieldProvenance{}
+	provenance = map[string]contract.FieldProvenance{}
 	if titleWinner.Present {
 		provenance["title"] = runtimeSchemaFieldProvenance(titleWinner)
 	}
@@ -828,27 +826,23 @@ const (
 	runtimeSchemaRankInference        = 100
 	runtimeSchemaRankMCP              = 400
 	runtimeSchemaRankCobraHelp        = 450
-	runtimeSchemaRankToolHint         = 500
 	runtimeSchemaRankCobraDefault     = 600
 	runtimeSchemaRankCobraContract    = 610
 	runtimeSchemaRankNativeAnnotation = 620
 	runtimeSchemaRankTypedMetadata    = 630
 	runtimeSchemaRankConstraint       = 640
 	runtimeSchemaRankVersionedBinding = 650
-	runtimeSchemaRankReviewedManual   = 700
 
 	runtimeSchemaPrecedenceDefault          = "default"
 	runtimeSchemaPrecedenceDerived          = "derived_resolution"
 	runtimeSchemaPrecedenceInference        = "inference"
 	runtimeSchemaPrecedenceMCP              = "mcp_metadata"
 	runtimeSchemaPrecedenceCobraHelp        = "cobra_help"
-	runtimeSchemaPrecedenceToolHint         = "tool_schema_hint"
 	runtimeSchemaPrecedenceCobra            = "cobra_contract"
 	runtimeSchemaPrecedenceNativeAnnotation = "native_annotation"
 	runtimeSchemaPrecedenceTypedMetadata    = "typed_metadata"
 	runtimeSchemaPrecedenceConstraint       = "command_constraint"
 	runtimeSchemaPrecedenceVersionedBinding = "versioned_binding"
-	runtimeSchemaPrecedenceReviewedManual   = "reviewed_manual"
 	runtimeSchemaPrecedenceMappingExclusion = "reviewed_mapping_exclusion"
 )
 
@@ -875,12 +869,6 @@ func runtimeSchemaStringCandidateAtPriority(value any, present bool, source stri
 		Precedence: strings.TrimSpace(precedence),
 		Resolution: "highest_precedence",
 	}
-}
-
-func runtimeSchemaManualCandidate(value any, present bool, reason string) runtimeSchemaFieldCandidate {
-	candidate := runtimeSchemaCandidate(value, present, "reviewed_manual_hint")
-	candidate.ReviewReason = strings.TrimSpace(reason)
-	return candidate
 }
 
 // resolveRuntimeSchemaCandidate is the only scalar resolver used while
@@ -982,15 +970,15 @@ func resolveRequiredProjection(cobraHard bool, candidates ...runtimeSchemaFieldC
 	return floor, nil
 }
 
-func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldProvenance {
+func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) contract.FieldProvenance {
 	if !candidate.Present {
-		return FieldProvenance{}
+		return contract.FieldProvenance{}
 	}
 	value, err := json.Marshal(candidate.Value)
 	if err != nil {
 		value = json.RawMessage("null")
 	}
-	provenance := FieldProvenance{
+	provenance := contract.FieldProvenance{
 		Value:        value,
 		Source:       candidate.Source,
 		Precedence:   candidate.Precedence,
@@ -1003,7 +991,7 @@ func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldPr
 		copyCandidate.Compared = nil
 		compared = []runtimeSchemaFieldCandidate{copyCandidate}
 	}
-	provenance.Candidates = make([]FieldCandidateProvenance, 0, len(compared))
+	provenance.Candidates = make([]contract.FieldCandidateProvenance, 0, len(compared))
 	for idx, item := range compared {
 		selected := idx == 0
 		value, err := json.Marshal(item.Value)
@@ -1013,7 +1001,7 @@ func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldPr
 			// that contract; the resolved typed field remains authoritative.
 			value = json.RawMessage("null")
 		}
-		provenance.Candidates = append(provenance.Candidates, FieldCandidateProvenance{
+		provenance.Candidates = append(provenance.Candidates, contract.FieldCandidateProvenance{
 			Value:        value,
 			Source:       item.Source,
 			Precedence:   item.Precedence,
@@ -1028,8 +1016,6 @@ func runtimeSchemaSourcePriority(source string) (int, string) {
 	switch strings.TrimSpace(source) {
 	case "reviewed_mapping_exclusion":
 		return runtimeSchemaRankVersionedBinding, runtimeSchemaPrecedenceMappingExclusion
-	case "reviewed_manual_hint":
-		return runtimeSchemaRankReviewedManual, runtimeSchemaPrecedenceReviewedManual
 	case "require_one_of_constraint":
 		return runtimeSchemaRankConstraint, runtimeSchemaPrecedenceConstraint
 	case "versioned_parameter_binding":
@@ -1043,8 +1029,6 @@ func runtimeSchemaSourcePriority(source string) (int, string) {
 			return runtimeSchemaRankCobraDefault, runtimeSchemaPrecedenceCobra
 		}
 		return runtimeSchemaRankCobraContract, runtimeSchemaPrecedenceCobra
-	case "tool_schema_hint":
-		return runtimeSchemaRankToolHint, runtimeSchemaPrecedenceToolHint
 	case "mcp_metadata", "pinned_mcp_metadata":
 		return runtimeSchemaRankMCP, runtimeSchemaPrecedenceMCP
 	case "cobra_help":
@@ -1221,7 +1205,7 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, embe
 		}
 		required, _ := requiredWinner.Value.(bool)
 
-		fieldProvenance := map[string]FieldProvenance{
+		fieldProvenance := map[string]contract.FieldProvenance{
 			"type":        runtimeSchemaFieldProvenance(runtimeSchemaStringCandidate(paramType, "cobra_flag_type")),
 			"description": runtimeSchemaFieldProvenance(descriptionWinner),
 			"required":    runtimeSchemaFieldProvenance(requiredWinner),
@@ -1466,7 +1450,7 @@ func runtimeCommandConstraints(cmd *cobra.Command) RuntimeSchemaConstraints {
 	return normalizeRuntimeSchemaConstraints(constraints)
 }
 
-func runtimeCommandPositionals(cmd *cobra.Command) []RuntimeSchemaPositional {
+func runtimeCommandPositionals(cmd *cobra.Command) []contract.RuntimeSchemaPositional {
 	if cmd == nil || cmd.Annotations == nil {
 		return nil
 	}
@@ -1474,7 +1458,7 @@ func runtimeCommandPositionals(cmd *cobra.Command) []RuntimeSchemaPositional {
 	if raw == "" {
 		return nil
 	}
-	var positionals []RuntimeSchemaPositional
+	var positionals []contract.RuntimeSchemaPositional
 	if json.Unmarshal([]byte(raw), &positionals) != nil {
 		return nil
 	}

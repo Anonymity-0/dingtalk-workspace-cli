@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -281,19 +282,18 @@ func TestCrossPlatformCoverageMetadataSourceAndPathEdges(t *testing.T) {
 	if err := os.WriteFile(same, []byte("same"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	files, err := loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md", HintsDir: "missing"})
-	if err != nil || len(files) != 1 {
-		t.Fatalf("absent HintsDir should be skipped: %#v, %v", files, err)
+	if _, err := loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md", HintsDir: "missing"}); err == nil || !strings.Contains(err.Error(), "schema_hints/ is retired") {
+		t.Fatalf("non-empty HintsDir should fail closed: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(products, "skip.txt"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	files, err = loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md"})
+	files, err := loadSources(Options{Root: root, ProductsDir: "products", SkillPath: "same.md", IntentGuidePath: "same.md"})
 	if err != nil || len(files) != 1 {
 		t.Fatalf("deduplicated sources = %#v, %v", files, err)
 	}
-	if _, err := loadSources(Options{Root: root, ProductsDir: "products", ManualHintsPath: "missing.json"}); err == nil || !strings.Contains(err.Error(), "read") {
-		t.Fatalf("missing source error = %v", err)
+	if _, err := loadSources(Options{Root: root, ProductsDir: "products", ManualHintsPath: "missing.json"}); err == nil || !strings.Contains(err.Error(), "manual hints are retired") {
+		t.Fatalf("non-empty ManualHintsPath should fail closed: %v", err)
 	}
 
 	if got := sourceProductIDs(sourceFile{path: filepath.Join(root, "products", "sample", "guide.md")}, products, nil, nil); len(got) != 1 || got[0] != "sample" {
@@ -483,13 +483,12 @@ func TestCrossPlatformCoverageMetadataParserConflictEdges(t *testing.T) {
 	}
 }
 
-
 func TestCrossPlatformCoverageContractFinalDeclarationFailureEdges(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
-	cli.RegisterRuntimeContractFinal(declared, cli.ContractFinalPayload{
-		Selection: &cli.SelectionSpec{AgentSummary: "declared summary"},
+	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
+		Selection: &contract.SelectionSpec{AgentSummary: "declared summary"},
 	})
-	t.Cleanup(func() { cli.ClearRuntimeContractFinalForTest(declared) })
+	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(declared) })
 	bound := cli.BoundCommandRegistry{ByCanonical: map[string]cli.BoundCommandSpec{
 		"sample.run": {PrimaryCommand: declared},
 	}}

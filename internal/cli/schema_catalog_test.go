@@ -130,15 +130,13 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 		t.Fatalf("canonical identity provenance = %#v", identity)
 	}
 	parameters := schemaMap(leaf["parameters"])
-	assertReviewedManual := func(flagName, field string) {
+	assertNativeAnnotation := func(flagName, field string) {
 		t.Helper()
 		provenance := schemaMap(parameters[flagName]["field_provenance"])
 		winner := provenance[field]
 		src, _ := winner["source"].(string)
 		prec, _ := winner["precedence"].(string)
-		// Accept both the legacy hints source and the migrated declaration source.
-		if (src != "reviewed_manual_hint" || prec != "reviewed_manual") &&
-			(src != "native_annotation" || prec != "native_annotation") {
+		if src != "native_annotation" || prec != "native_annotation" {
 			t.Fatalf("%s.%s provenance = %#v", flagName, field, winner)
 		}
 	}
@@ -146,8 +144,8 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 	if name["property"] != "categoryName" || name["required"] != true {
 		t.Fatalf("name parameter = %#v", name)
 	}
-	assertReviewedManual("name", "property")
-	assertReviewedManual("name", "required")
+	assertNativeAnnotation("name", "property")
+	assertNativeAnnotation("name", "required")
 	for flagName, property := range map[string]string{
 		"keywords": "groupNameKeywords",
 		"members":  "memberOpenDingTalkIds",
@@ -157,7 +155,7 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 			t.Fatalf("%s parameter = %#v", flagName, parameter)
 		}
 		for _, field := range []string{"property", "interface_type", "required"} {
-			assertReviewedManual(flagName, field)
+			assertNativeAnnotation(flagName, field)
 		}
 	}
 }
@@ -165,7 +163,7 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 func TestEmbeddedCatalogMailMessageListLimitMapsToSize(t *testing.T) {
 	// mail message list is a composite wrapper over search_emails and shares
 	// that RPC with mail message search. list has no versioned binding entry
-	// (composite identity), so clearing hints without a leaf-local ParamDecl
+	// (composite identity), so clearing hints without a leaf-local contract.ParamDecl
 	// previously fell back to flag_name_inference → "limit".
 	listLeaf, err := embeddedSchemaPayload([]string{"mail message list"})
 	if err != nil {
@@ -187,7 +185,7 @@ func TestEmbeddedCatalogMailMessageListLimitMapsToSize(t *testing.T) {
 		t.Fatal("mail message list must not publish search-only --query")
 	}
 
-	// Sibling search leaf maps the same --limit → size via binding + ParamDecl
+	// Sibling search leaf maps the same --limit → size via binding + contract.ParamDecl
 	// and must keep the free-form KQL surface (not fold into list).
 	searchLeaf, err := embeddedSchemaPayload([]string{"mail message search"})
 	if err != nil {
@@ -241,14 +239,14 @@ func TestEmbeddedCatalogSharedRenameDocumentParamDeclsStayOnDriveLeaf(t *testing
 	}
 	docDescProv := schemaMap(docName["field_provenance"])["description"]
 	if src, _ := docDescProv["source"].(string); src == "native_annotation" && strings.Contains(docDesc, "读取节点类型") {
-		t.Fatalf("doc rename --name description source/value look like a misplaced drive ParamDecl: %#v", docDescProv)
+		t.Fatalf("doc rename --name description source/value look like a misplaced drive contract.ParamDecl: %#v", docDescProv)
 	}
 }
 
 func TestEmbeddedCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
 	// drive.upload is a composite multi-step leaf (no single RPCName /
 	// interface_ref). The reviewed --node → nodeId overlay must stay on the
-	// upload leaf via ParamDecl, not on the manual upload-info / commit steps.
+	// upload leaf via contract.ParamDecl, not on the manual upload-info / commit steps.
 	leaf, err := embeddedSchemaPayload([]string{"drive upload"})
 	if err != nil {
 		t.Fatal(err)
@@ -278,7 +276,7 @@ func TestEmbeddedCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
 		}
 		siblingParams := schemaMap(sibling["parameters"])
 		if _, ok := siblingParams["node"]; ok {
-			t.Fatalf("%s unexpectedly publishes --node (upload overwrite ParamDecl leaked)", path)
+			t.Fatalf("%s unexpectedly publishes --node (upload overwrite contract.ParamDecl leaked)", path)
 		}
 		if got := schemaString(sibling["interface_mode"]); got != "mcp" {
 			t.Fatalf("%s interface_mode = %q, want mcp", path, got)
@@ -288,7 +286,7 @@ func TestEmbeddedCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
 
 func TestEmbeddedCatalogDocReadParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// Former schema_hints overlays for get_document_content must stay on the
-	// doc read leaf after ParamDecl migration (87910880 value parity).
+	// doc read leaf after contract.ParamDecl migration (87910880 value parity).
 	leaf, err := embeddedSchemaPayload([]string{"doc read"})
 	if err != nil {
 		t.Fatal(err)
@@ -365,7 +363,7 @@ func TestEmbeddedCatalogDocCommentParamDeclsMatchMergeBaseContract(t *testing.T)
 
 func TestEmbeddedCatalogDocRenameKeepsPassthroughNameDescription(t *testing.T) {
 	// Shared-RPC sibling of drive rename: doc must keep the merge-base
-	// passthrough usage, not the drive extension-stripping ParamDecl.
+	// passthrough usage, not the drive extension-stripping contract.ParamDecl.
 	leaf, err := embeddedSchemaPayload([]string{"doc rename"})
 	if err != nil {
 		t.Fatal(err)
@@ -376,7 +374,7 @@ func TestEmbeddedCatalogDocRenameKeepsPassthroughNameDescription(t *testing.T) {
 		t.Fatalf("doc rename --name description = %q, want passthrough Cobra usage", desc)
 	}
 	if strings.Contains(desc, "避免双扩展名") || strings.Contains(desc, "仅对非文件夹") {
-		t.Fatalf("doc rename --name description incorrectly inherited drive ParamDecl: %q", desc)
+		t.Fatalf("doc rename --name description incorrectly inherited drive contract.ParamDecl: %q", desc)
 	}
 	descProv := schemaMap(name["field_provenance"])["description"]
 	if src, _ := descProv["source"].(string); src != "cobra_usage" {
@@ -742,10 +740,10 @@ func TestEmbeddedCatalogMinutesReplaceBatchPairDescriptionIsNative(t *testing.T)
 }
 
 func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
-	// Spot-check former metadata/todo.json overlays now declared as ParamDecl (87910880).
+	// Spot-check former metadata/todo.json overlays now declared as contract.ParamDecl (87910880).
 	// --query-all is a Cobra Bool: merge-base catalog publishes type=boolean from
 	// cobra_flag_type (no separate interface_type field), while required/description
-	// stay native_annotation after ParamDecl migration.
+	// stay native_annotation after contract.ParamDecl migration.
 	listLeaf, err := embeddedSchemaPayload([]string{"todo task list"})
 	if err != nil {
 		t.Fatal(err)
@@ -858,7 +856,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 }
 
 func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
-	// Former metadata/sheet.json overlays now declared as ParamDecl (87910880).
+	// Former metadata/sheet.json overlays now declared as contract.ParamDecl (87910880).
 	for _, tc := range []struct {
 		path string
 		flag string
@@ -884,8 +882,7 @@ func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
 }
 
 func TestEmbeddedCatalogPatSheetWikiRegisterSchemaHintParamDecls(t *testing.T) {
-	// Former RegisterSchemaHints required / required_when pins for pat, sheet,
-	// and wiki must publish via ParamDecl (native_annotation).
+	// pat/sheet/wiki required and required_when pins publish via ParamDecl.
 	for _, tc := range []struct {
 		path         string
 		flag         string
@@ -966,7 +963,7 @@ func TestEmbeddedCatalogReportCreateToChatRequiredAndAliasView(t *testing.T) {
 
 func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// Former schema_hints overlays (87910880) must stay on helpers leaves via
-	// ParamDecl after hint clearance — not on aitable +shortcuts.
+	// contract.ParamDecl after hint clearance — not on aitable +shortcuts.
 	queryLeaf, err := embeddedSchemaPayload([]string{"aitable record query"})
 	if err != nil {
 		t.Fatal(err)
@@ -981,7 +978,7 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 	}
 
 	// Sibling atomic get keeps Cobra-required --record-ids; shortcut has its
-	// own optional StringSlice surface and must not inherit helpers ParamDecl.
+	// own optional StringSlice surface and must not inherit helpers contract.ParamDecl.
 	getLeaf, err := embeddedSchemaPayload([]string{"aitable record get"})
 	if err != nil {
 		t.Fatal(err)
@@ -1070,8 +1067,7 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 
 func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 	// helpers record query: --query → keyword must not fall back to
-	// flag_name_inference; JSON list flags keep wire interface_type via ParamDecl
-	// (outranking RegisterSchemaHints tool_schema_hint).
+	// flag_name_inference; JSON list flags keep wire interface_type via ParamDecl.
 	queryLeaf, err := embeddedSchemaPayload([]string{"aitable record query"})
 	if err != nil {
 		t.Fatal(err)
@@ -1104,7 +1100,7 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 
 	// shortcut +record-query Execute maps --query → MCP keyword at runtime, but
 	// merge-base Schema published property=query (flag_name_inference). Keep that
-	// delivery for schema-compatibility; do not reintroduce ParamDecl keyword.
+	// delivery for schema-compatibility; do not reintroduce contract.ParamDecl keyword.
 	shortcutLeaf, err := embeddedSchemaPayload([]string{"aitable +record-query"})
 	if err != nil {
 		t.Fatal(err)
@@ -1123,7 +1119,7 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 		}
 	}
 
-	// Former RegisterSchemaHints required pins that match runtime validation.
+	// Required pins that match runtime validation.
 	for _, tc := range []struct {
 		path string
 		flag string
@@ -1154,7 +1150,7 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 func TestEmbeddedCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
 	// Composite shortcuts whose Execute maps --query → MCP keyword still publish
 	// property=query at merge-base (flag_name_inference). Publishing keyword via
-	// ParamDecl breaks schema-compatibility; keep Schema delivery aligned.
+	// contract.ParamDecl breaks schema-compatibility; keep Schema delivery aligned.
 	for _, path := range []string{
 		"aitable +find-record",
 		"doc +find-doc",
@@ -1185,7 +1181,7 @@ func TestEmbeddedCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
 
 func TestEmbeddedCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// Former metadata/contact.json overlays at 87910880 must stay on the
-	// published primary flags after ParamDecl migration. Hidden Cobra
+	// published primary flags after contract.ParamDecl migration. Hidden Cobra
 	// aliases (--id/--userid/--dept-name/--super-dept*) must not appear.
 	type wantParam struct {
 		property      string
@@ -1345,7 +1341,7 @@ func TestEmbeddedCatalogChatParamDeclsFrom87910880Hints(t *testing.T) {
 	}
 
 	// Former metadata/chat.json overlays (87910880) must stay on
-	// helpers/shortcut leaves via ParamDecl after hint clearance.
+	// helpers/shortcut leaves via contract.ParamDecl after hint clearance.
 	for _, tc := range []struct {
 		path          string
 		flag          string

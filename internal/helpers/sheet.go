@@ -2,9 +2,9 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -23,9 +23,9 @@ func resolveSheetName(cmd *cobra.Command) string {
 func newSheetCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/sheet.json
 	// products.sheet). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "sheet",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "导入本地 Excel，或创建、读取、编辑和导出钉钉在线电子表格（axls），并管理工作表、区域、筛选、图表、图片与格式。",
 			UseWhen: []string{
 				"用户要处理钉钉在线电子表格中的工作表、单元格、范围、筛选、图表、图片或格式时",
@@ -129,7 +129,7 @@ func newSheetCommand() *cobra.Command {
 	chartCmd := newChartCmd()
 	exportCmd := newExportCmd()
 	DeclareLeafMetadata(exportCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -155,7 +155,7 @@ func newSheetCommand() *cobra.Command {
 
 	batchUpdateCmd := newBatchUpdateCmd()
 	DeclareLeafMetadata(batchUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -175,7 +175,7 @@ func newSheetCommand() *cobra.Command {
 	})
 	rangeBatchClearCmd := newRangeBatchClearCmd()
 	DeclareLeafMetadata(rangeBatchClearCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

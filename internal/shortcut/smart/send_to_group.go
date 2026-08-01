@@ -16,10 +16,10 @@ package smart
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -44,7 +44,7 @@ var SendToGroup = shortcut.Shortcut{
 	Intent: "当你只知道群的名字、想直接往这个群里发一条消息而不想先手动查群 ID 时使用；" +
 		"内部先按群名搜索群聊解析出唯一 openConversationId 再发送，群名匹配到多个群时会列出候选让你区分、绝不自行假定。会真实发出群消息。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

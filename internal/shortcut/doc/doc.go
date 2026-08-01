@@ -17,8 +17,8 @@
 package doc
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -36,7 +36,7 @@ var Search = shortcut.Shortcut{
 	Description: "按关键词搜索有权限的文档 (不传则返回最近访问)",
 	Intent:      "当你只记得文档的标题或主题词、需要先定位到某篇钉钉文档拿到它的 nodeId/URL 以便后续阅读或编辑时使用；可按关键词、扩展名、创建/访问时间、创建者等条件过滤，不传关键词则返回最近访问的文档，返回匹配的文档列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -200,7 +200,7 @@ var List = shortcut.Shortcut{
 	Description: "列出文件夹或知识库下的直接子节点",
 	Intent:      "当你已知某个文档文件夹或知识库的 ID、想浏览它下面直接包含的文档与子文件夹（不递归深层）以便逐层导航时使用；输入 folder 或 workspace，返回该层级的子节点列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -292,7 +292,7 @@ var Copy = shortcut.Shortcut{
 	Description: "复制文档/文件到指定文件夹或知识库",
 	Intent:      "当你想保留原件、在另一个文件夹或知识库里生成一份文档/文件副本（例如以某篇文档为模板另存）时使用；输入源 node 与目标 folder/workspace，会实际创建一个副本。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -334,7 +334,7 @@ var Move = shortcut.Shortcut{
 	Description: "移动文档/文件到指定文件夹或知识库",
 	Intent:      "当你要整理文档归属、把某篇文档/文件从当前位置挪到另一个文件夹或知识库（原位置不再保留）时使用；输入 node 与目标 folder/workspace，会实际改变文件的存放位置。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -384,7 +384,7 @@ var CommentList = shortcut.Shortcut{
 	Description: "查询文档评论列表",
 	Intent:      "当你想查看某篇文档上已有的评论、了解有哪些反馈或待处理意见（可按全文/划词、已解决/未解决过滤）时使用；输入 node，返回评论列表及其 commentKey 以便后续回复。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -437,7 +437,7 @@ var CommentCreate = shortcut.Shortcut{
 	Description: "在文档上创建一条评论",
 	Intent:      "当你想对整篇文档留一条全文评论、给出反馈或 @ 相关同事时使用；输入 node 与评论 content（可带 mention），会实际在文档上发布一条新评论。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -479,7 +479,7 @@ var CommentReply = shortcut.Shortcut{
 	Description: "回复文档中的一条评论",
 	Intent:      "当你要针对某条已有评论进行回复、参与讨论或用表情贴图回应时使用；先从评论列表拿到 comment-key，再输入 node、comment-key 与 content（--emoji 则作为表情回复），会实际发布一条回复。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -566,7 +566,7 @@ var ExportSubmit = shortcut.Shortcut{
 	Description: "提交在线文档导出任务 (docx/markdown/pdf)，返回 jobId",
 	Intent:      "当你想把在线文档导出成 docx/markdown/pdf 文件（例如离线保存或外发）时使用；这是异步任务的第一步，输入 node 与 export-format 提交导出，返回 jobId，随后用 +export-get 轮询结果。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -607,7 +607,7 @@ var ExportGet = shortcut.Shortcut{
 	Description: "根据 jobId 查询文档导出任务结果",
 	Intent:      "当你已用 +export-submit 提交了导出任务、想查询它是否完成并拿到导出文件的下载链接时使用；输入上一步返回的 job-id，返回任务状态与结果。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -642,7 +642,7 @@ var VersionSave = shortcut.Shortcut{
 	Description: "手动保存文档版本快照",
 	Intent:      "当你在做重大改动前后、想手动打一个可回滚的版本存档点时使用；输入 node，会实际为该文档保存一个当前内容的历史版本快照。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -675,7 +675,7 @@ var VersionList = shortcut.Shortcut{
 	Description: "查看文档历史版本列表",
 	Intent:      "当你想查看某篇文档有哪些历史版本、以便挑一个版本号用于回滚时使用；输入 node，返回历史版本列表及其版本号。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -717,7 +717,7 @@ var VersionRevert = shortcut.Shortcut{
 	Description: "回滚文档到指定历史版本",
 	Intent:      "当文档被误改、你想把它整体恢复到某个历史版本时使用；先用 +version-list 找到目标版本号，再输入 node 与 version，会实际把文档内容覆盖回该版本，属于高风险写操作，需谨慎确认。",
 	Risk:        shortcut.RiskHighWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -756,7 +756,7 @@ var TemplateList = shortcut.Shortcut{
 	Description: "获取文档模板列表",
 	Intent:      "当你想基于模板新建文档、需要先浏览可用的模板（自己的 MY 或公共 PUBLIC）并拿到 templateId 时使用；返回模板列表，随后可配合 +template-apply 套用。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -801,7 +801,7 @@ var TemplateSearch = shortcut.Shortcut{
 	Description: "根据关键词搜索文档模板",
 	Intent:      "当模板较多、你想按关键词（如“周报”“合同”）快速找到合适的模板并拿到 templateId 时使用；输入 query，返回匹配的模板列表，随后可配合 +template-apply 套用。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

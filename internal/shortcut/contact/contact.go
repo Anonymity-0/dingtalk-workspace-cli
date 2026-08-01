@@ -18,8 +18,8 @@
 package contact
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -32,7 +32,7 @@ var ListFollowings = shortcut.Shortcut{
 	Description: "获取当前用户的特别关注列表",
 	Intent:      "当你想查看本人在通讯录里「特别关注」的联系人名单（例如常打交道的同事、上级）时使用；无需输入，返回关注对象的用户列表，可用于快速定位这些人的 userId 再发消息或排日程。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -106,7 +106,7 @@ var SearchUser = shortcut.Shortcut{
 	Description: "按关键词搜索通讯录用户",
 	Intent:      "当你只知道某人的姓名、花名或部分名字，需要把它解析成 userId 及部门等信息以便后续发消息、排日程或指派任务时使用；输入搜索关键词（--query），返回匹配的用户列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -177,7 +177,7 @@ var SearchMobile = shortcut.Shortcut{
 	Description: "按手机号搜索通讯录用户",
 	Intent:      "当你手里只有某人的手机号、需要反查出对应的通讯录用户和 userId 时使用；输入手机号（--mobile），返回该手机号所属的用户信息，适合从电话或名片信息定位到具体员工。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -221,7 +221,7 @@ var ListRoles = shortcut.Shortcut{
 	Description: "获取企业所有角色（标签）列表",
 	Intent:      "当你想总览企业里都有哪些角色/员工标签（如「管理员」「财务」「销售」）及其角色 ID 时使用；无需输入，返回全量角色列表，常用于按角色圈定人群前先摸清有哪些角色可选。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -355,7 +355,7 @@ var ListRoleMembers = shortcut.Shortcut{
 	Description: "查询角色下的成员列表",
 	Intent:      "当你已知某个角色 ID、想列出该角色（标签）下的全部成员以便群发通知或统计人群时使用；输入角色 ID（--id），返回该角色下的用户列表，通常先用 +search-role 拿到角色 ID 再调用。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -471,7 +471,7 @@ var ListSubDepts = shortcut.Shortcut{
 	Description: "查看指定部门的子部门",
 	Intent:      "当你想逐层浏览组织架构、查看某个部门下一级的子部门时使用；输入父部门 ID（--dept，根部门为 1），返回其直属子部门列表，可用于自顶向下遍历部门树。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -578,7 +578,7 @@ var ListDeptMembers = shortcut.Shortcut{
 	Description: "查看部门成员（仅本部门，不含下级）",
 	Intent:      "当你想列出一个或多个部门本级的员工（不含下级子部门）以便群发通知、统计或指派任务时使用；输入部门 ID 列表（--depts，逗号分隔），返回这些部门下的成员，如需含下级需自行遍历子部门。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

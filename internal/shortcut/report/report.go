@@ -19,11 +19,11 @@ package report
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -48,7 +48,7 @@ var InboxList = shortcut.Shortcut{
 	Description: "列出我收到的日报（按时间范围分页）",
 	Intent:      "当你要查看下属或同事发给自己的日报周报、想在某个时间段内浏览或审阅收到的汇报时使用；输入起止时间（ISO-8601），可按发送人 staffId 过滤，分页返回收到的日报列表及其 reportId，供后续 +entry-get 读正文。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -191,7 +191,7 @@ var OutboxList = shortcut.Shortcut{
 	Description: "列出我发出的日报（可选时间/模版名过滤）",
 	Intent:      "当你要回顾自己写过、提交过的日报周报，比如确认某天是否已交、找回历史汇报内容或统计提交情况时使用；可按创建/修改时间范围和模版名过滤，分页返回自己发出的日报列表及 reportId，供后续 +entry-get 查看正文。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

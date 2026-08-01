@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -21,9 +21,9 @@ var dingRemindTypeMap = map[string]int{"app": 1, "sms": 2, "call": 3}
 func newDingCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/ding.json
 	// products.ding). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "ding",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "以企业机器人发送或撤回应用内/短信/电话 DING",
 			UseWhen: []string{
 				"需要机器人身份发送或撤回 DING",
@@ -84,7 +84,7 @@ func newDingCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(dingMessageSendCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -137,7 +137,7 @@ func newDingCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(dingMessageRecallCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

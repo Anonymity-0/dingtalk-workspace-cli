@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func TestContractFinalFoundForHrbrain(t *testing.T) {
@@ -13,9 +13,9 @@ func TestContractFinalFoundForHrbrain(t *testing.T) {
 	if err != nil || hrbrain == nil {
 		t.Fatalf("hrbrain search employees not found: %v", err)
 	}
-	final, ok := cli.RuntimeContractFinal(hrbrain)
+	final, ok := contract.RuntimeContractFinal(hrbrain)
 	if !ok {
-		t.Fatal("ContractFinal NOT found for hrbrain search employees — this is the root cause of ParamDecl not working")
+		t.Fatal("ContractFinal NOT found for hrbrain search employees — this is the root cause of contract.ParamDecl not working")
 	}
 	t.Logf("ContractFinal found: title=%s params=%d", final.Title, len(final.Parameters))
 }
@@ -26,7 +26,7 @@ func TestContractFinalFoundForAisearch(t *testing.T) {
 	if err != nil || enterprise == nil {
 		t.Fatalf("aisearch enterprise not found: %v", err)
 	}
-	final, ok := cli.RuntimeContractFinal(enterprise)
+	final, ok := contract.RuntimeContractFinal(enterprise)
 	if !ok {
 		t.Fatal("ContractFinal NOT found for aisearch enterprise")
 	}

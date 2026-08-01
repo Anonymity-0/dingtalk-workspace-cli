@@ -12,9 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -286,9 +285,9 @@ func parseDriveUploadInfo(text string) (resourceURL, uploadID string, headers ma
 func newDriveCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/drive.json
 	// products.drive). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "drive",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理钉盘及文档空间中的文件、目录、上传下载、回收站与公开发布",
 			UseWhen: []string{
 				"浏览、搜索、上传、下载或整理钉盘和文档空间文件时",
@@ -461,7 +460,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -512,7 +511,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveInfoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -608,7 +607,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveDownloadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -705,7 +704,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveDownloadVersionCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -754,7 +753,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveMkdirCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -815,7 +814,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveUploadInfoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -867,7 +866,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveCommitCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -961,7 +960,7 @@ func newDriveCommand() *cobra.Command {
 		RunE: runDriveUpload,
 	}
 	DeclareLeafMetadata(driveUploadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1040,7 +1039,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveListSpacesCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1198,7 +1197,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1271,7 +1270,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1326,7 +1325,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveCopyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1390,7 +1389,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveMoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1454,7 +1453,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveRenameCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1501,7 +1500,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveStatsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1553,7 +1552,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveShortcutCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -1623,7 +1622,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1686,7 +1685,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1744,7 +1743,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1797,7 +1796,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermRemoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1915,7 +1914,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermTransferOwnerCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
@@ -1952,7 +1951,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermApplyInfoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2007,7 +2006,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePermApplyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
@@ -2085,7 +2084,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(recycleListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2128,7 +2127,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(recycleRestoreCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2219,7 +2218,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePublishSetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2270,7 +2269,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePublishUnsetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2314,7 +2313,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(drivePublishGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2415,7 +2414,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveRecentCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2472,7 +2471,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveStarAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2505,7 +2504,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveStarRemoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2553,7 +2552,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveStarListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2596,7 +2595,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveCoverCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2639,7 +2638,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(driveRevertCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},

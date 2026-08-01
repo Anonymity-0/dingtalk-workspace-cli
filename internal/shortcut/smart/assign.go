@@ -14,8 +14,8 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -34,7 +34,7 @@ var Assign = shortcut.Shortcut{
 	Intent: "当你想把一件事指派给某位同事、但只知道对方姓名不想先查 userId 时使用；" +
 		"内部先按姓名解析出唯一 userId，再创建待办并把 TA 设为执行人。会真实创建待办。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

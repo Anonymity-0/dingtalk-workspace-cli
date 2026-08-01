@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/audit"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -30,9 +30,9 @@ var (
 func newAuditCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/audit.json
 	// products.audit). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "audit",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查看、导出和校验本地操作审计日志",
 			UseWhen: []string{
 				"需要排查本机 CLI 操作审计记录，或验证审计文件完整性",
@@ -81,7 +81,7 @@ func newAuditTailCommand() *cobra.Command {
 	}
 	cmd.Flags().IntVarP(&n, "lines", "n", 20, "显示最近 N 条记录")
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -141,7 +141,7 @@ func newAuditExportCommand() *cobra.Command {
 	cmd.Flags().StringVar(&until, "until", "", "截止日期 (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&format, "format", "jsonl", "输出格式: jsonl 或 csv")
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -219,7 +219,7 @@ func newAuditVerifyCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&file, "file", "", "指定审计文件路径（默认最新文件）")
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

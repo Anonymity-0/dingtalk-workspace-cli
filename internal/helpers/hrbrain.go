@@ -3,11 +3,11 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -17,9 +17,9 @@ import (
 func newHrbrainCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/hrbrain.json
 	// products.hrbrain). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "hrbrain",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "钉钉组织大脑：人才池管理、员工档案查询与人才搜索",
 			UseWhen: []string{
 				"需要查询人才池、员工档案（元数据/标签/职业历程/绩效）或搜索员工时",
@@ -83,7 +83,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(talentPoolListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -137,7 +137,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(talentPoolDetailCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -179,7 +179,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(talentPoolEmployeesCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -230,7 +230,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(profileMetadataCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -279,7 +279,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(profileQueryCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -327,7 +327,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(profileLabelsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -366,7 +366,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(profileCareerCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -403,7 +403,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(profilePerformanceCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -464,7 +464,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(employeeSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -547,7 +547,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(employeeSearchStructuredCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -591,7 +591,7 @@ func newHrbrainCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(searchFieldsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

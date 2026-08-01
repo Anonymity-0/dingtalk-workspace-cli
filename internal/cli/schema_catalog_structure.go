@@ -16,6 +16,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"sort"
 	"strings"
 )
@@ -83,8 +84,8 @@ var schemaCatalogToolEnums = map[string][]string{
 	"effect":         {"read", "write", "destructive"},
 	"risk":           {"low", "medium", "high"},
 	"confirmation":   {"not_required", "user_required"},
-	"interface_mode": {InterfaceModeMCP, InterfaceModeComposite, InterfaceModeLocal},
-	"availability":   {InterfaceAvailable, InterfaceUnavailable},
+	"interface_mode": {contract.InterfaceModeMCP, contract.InterfaceModeComposite, contract.InterfaceModeLocal},
+	"availability":   {contract.InterfaceAvailable, contract.InterfaceUnavailable},
 }
 
 // schemaCatalogParamRequiredKeys is the required core of every parameter.
@@ -256,7 +257,7 @@ func validateCatalogInterface(toolID string, entry map[string]any, violations *[
 	ref, hasRef := entry["interface_ref"]
 	reason, _ := entry["interface_reason"].(string)
 	switch mode {
-	case InterfaceModeMCP:
+	case contract.InterfaceModeMCP:
 		if !hasRef {
 			report("interface_mode=mcp requires interface_ref")
 			return
@@ -274,7 +275,7 @@ func validateCatalogInterface(toolID string, entry map[string]any, violations *[
 		if strings.TrimSpace(reason) != "" {
 			report("interface_mode=mcp must not set interface_reason")
 		}
-	case InterfaceModeComposite, InterfaceModeLocal:
+	case contract.InterfaceModeComposite, contract.InterfaceModeLocal:
 		if hasRef {
 			report("interface_mode=%s must not set interface_ref", mode)
 		}

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -72,16 +73,16 @@ func schemaRegistryForTestWithMetadata(root *cobra.Command, agent embeddedAgentM
 	if err != nil {
 		return SchemaRegistry{}, err
 	}
-	// Fixture-driven tests exercise the legacy agent-metadata overlay path.
-	// Clear bind-time migrated hint attaches so injected fixtures remain
-	// authoritative for the commands under test.
+	// Fixture-driven tests exercise the retired agent-metadata overlay path.
+	// Clear bind-time ContractFinal so injected fixtures remain authoritative
+	// for the commands under test. Production assembly never takes this path.
 	for _, command := range bound.Commands {
-		ClearRuntimeContractFinalForTest(command.PrimaryCommand)
+		contract.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
 		for _, alias := range command.AliasCommands {
-			ClearRuntimeContractFinalForTest(alias.Command)
+			contract.ClearRuntimeContractFinalForTest(alias.Command)
 		}
 	}
-	return assembleSchemaRegistryFromBound(bound, runtimeSchemaMetadataSources{Agent: agent, MCP: mcp})
+	return assembleSchemaRegistryFromBoundAllowingLegacy(bound, runtimeSchemaMetadataSources{Agent: agent, MCP: mcp})
 }
 
 func runtimeSchemaPayloadForTest(root *cobra.Command, args []string) (map[string]any, error) {

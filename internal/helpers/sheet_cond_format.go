@@ -3,8 +3,8 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(condFormatListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -180,7 +180,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(condFormatCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -285,7 +285,7 @@ ruleId 可通过 cond-format list 获取。`,
 		},
 	}
 	DeclareLeafMetadata(condFormatUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -336,7 +336,7 @@ ruleId 可通过 cond-format list 获取。`,
 		},
 	}
 	DeclareLeafMetadata(condFormatDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

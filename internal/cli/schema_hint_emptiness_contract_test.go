@@ -14,6 +14,7 @@
 package cli
 
 import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"os"
 	"path/filepath"
 	"sort"
@@ -22,7 +23,7 @@ import (
 )
 
 // TestDeletedProductionSchemaHintFilesStayGone locks stage-3 cleanup: the
-// former production RegisterSchemaHints init files must not return.
+// retired production hint init files must not return.
 func TestDeletedProductionSchemaHintFilesStayGone(t *testing.T) {
 	deleted := []string{
 		"schema_hints_aitable.go",
@@ -57,7 +58,7 @@ func TestSchemaHintsDirectoryRetired(t *testing.T) {
 
 // TestEmbeddedCatalogHasNoToolSchemaHintProvenance asserts the published
 // Catalog no longer selects tool_schema_hint as a provenance winner or
-// retained candidate after RegisterSchemaHints → ParamDecl migration.
+// retained candidate after RegisterSchemaHints → contract.ParamDecl migration.
 func TestEmbeddedCatalogHasNoToolSchemaHintProvenance(t *testing.T) {
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatal("embedded schema catalog unavailable")
@@ -82,7 +83,7 @@ func TestEmbeddedCatalogHasNoToolSchemaHintProvenance(t *testing.T) {
 	}
 }
 
-func toolSchemaHintProvenanceHits(prefix string, provenance map[string]FieldProvenance) []string {
+func toolSchemaHintProvenanceHits(prefix string, provenance map[string]contract.FieldProvenance) []string {
 	if len(provenance) == 0 {
 		return nil
 	}
@@ -94,16 +95,16 @@ func toolSchemaHintProvenanceHits(prefix string, provenance map[string]FieldProv
 	sort.Strings(fields)
 	for _, field := range fields {
 		prov := provenance[field]
-		if prov.Source == runtimeSchemaPrecedenceToolHint {
+		if prov.Source == "tool_schema_hint" {
 			hits = append(hits, prefix+"."+field+"#winner")
 		}
 		for i, candidate := range prov.Candidates {
-			if candidate.Source == runtimeSchemaPrecedenceToolHint {
+			if candidate.Source == "tool_schema_hint" {
 				hits = append(hits, prefix+"."+field+"#candidate["+strconv.Itoa(i)+"]")
 			}
 		}
 		for i, candidate := range prov.OverriddenCandidates {
-			if candidate.Source == runtimeSchemaPrecedenceToolHint {
+			if candidate.Source == "tool_schema_hint" {
 				hits = append(hits, prefix+"."+field+"#overridden["+strconv.Itoa(i)+"]")
 			}
 		}

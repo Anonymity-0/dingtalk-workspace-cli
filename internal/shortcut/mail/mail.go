@@ -18,8 +18,8 @@
 package mail
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -51,7 +51,7 @@ var ThreadList = shortcut.Shortcut{
 	Description: "列出指定邮箱文件夹下的邮件会话（thread）",
 	Intent:      "当你想按会话（同一往来主题的邮件串）而非单封邮件来浏览某个文件夹时使用；传入邮箱和文件夹 ID，可按时间范围和升降序筛选，返回会话列表及其 conversationId，供 +thread 查看详情。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -187,7 +187,7 @@ var FolderList = shortcut.Shortcut{
 	Description: "列出顶层文件夹或指定父文件夹下的子文件夹",
 	Intent:      "当你需要了解某个邮箱有哪些文件夹、或要取得文件夹 ID 以便移动邮件、按文件夹列信/建规则时使用；传入邮箱（可选父文件夹 ID 查子级），返回文件夹列表及其 ID。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -302,7 +302,7 @@ var TagList = shortcut.Shortcut{
 	Description: "列出指定邮箱下的所有邮件标签",
 	Intent:      "当你要查看邮箱里有哪些标签、或需要取得标签 ID 以便给邮件/会话加标签时使用；传入邮箱地址，返回全部邮件标签及其 ID。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -412,7 +412,7 @@ var UserSearch = shortcut.Shortcut{
 	Description: "按关键词或工号搜索邮箱用户（仅企业邮箱）",
 	Intent:      "当你只知道同事的姓名或工号、需要查出其企业邮箱地址以便发信或添加联系人时使用；提供关键词或工号（至少其一），返回匹配的企业邮箱用户列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -551,7 +551,7 @@ var TemplateList = shortcut.Shortcut{
 	Description: "列出指定邮箱的所有邮件模板",
 	Intent:      "当你想查看某个邮箱下已有哪些邮件模板、或需要取得模板 ID 以便查看详情或更新时使用；传入邮箱和每页数量，返回模板列表，支持分页。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -669,7 +669,7 @@ var ContactList = shortcut.Shortcut{
 	Description: "列出指定邮箱的所有邮件联系人",
 	Intent:      "当你想查看某邮箱通讯录里有哪些联系人、或需要取得联系人 ID 以便更新或删除时使用；传入邮箱和每页数量，返回联系人列表，支持分页。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

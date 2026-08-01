@@ -14,8 +14,8 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -43,7 +43,7 @@ var MinutesSearch = shortcut.Shortcut{
 		"内部按 --query 关键词列出你创建的听记（最多 20 条），再在本地投影出每条的标题、创建时间和 taskUuid。" +
 		"这是纯只读操作，只做搜索与本地投影，不会修改任何听记；若没有匹配的听记则提示「没搜到妙记」。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -183,7 +183,7 @@ func newFilterCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(filterGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -239,7 +239,7 @@ func newFilterCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(filterCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -278,7 +278,7 @@ func newFilterCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(filterDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -333,7 +333,7 @@ func newFilterCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(filterUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -378,7 +378,7 @@ func newFilterCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(filterClearCriteriaCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -426,7 +426,7 @@ func newFilterCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(filterSortCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -484,7 +484,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(filterViewListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -555,7 +555,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(filterViewCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -639,7 +639,7 @@ filterViewId 可通过 filter-view list 获取。
 		},
 	}
 	DeclareLeafMetadata(filterViewUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -691,7 +691,7 @@ filterViewId 可通过 filter-view list 获取。`,
 		},
 	}
 	DeclareLeafMetadata(filterViewDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -795,7 +795,7 @@ condition 类型支持的 operator（必须使用 kebab-case 格式）：
 		},
 	}
 	DeclareLeafMetadata(filterViewSetCriteriaCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -859,7 +859,7 @@ filterViewId 可通过 filter-view list 获取。
 		},
 	}
 	DeclareLeafMetadata(filterViewClearCriteriaCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -900,7 +900,7 @@ filterViewId 可通过 filter-view list 获取。`,
 		RunE: runFilterViewInfo,
 	}
 	DeclareLeafMetadata(filterViewInfoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -943,7 +943,7 @@ filterViewId 可通过 filter-view list 获取。`,
 		RunE: runFilterViewListCriteria,
 	}
 	DeclareLeafMetadata(filterViewListCriteriaCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -992,7 +992,7 @@ filterViewId 可通过 filter-view list 获取。`,
 		RunE: runFilterViewGetCriteria,
 	}
 	DeclareLeafMetadata(filterViewGetCriteriaCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

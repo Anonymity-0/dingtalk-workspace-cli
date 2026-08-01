@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -31,7 +32,7 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 	if cmd.Annotations[runtimeSchemaTitleAnnotation] != "title" {
 		t.Fatalf("annotations = %#v", cmd.Annotations)
 	}
-	AnnotateRuntimePositionals(cmd, RuntimeSchemaPositional{Name: " ", Index: -1})
+	AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{Name: " ", Index: -1})
 	if _, ok := cmd.Annotations[runtimeSchemaArgsAnnotation]; ok {
 		t.Fatal("invalid positional should not be annotated")
 	}
@@ -134,7 +135,7 @@ func TestCrossPlatformCoverageRuntimeSchemaCandidateAndProvenanceEdges(t *testin
 	if err != nil || winner.Precedence != "a" {
 		t.Fatalf("precedence tie ordering winner = %#v, err = %v", winner, err)
 	}
-	if got := runtimeSchemaFieldProvenance(runtimeSchemaFieldCandidate{}); !reflect.DeepEqual(got, FieldProvenance{}) {
+	if got := runtimeSchemaFieldProvenance(runtimeSchemaFieldCandidate{}); !reflect.DeepEqual(got, contract.FieldProvenance{}) {
 		t.Fatalf("absent provenance = %#v", got)
 	}
 	bad := runtimeSchemaCandidate(func() {}, true, "custom")

@@ -3,10 +3,10 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -150,7 +150,7 @@ func newChartCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(chartListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -244,7 +244,7 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 		},
 	}
 	DeclareLeafMetadata(chartCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -320,7 +320,7 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 		},
 	}
 	DeclareLeafMetadata(chartUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -362,7 +362,7 @@ chart-id 可通过 chart list 获取。`,
 		},
 	}
 	DeclareLeafMetadata(chartDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

@@ -3,11 +3,11 @@ package helpers
 import (
 	"context"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +50,7 @@ func newDocStyleCommand() *cobra.Command {
 		RunE: runDocStyleCoverSet,
 	}
 	DeclareLeafMetadata(coverSetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -75,7 +75,7 @@ func newDocStyleCommand() *cobra.Command {
 		RunE:    runDocStyleCoverClear,
 	}
 	DeclareLeafMetadata(coverClearCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -107,7 +107,7 @@ func newDocStyleCommand() *cobra.Command {
 		RunE:    runDocStyleBackgroundSet,
 	}
 	DeclareLeafMetadata(backgroundSetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -132,7 +132,7 @@ func newDocStyleCommand() *cobra.Command {
 		RunE:    runDocStyleBackgroundClear,
 	}
 	DeclareLeafMetadata(backgroundClearCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -158,7 +158,7 @@ func newDocStyleCommand() *cobra.Command {
 		RunE:    runDocStyleGet,
 	}
 	DeclareLeafMetadata(getCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

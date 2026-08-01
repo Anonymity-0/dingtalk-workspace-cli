@@ -15,10 +15,10 @@ package smart
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -38,7 +38,7 @@ var FreeBusy = shortcut.Shortcut{
 	Intent: "当你只知道对方姓名、想知道 TA 在某段时间内是空闲还是被日程占用（比如约会前先看看有没有空）而不想先手动查 userId 时使用；" +
 		"内部先按姓名搜通讯录解析出唯一 userId，姓名匹配到多人时会列出候选让你区分，再按时间范围查询忙闲。只读，不产生任何日程变更。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/fatih/color"
@@ -392,19 +393,19 @@ func manualAgentExampleDryRunObserved(capture manualAgentExampleCapture) bool {
 func manualAgentExampleDryRunEvidence(capture manualAgentExampleCapture) (string, bool) {
 	normalized := strings.ToLower(capture.Output)
 	if manualAgentExampleDryRunJSONPattern.MatchString(capture.Output) && manualAgentExampleDryRunPlanPattern.MatchString(capture.Output) {
-		return cli.DryRunPreviewPlan, true
+		return contract.DryRunPreviewPlan, true
 	}
 	if manualAgentExampleDryRunJSONPattern.MatchString(capture.Output) && manualAgentExampleDryRunInvocationPattern.MatchString(capture.Output) {
-		return cli.DryRunPreviewInvocation, true
+		return contract.DryRunPreviewInvocation, true
 	}
 	if manualAgentExampleDryRunJSONPattern.MatchString(capture.Output) {
-		return cli.DryRunPreviewRequest, true
+		return contract.DryRunPreviewRequest, true
 	}
 	if strings.Contains(normalized, "[dry-run]") {
-		return cli.DryRunPreviewInvocation, true
+		return contract.DryRunPreviewInvocation, true
 	}
 	if capture.DryRunChecks > 0 && strings.Contains(capture.Output, "操作:") {
-		return cli.DryRunPreviewPlan, true
+		return contract.DryRunPreviewPlan, true
 	}
 	return "", false
 }
@@ -439,7 +440,7 @@ func TestCrossPlatformCoverageManualAgentExampleDryRunEvidenceClassifiesStructur
 		Output:       `{"dry_run":true,"executed":false,"preview_kind":"plan"}`,
 		DryRunChecks: 1,
 	})
-	if !observed || kind != cli.DryRunPreviewPlan {
+	if !observed || kind != contract.DryRunPreviewPlan {
 		t.Fatalf("structured plan classified as kind=%q observed=%v", kind, observed)
 	}
 	if manualAgentExampleDryRunObserved(manualAgentExampleCapture{
@@ -460,23 +461,23 @@ func TestManualAgentExampleDryRunEvidenceClassifiesExecutorEnvelopeAsInvocation(
     "note": "execution skipped by --dry-run"}
 }`
 	kind, observed := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: envelope})
-	if !observed || kind != cli.DryRunPreviewInvocation {
+	if !observed || kind != contract.DryRunPreviewInvocation {
 		t.Fatalf("executor envelope classified as kind=%q observed=%v, want invocation", kind, observed)
 	}
 	for _, invKind := range []string{"compat_invocation", "workflow_invocation", "connect_preview"} {
 		out := strings.Replace(envelope, "helper_invocation", invKind, 1)
-		if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: out}); !ok || kind != cli.DryRunPreviewInvocation {
+		if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: out}); !ok || kind != contract.DryRunPreviewInvocation {
 			t.Fatalf("kind %q envelope classified as %q/%v, want invocation", invKind, kind, ok)
 		}
 	}
 	// A bare MCP dry-run document has no invocation kind and stays request.
 	mcpDoc := `{"dry_run": true, "executed": false, "tool": "get_dev_app", "arguments": {}}`
-	if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: mcpDoc}); !ok || kind != cli.DryRunPreviewRequest {
+	if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: mcpDoc}); !ok || kind != contract.DryRunPreviewRequest {
 		t.Fatalf("bare MCP dry-run classified as %q/%v, want request", kind, ok)
 	}
 	// Plan still wins over an invocation-shaped payload.
 	planDoc := `{"dry_run": true, "preview_kind": "plan", "kind": "helper_invocation"}`
-	if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: planDoc}); !ok || kind != cli.DryRunPreviewPlan {
+	if kind, ok := manualAgentExampleDryRunEvidence(manualAgentExampleCapture{Output: planDoc}); !ok || kind != contract.DryRunPreviewPlan {
 		t.Fatalf("plan precedence broken: %q/%v", kind, ok)
 	}
 }

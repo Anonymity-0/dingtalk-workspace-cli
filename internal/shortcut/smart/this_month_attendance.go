@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -48,7 +48,7 @@ var ThisMonthAttendance = shortcut.Shortcut{
 		"再手动填写本月的起止时间时使用；内部先取当前登录用户的 userId，再按本地时区算出本月 1 号 00:00 到下月 1 号 00:00 的时间窗，" +
 		"最后查询你本月的打卡流水记录。只读操作，不会修改任何考勤数据；本月若还没有任何打卡则返回空结果。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

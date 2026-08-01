@@ -14,11 +14,11 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
@@ -48,7 +48,7 @@ var MyGroups = shortcut.Shortcut{
 		"内部分页拉取你加入的群列表，把每个群防御式地投影成 会话id / 名称 / 群主 / 人数 / 类型 等关键字段，输出成干净的结果。" +
 		"可选 --type 在本地按群类型过滤（底层接口本身不带类型参数，故为客户端过滤）。这是只读操作，不会改动任何群或成员关系。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

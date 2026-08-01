@@ -15,10 +15,10 @@ package smart
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -45,7 +45,7 @@ var ReplaceBatch = shortcut.Shortcut{
 		"内部按多个 --pair \"原文=>替换\" 逐组调用替换工具，先在本地校验去重（同一个「原文」不能出现两次，避免两条规则互相打架），" +
 		"再逐组应用并聚合每组的成功/失败结果，某一组失败不会中断其余组。这是写操作，会实际修改听记文字内容，请确认 taskUuid 与替换规则无误。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

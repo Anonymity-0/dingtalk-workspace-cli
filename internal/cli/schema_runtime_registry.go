@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -77,7 +78,7 @@ func embeddedRuntimeSchemaMetadataSources() runtimeSchemaMetadataSources {
 // ResolveSchemaBuild is the only assembly path from executable Cobra commands
 // and reviewed metadata into the typed Agent contract. It resolves identity
 // once, binds Cobra once, and assembles one SchemaRegistry from ContractFinal /
-// ProductDecl leaf declarations. Catalog gates and serialization consume the
+// contract.ProductDecl leaf declarations. Catalog gates and serialization consume the
 // returned value directly; they never re-read overlays or merge sources.
 func ResolveSchemaBuild(root *cobra.Command) (ResolvedSchemaBuild, error) {
 	if root == nil {
@@ -127,28 +128,46 @@ func AssembleSchemaRegistryFromBound(bound BoundCommandRegistry) (SchemaRegistry
 	return assembleSchemaRegistryFromBound(bound, embeddedRuntimeSchemaMetadataSources())
 }
 
+// assembleSchemaOptions controls production vs test-isolated assembly.
+// allowLegacyMetadata is never set on the production Catalog path: missing
+// ContractFinal / ProductDecl must fail closed rather than reopen skill/MCP
+// /agent-inject overlays.
+type assembleSchemaOptions struct {
+	allowLegacyMetadata bool
+}
+
 func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources) (SchemaRegistry, error) {
+	return assembleSchemaRegistryFromBoundWithOptions(bound, metadata, assembleSchemaOptions{})
+}
+
+// assembleSchemaRegistryFromBoundAllowingLegacy is test-only isolation for the
+// retired skill/MCP/agent-metadata overlay path. Production assembly must never
+// call this entry.
+func assembleSchemaRegistryFromBoundAllowingLegacy(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources) (SchemaRegistry, error) {
+	return assembleSchemaRegistryFromBoundWithOptions(bound, metadata, assembleSchemaOptions{allowLegacyMetadata: true})
+}
+
+func assembleSchemaRegistryFromBoundWithOptions(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources, opts assembleSchemaOptions) (SchemaRegistry, error) {
 	entries, err := assembleCollectEntries(bound)
 	if err != nil {
 		return SchemaRegistry{}, err
 	}
 	byProduct := make(map[string]*ProductSpec)
 	for _, entry := range entries {
-		tool, err := assembleRuntimeToolSpec(entry, metadata)
+		var tool ToolSpec
+		if opts.allowLegacyMetadata {
+			tool, err = runtimeToolSpecAllowingLegacy(entry, metadata)
+		} else {
+			tool, err = assembleRuntimeToolSpec(entry, metadata)
+		}
 		if err != nil {
 			return SchemaRegistry{}, err
 		}
 		product := byProduct[entry.ProductID]
 		if product == nil {
-			var selection SelectionSpec
-			var provenance map[string]FieldProvenance
-			// ProductDecl is the final product routing source (contract_final),
-			// symmetric to leaf RuntimeContractFinal. Selection JSON remains a
-			// fallback only when no Decl is registered.
-			if decl, ok := LookupProductDecl(entry.ProductID); ok {
-				selection, provenance = ProductSelectionFromDecl(decl)
-			} else {
-				selection, provenance, _ = agentProductContractForIDsFromMetadata(metadata.Agent, entry.ProductID, entry.SourceProductID)
+			selection, provenance, err := assembleProductSelection(entry, metadata, opts.allowLegacyMetadata)
+			if err != nil {
+				return SchemaRegistry{}, err
 			}
 			product = &ProductSpec{
 				ID:              entry.ProductID,
@@ -188,7 +207,31 @@ func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtim
 }
 
 func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
-	if final, ok := RuntimeContractFinal(entry.Command); ok {
+	if final, ok := contract.RuntimeContractFinal(entry.Command); ok {
+		return runtimeToolSpecFromContractFinal(entry, final, metadata)
+	}
+	canonicalPath := entry.ProductID + "." + entry.ToolName
+	return ToolSpec{}, fmt.Errorf("assemble Schema tool %s: missing RuntimeContractFinal (legacy skill/MCP/agent-metadata assembly is retired)", canonicalPath)
+}
+
+// assembleProductSelection requires ProductDecl on the production path.
+// Legacy agent-product JSON overlay is test-isolation only.
+func assembleProductSelection(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources, allowLegacy bool) (contract.SelectionSpec, map[string]contract.FieldProvenance, error) {
+	if decl, ok := contract.LookupProductDecl(entry.ProductID); ok {
+		selection, provenance := contract.ProductSelectionFromDecl(decl)
+		return selection, provenance, nil
+	}
+	if allowLegacy {
+		selection, provenance, _ := agentProductContractForIDsFromMetadata(metadata.Agent, entry.ProductID, entry.SourceProductID)
+		return selection, provenance, nil
+	}
+	return contract.SelectionSpec{}, nil, fmt.Errorf("assemble Schema product %q: missing ProductDecl (legacy agent-metadata product selection is retired)", entry.ProductID)
+}
+
+// runtimeToolSpecAllowingLegacy is the test-isolated overlay path. Prefer
+// ContractFinal when present; otherwise reopen retired skill/MCP/agent inject.
+func runtimeToolSpecAllowingLegacy(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
+	if final, ok := contract.RuntimeContractFinal(entry.Command); ok {
 		return runtimeToolSpecFromContractFinal(entry, final, metadata)
 	}
 	return runtimeToolSpecFromLegacyMetadata(entry, metadata)
@@ -200,21 +243,23 @@ func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchem
 // interface_type and interface-side required are interface facts the CLI
 // declaration does not own, and dropping them is a published-Schema
 // compatibility break, not a declaration takeover.
-func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
+func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)
 	embeddedMeta, _ := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
-	// Apply parameter declarations from the ContractFinalPayload before the
+	// Apply parameter declarations from the contract.ContractFinalPayload before the
 	// resolver reads them. The decls were put there by AttachSchema at
 	// DeclareLeafMetadata time; now that all flags exist on the fully-built
 	// command tree, they can be emitted as dws.schema.* annotations.
-	ApplyParamDecls(entry.Command, final.Parameters)
+	if err := ApplyParamDecls(entry.Command, final.Parameters); err != nil {
+		return ToolSpec{}, fmt.Errorf("apply Contract Schema ParamDecls for %s: %w", canonicalPath, err)
+	}
 	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, embeddedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
 	}
 
-	identity := ToolIdentitySpec{
+	identity := contract.ToolIdentitySpec{
 		ProductID:       entry.ProductID,
 		SourceProductID: strings.TrimSpace(entry.SourceProductID),
 		Name:            entry.ToolName,
@@ -278,7 +323,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 		description = strings.TrimSpace(entry.Command.Long)
 	}
 
-	safety := SafetySpec{}
+	safety := contract.SafetySpec{}
 	if final.Safety != nil {
 		safety = *final.Safety
 	} else if risk, ok := RuntimeContractRisk(entry.Command); ok {
@@ -292,11 +337,11 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 		positionals = runtimeCommandPositionals(entry.Command)
 	}
 
-	var interfaceSpec InterfaceSpec
+	var interfaceSpec contract.InterfaceSpec
 	if final.Interface != nil {
 		interfaceSpec = *final.Interface
 	}
-	var selection SelectionSpec
+	var selection contract.SelectionSpec
 	if final.Selection != nil {
 		if final.Selection.Reviewed != nil {
 			return ToolSpec{}, fmt.Errorf("contract final selection for %s must not carry reviewed field: declaration is the final source", canonicalPath)
@@ -345,8 +390,8 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 // field (safety/interface/agent_summary unconditionally, selection slices and
 // dry_run when present), so declared leaves must emit the full set, not only
 // the fields they happened to author.
-func contractFinalProvenance(identity ToolIdentitySpec, title, description string, safety SafetySpec, iface InterfaceSpec, selection SelectionSpec, dryRun *DryRunSpec) map[string]FieldProvenance {
-	prov := func(value any, sourceRef string) FieldProvenance {
+func contractFinalProvenance(identity contract.ToolIdentitySpec, title, description string, safety contract.SafetySpec, iface contract.InterfaceSpec, selection contract.SelectionSpec, dryRun *contract.DryRunSpec) map[string]contract.FieldProvenance {
+	prov := func(value any, sourceRef string) contract.FieldProvenance {
 		return resolvedFieldProvenance(
 			value,
 			"corecmd.contract",
@@ -356,7 +401,7 @@ func contractFinalProvenance(identity ToolIdentitySpec, title, description strin
 			"Contract final Schema pass-through",
 		)
 	}
-	out := map[string]FieldProvenance{
+	out := map[string]contract.FieldProvenance{
 		"canonical_path":  prov(identity.CanonicalPath, "corecmd.SchemaDecl"),
 		"title":           prov(title, "corecmd.SchemaDecl"),
 		"description":     prov(description, "corecmd.SchemaDecl"),
@@ -375,8 +420,8 @@ func contractFinalProvenance(identity ToolIdentitySpec, title, description strin
 	}
 	out["interface_ref"] = prov(ref, "corecmd.SchemaDecl")
 	if strings.TrimSpace(iface.Reason) != "" ||
-		strings.TrimSpace(iface.Mode) == InterfaceModeComposite ||
-		strings.TrimSpace(iface.Availability) == InterfaceUnavailable {
+		strings.TrimSpace(iface.Mode) == contract.InterfaceModeComposite ||
+		strings.TrimSpace(iface.Availability) == contract.InterfaceUnavailable {
 		out["interface_reason"] = prov(iface.Reason, "corecmd.SchemaDecl")
 	}
 	for field, values := range map[string][]string{
@@ -404,7 +449,7 @@ func contractFinalProvenance(identity ToolIdentitySpec, title, description strin
 // (managed) leaf, a declared identity must agree with the bound tree entry.
 // Otherwise the Schema catalog would publish an identity the registry never
 // indexed. Non-empty declared fields that differ from the entry fail assembly.
-func validateContractFinalIdentity(entry runtimeSchemaEntry, id ToolIdentitySpec, canonicalPath string) error {
+func validateContractFinalIdentity(entry runtimeSchemaEntry, id contract.ToolIdentitySpec, canonicalPath string) error {
 	mismatches := make([]string, 0, 10)
 	check := func(field, declared, bound string) {
 		declared = strings.TrimSpace(declared)
@@ -449,6 +494,9 @@ func stringSetsEqual(a, b []string) bool {
 	return true
 }
 
+// runtimeToolSpecFromLegacyMetadata rebuilds a ToolSpec from skill/MCP/agent
+// inject overlays. Production assembly never calls this; only
+// assembleSchemaRegistryFromBoundAllowingLegacy (tests) may.
 func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	dryRun, err := resolveReviewedDryRun(canonicalPath)
@@ -481,7 +529,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 		)
 	}
 	if provenance == nil {
-		provenance = map[string]FieldProvenance{}
+		provenance = map[string]contract.FieldProvenance{}
 	}
 	for field, fieldProvenance := range textProvenance {
 		provenance[field] = fieldProvenance
@@ -546,7 +594,7 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 		sourceProductID = ""
 	}
 	return ToolSpecFromRuntime(RuntimeToolSpecInput{
-		Identity: ToolIdentitySpec{
+		Identity: contract.ToolIdentitySpec{
 			ProductID:       entry.ProductID,
 			SourceProductID: sourceProductID,
 			Name:            entry.ToolName,
@@ -794,7 +842,7 @@ func validateSchemaRegistryAgentMetadata(registry SchemaRegistry) error {
 // per-field equality invariant itself is enforced by ToolSpec.Validate.
 func validateFinalSchemaProvenanceCoverage(registry SchemaRegistry) error {
 	var problems []string
-	require := func(owner, field string, provenance map[string]FieldProvenance) {
+	require := func(owner, field string, provenance map[string]contract.FieldProvenance) {
 		if _, ok := provenance[field]; !ok {
 			problems = append(problems, fmt.Sprintf("Schema %s has no provenance for %s", owner, field))
 		}
@@ -826,8 +874,8 @@ func validateFinalSchemaProvenanceCoverage(registry SchemaRegistry) error {
 			// local available command with no reason has no resolver winner to
 			// invent; unavailable/composite commands fail closed without one.
 			if strings.TrimSpace(tool.Interface.Reason) != "" ||
-				strings.TrimSpace(tool.Interface.Mode) == InterfaceModeComposite ||
-				strings.TrimSpace(tool.Interface.Availability) == InterfaceUnavailable {
+				strings.TrimSpace(tool.Interface.Mode) == contract.InterfaceModeComposite ||
+				strings.TrimSpace(tool.Interface.Availability) == contract.InterfaceUnavailable {
 				require("tool "+canonical, "interface_reason", tool.FieldProvenance)
 			}
 			selectionValues := map[string][]string{

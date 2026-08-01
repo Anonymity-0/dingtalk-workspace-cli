@@ -16,6 +16,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )
@@ -86,7 +87,7 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 			fails = append(fails, row{canonical, cmd.PrimaryCLIPath, "", "nil PrimaryCommand"})
 			continue
 		}
-		final, hasFinal := cli.RuntimeContractFinal(leaf)
+		final, hasFinal := contract.RuntimeContractFinal(leaf)
 		if !hasFinal || final.Safety == nil {
 			continue
 		}
@@ -118,7 +119,7 @@ func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 			gate = "sheet_protect"
 		default:
 			// NewLeafCommand / Shortcut: NewCommand registers ContractFinal from the
-			// same SafetySpec it wires into ConfirmSafety. Prove that SafetySpec is
+			// same contract.SafetySpec it wires into ConfirmSafety. Prove that contract.SafetySpec is
 			// still user_required-operable (closed stdin → confirmation gate).
 			leaf.SetIn(strings.NewReader(""))
 			leaf.SetOut(io.Discard)

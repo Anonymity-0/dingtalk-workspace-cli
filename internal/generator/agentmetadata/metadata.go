@@ -267,11 +267,13 @@ const (
 const contractFinalOrigin = "corecmd.contract"
 
 type Options struct {
-	Root                     string
-	SkillPath                string
-	ProductsDir              string
-	IntentGuidePath          string
-	HintsDir                 string
+	Root            string
+	SkillPath       string
+	ProductsDir     string
+	IntentGuidePath string
+	// HintsDir is retired. Empty is required; any non-empty value fails closed.
+	HintsDir string
+	// ManualHintsPath is retired. Empty is required; any non-empty value fails closed.
 	ManualHintsPath          string
 	InterfaceMetadataPath    string
 	MaxExamples              int
@@ -381,9 +383,9 @@ func Generate(opts Options) (File, Stats, error) {
 
 // generateFromSources retains the lower-precedence evidence parsers as a
 // package-internal seam for focused tests. Production callers must use Generate.
-// HintsDir is optional and retired for production: ProductDecl / ContractFinal
-// own routing and leaf facts. When HintsDir is empty or absent, hint parsing is
-// skipped; Skill Markdown remains evidence-only.
+// HintsDir and ManualHintsPath are retired: ProductDecl / ContractFinal own
+// routing and leaf facts. Non-empty values fail closed in loadSources;
+// Skill Markdown remains evidence-only.
 func generateFromSources(opts Options) (File, Stats, error) {
 	if opts.Root == "" {
 		opts.Root = "."
@@ -1706,33 +1708,11 @@ func loadSources(opts Options) ([]sourceFile, error) {
 		return nil, fmt.Errorf("walk product references: %w", err)
 	}
 	paths = append(paths, productPaths...)
-	if strings.TrimSpace(opts.HintsDir) != "" {
-		hintsRoot := resolvePath(opts.Root, opts.HintsDir)
-		info, statErr := os.Stat(hintsRoot)
-		switch {
-		case statErr == nil && info.IsDir():
-			hintPaths := []string{}
-			err := filepath.WalkDir(hintsRoot, func(path string, entry fs.DirEntry, walkErr error) error {
-				if walkErr != nil {
-					return walkErr
-				}
-				if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
-					return nil
-				}
-				hintPaths = append(hintPaths, path)
-				return nil
-			})
-			if err != nil {
-				return nil, fmt.Errorf("walk Agent hint sources: %w", err)
-			}
-			paths = append(paths, hintPaths...)
-		case statErr != nil && !os.IsNotExist(statErr):
-			return nil, fmt.Errorf("stat Agent hint sources: %w", statErr)
-			// Absent HintsDir is the retired production end-state; skip quietly.
-		}
+	if hintsDir := strings.TrimSpace(opts.HintsDir); hintsDir != "" {
+		return nil, fmt.Errorf("schema_hints/ is retired; clear HintsDir and declare ProductDecl/ContractFinal instead (got %q)", hintsDir)
 	}
-	if strings.TrimSpace(opts.ManualHintsPath) != "" {
-		paths = append(paths, resolvePath(opts.Root, opts.ManualHintsPath))
+	if manualHints := strings.TrimSpace(opts.ManualHintsPath); manualHints != "" {
+		return nil, fmt.Errorf("manual hints are retired; clear ManualHintsPath and declare ProductDecl/ContractFinal instead (got %q)", manualHints)
 	}
 	if strings.TrimSpace(opts.InterfaceMetadataPath) != "" {
 		paths = append(paths, resolvePath(opts.Root, opts.InterfaceMetadataPath))

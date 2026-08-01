@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -57,9 +58,9 @@ type FlagSpec struct {
 func NewMCPCommand(_ context.Context, _ CatalogLoader, _ executor.Runner, _ *pipeline.Engine) *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/mcp.json
 	// products.mcp). Catalog assembly stamps provenance contract_final.
-	RegisterProductDecl(ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "mcp",
-		Selection: ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "解析和管理当前身份可用的 MCP 服务连接信息",
 			UseWhen: []string{
 				"需要把钉钉 MCP 市场中的服务连接到支持 Streamable HTTP 的 Agent 或客户端",

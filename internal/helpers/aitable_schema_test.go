@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func TestDeclareLeafMetadataRejectsExecutionSurface(t *testing.T) {
@@ -80,7 +80,7 @@ func TestDeclareLeafMetadataDoesNotRewriteRunE(t *testing.T) {
 			},
 		},
 	})
-	if !cli.HasRuntimeContractFinal(cmd) {
+	if !contract.HasRuntimeContractFinal(cmd) {
 		t.Fatal("expected ContractFinal")
 	}
 	// function values are not comparable; ensure pointer identity via uintptr trick is unnecessary —
@@ -128,7 +128,7 @@ func TestAitableDeclareLeafMetadataCoversRegistryHelpers(t *testing.T) {
 			missing = append(missing, tool.CLIPath+" (command missing)")
 			continue
 		}
-		if !cli.HasRuntimeContractFinal(leaf) {
+		if !contract.HasRuntimeContractFinal(leaf) {
 			missing = append(missing, tool.CLIPath)
 		}
 	}

@@ -3,8 +3,8 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ func newWorkbookCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(createCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -52,7 +52,6 @@ func newWorkbookCmds() []*cobra.Command {
 				},
 			},
 			// name is validated via mustGetFlag; publish required via ParamDecl
-			// instead of relying on RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
@@ -79,7 +78,7 @@ nodeId 支持传入文档链接 URL 或文档 ID（dentryUuid），系统自动�
 		},
 	}
 	DeclareLeafMetadata(listCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -96,7 +95,6 @@ nodeId 支持传入文档链接 URL 或文档 ID（dentryUuid），系统自动�
 				Examples:     []string{"dws sheet list --node <NODE_ID>"},
 			},
 			// node is validated via mustGetFlag; publish required via ParamDecl
-			// instead of relying on RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 			},
@@ -138,7 +136,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(infoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -175,7 +173,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(newCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -192,7 +190,6 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				Examples:     []string{"dws sheet new --node <NODE_ID> --name \"Sheet2\""},
 			},
 			// node/name validated via mustGetFlag; publish required via ParamDecl
-			// instead of relying on RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "node", Required: boolPtr(true)},
 				{Name: "name", Required: boolPtr(true)},
@@ -289,7 +286,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		},
 	}
 	DeclareLeafMetadata(updateSheetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -358,7 +355,7 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 		},
 	}
 	DeclareLeafMetadata(copySheetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -399,7 +396,7 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 		},
 	}
 	DeclareLeafMetadata(deleteSheetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -440,7 +437,7 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 		},
 	}
 	DeclareLeafMetadata(showGridlineCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -481,7 +478,7 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 		},
 	}
 	DeclareLeafMetadata(hideGridlineCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -71,7 +72,7 @@ type ManualAgentExampleExecution struct {
 	Index         int
 	Example       string
 	Mode          ManualAgentExampleMode
-	DryRun        *DryRunSpec
+	DryRun        *contract.DryRunSpec
 	ReasonCode    ManualAgentExampleReasonCode
 	Reason        string
 	Source        ManualAgentExampleDispositionSource
@@ -185,7 +186,7 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 	canonicalPaths := make([]string, 0, len(bound.Commands))
 	for _, command := range bound.Commands {
 		canonical := strings.TrimSpace(command.CanonicalPath)
-		if !HasRuntimeContractFinal(command.PrimaryCommand) {
+		if !contract.HasRuntimeContractFinal(command.PrimaryCommand) {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("bound tool %q has no ContractFinal declaration; Schema examples require leaf Schema.Selection", canonical)
 		}
 		canonicalPaths = append(canonicalPaths, canonical)
@@ -495,7 +496,7 @@ func agentExamplePlaceholderAt(input string, start int) (string, int, bool) {
 	return input[start : end+1], end, true
 }
 
-func validateAgentExampleCobraContract(command *cobra.Command, arguments []string, constraints RuntimeSchemaConstraints, positionalSpecs []RuntimeSchemaPositional) error {
+func validateAgentExampleCobraContract(command *cobra.Command, arguments []string, constraints RuntimeSchemaConstraints, positionalSpecs []contract.RuntimeSchemaPositional) error {
 	if command == nil {
 		return fmt.Errorf("bound Cobra command is nil")
 	}
@@ -598,8 +599,8 @@ func validateAgentExampleCobraContract(command *cobra.Command, arguments []strin
 	return nil
 }
 
-func mergeAgentExamplePositionals(groups ...[]RuntimeSchemaPositional) []RuntimeSchemaPositional {
-	byIdentity := map[string]RuntimeSchemaPositional{}
+func mergeAgentExamplePositionals(groups ...[]contract.RuntimeSchemaPositional) []contract.RuntimeSchemaPositional {
+	byIdentity := map[string]contract.RuntimeSchemaPositional{}
 	for _, group := range groups {
 		for _, positional := range group {
 			key := fmt.Sprintf("%d\x00%s", positional.Index, strings.TrimSpace(positional.Name))
@@ -608,7 +609,7 @@ func mergeAgentExamplePositionals(groups ...[]RuntimeSchemaPositional) []Runtime
 			}
 		}
 	}
-	result := make([]RuntimeSchemaPositional, 0, len(byIdentity))
+	result := make([]contract.RuntimeSchemaPositional, 0, len(byIdentity))
 	for _, positional := range byIdentity {
 		result = append(result, positional)
 	}

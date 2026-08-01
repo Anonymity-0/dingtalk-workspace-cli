@@ -1,16 +1,16 @@
 package helpers
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
 func newLiveCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/live.json
 	// products.live). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "live",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询当前用户发起的直播列表",
 			UseWhen: []string{
 				"用户要查看自己的直播列表或基础统计",
@@ -38,7 +38,7 @@ func newLiveCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(streamListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

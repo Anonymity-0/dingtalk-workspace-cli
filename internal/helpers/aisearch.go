@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // boolPtr returns a pointer to v, for ParamDecl.Required declarations.
@@ -167,9 +167,9 @@ func normalizeAisearchSearchTypes(values []string) []string {
 func newAisearchCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/aisearch.json
 	// products.aisearch). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "aisearch",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "企业内智能搜人、搜知识内容与搜行为记录",
 			UseWhen: []string{
 				"语义找人、按主题搜企业知识，或追溯发送/创建/分享等行为",
@@ -242,7 +242,7 @@ func newAisearchCommand() *cobra.Command {
 		RunE: runAisearchPerson,
 	}
 	DeclareLeafMetadata(personCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -296,7 +296,7 @@ func newAisearchCommand() *cobra.Command {
 	enterpriseCmd.Flags().String("queries", "", "内容关键词列表，多个用逗号分隔；汇总类场景可留空")
 	enterpriseCmd.Flags().String("time-range", "", "时间范围，仅当用户显式给出时间词时填写，如 今天/本周/9月/过去一周")
 	DeclareLeafMetadata(enterpriseCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -351,7 +351,7 @@ func newAisearchCommand() *cobra.Command {
 		RunE: runAisearchBehavior,
 	}
 	DeclareLeafMetadata(behaviorCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

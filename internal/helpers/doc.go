@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -791,9 +792,9 @@ func renderDocOverwriteDiff(nodeID, before, after string) string {
 func newDocCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/doc.json
 	// products.doc). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "doc",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理钉钉在线文档的正文、块、评论、导入导出、模板与版本",
 			UseWhen: []string{
 				"创建、读取或编辑在线文档内容，或处理文档块、评论、导入导出、模板和版本时",
@@ -897,7 +898,7 @@ func newDocCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(searchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -950,7 +951,7 @@ func newDocCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(listCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -987,7 +988,7 @@ func newDocCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(infoCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1083,7 +1084,7 @@ func newDocCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(readCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1208,7 +1209,7 @@ func newDocCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(createCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1335,7 +1336,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(updateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1412,7 +1413,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(fileCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1463,7 +1464,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(folderCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1499,7 +1500,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		RunE: runDocUpload,
 	}
 	DeclareLeafMetadata(uploadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1539,7 +1540,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		RunE: runDocDownload,
 	}
 	DeclareLeafMetadata(downloadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1607,7 +1608,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(blockListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1730,7 +1731,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(blockInsertCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1808,7 +1809,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(blockUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1850,7 +1851,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(blockDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1887,7 +1888,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		RunE: buildNodeTransferRunE("copy_document"),
 	}
 	DeclareLeafMetadata(copyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1930,7 +1931,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		RunE: buildNodeTransferRunE("move_document"),
 	}
 	DeclareLeafMetadata(moveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1979,7 +1980,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(renameCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2027,7 +2028,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	}
 	DeclareLeafMetadata(deleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2280,7 +2281,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		},
 	}
 	DeclareLeafMetadata(mediaDownloadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2324,7 +2325,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		RunE: runMediaInsert,
 	}
 	DeclareLeafMetadata(mediaInsertCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2424,7 +2425,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		},
 	}
 	DeclareLeafMetadata(commentListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2491,7 +2492,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		},
 	}
 	DeclareLeafMetadata(commentCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2576,7 +2577,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(commentReplyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2642,7 +2643,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(commentUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2696,7 +2697,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(commentDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2763,7 +2764,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(commentCreateInlineCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2865,7 +2866,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(permissionAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2937,7 +2938,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(permissionUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -3001,7 +3002,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(permissionListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3065,7 +3066,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		},
 	}
 	DeclareLeafMetadata(permissionRemoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -3300,7 +3301,7 @@ CLI 内部自动完成全部流程：
 		},
 	}
 	DeclareLeafMetadata(exportGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3398,7 +3399,7 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	DeclareLeafMetadata(importGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -3443,7 +3444,7 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	DeclareLeafMetadata(versionSaveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -3485,7 +3486,7 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	DeclareLeafMetadata(versionListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3507,7 +3508,7 @@ CLI 内部自动完成全部流程:
 	versionListCmd.Flags().Int("limit", 0, "返回版本数量上限")
 	versionListCmd.Flags().String("cursor", "", "分页游标")
 
-	versionRevertSafety := cli.SafetySpec{
+	versionRevertSafety := contract.SafetySpec{
 		Effect:       "write",
 		Risk:         "medium",
 		Confirmation: "user_required",
@@ -3611,7 +3612,7 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	DeclareLeafMetadata(templateListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3667,7 +3668,7 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	DeclareLeafMetadata(templateSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3724,7 +3725,7 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	DeclareLeafMetadata(templateApplyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

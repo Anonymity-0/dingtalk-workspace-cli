@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -145,9 +145,9 @@ func proxySubCmd(use, targetProduct, targetPath string, flagRenames map[string]s
 func newWikiCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/wiki.json
 	// products.wiki). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "wiki",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理钉钉知识库空间、节点与成员权限",
 			UseWhen: []string{
 				"查找或管理知识库、知识库内节点及知识库成员时",
@@ -192,7 +192,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(spaceCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -212,7 +212,6 @@ func newWikiCommand() *cobra.Command {
 				},
 			},
 			// name is validated in RunE; publish required via ParamDecl
-			// instead of relying on RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
 			},
@@ -239,7 +238,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(spaceGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -256,7 +255,6 @@ func newWikiCommand() *cobra.Command {
 				Examples:     []string{"dws wiki space get --workspace <workspaceId> --format json"},
 			},
 			// workspace is validated in RunE; publish required via ParamDecl
-			// (former RegisterSchemaHints keyed stale "space").
 			Parameters: []corecmd.ParamDecl{
 				{Name: "workspace", Required: boolPtr(true)},
 			},
@@ -312,7 +310,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(spaceListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -371,7 +369,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(spaceSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -441,7 +439,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(spaceDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -521,7 +519,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(memberAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -591,7 +589,7 @@ func newWikiCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(memberUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -652,7 +650,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(memberListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -709,7 +707,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(memberRemoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -792,7 +790,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(nodeListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -864,7 +862,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(nodeCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -926,7 +924,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(nodeCopyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -985,7 +983,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(nodeMoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1032,7 +1030,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(nodeDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1092,7 +1090,7 @@ ORG 类型授权不会出现在查询结果中。`,
 		},
 	}
 	DeclareLeafMetadata(nodeSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

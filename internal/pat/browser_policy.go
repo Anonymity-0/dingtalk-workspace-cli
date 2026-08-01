@@ -16,13 +16,13 @@ package pat
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -227,7 +227,7 @@ func newBrowserPolicyCommand() *cobra.Command {
 	cmd.Flags().Bool("enabled", false, "PAT 撞墙时是否允许本地打开浏览器")
 	cmd.Flags().String("agentCode", "", "Agent 唯一标识（可选；不填则写入全局默认策略，不从 env DINGTALK_DWS_AGENTCODE 回退）")
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

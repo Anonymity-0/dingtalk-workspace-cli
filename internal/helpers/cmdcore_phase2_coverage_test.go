@@ -23,7 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -158,7 +158,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataValidateWithoutConfirmRunsInner
 	}
 	cmd.Flags().String("id", "", "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -221,7 +221,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataConfirmFallbackWithoutCaller(t 
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("dry-run", false, "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -275,7 +275,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithout
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("dry-run", false, "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -330,7 +330,7 @@ func TestCrossPlatformCoverageContractConfirmReadCallerDelegatesReads(t *testing
 	cmd := &cobra.Command{Use: "read"}
 	gate := &contractConfirmCaller{
 		inner: rc, cmd: cmd,
-		safety: cli.SafetySpec{
+		safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -462,7 +462,7 @@ func TestCrossPlatformCoverageSheetMutationGuardRunsContractValidateBeforeTarget
 	cmd.Flags().String("node", "", "")
 	cmd.Flags().String("range", "", "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

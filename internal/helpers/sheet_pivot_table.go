@@ -16,13 +16,13 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 var validPivotSummarizeBy = map[string]bool{
@@ -161,7 +161,7 @@ func newPivotTableCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(listCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -216,7 +216,7 @@ func newPivotTableCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(createCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -265,7 +265,7 @@ func newPivotTableCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(updateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -308,7 +308,7 @@ func newPivotTableCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(deleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

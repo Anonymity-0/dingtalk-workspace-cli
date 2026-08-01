@@ -41,12 +41,12 @@ type SchemaDecl struct {
 // ParamDecl declares Schema facts about a flag that the command registers
 // itself. It exists because metadata-mode commands (DeclareLeafMetadata) own
 // their flag registration and cannot use FlagSpec; without this channel their
-// parameter facts could only live in schema_hints/metadata overlays.
+// parameter facts would have no declare-path into Schema assembly.
 //
-// Each field maps to a dws.schema.* annotation at rank native_annotation (620),
-// which outranks tool_schema_hint (500). A declared value therefore wins over
-// any remaining hint overlay for the same flag, making the overlay redundant
-// once the declaration is in place.
+// Each field maps to a dws.schema.* annotation at rank native_annotation (620).
+// Hint overlays (RegisterSchemaHints / schema_hints/) are fully retired;
+// ParamDecl (or FlagSpec on helpers leaves) is the sole declare path for these
+// parameter facts.
 type ParamDecl struct {
 	// Name is the cobra flag name (kebab-case), e.g. "record-ids".
 	Name string

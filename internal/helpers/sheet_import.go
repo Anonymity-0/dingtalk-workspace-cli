@@ -16,7 +16,7 @@ package helpers
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 const sheetImportLong = `将本地表格文件导入为一个新的钉钉在线电子表格，与 dws sheet export（导出）对称。
@@ -74,7 +74,7 @@ func newSheetImportCmdWithConfig(cfg importFlowConfig) *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(importCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -117,7 +117,7 @@ func newSheetImportCmdWithConfig(cfg importFlowConfig) *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(importGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

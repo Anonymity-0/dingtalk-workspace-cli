@@ -18,7 +18,7 @@ import (
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/chatbot"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -282,7 +282,7 @@ func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testi
 	cmd.Flags().Bool("dry-run", false, "")
 	cmd.Flags().String("node", "", "")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

@@ -7,14 +7,15 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func newDevdocCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/devdoc.json
 	// products.devdoc). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "devdoc",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "搜索钉钉开放平台开发文档与错误排查资料",
 			UseWhen: []string{
 				"查询 OpenAPI、字段、错误码、SDK、鉴权或接入指南",
@@ -74,7 +75,7 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("keyword")
 	cmd.Flags().String("page", "1", "页码，默认 1")
 	cmd.Flags().String("size", "10", "每页数量，默认 10")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		// Keep the positional identity aligned with Cobra's authoritative
 		// `search [keyword]` contract. The public --query flag is the other
 		// member of the Schema require-one-of group; the hidden --keyword
@@ -86,7 +87,7 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 		Index:       0,
 	})
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -154,7 +155,7 @@ func newDevDocSearchCommand() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("keyword")
 	cmd.Flags().String("page", "1", "页码，默认 1")
 	cmd.Flags().String("size", "10", "每页数量，默认 10")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "keyword",
 		Type:        "string",
 		Description: "搜索关键词；也可通过 --query 传入",
@@ -162,7 +163,7 @@ func newDevDocSearchCommand() *cobra.Command {
 		Index:       0,
 	})
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

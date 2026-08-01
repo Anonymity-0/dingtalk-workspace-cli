@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
@@ -156,7 +156,7 @@ func TestDocVersionRevertPublishesRuntimeSafety(t *testing.T) {
 	if err != nil || len(remaining) != 0 {
 		t.Fatalf("find doc version revert: command=%v remaining=%v err=%v", cmd, remaining, err)
 	}
-	final, ok := cli.RuntimeContractFinal(cmd)
+	final, ok := contract.RuntimeContractFinal(cmd)
 	if !ok || final.Safety == nil {
 		t.Fatal("doc version revert must publish ContractFinal Safety")
 	}

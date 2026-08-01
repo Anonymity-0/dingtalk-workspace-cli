@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -48,7 +48,7 @@ var MinutesDetail = shortcut.Shortcut{
 		"内部按 --artifacts 选择要拉的产物（默认全部：basic/summary/keywords/transcript/todos），逐个调用对应的原子工具并聚合成一个结果，" +
 		"某一项失败不会中断整体（会以错误字符串记录在该项下）。这是纯只读操作，不会修改听记；--direction 仅影响逐字稿排序（0=正序默认，1=倒序）。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -15,11 +15,11 @@ package chat
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
@@ -33,7 +33,7 @@ var ConversationInfo = shortcut.Shortcut{
 	Description: "获取会话信息（群聊传 --group，单聊传 --open-dingtalk-id）",
 	Intent:      "当你已有群 openConversationId 或单聊对方 openDingTalkId、需要查看该会话的名称/类型/成员数等基础信息时使用；只读，群聊传 --group、单聊传 --open-dingtalk-id 二选一。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -239,7 +239,7 @@ var ConversationClearAllRedPoint = shortcut.Shortcut{
 	Description: "清除所有会话红点（全部已读）",
 	Intent:      "当你想一键把全部会话标记为已读、清空所有红点时使用；会实际清除当前用户所有会话的红点，无需任何参数。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -270,7 +270,7 @@ var ConversationList = shortcut.Shortcut{
 	Description: "分页获取当前用户的全部会话列表（单聊+群聊）",
 	Intent:      "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；只读分页返回，可用 --exclude-muted 排除已免打扰会话。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -384,7 +384,7 @@ var ConversationListTop = shortcut.Shortcut{
 	Description: "拉取置顶会话列表，可只看群聊或单聊",
 	Intent:      "当你只想查看被置顶的那些会话时使用；只读分页返回置顶会话列表，并把下层 singleChat 规范化为 conversationType=group|direct。可用 --type group 只看群聊、--type direct 只看单聊，或用 --exclude-muted 排除已免打扰会话。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -637,7 +637,7 @@ var CategoryList = shortcut.Shortcut{
 	Description: "获取用户自定义会话分组",
 	Intent:      "当你想查看当前用户自建了哪些会话分组（如'工作群''项目群'）时使用；只读返回分组列表及其 categoryId，供后续按分组拉会话或增删。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -838,7 +838,7 @@ var CategoryCreate = shortcut.Shortcut{
 	Description: "创建用户自定义会话分组",
 	Intent:      "当你想新建一个会话分组来归类会话时使用；会实际创建分组并返回其 ID，需传最多 15 个字符的分组名称 --title。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -882,7 +882,7 @@ var CategoryDelete = shortcut.Shortcut{
 	Description: "删除用户自定义会话分组",
 	Intent:      "当你想删除某个自定义会话分组时使用；会实际删除分组（不影响其中会话本身），不可逆，需传 categoryId。",
 	Risk:        shortcut.RiskHighWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
@@ -916,7 +916,7 @@ var CategoryRename = shortcut.Shortcut{
 	Description: "更新用户自定义会话分组的名称",
 	Intent:      "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -58,9 +58,9 @@ func ensureTodoTaskExists(ctx context.Context, taskID string) error {
 func newTodoCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/todo.json
 	// products.todo). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "todo",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理待办任务、标签、子任务、执行人、参与人、评论、附件与提醒",
 			UseWhen: []string{
 				"查询、创建或更新个人待办及其协作信息时",
@@ -123,7 +123,7 @@ func newTodoCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(todoTaskCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -203,7 +203,7 @@ func newTodoCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(todoTaskCreateSubCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -260,7 +260,7 @@ func newTodoCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(todoTaskListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -347,7 +347,7 @@ func newTodoCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(todoTaskUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -396,7 +396,7 @@ func newTodoCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(todoTaskDoneCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -468,7 +468,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -513,7 +513,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -556,7 +556,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskAddExecutorCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -602,7 +602,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskRemoveExecutorCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -647,7 +647,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskAddParticipantCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -693,7 +693,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskRemoveParticipantCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -768,7 +768,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskAddReminderCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -828,7 +828,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskUpdateReminderCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -910,7 +910,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskAddAttachment, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -959,7 +959,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTaskListAttachmentCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1120,7 +1120,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoCommentAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1164,7 +1164,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoCommentListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1208,7 +1208,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoCommentDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1270,7 +1270,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTagAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1315,7 +1315,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTagDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1366,7 +1366,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTagUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1397,7 +1397,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTagListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1436,7 +1436,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 		},
 	}
 	DeclareLeafMetadata(todoTagCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},

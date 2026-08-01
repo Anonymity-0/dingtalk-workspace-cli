@@ -13,35 +13,37 @@
 
 package helpers
 
-import "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+)
 
 // aitable_schema.go holds shared Safety / Interface factories for aitable's
 // DeclareLeafMetadata declarations (metadata-only mode). Selection prose and
 // per-command payloads live in aitable_schema_decls_generated.go.
 
-func aitableSafetyRead() cli.SafetySpec {
-	return cli.SafetySpec{
+func aitableSafetyRead() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	}
 }
 
-func aitableSafetyWrite() cli.SafetySpec {
-	return cli.SafetySpec{
+func aitableSafetyWrite() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "not_required", Idempotency: "unknown",
 	}
 }
 
-func aitableSafetyWriteConfirm() cli.SafetySpec {
-	return cli.SafetySpec{
+func aitableSafetyWriteConfirm() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }
 
-func aitableSafetyDestructive() cli.SafetySpec {
-	return cli.SafetySpec{
+func aitableSafetyDestructive() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}

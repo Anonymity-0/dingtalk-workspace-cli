@@ -30,7 +30,7 @@ type Spec struct {
     Example     string
     Flags       []FlagSpec
     Constraints []Constraint
-    Safety      cli.SafetySpec // 运行时与 Schema 的单一安全来源
+    Safety      contract.SafetySpec // 运行时与 Schema 的单一安全来源
     ConfirmFirst bool         // 确认门先于参数校验
     ConstParams map[string]any
     Schema      SchemaDecl    // 完整 ToolSpec 载荷
@@ -48,7 +48,7 @@ type Spec struct {
 
 ### SafetySpec（单一安全来源）
 
-`Spec.Safety` 直接使用现有 Agent Runtime Schema 的 `cli.SafetySpec`：
+`Spec.Safety` 使用 `corecmd/contract.SafetySpec`：
 
 | 字段 | 职责 |
 |------|------|
@@ -60,7 +60,7 @@ type Spec struct {
 四个字段彼此独立。框架只读取 `Confirmation` 决定运行时确认，其余字段原样发布到 Schema，不从一个字段机械推导另一个。非空 SafetySpec 必须一次声明完整：
 
 ```go
-Safety: cli.SafetySpec{
+Safety: contract.SafetySpec{
     Effect:       "write",
     Risk:         "high",
     Confirmation: "user_required",
@@ -167,7 +167,7 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
         Use:     "create",
         Short:   "创建开放平台企业内部应用",
         Tool:    devAppCreateTool,
-        Safety: cli.SafetySpec{
+        Safety: contract.SafetySpec{
             Effect: "write", Risk: "high",
             Confirmation: "user_required", Idempotency: "unknown",
         },
@@ -237,7 +237,7 @@ spec := FromShortcut(Shortcut{
 ```
 
 Shortcut 当前仍保留自身的 `Risk`，adapter 只在边界将它展开成完整
-`cli.SafetySpec`；command/Leaf 不再保留该枚举。Shortcut 的 Cobra
+`contract.SafetySpec`；command/Leaf 不再保留该枚举。Shortcut 的 Cobra
 type/default/usage provenance 保持不变，command 统一补充 Required、Enum 和关系约束投影。
 
 ## 文件结构

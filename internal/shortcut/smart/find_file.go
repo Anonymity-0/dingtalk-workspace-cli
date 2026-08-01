@@ -14,10 +14,10 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -47,7 +47,7 @@ var FindFile = shortcut.Shortcut{
 		"并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。" +
 		"这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

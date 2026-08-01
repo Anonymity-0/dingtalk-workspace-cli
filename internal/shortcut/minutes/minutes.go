@@ -16,8 +16,8 @@
 package minutes
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -35,7 +35,7 @@ var ListMine = shortcut.Shortcut{
 	Description: "查询我创建的听记列表",
 	Intent:      "当你想找回自己发起或录制的某次听记（会议纪要），却只记得大概的标题关键字时使用；可按关键字筛选并分页，返回自己创建的听记列表及其 taskUuid，便于后续查看摘要、转写或待办。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -70,7 +70,7 @@ var ListShared = shortcut.Shortcut{
 	Description: "查询他人共享给我的听记列表",
 	Intent:      "当你要找同事分享给你的会议听记、想快速定位别人共享过来的纪要时使用；可按关键字筛选并分页，返回他人共享给你的听记列表及 taskUuid。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -105,7 +105,7 @@ var ListAll = shortcut.Shortcut{
 	Description: "查询我有权限访问的所有听记列表",
 	Intent:      "当你不确定某条听记是自己创建还是别人共享、想在所有可访问的听记中一次性检索时使用；合并「我创建的」和「共享给我的」，按关键字筛选并分页返回全部有权限的听记及 taskUuid。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -251,7 +251,7 @@ var RecordStart = shortcut.Shortcut{
 	Description: "发起听记（开始录音）",
 	Intent:      "当你要开始一场实时会议/通话的 AI 听记、立刻启动录音并生成一条新听记任务时使用；可选传入 AI 助理会话 ID，会真实发起录音，返回新建听记的 taskUuid 供后续暂停/恢复/结束。",
 	Risk:        shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

@@ -15,10 +15,10 @@ package smart
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"strconv"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -40,7 +40,7 @@ var ByMobile = shortcut.Shortcut{
 	Intent: "当你只知道对方手机号、想一步拿到其完整资料（部门、职位、联系方式、是否管理员等）而不想先按手机号搜出 userId 再单独查详情时使用；" +
 		"内部先用手机号在通讯录里查出对应的 userId，若没有人绑定该手机号会明确报错，再用该 userId 取完整详情。这是纯只读操作，不会修改任何数据。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

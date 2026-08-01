@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 var markdownUploadStat = os.Stat
@@ -34,9 +35,9 @@ var markdownUploadStat = os.Stat
 func newMarkdownCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/markdown.json
 	// products.markdown). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "markdown",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "跨钉盘与文档空间创建、获取、覆盖和局部修补原生 Markdown 文件",
 			UseWhen: []string{
 				"目标是原生 .md 文件，并需要在 Drive/Doc 路由间安全处理内容时",
@@ -86,7 +87,7 @@ func newMarkdownFetchCmd() *cobra.Command {
 		MutuallyExclusive: [][]string{{"space-id", "workspace"}},
 	})
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -240,7 +241,7 @@ func newMarkdownCreateCmd() *cobra.Command {
 	})
 	cli.AnnotateRuntimeFlagRequiredWhen(cmd, "name", "--content is used")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -406,7 +407,7 @@ func newMarkdownOverwriteCmd() *cobra.Command {
 		RequireOneOf: [][]string{{"content", "file"}},
 	})
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -573,7 +574,7 @@ func newMarkdownPatchCmd() *cobra.Command {
 		MutuallyExclusive: [][]string{{"space-id", "workspace"}},
 	})
 	DeclareLeafMetadata(cmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -46,10 +47,10 @@ func TestCrossPlatformCoverageRuntimeAnnotationAPIsCoverage(t *testing.T) {
 	AnnotateRuntimeConstraints(cmd, RuntimeSchemaConstraints{RequireOneOf: [][]string{{"value", "other"}}})
 	AnnotateRuntimeConstraints(cmd, RuntimeSchemaConstraints{RequireTogether: [][]string{{"value", "other"}}})
 	AnnotateRuntimePositionals(cmd,
-		RuntimeSchemaPositional{Name: "", Index: 0},
-		RuntimeSchemaPositional{Name: "bad", Index: -1},
-		RuntimeSchemaPositional{Name: " second ", Index: 1, Description: " desc "},
-		RuntimeSchemaPositional{Name: "first", Index: 0, Type: " number "},
+		contract.RuntimeSchemaPositional{Name: "", Index: 0},
+		contract.RuntimeSchemaPositional{Name: "bad", Index: -1},
+		contract.RuntimeSchemaPositional{Name: " second ", Index: 1, Description: " desc "},
+		contract.RuntimeSchemaPositional{Name: "first", Index: 0, Type: " number "},
 	)
 	ExcludeFromRuntimeSchema(cmd)
 	setRuntimeCommandAnnotation(cmd, "empty", " ")

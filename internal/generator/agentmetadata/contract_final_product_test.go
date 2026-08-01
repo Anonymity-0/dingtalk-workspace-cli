@@ -6,14 +6,14 @@ package agentmetadata
 import (
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func TestApplyContractFinalProductDeclarations(t *testing.T) {
-	t.Cleanup(func() { cli.ClearProductDeclForTest("sample") })
-	cli.RegisterProductDecl(cli.ProductDecl{
+	t.Cleanup(func() { contract.ClearProductDeclForTest("sample") })
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "sample",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "Manage samples",
 			UseWhen:      []string{"target is a sample"},
 			AvoidWhen:    []string{"target is another product"},
@@ -36,7 +36,7 @@ func TestApplyContractFinalProductDeclarations(t *testing.T) {
 	if metadata.useWhenRank != selectionRankContractFinal || metadata.avoidWhenRank != selectionRankContractFinal {
 		t.Fatalf("list ranks use=%d avoid=%d", metadata.useWhenRank, metadata.avoidWhenRank)
 	}
-	if metadata.AgentSummarySource != cli.ProductDeclSourceRef {
+	if metadata.AgentSummarySource != contract.ProductDeclSourceRef {
 		t.Fatalf("AgentSummarySource = %q", metadata.AgentSummarySource)
 	}
 	normalizeFile(file, 0)
@@ -65,10 +65,10 @@ func TestApplyContractFinalProductDeclarations(t *testing.T) {
 }
 
 func TestApplyContractFinalDeclarationsIncludesProducts(t *testing.T) {
-	t.Cleanup(func() { cli.ClearProductDeclForTest("wired") })
-	cli.RegisterProductDecl(cli.ProductDecl{
+	t.Cleanup(func() { contract.ClearProductDeclForTest("wired") })
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "wired",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "Wired product",
 			UseWhen:      []string{"use wired"},
 			AvoidWhen:    []string{"avoid wired"},

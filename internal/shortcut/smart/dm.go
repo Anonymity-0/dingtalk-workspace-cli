@@ -19,9 +19,9 @@ package smart
 
 import (
 	"encoding/json"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -41,7 +41,7 @@ var DM = shortcut.Shortcut{
 	Intent: "当你只知道对方姓名、想直接发一条单聊消息而不想先查 userId 时使用；" +
 		"内部先按姓名搜通讯录解析出唯一用户，并用其 openDingTalkId 发送，姓名匹配到多人时会列出候选让你区分。会真实发出消息。",
 	Risk: shortcut.RiskWrite,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	},

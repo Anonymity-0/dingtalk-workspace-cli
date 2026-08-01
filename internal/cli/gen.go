@@ -19,7 +19,7 @@
 //
 // Generation inputs (authored, reviewed):
 //   1. schema_command_registry/             identity (canonical/aliases/navigation)
-//   2. ProductDecl + leaf ContractFinal    Agent routing / selection prose
+//   2. contract.ProductDecl + leaf ContractFinal    Agent routing / selection prose
 //   3. schema_mcp_metadata.json            MCP server tool definitions
 //   4. schema_parameter_bindings.json      parameter type/property mappings
 //   5. param_concepts.json + schema       reviewed parameter synonym policy

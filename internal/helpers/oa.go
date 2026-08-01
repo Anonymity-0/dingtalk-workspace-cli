@@ -2,10 +2,10 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -21,9 +21,9 @@ import (
 func newOaCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/oa.json
 	// products.oa). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "oa",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询和处理 OA 审批实例、任务、记录、抄送与评论",
 			UseWhen: []string{
 				"查看待审、已办、已发起或抄送审批，并执行同意、拒绝、撤销、转交等审批动作时",
@@ -79,7 +79,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalListPendingCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -118,7 +118,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalDetailCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -164,7 +164,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalApproveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -209,7 +209,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalRejectCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -254,7 +254,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalRevokeCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -290,7 +290,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalRecordsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -346,7 +346,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalListInitiatedCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -385,7 +385,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalTasksCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -424,7 +424,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalListFormsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -499,7 +499,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalExecutedListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -542,7 +542,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalSubmittedListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -585,7 +585,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalCcListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -631,7 +631,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalTransferCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -676,7 +676,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalCommentCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -724,7 +724,7 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(approvalCcCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

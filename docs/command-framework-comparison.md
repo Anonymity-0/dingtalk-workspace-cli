@@ -20,7 +20,7 @@
 ```
 corecmd.Spec (声明) → corecmd.New() → cobra.Command
      │
-     ├── cli.SafetySpec (运行时 + Schema 单一安全来源)
+     ├── contract.SafetySpec (运行时 + Schema 单一安全来源)
      ├── FlagSpec[] (参数 + 回退链 + 绑定)
      ├── Constraint[] (互斥/至少一个)
      ├── SchemaDecl (Agent Selection/DryRun/Interface)
@@ -103,7 +103,7 @@ API Discovery → 代码生成 → surface command
 |------|-------------|----------|-----|
 | 工具发现 | `dws schema --all` (静态 catalog) | `--print-schema` (运行时) | API Discovery |
 | 选择指引 | SelectionDecl (UseWhen/AvoidWhen) | Description + Tips | 无 |
-| 安全声明 | cli.SafetySpec 直接声明 | Risk string | 无 |
+| 安全声明 | contract.SafetySpec 直接声明 | Risk string | 无 |
 | dry-run 能力声明 | DryRunDecl (reviewed) | DryRun hook 存在性 | 无 |
 | 接口模式 | InterfaceDecl (local/pinned/composite) | 隐式 (全部 REST) | 隐式 (全部 REST) |
 
@@ -169,7 +169,7 @@ NewLeafCommand(LeafSpec{
     Use:    "create",
     Short:  "创建应用",
     Tool:   "create_dev_app",
-    Safety: cli.SafetySpec{
+    Safety: contract.SafetySpec{
         Effect: "write", Risk: "high",
         Confirmation: "user_required", Idempotency: "unknown",
     },

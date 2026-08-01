@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -366,7 +367,7 @@ func finalSchemaParameterByName(tool ToolSpec, flagName string) (ParameterSpec, 
 	return ParameterSpec{}, false
 }
 
-func schemaParameterProvenanceHasStringCandidate(provenance FieldProvenance, source, value string) bool {
+func schemaParameterProvenanceHasStringCandidate(provenance contract.FieldProvenance, source, value string) bool {
 	if provenance.Source == source {
 		var selected string
 		return json.Unmarshal(provenance.Value, &selected) == nil && selected == value

@@ -30,6 +30,7 @@ import (
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -413,7 +414,7 @@ agentCode 配置:
 	cli.AnnotateRuntimeConstraints(chmodCmd, cli.RuntimeSchemaConstraints{
 		RequireOneOf: [][]string{{"scope", "product", "products", "domain", "domains", "recommend"}},
 	})
-	cli.AnnotateRuntimePositionals(chmodCmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(chmodCmd, contract.RuntimeSchemaPositional{
 		Name:        "scope",
 		Type:        "array",
 		Description: "权限 scope，格式为 <product>.<entity>:<permission>；可重复",
@@ -423,7 +424,7 @@ agentCode 配置:
 	})
 
 	helpers.DeclareLeafMetadata(chmodCmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -465,7 +466,6 @@ agentCode 配置:
 				Examples: []string{"dws pat chmod --products calendar,aitable --grant-type session --session-id <SESSION_ID> --dry-run --format json"},
 			},
 			// session-id is conditionally required in Validate; publish via
-			// ParamDecl instead of relying on RegisterSchemaHints tool_schema_hint.
 			Parameters: []corecmd.ParamDecl{
 				{
 					Name:         "session-id",

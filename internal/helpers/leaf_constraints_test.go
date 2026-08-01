@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 func leafConstraintTestSpec(captured *map[string]any) LeafSpec {
@@ -480,28 +480,28 @@ func TestCrossPlatformCoverageLeafSpecCorePaths(t *testing.T) {
 
 var errTransformTest = errors.New("transform failed")
 
-func leafTestReadSafety() cli.SafetySpec {
-	return cli.SafetySpec{
+func leafTestReadSafety() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	}
 }
 
-func leafTestWriteSafety() cli.SafetySpec {
-	return cli.SafetySpec{
+func leafTestWriteSafety() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }
 
-func leafTestDestructiveSafety() cli.SafetySpec {
-	return cli.SafetySpec{
+func leafTestDestructiveSafety() contract.SafetySpec {
+	return contract.SafetySpec{
 		Effect: "destructive", Risk: "high",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
 }
 
-func leafSafetySpec(safety cli.SafetySpec, called *bool) LeafSpec {
+func leafSafetySpec(safety contract.SafetySpec, called *bool) LeafSpec {
 	return LeafSpec{
 		Use:    "danger",
 		Short:  "危险",
@@ -515,7 +515,7 @@ func leafSafetySpec(safety cli.SafetySpec, called *bool) LeafSpec {
 	}
 }
 
-func leafSafetyRun(t *testing.T, safety cli.SafetySpec, stdin string, args ...string) (bool, error) {
+func leafSafetyRun(t *testing.T, safety contract.SafetySpec, stdin string, args ...string) (bool, error) {
 	t.Helper()
 	called := false
 	cmd := NewLeafCommand(leafSafetySpec(safety, &called))
@@ -581,7 +581,7 @@ func TestCrossPlatformCoverageLeafSafetyReadNeverPrompts(t *testing.T) {
 		t.Fatalf("read safety err = %v called = %v", err, called)
 	}
 	// 空 Safety 保留只读默认。
-	if called, err := leafSafetyRun(t, cli.SafetySpec{}, "", "--id", "x"); err != nil || !called {
+	if called, err := leafSafetyRun(t, contract.SafetySpec{}, "", "--id", "x"); err != nil || !called {
 		t.Fatalf("empty safety err = %v called = %v", err, called)
 	}
 }

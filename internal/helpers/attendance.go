@@ -10,9 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -518,9 +517,9 @@ func readGlobalSettingSaveFlagValue(cmd *cobra.Command, spec globalSettingSaveFl
 func newAttendanceCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/attendance.json
 	// products.attendance). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "attendance",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询考勤记录、排班、班次、考勤组、审批、报表、个人规则和假期，并执行经确认的考勤配置变更。",
 			UseWhen: []string{
 				"用户要查询或管理钉钉考勤数据、规则、排班、考勤组、审批表单或假期余额。",
@@ -575,7 +574,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceRecordGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -667,7 +666,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceCheckResultCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -736,7 +735,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceCheckRecordCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -868,7 +867,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceApproveListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -926,7 +925,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceApproveTemplatesCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -992,7 +991,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceShiftListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1063,7 +1062,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceClassSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1106,7 +1105,7 @@ func newAttendanceCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attendanceClassGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1208,7 +1207,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 		},
 	}
 	DeclareLeafMetadata(attendanceClassCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1309,7 +1308,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 		},
 	}
 	DeclareLeafMetadata(attendanceClassUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -1357,7 +1356,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 		},
 	}
 	DeclareLeafMetadata(attendanceAdjustmentGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1414,7 +1413,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 		},
 	}
 	DeclareLeafMetadata(attendanceAdjustmentSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1466,7 +1465,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 		},
 	}
 	DeclareLeafMetadata(attendanceOvertimeGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1523,7 +1522,7 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 		},
 	}
 	DeclareLeafMetadata(attendanceOvertimeSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1618,7 +1617,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 		},
 	}
 	DeclareLeafMetadata(attendanceGroupSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1666,7 +1665,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 		},
 	}
 	DeclareLeafMetadata(attendanceGroupGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1723,7 +1722,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 		},
 	}
 	DeclareLeafMetadata(attendanceGroupFilteredGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1801,7 +1800,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 		},
 	}
 	DeclareLeafMetadata(attendanceGroupUpdateMembersCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2045,7 +2044,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 		},
 	}
 	DeclareLeafMetadata(attendanceGroupCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2255,7 +2254,7 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 		},
 	}
 	DeclareLeafMetadata(attendanceGroupUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2311,7 +2310,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(attendanceSummaryCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2371,7 +2370,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(attendanceRulesCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2508,7 +2507,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(attendanceSelfSettingGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2610,7 +2609,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(attendanceSelfSettingSaveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2681,7 +2680,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(attendanceGlobalSettingGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2765,7 +2764,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(attendanceGlobalSettingSaveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -2817,7 +2816,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(reportColumnsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2889,7 +2888,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(reportQueryDataCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2960,7 +2959,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(reportQueryLeaveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3018,7 +3017,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(vacationTypesCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3073,7 +3072,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(vacationBalanceCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3135,7 +3134,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(vacationRecordsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3329,7 +3328,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(vacationUpdateTypeCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -3425,7 +3424,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(vacationSaveBalanceCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -3587,7 +3586,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(scheduleImportCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
@@ -3673,7 +3672,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(scheduleGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -3996,7 +3995,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(checkinRecordsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -4115,7 +4114,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 		},
 	}
 	DeclareLeafMetadata(bossCheckCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

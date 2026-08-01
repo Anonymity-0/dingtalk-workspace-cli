@@ -241,14 +241,18 @@ if policy_search_go '\.ListTools\(' internal/app internal/cli; then
 	exit 1
 fi
 
-# Gated confirmation truth is Contract SafetySpec only (schema_hints retired).
+# Gated confirmation truth: live Contract SafetySpec ↔ ToolSpec ↔ runtime gate
+# (not Catalog-vs-Catalog provenance). Invokes
+# TestUserRequiredSafetyHomologyWithRuntimeGate; also listed in the focused
+# ./internal/cli -run whitelist below so a direct schema-catalog run stays
+# complete if the helper script is skipped.
 ./scripts/policy/check-runtime-confirmation-truth.sh
 
 # Run the typed content gates as policy, rather than treating non-empty
 # correction/exclusion maps as proof that their exact keys and winners are
 # valid against the shipped Catalog and pinned MCP metadata.
 go test ./internal/cli \
-	-run '^(TestEmbeddedSchemaCatalog.*|TestEmbeddedSchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteEmbeddedLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesEmbeddedCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog|TestDecodeSchemaParameterBindingsFailsClosed|TestSchemaParameterBindingManifestHashIsExactContentNotCount|TestBuildEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestEmbeddedCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingCorrectionsAreReviewed)$' \
+	-run '^(TestEmbeddedSchemaCatalog.*|TestEmbeddedSchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteEmbeddedLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesEmbeddedCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog|TestDecodeSchemaParameterBindingsFailsClosed|TestSchemaParameterBindingManifestHashIsExactContentNotCount|TestBuildEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestEmbeddedCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingCorrectionsAreReviewed|TestUserRequiredSafetyHomologyWithRuntimeGate)$' \
 	-count=1
 go test ./internal/helpers \
 	-run '^TestSheetConfirmationGuardCoversEveryProtectedLeaf$' \

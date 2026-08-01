@@ -16,6 +16,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"io/fs"
 	"strings"
 	"sync"
@@ -53,35 +54,35 @@ type embeddedAgentMetadataCoverage struct {
 }
 
 type agentProductMetadata struct {
-	AgentSummary       string                     `json:"agent_summary,omitempty"`
-	AgentSummarySource string                     `json:"agent_summary_source,omitempty"`
-	UseWhen            []string                   `json:"use_when,omitempty"`
-	AvoidWhen          []string                   `json:"avoid_when,omitempty"`
-	SourceRefs         []string                   `json:"source_refs,omitempty"`
-	FieldProvenance    map[string]FieldProvenance `json:"field_provenance,omitempty"`
+	AgentSummary       string                              `json:"agent_summary,omitempty"`
+	AgentSummarySource string                              `json:"agent_summary_source,omitempty"`
+	UseWhen            []string                            `json:"use_when,omitempty"`
+	AvoidWhen          []string                            `json:"avoid_when,omitempty"`
+	SourceRefs         []string                            `json:"source_refs,omitempty"`
+	FieldProvenance    map[string]contract.FieldProvenance `json:"field_provenance,omitempty"`
 }
 
 type agentToolMetadata struct {
-	AgentSummary       string                     `json:"agent_summary,omitempty"`
-	AgentSummarySource string                     `json:"agent_summary_source,omitempty"`
-	UseWhen            []string                   `json:"use_when,omitempty"`
-	AvoidWhen          []string                   `json:"avoid_when,omitempty"`
-	Prerequisites      []string                   `json:"prerequisites,omitempty"`
-	Tips               []string                   `json:"tips,omitempty"`
-	Effect             string                     `json:"effect,omitempty"`
-	EffectSource       string                     `json:"effect_source,omitempty"`
-	Risk               string                     `json:"risk,omitempty"`
-	Confirmation       string                     `json:"confirmation,omitempty"`
-	Idempotency        string                     `json:"idempotency,omitempty"`
-	WorkflowRefs       []string                   `json:"workflow_refs,omitempty"`
-	Examples           []string                   `json:"examples,omitempty"`
-	Reviewed           *bool                      `json:"reviewed,omitempty"`
-	SourceRefs         []string                   `json:"source_refs,omitempty"`
-	InterfaceRef       *embeddedMCPInterfaceRef   `json:"interface_ref,omitempty"`
-	InterfaceMode      string                     `json:"interface_mode,omitempty"`
-	Availability       string                     `json:"availability,omitempty"`
-	InterfaceReason    string                     `json:"interface_reason,omitempty"`
-	FieldProvenance    map[string]FieldProvenance `json:"field_provenance,omitempty"`
+	AgentSummary       string                              `json:"agent_summary,omitempty"`
+	AgentSummarySource string                              `json:"agent_summary_source,omitempty"`
+	UseWhen            []string                            `json:"use_when,omitempty"`
+	AvoidWhen          []string                            `json:"avoid_when,omitempty"`
+	Prerequisites      []string                            `json:"prerequisites,omitempty"`
+	Tips               []string                            `json:"tips,omitempty"`
+	Effect             string                              `json:"effect,omitempty"`
+	EffectSource       string                              `json:"effect_source,omitempty"`
+	Risk               string                              `json:"risk,omitempty"`
+	Confirmation       string                              `json:"confirmation,omitempty"`
+	Idempotency        string                              `json:"idempotency,omitempty"`
+	WorkflowRefs       []string                            `json:"workflow_refs,omitempty"`
+	Examples           []string                            `json:"examples,omitempty"`
+	Reviewed           *bool                               `json:"reviewed,omitempty"`
+	SourceRefs         []string                            `json:"source_refs,omitempty"`
+	InterfaceRef       *embeddedMCPInterfaceRef            `json:"interface_ref,omitempty"`
+	InterfaceMode      string                              `json:"interface_mode,omitempty"`
+	Availability       string                              `json:"availability,omitempty"`
+	InterfaceReason    string                              `json:"interface_reason,omitempty"`
+	FieldProvenance    map[string]contract.FieldProvenance `json:"field_provenance,omitempty"`
 }
 
 type embeddedAgentMetadataDomain struct {
@@ -191,25 +192,25 @@ func emptyEmbeddedAgentMetadata() embeddedAgentMetadata {
 // metadata to runtime contract assembly. Path resolution happens once; all
 // consumers receive the same resolved safety, interface, selection and
 // provenance values without performing downstream map merges.
-func agentToolContractForPathsFromMetadata(source embeddedAgentMetadata, paths ...string) (SafetySpec, InterfaceSpec, SelectionSpec, map[string]FieldProvenance, bool) {
+func agentToolContractForPathsFromMetadata(source embeddedAgentMetadata, paths ...string) (contract.SafetySpec, contract.InterfaceSpec, contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
 	metadata, ok := lookupAgentToolMetadataFrom(source, paths...)
 	if !ok {
-		return SafetySpec{}, InterfaceSpec{}, SelectionSpec{}, nil, false
+		return contract.SafetySpec{}, contract.InterfaceSpec{}, contract.SelectionSpec{}, nil, false
 	}
-	safety := SafetySpec{
+	safety := contract.SafetySpec{
 		Effect:       strings.TrimSpace(metadata.Effect),
 		EffectSource: strings.TrimSpace(metadata.EffectSource),
 		Risk:         strings.TrimSpace(metadata.Risk),
 		Confirmation: strings.TrimSpace(metadata.Confirmation),
 		Idempotency:  strings.TrimSpace(metadata.Idempotency),
 	}
-	interfaceSpec := InterfaceSpec{
+	interfaceSpec := contract.InterfaceSpec{
 		Mode:         strings.TrimSpace(metadata.InterfaceMode),
 		Availability: strings.TrimSpace(metadata.Availability),
 		Reason:       strings.TrimSpace(metadata.InterfaceReason),
 	}
 	if metadata.InterfaceRef != nil {
-		interfaceSpec.Ref = &InterfaceRefSpec{
+		interfaceSpec.Ref = &contract.InterfaceRefSpec{
 			ProductID: strings.TrimSpace(metadata.InterfaceRef.ProductID),
 			RPCName:   strings.TrimSpace(metadata.InterfaceRef.RPCName),
 		}
@@ -225,7 +226,7 @@ func agentToolContractForPathsFromMetadata(source embeddedAgentMetadata, paths .
 // null. The final typed contract stores an object or JSON null, so project the
 // concrete compact identity here. Missing provenance is never synthesized:
 // constructors and snapshot loaders remain validate-only and fail closed.
-func resolvedAgentToolProvenance(source map[string]FieldProvenance, interfaceSpec InterfaceSpec, selection SelectionSpec) map[string]FieldProvenance {
+func resolvedAgentToolProvenance(source map[string]contract.FieldProvenance, interfaceSpec contract.InterfaceSpec, selection contract.SelectionSpec) map[string]contract.FieldProvenance {
 	out := cloneFieldProvenance(source)
 	if provenance, ok := out["interface_ref"]; ok {
 		out["interface_ref"] = projectAgentInterfaceRefProvenance(provenance, interfaceSpec.Ref)
@@ -233,7 +234,7 @@ func resolvedAgentToolProvenance(source map[string]FieldProvenance, interfaceSpe
 	return out
 }
 
-func projectAgentInterfaceRefProvenance(provenance FieldProvenance, ref *InterfaceRefSpec) FieldProvenance {
+func projectAgentInterfaceRefProvenance(provenance contract.FieldProvenance, ref *contract.InterfaceRefSpec) contract.FieldProvenance {
 	finalValue, _ := json.Marshal(ref)
 	legacy := "<none>"
 	if ref != nil {
@@ -259,19 +260,19 @@ func projectAgentInterfaceRefProvenance(provenance FieldProvenance, ref *Interfa
 }
 
 // agentProductSelectionForIDsFromMetadata exposes generated product routing
-// through the same typed SelectionSpec used by ToolSpec.
-func agentProductSelectionForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (SelectionSpec, bool) {
+// through the same typed contract.SelectionSpec used by ToolSpec.
+func agentProductSelectionForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (contract.SelectionSpec, bool) {
 	selection, _, ok := agentProductContractForIDsFromMetadata(source, ids...)
 	return selection, ok
 }
 
-func agentProductContractForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (SelectionSpec, map[string]FieldProvenance, bool) {
+func agentProductContractForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
 	for _, id := range ids {
 		metadata, ok := source.Products[strings.TrimSpace(id)]
 		if !ok {
 			continue
 		}
-		selection := SelectionSpec{
+		selection := contract.SelectionSpec{
 			AgentSummary:       strings.TrimSpace(metadata.AgentSummary),
 			AgentSummarySource: strings.TrimSpace(metadata.AgentSummarySource),
 			UseWhen:            cloneOptionalStrings(metadata.UseWhen),
@@ -281,16 +282,16 @@ func agentProductContractForIDsFromMetadata(source embeddedAgentMetadata, ids ..
 		}.Normalized()
 		return selection, cloneFieldProvenance(metadata.FieldProvenance), true
 	}
-	return SelectionSpec{}, nil, false
+	return contract.SelectionSpec{}, nil, false
 }
 
-func agentToolSelection(metadata agentToolMetadata) SelectionSpec {
+func agentToolSelection(metadata agentToolMetadata) contract.SelectionSpec {
 	var reviewed *bool
 	if metadata.Reviewed != nil {
 		value := *metadata.Reviewed
 		reviewed = &value
 	}
-	return SelectionSpec{
+	return contract.SelectionSpec{
 		AgentSummary:       strings.TrimSpace(metadata.AgentSummary),
 		AgentSummarySource: strings.TrimSpace(metadata.AgentSummarySource),
 		UseWhen:            cloneOptionalStrings(metadata.UseWhen),
@@ -305,11 +306,11 @@ func agentToolSelection(metadata agentToolMetadata) SelectionSpec {
 	}.Normalized()
 }
 
-func cloneFieldProvenance(source map[string]FieldProvenance) map[string]FieldProvenance {
+func cloneFieldProvenance(source map[string]contract.FieldProvenance) map[string]contract.FieldProvenance {
 	if len(source) == 0 {
 		return nil
 	}
-	out := make(map[string]FieldProvenance, len(source))
+	out := make(map[string]contract.FieldProvenance, len(source))
 	for field, provenance := range source {
 		provenance.Value = append(json.RawMessage(nil), provenance.Value...)
 		provenance.Candidates = cloneFieldCandidates(provenance.Candidates)
@@ -319,11 +320,11 @@ func cloneFieldProvenance(source map[string]FieldProvenance) map[string]FieldPro
 	return out
 }
 
-func cloneFieldCandidates(source []FieldCandidateProvenance) []FieldCandidateProvenance {
+func cloneFieldCandidates(source []contract.FieldCandidateProvenance) []contract.FieldCandidateProvenance {
 	if len(source) == 0 {
 		return nil
 	}
-	out := make([]FieldCandidateProvenance, len(source))
+	out := make([]contract.FieldCandidateProvenance, len(source))
 	for index, candidate := range source {
 		candidate.Value = append(json.RawMessage(nil), candidate.Value...)
 		if candidate.Selected != nil {

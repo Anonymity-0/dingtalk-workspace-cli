@@ -32,6 +32,7 @@ import (
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/busctl"
@@ -171,7 +172,7 @@ func newEventSchemaCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&formatRaw, "format", "f", "json", "输出格式: json")
 	cmd.Flags().BoolVar(&flatten, "flatten", false, "显示 --flatten 消费模式对应的顶层业务字段 schema")
 	hideEventInternalFlags(cmd, "as")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "event_key",
 		Type:        "string",
 		Description: "要查询 payload 字段定义的个人事件码",
@@ -179,7 +180,7 @@ func newEventSchemaCommand() *cobra.Command {
 		Index:       0,
 	})
 	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},

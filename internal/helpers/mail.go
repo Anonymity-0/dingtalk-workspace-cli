@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -100,9 +100,9 @@ func validateMailRuleConditions(conditions []any) error {
 func newMailCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/mail.json
 	// products.mail). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "mail",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理邮箱、邮件、草稿、附件、文件夹、联系人与邮件模板",
 			UseWhen: []string{
 				"查收、搜索、阅读、回复、发送或整理邮件",
@@ -138,7 +138,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(mailboxListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -259,7 +259,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(messageSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -323,7 +323,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(messageListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -373,7 +373,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(messageGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -453,7 +453,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(messageSendCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -509,7 +509,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(folderListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -564,7 +564,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(folderCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -608,7 +608,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(folderDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -656,7 +656,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(folderUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -721,7 +721,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(tagListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -931,7 +931,7 @@ func newMailCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(threadGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1227,7 +1227,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(messageReplyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1295,7 +1295,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(messageReplyAllCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1363,7 +1363,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(messageForwardCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1404,7 +1404,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(messageBatchMoveCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1442,7 +1442,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(messageBatchDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1629,7 +1629,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(draftCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1706,7 +1706,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(draftUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1752,7 +1752,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(attachmentListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1806,7 +1806,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(attachmentDownloadCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2048,7 +2048,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 		},
 	}
 	DeclareLeafMetadata(draftSendCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2136,7 +2136,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(userSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2212,7 +2212,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(templateCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2272,7 +2272,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(templateListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2319,7 +2319,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(templateGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2390,7 +2390,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(templateUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2444,7 +2444,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(templateDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2505,7 +2505,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(contactCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2561,7 +2561,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(contactListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2622,7 +2622,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(contactUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -2668,7 +2668,7 @@ user 对象字段：
 		},
 	}
 	DeclareLeafMetadata(contactBatchDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},

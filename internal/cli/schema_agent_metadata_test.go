@@ -19,6 +19,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -151,7 +152,7 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
 	if !ok {
 		t.Fatal("typed Agent metadata lookup failed")
 	}
-	if safety != (SafetySpec{Effect: "write", EffectSource: "agent-hint", Risk: "low", Confirmation: "not_required", Idempotency: "non_idempotent"}) {
+	if safety != (contract.SafetySpec{Effect: "write", EffectSource: "agent-hint", Risk: "low", Confirmation: "not_required", Idempotency: "non_idempotent"}) {
 		t.Fatalf("safety = %#v", safety)
 	}
 	if interfaceSpec.Ref == nil || interfaceSpec.Ref.ProductID != "calendar" || interfaceSpec.Ref.RPCName != "update_attendee" || interfaceSpec.Mode != "mcp" || interfaceSpec.Availability != "available" || interfaceSpec.Reason != "reviewed RPC mapping" {
@@ -189,14 +190,14 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
 
 func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
 	selected := true
-	legacyRef := func(value string) FieldProvenance {
+	legacyRef := func(value string) contract.FieldProvenance {
 		raw, _ := json.Marshal(value)
-		return FieldProvenance{
+		return contract.FieldProvenance{
 			Value:      raw,
 			Source:     "agent-metadata.json",
 			Precedence: "explicit",
 			Resolution: "highest_precedence",
-			Candidates: []FieldCandidateProvenance{{
+			Candidates: []contract.FieldCandidateProvenance{{
 				Value:      append(json.RawMessage(nil), raw...),
 				Source:     "agent-metadata.json",
 				Precedence: "explicit",
@@ -213,7 +214,7 @@ func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
 				InterfaceRef:  &embeddedMCPInterfaceRef{ProductID: "calendar", RPCName: "get_event"},
 				InterfaceMode: "mcp",
 				Availability:  "available",
-				FieldProvenance: map[string]FieldProvenance{
+				FieldProvenance: map[string]contract.FieldProvenance{
 					"interface_ref": legacyRef("calendar.get_event"),
 				},
 			},
@@ -221,7 +222,7 @@ func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
 				InterfaceMode:   "local",
 				Availability:    "available",
 				InterfaceReason: "reviewed local wrapper",
-				FieldProvenance: map[string]FieldProvenance{
+				FieldProvenance: map[string]contract.FieldProvenance{
 					"interface_ref":  legacyRef("<none>"),
 					"interface_mode": mode,
 				},
@@ -229,7 +230,7 @@ func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
 			"calendar helper inspect": {
 				InterfaceMode: "local",
 				Availability:  "available",
-				FieldProvenance: map[string]FieldProvenance{
+				FieldProvenance: map[string]contract.FieldProvenance{
 					"interface_mode": mode,
 				},
 			},
@@ -279,20 +280,20 @@ func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
 func TestAgentMetadataTypedAdapterDoesNotLaunderInterfaceConflict(t *testing.T) {
 	selected := true
 	wrong, _ := json.Marshal("calendar.wrong_rpc")
-	provenance := FieldProvenance{
+	provenance := contract.FieldProvenance{
 		Value:      wrong,
 		Source:     "bad.json",
 		Precedence: "explicit",
 		Resolution: "highest_precedence",
-		Candidates: []FieldCandidateProvenance{{
+		Candidates: []contract.FieldCandidateProvenance{{
 			Value: wrong, Source: "bad.json", Precedence: "explicit", Selected: &selected,
 		}},
 	}
-	projected := projectAgentInterfaceRefProvenance(provenance, &InterfaceRefSpec{ProductID: "calendar", RPCName: "get_event"})
+	projected := projectAgentInterfaceRefProvenance(provenance, &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "get_event"})
 	if string(projected.Value) != string(wrong) {
 		t.Fatalf("conflicting winner was rewritten: %s", projected.Value)
 	}
-	if err := validateFinalFieldProvenance("calendar.event_get", "interface_ref", projected, &InterfaceRefSpec{ProductID: "calendar", RPCName: "get_event"}); err == nil {
+	if err := validateFinalFieldProvenance("calendar.event_get", "interface_ref", projected, &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "get_event"}); err == nil {
 		t.Fatal("conflicting interface_ref provenance unexpectedly validated")
 	}
 }
@@ -307,7 +308,7 @@ func TestAgentProductSelectionUsesTypedAccessor(t *testing.T) {
 				UseWhen:            []string{"create a document", "create a document"},
 				AvoidWhen:          []string{"manage a spreadsheet"},
 				SourceRefs:         []string{"z.md", "a.md"},
-				FieldProvenance:    map[string]FieldProvenance{"agent_summary": provenance},
+				FieldProvenance:    map[string]contract.FieldProvenance{"agent_summary": provenance},
 			},
 		},
 		Tools: map[string]agentToolMetadata{},
@@ -325,7 +326,7 @@ func TestAgentProductSelectionUsesTypedAccessor(t *testing.T) {
 		t.Fatalf("product provenance = %#v, ok=%v", deliveredProvenance, ok)
 	}
 	selection.UseWhen[0] = "mutated"
-	deliveredProvenance["agent_summary"] = FieldProvenance{}
+	deliveredProvenance["agent_summary"] = contract.FieldProvenance{}
 	again, _ := agentProductSelectionForIDsFromMetadata(metadataFixture, "doc")
 	if again.UseWhen[0] != "create a document" {
 		t.Fatalf("product accessor leaked mutable state: %#v", again)
@@ -423,7 +424,13 @@ func TestRuntimeSchemaIncludesEmbeddedAgentMetadata(t *testing.T) {
 }
 
 func TestRuntimeSchemaAllPayloadContainsFullLeafParameters(t *testing.T) {
-	payload, err := runtimeSchemaAllPayloadForTest(buildRuntimeSchemaTestRoot())
+	// Synthetic fixture has no ContractFinal/ProductDecl; exercise the
+	// test-isolated legacy assembly path (production fails closed).
+	registry, err := schemaRegistryForTestWithMetadata(buildRuntimeSchemaTestRoot(), emptyEmbeddedAgentMetadata(), embeddedMCPMetadata{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := runtimeSchemaAllPayloadFromRegistry(registry)
 	if err != nil {
 		t.Fatal(err)
 	}

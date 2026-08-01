@@ -11,6 +11,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -212,9 +213,9 @@ func findUnknownFlag(cmd *cobra.Command) string {
 func newCalendarCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/calendar.json
 	// products.calendar). Catalog assembly stamps provenance contract_final.
-	cli.RegisterProductDecl(cli.ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "calendar",
-		Selection: cli.ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理日历本、日程、参与人、附件、会议室，并查询人员或会议室闲忙状态。",
 			UseWhen: []string{
 				"需要查询或管理钉钉日历、日程、参与人、会议室和闲忙信息时。",
@@ -313,7 +314,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -356,7 +357,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -461,7 +462,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -483,8 +484,6 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event create --title \"周会\" --start \"2026-03-10T14:00:00+08:00\" --end \"2026-03-10T15:00:00+08:00\" --attendees userId1,userId2",
 				},
 			},
-			// Former RegisterSchemaHints pins (create required + recurrence
-			// required_when) — native_annotation outranks tool_schema_hint.
 			Parameters: append([]corecmd.ParamDecl{
 				{Name: "title", Required: boolPtr(true)},
 				{Name: "start", Required: boolPtr(true)},
@@ -548,7 +547,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -591,7 +590,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -641,7 +640,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventSuggestCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -702,7 +701,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(eventRespondCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -757,7 +756,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(participantListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -807,7 +806,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(participantAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -859,7 +858,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(participantDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1008,7 +1007,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(roomSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1060,7 +1059,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(roomAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1111,7 +1110,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(roomDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1153,7 +1152,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(roomListGroupsCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1231,7 +1230,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(busySearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1301,7 +1300,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(attachmentAddCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -1340,7 +1339,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(aclListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1424,7 +1423,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(bookListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1461,7 +1460,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(bookGetCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -1501,7 +1500,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(bookSearchCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -2527,9 +2526,8 @@ var recurrenceFlagNames = []string{
 	"recurrence-range-type", "recurrence-end-date", "recurrence-count",
 }
 
-// calendarRecurrenceParamDecls migrates former RegisterSchemaHints recurrence
-// required/required_when pins onto create/update event leaves so Schema
-// assembly resolves them as native_annotation (outranking tool_schema_hint).
+// calendarRecurrenceParamDecls declares recurrence required/required_when pins
+// for create/update event leaves (native_annotation).
 func calendarRecurrenceParamDecls() []corecmd.ParamDecl {
 	return []corecmd.ParamDecl{
 		{Name: "recurrence-day-of-month", Required: boolPtr(false), RequiredWhen: "recurrence-type is absoluteMonthly or absoluteYearly"},

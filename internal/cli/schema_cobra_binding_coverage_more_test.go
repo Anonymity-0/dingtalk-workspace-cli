@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -294,7 +295,7 @@ func TestCrossPlatformCoverageCompatibilityPathAndHelperRemainingEdges(t *testin
 	if got := compatibilityJSON(func() {}); !strings.Contains(got, "0x") {
 		t.Fatalf("compatibilityJSON(func) = %q", got)
 	}
-	positionals := []RuntimeSchemaPositional{{Index: 0, Name: "z"}, {Index: 0, Name: "a"}, {Index: 1, Name: "x"}}
+	positionals := []contract.RuntimeSchemaPositional{{Index: 0, Name: "z"}, {Index: 0, Name: "a"}, {Index: 1, Name: "x"}}
 	command := &cobra.Command{Annotations: map[string]string{runtimeSchemaArgsAnnotation: compatibilityJSON(positionals)}}
 	got, err := strictCompatibilityPositionals(command)
 	if err != nil || got[0].Name != "a" || got[2].Index != 1 {

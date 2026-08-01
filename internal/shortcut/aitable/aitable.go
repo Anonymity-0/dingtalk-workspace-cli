@@ -24,9 +24,9 @@ package aitable
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -70,7 +70,7 @@ var BaseList = shortcut.Shortcut{
 	Description: "获取当前用户可访问的 AI 表格 Base 列表（最近访问，支持游标分页）",
 	Intent:      "当你不知道具体 baseId、想先浏览自己最近用过或可访问的 AI 表格清单以便定位目标时使用；支持游标分页，返回 Base 列表及其 baseId。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -182,7 +182,7 @@ var BaseSearch = shortcut.Shortcut{
 	Description: "按名称关键词搜索 AI 表格 Base",
 	Intent:      "当你知道某个 AI 表格的名字或部分关键词、想直接定位到它并拿到 baseId 时使用；输入名称关键词，返回匹配的 Base 列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -226,7 +226,7 @@ var BaseGet = shortcut.Shortcut{
 	Description: "获取指定 Base 的目录信息（tables / dashboards summary）",
 	Intent:      "当你已有 baseId、需要了解这个表格里有哪些数据表和仪表盘（拿到 tableId/dashboardId）以便进一步操作时使用；返回 Base 的目录结构概要。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -359,7 +359,7 @@ var TableGet = shortcut.Shortcut{
 	Description: "批量获取指定数据表的表级信息、字段目录与视图目录",
 	Intent:      "当你已进入某个 Base、需要了解其中某些数据表有哪些字段（拿 fieldId）、有哪些视图（拿 viewId）以便读写数据时使用；批量返回表信息、字段目录和视图目录。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -466,7 +466,7 @@ var FieldGet = shortcut.Shortcut{
 	Description: "批量获取字段详情（含类型相关完整配置）",
 	Intent:      "当你需要查看字段的完整类型配置（如单选选项、关联表设置、AI 配置）以便正确写入数据或改配置时使用；批量返回字段详情。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -582,7 +582,7 @@ var RecordQuery = shortcut.Shortcut{
 	Description: "查询表格记录（按 ID 取 / 条件筛选 / 关键词 / 分页）",
 	Intent:      "当你要读取表格里的行数据——按 recordId 精确取、按结构化条件筛选、按关键词全文搜索或分页遍历时使用；返回匹配记录及其单元格值。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -708,7 +708,7 @@ var RecordQueryEmpty = shortcut.Shortcut{
 	Description: "扫描并过滤出完全没填用户字段的空行",
 	Intent:      "当你想清理表格、需要先找出那些所有用户字段都为空的空行时使用；扫描并返回空行列表，支持分页预算。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -755,7 +755,7 @@ var RecordHistoryList = shortcut.Shortcut{
 	Description: "按 recordId 查询单条记录的变更历史",
 	Intent:      "当你要追溯某条记录曾被谁在何时改过哪些字段时使用；按 recordId 分页返回该行的变更历史。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -804,7 +804,7 @@ var RecordShareURL = shortcut.Shortcut{
 	Description: "按 recordId 批量获取记录分享链接，单次最多 20 条",
 	Intent:      "当你要把某几条记录以链接形式分享给他人（可带视图上下文）时使用；按 recordId 批量返回分享链接，单次最多 20 条。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -928,7 +928,7 @@ var TemplateSearch = shortcut.Shortcut{
 	Description: "按名称关键词搜索 AI 表格模板",
 	Intent:      "当你要新建表格并想套用现成模板、需要先按关键词找模板（不传关键词则返回热门）时使用；返回模板列表及其模板 ID。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1074,7 +1074,7 @@ var ViewGet = shortcut.Shortcut{
 	Description: "获取视图完整信息（列顺序、筛选、排序、分组等）",
 	Intent:      "当你要了解某个视图当前的列顺序、筛选、排序、分组等完整配置以便复用或修改时使用；批量返回视图详情。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1284,7 +1284,7 @@ var ViewGetLock = shortcut.Shortcut{
 	Description: "获取视图锁定状态",
 	Intent:      "当你想确认某视图是否已被锁定（以防他人误改其配置）时使用；返回该视图的锁定状态。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1353,7 +1353,7 @@ var ViewGetFrozenCols = shortcut.Shortcut{
 	Description: "获取视图当前冻结的左侧列数",
 	Intent:      "当你想知道某视图当前冻结了左侧几列时使用；返回冻结列数。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1418,7 +1418,7 @@ var ViewGetRowHeight = shortcut.Shortcut{
 	Description: "获取视图单元格行高（像素）",
 	Intent:      "当你想知道某视图当前的行高档位时使用；返回单元格行高的像素值。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1517,7 +1517,7 @@ var FormList = shortcut.Shortcut{
 	Description: "列出指定数据表下的所有表单视图",
 	Intent:      "当你要查看某数据表下已有哪些收集表单时使用；返回该表的全部表单视图列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1680,7 +1680,7 @@ var FormFieldList = shortcut.Shortcut{
 	Description: "列出表单视图当前可见的字段及其配置",
 	Intent:      "当你要查看某表单当前放出了哪些字段供填写及其是否必填等配置时使用；返回表单可见字段列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -1781,7 +1781,7 @@ var FormShareGet = shortcut.Shortcut{
 	Description: "读取视图当前的分享表单配置",
 	Intent:      "当你要查看某视图的表单分享是否已开启及其分享配置时使用；返回当前的分享表单配置。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2015,7 +2015,7 @@ var DashboardConfigExample = shortcut.Shortcut{
 	Description: "获取 dashboard config 的结构示例",
 	Intent:      "当你准备创建或更新仪表盘、需要先了解 dashboard config 的字段结构长什么样时使用；返回一份配置结构示例供参考。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2046,7 +2046,7 @@ var DashboardGet = shortcut.Shortcut{
 	Description: "获取指定 dashboard 的详细信息（含 charts summary）",
 	Intent:      "当你要查看某仪表盘的配置详情及它包含哪些图表（拿 chartId）时使用；返回 dashboard 信息与 charts 概要。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2227,7 +2227,7 @@ var ChartWidgetsExample = shortcut.Shortcut{
 	Description: "获取所有图表类型的 widget config 示例",
 	Intent:      "当你准备创建或修改图表、需要先参考各类图表 widget config 的示例结构时使用；返回所有图表类型的配置示例。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2258,7 +2258,7 @@ var ChartGet = shortcut.Shortcut{
 	Description: "获取指定 chart 的详细信息",
 	Intent:      "当你要查看某个图表的配置详情（统计维度、样式等）时使用；返回指定 chart 的详细信息。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2592,7 +2592,7 @@ var RoleList = shortcut.Shortcut{
 	Description: "列出指定 Base 下的全部角色",
 	Intent:      "当你要查看某 Base 下配置了哪些角色（拿 roleId）时使用；返回全部角色列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2849,7 +2849,7 @@ var SectionListEmpty = shortcut.Shortcut{
 	Description: "列出指定 Base 下所有没有子节点的空文件夹",
 	Intent:      "当你想清理 Base、需要先找出所有没有任何子节点的空文件夹时使用；返回空文件夹列表。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
@@ -2883,7 +2883,7 @@ var SectionListNodes = shortcut.Shortcut{
 	Description: "列出指定 Base 当前版本下的全部 nsheet 节点",
 	Intent:      "当你要总览某 Base 当前版本下的全部节点（表、仪表盘、文件夹等）目录结构时使用；返回所有 nsheet 节点。",
 	Risk:        shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

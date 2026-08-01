@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
@@ -521,7 +521,7 @@ func TestLiveMountEOFRequiresConfirmation(t *testing.T) {
 
 func TestLiveMountExplicitSafetyDrivesRuntimeAndContractFinal(t *testing.T) {
 	called := false
-	explicit := cli.SafetySpec{
+	explicit := contract.SafetySpec{
 		Effect: "write", Risk: "medium",
 		Confirmation: "user_required", Idempotency: "unknown",
 	}
@@ -553,7 +553,7 @@ func TestLiveMountExplicitSafetyDrivesRuntimeAndContractFinal(t *testing.T) {
 	cmd := mount(s)
 	root.AddCommand(cmd)
 
-	final, ok := cli.RuntimeContractFinal(cmd)
+	final, ok := contract.RuntimeContractFinal(cmd)
 	if !ok || final.Safety == nil {
 		t.Fatal("mounted Shortcut must publish ContractFinal Safety")
 	}

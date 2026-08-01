@@ -3,36 +3,39 @@
 
 package cli
 
-import "testing"
+import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"testing"
+)
 
 func TestProductDeclRegistryRoundTrip(t *testing.T) {
-	t.Cleanup(func() { ClearProductDeclForTest("sample") })
-	ClearProductDeclForTest("sample")
+	t.Cleanup(func() { contract.ClearProductDeclForTest("sample") })
+	contract.ClearProductDeclForTest("sample")
 
-	if HasProductDecl("sample") {
-		t.Fatal("HasProductDecl before register must be false")
+	if contract.HasProductDecl("sample") {
+		t.Fatal("contract.HasProductDecl before register must be false")
 	}
-	RegisterProductDecl(ProductDecl{})
-	if HasProductDecl("") {
+	contract.RegisterProductDecl(contract.ProductDecl{})
+	if contract.HasProductDecl("") {
 		t.Fatal("empty ID must not register")
 	}
 
-	RegisterProductDecl(ProductDecl{
+	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: " sample ",
-		Selection: ProductSelectionDecl{
+		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "Manage samples",
 			UseWhen:      []string{"target is a sample"},
 			AvoidWhen:    []string{"target is another product"},
 		},
 	})
-	if !HasProductDecl("sample") {
-		t.Fatal("HasProductDecl after register must be true")
+	if !contract.HasProductDecl("sample") {
+		t.Fatal("contract.HasProductDecl after register must be true")
 	}
-	got, ok := LookupProductDecl("sample")
+	got, ok := contract.LookupProductDecl("sample")
 	if !ok || got.ID != "sample" || got.Selection.AgentSummary != "Manage samples" {
-		t.Fatalf("LookupProductDecl = %#v, ok=%v", got, ok)
+		t.Fatalf("contract.LookupProductDecl = %#v, ok=%v", got, ok)
 	}
-	ids := RegisteredProductDeclIDs()
+	ids := contract.RegisteredProductDeclIDs()
 	found := false
 	for _, id := range ids {
 		if id == "sample" {
@@ -41,31 +44,31 @@ func TestProductDeclRegistryRoundTrip(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("RegisteredProductDeclIDs missing sample: %#v", ids)
+		t.Fatalf("contract.RegisteredProductDeclIDs missing sample: %#v", ids)
 	}
 
-	selection, provenance := ProductSelectionFromDecl(got)
-	if selection.AgentSummary != "Manage samples" || selection.AgentSummarySource != ProductDeclSourceRef {
-		t.Fatalf("ProductSelectionFromDecl selection = %#v", selection)
+	selection, provenance := contract.ProductSelectionFromDecl(got)
+	if selection.AgentSummary != "Manage samples" || selection.AgentSummarySource != contract.ProductDeclSourceRef {
+		t.Fatalf("contract.ProductSelectionFromDecl selection = %#v", selection)
 	}
 	for _, field := range []string{"agent_summary", "use_when", "avoid_when"} {
 		prov, ok := provenance[field]
-		if !ok || prov.Precedence != "contract_final" || prov.Source != ProductDeclProvenanceSource {
+		if !ok || prov.Precedence != "contract_final" || prov.Source != contract.ProductDeclProvenanceSource {
 			t.Fatalf("field %s provenance = %#v", field, prov)
 		}
 	}
 
-	ClearProductDeclForTest("sample")
-	if HasProductDecl("sample") {
-		t.Fatal("ClearProductDeclForTest must remove registration")
+	contract.ClearProductDeclForTest("sample")
+	if contract.HasProductDecl("sample") {
+		t.Fatal("contract.ClearProductDeclForTest must remove registration")
 	}
 }
 
 func TestProductDeclRegisterPanicsOnIncompleteSelection(t *testing.T) {
 	defer func() {
 		if recover() == nil {
-			t.Fatal("expected panic for incomplete ProductDecl")
+			t.Fatal("expected panic for incomplete contract.ProductDecl")
 		}
 	}()
-	RegisterProductDecl(ProductDecl{ID: "broken"})
+	contract.RegisterProductDecl(contract.ProductDecl{ID: "broken"})
 }

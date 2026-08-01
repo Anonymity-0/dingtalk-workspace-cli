@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +44,7 @@ func newSheetCommentCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(commentListCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -95,7 +95,7 @@ func newSheetCommentCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(commentCreateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -147,7 +147,7 @@ func newSheetCommentCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(commentReplyCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
@@ -191,7 +191,7 @@ func newSheetCommentCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(commentUpdateCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -233,7 +233,7 @@ func newSheetCommentCmd() *cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(commentDeleteCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},

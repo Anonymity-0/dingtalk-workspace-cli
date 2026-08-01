@@ -27,7 +27,7 @@
 │                       └────────────────────────────────────────┘   │
 │                                                                     │
 │  ┌─── 安全模型 ──────────────────────────────────────────────────┐  │
-│  │  Safety cli.SafetySpec                                       │  │
+│  │  Safety contract.SafetySpec                                       │  │
 │  │  ├─ Effect       (read / write / destructive)                │  │
 │  │  ├─ Risk         (low / medium / high)                       │  │
 │  │  ├─ Confirmation (not_required / user_required) ──▶ 运行时门 │  │
@@ -84,7 +84,7 @@ corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ───�
 | **corecmd.Spec** | struct | 一个命令的完整契约（声明 + 执行） |
 | **FlagSpec** | struct | 一个参数的注册、回退链、绑定规则 |
 | **Constraint** | struct | 参数间的关系约束 |
-| **Safety** | cli.SafetySpec | 运行时与 Schema 共用的安全契约 |
+| **Safety** | contract.SafetySpec | 运行时与 Schema 共用的安全契约 |
 | **SchemaDecl** | struct | Agent 可见的完整工具规格声明 |
 | **SelectionDecl** | struct | Agent 选择该工具的语义指引 |
 | **InterfaceDecl** | struct | 工具的接口模式与可用性 |
@@ -96,10 +96,10 @@ corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ───�
 
 ## SafetySpec
 
-`corecmd.Spec.Safety` 直接复用 `cli.SafetySpec`，没有 command 自定义 Risk/Safety 枚举，也没有 `SafetyDecl` 覆盖层：
+`corecmd.Spec.Safety` 使用 `corecmd/contract.SafetySpec`（无 cli 类型别名），没有 command 自定义 Risk/Safety 枚举，也没有 `SafetyDecl` 覆盖层：
 
 ```go
-Safety: cli.SafetySpec{
+Safety: contract.SafetySpec{
     Effect:       "write",
     Risk:         "high",
     Confirmation: "user_required",

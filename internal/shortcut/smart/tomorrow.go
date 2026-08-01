@@ -14,8 +14,8 @@
 package smart
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -40,7 +40,7 @@ var Tomorrow = shortcut.Shortcut{
 		"内部用本地时区自动把时间范围算成明天 00:00 到后天 00:00，转成毫秒时间戳，" +
 		"查询主日历（primary）下明天的全部日程，并投影出标题、开始时间、结束时间、地点、eventId。只读，不会创建或修改任何日程。",
 	Risk: shortcut.RiskRead,
-	Safety: cli.SafetySpec{
+	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},

@@ -2,8 +2,8 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -77,7 +77,7 @@ func newFloatImageCmds() []*cobra.Command {
 		},
 	}
 	DeclareLeafMetadata(createFloatImageCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -121,7 +121,7 @@ floatImageId 可通过 list-float-images 获取。`,
 		},
 	}
 	DeclareLeafMetadata(getFloatImageCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -158,7 +158,7 @@ floatImageId 可通过 list-float-images 获取。`,
 		},
 	}
 	DeclareLeafMetadata(listFloatImagesCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
@@ -251,7 +251,7 @@ floatImageId 可通过 list-float-images 获取。`,
 		},
 	}
 	DeclareLeafMetadata(updateFloatImageCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
@@ -296,7 +296,7 @@ floatImageId 可通过 list-float-images 获取。`,
 		},
 	}
 	DeclareLeafMetadata(deleteFloatImageCmd, LeafSpec{
-		Safety: cli.SafetySpec{
+		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "user_required", Idempotency: "unknown",
 		},

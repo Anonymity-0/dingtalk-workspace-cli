@@ -16,6 +16,7 @@ package cli
 import (
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +37,7 @@ func TestCrossPlatformCoverageAnnotateRuntimeRiskEmbedsContractMarker(t *testing
 }
 
 func TestCrossPlatformCoverageApplyContractRiskToSafety(t *testing.T) {
-	base := SafetySpec{Idempotency: "unknown", Risk: "low", Confirmation: "not_required", Effect: "read"}
+	base := contract.SafetySpec{Idempotency: "unknown", Risk: "low", Confirmation: "not_required", Effect: "read"}
 	got := applyContractRiskToSafety(base, "high-risk-write")
 	if got.Effect != "destructive" || got.Risk != "high" || got.Confirmation != "user_required" {
 		t.Fatalf("high-risk overlay = %#v", got)
@@ -73,7 +74,7 @@ func TestCrossPlatformCoverageAnnotateRuntimeGateDeclareOrAnnotate(t *testing.T)
 }
 
 func TestCrossPlatformCoverageApplyContractGateToSafety(t *testing.T) {
-	base := SafetySpec{Confirmation: "not_required", Effect: "read", Risk: "low"}
+	base := contract.SafetySpec{Confirmation: "not_required", Effect: "read", Risk: "low"}
 	got := applyContractGateToSafety(base, "devAppRequireWriteGuard")
 	if got.Confirmation != "user_required" {
 		t.Fatalf("gate must force user_required, got %#v", got)
@@ -84,7 +85,7 @@ func TestCrossPlatformCoverageApplyContractGateToSafety(t *testing.T) {
 	if got.Risk != "medium" {
 		t.Fatalf("gate risk overlay = %#v", got)
 	}
-	reviewed := SafetySpec{Confirmation: "not_required", Effect: "destructive", Risk: "high", EffectSource: "reviewed"}
+	reviewed := contract.SafetySpec{Confirmation: "not_required", Effect: "destructive", Risk: "high", EffectSource: "reviewed"}
 	got = applyContractGateToSafety(reviewed, "devAppRequireWriteGuard")
 	if got.Effect != "destructive" || got.Risk != "high" || got.Confirmation != "user_required" {
 		t.Fatalf("gate must keep reviewed effect/risk: %#v", got)
@@ -121,12 +122,12 @@ func TestCrossPlatformCoverageRuntimeContractAnnotationNilAndBlankGuards(t *test
 
 func TestCrossPlatformCoverageHasDeclaredOrAnnotatedConfirmationDeclaredAndRiskBranches(t *testing.T) {
 	declared := &cobra.Command{Use: "declared"}
-	t.Cleanup(func() { ClearRuntimeContractFinalForTest(declared) })
-	RegisterRuntimeContractFinal(declared, ContractFinalPayload{
-		Safety: &SafetySpec{Confirmation: "not_required"},
+	t.Cleanup(func() { contract.ClearRuntimeContractFinalForTest(declared) })
+	RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
+		Safety: &contract.SafetySpec{Confirmation: "not_required"},
 	})
 	if !HasDeclaredOrAnnotatedConfirmation(declared) {
-		t.Fatal("typed Contract SafetySpec confirmation must satisfy declare-OR-annotate")
+		t.Fatal("typed Contract contract.SafetySpec confirmation must satisfy declare-OR-annotate")
 	}
 
 	risky := &cobra.Command{Use: "risky"}
