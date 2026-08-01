@@ -276,6 +276,35 @@ func TestAssembleContractFinalDescriptionUsesDeclaredWithoutLong(t *testing.T) {
 	}
 }
 
+// Short-only leaves must not leak Cobra Short into delivered description.
+// Description compares only against Long; Short stays a title fallback candidate.
+func TestAssembleContractFinalDescriptionIgnoresShortWhenDeclared(t *testing.T) {
+	const (
+		short    = "Short must not become description"
+		declared = "Declared Contract.Description for short-only leaf"
+	)
+	tool := assembleContractFinalTextTool(t, short, "", declared)
+	if tool.Description != declared {
+		t.Fatalf("description = %q, want declared %q", tool.Description, declared)
+	}
+	if tool.Description == short {
+		t.Fatalf("description must not equal Short %q", short)
+	}
+	prov := tool.FieldProvenance["description"]
+	if prov.Precedence == "cobra_help" || prov.Source == "cobra_help" {
+		t.Fatalf("description provenance = %#v, must not be cobra_help when Long is empty", prov)
+	}
+	if prov.Precedence != "contract_final" {
+		t.Fatalf("description precedence = %q, want contract_final", prov.Precedence)
+	}
+	if prov.Resolution != "contract_pass_through" {
+		t.Fatalf("description resolution = %q, want contract_pass_through", prov.Resolution)
+	}
+	if prov.Source != "corecmd.contract" {
+		t.Fatalf("description source = %q, want corecmd.contract", prov.Source)
+	}
+}
+
 // assembleContractFinalTextTool builds a one-leaf tree, registers ContractFinal +
 // ProductDecl, and runs the production assembly path (schemaRegistryForTest).
 func assembleContractFinalTextTool(t *testing.T, short, long, declaredDescription string) ToolSpec {
