@@ -1206,8 +1206,9 @@ func embedContractDecl(cmd *cobra.Command, spec Spec) {
 // on cmd; does not alter an already-installed ConfirmSafety closure.
 //
 // Production registration always goes through contractfinal.RegisterRuntimeContractFinal
-// (annotate + store). Do not call contract.RegisterRuntimeContractFinal from
-// framework/product code — that store helper is seam-only.
+// (annotate + store). Do not call the store/Register APIs except via
+// contractfinal (framework) or the cli.RegisterRuntimeContractFinal re-export
+// (product code).
 //
 // Title/Description stored on the payload are the declared Contract values
 // only. Catalog assembly may prefer Cobra Short/Long for the delivered text

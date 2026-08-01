@@ -86,7 +86,7 @@ func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing
 		final, has := contractfinal.RuntimeContractFinal(cmd.PrimaryCommand)
 		if !has {
 			failCount++
-			rows = append(rows, row{canonical, cliPath, "FAIL", "no contract.RuntimeContractFinal on PrimaryCommand"})
+			rows = append(rows, row{canonical, cliPath, "FAIL", "no contractfinal.RuntimeContractFinal on PrimaryCommand"})
 			continue
 		}
 		checked++

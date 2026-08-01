@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
