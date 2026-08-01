@@ -16,7 +16,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +25,23 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/agentmetadata"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/outputguard"
 )
+
+func TestMainValidatesInMemoryWithoutDiskOutput(t *testing.T) {
+	repositoryRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldArgs, oldFlags := os.Args, flag.CommandLine
+	t.Cleanup(func() {
+		os.Args, flag.CommandLine = oldArgs, oldFlags
+	})
+	flag.CommandLine = flag.NewFlagSet("schema-agent-metadata-memory", flag.ContinueOnError)
+	os.Args = []string{"cmd_schema_agent_metadata", "-root", repositoryRoot}
+	main()
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "internal/cli/schema_agent_metadata")); !os.IsNotExist(err) {
+		t.Fatalf("in-memory run must not write retired schema_agent_metadata/: %v", err)
+	}
+}
 
 func TestMainGeneratesMetadataToTemporaryDirectory(t *testing.T) {
 	repositoryRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -241,28 +257,9 @@ func TestValidateSelectionHintInputRequiresHintDirs(t *testing.T) {
 }
 
 func TestValidateSelectionHintInputAllowsMissingMetadataDir(t *testing.T) {
-	originalLoadHints := loadSelectionMetadataHints
-	originalValidateSet := validateSelectionMetadataSet
-	originalExamples := validateSelectionExamples
-	originalContract := validateSelectionContract
-	t.Cleanup(func() {
-		loadSelectionMetadataHints = originalLoadHints
-		validateSelectionMetadataSet = originalValidateSet
-		validateSelectionExamples = originalExamples
-		validateSelectionContract = originalContract
-	})
-
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "hints", "selection"), 0o755); err != nil {
 		t.Fatal(err)
-	}
-	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) {
-		return cli.ManualAgentHintSet{}, nil
-	}
-	validateSelectionMetadataSet = func(cli.ManualAgentHintSet, map[string]bool, map[string]bool) error { return nil }
-	validateSelectionExamples = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) error { return nil }
-	validateSelectionContract = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) (cli.ManualAgentSelectionReport, error) {
-		return cli.ManualAgentSelectionReport{}, nil
 	}
 	if err := validateSelectionHintInput(root, "hints", commandRegistryProjection{}); err != nil {
 		t.Fatalf("missing metadata/ must be optional: %v", err)

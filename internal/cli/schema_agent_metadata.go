@@ -14,16 +14,17 @@
 package cli
 
 import (
-	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"strings"
 	"sync"
 	"sync/atomic"
 )
 
-//go:embed schema_agent_metadata/*.json
-var embeddedAgentMetadataFS embed.FS
+// schema_agent_metadata/*.json is retired as a shipped artifact. Catalog
+// generation injects Agent metadata in-memory via InstallBuildTimeAgentMetadataJSON;
+// runtime consumption uses schema_catalog only.
 
 const embeddedAgentMetadataSource = "embedded-skill-metadata"
 
@@ -95,22 +96,60 @@ var runtimeEmbeddedAgentMetadataLazy struct {
 
 var runtimeEmbeddedAgentMetadataLazyLoadCount atomic.Uint64
 
-// runtimeAgentMetadata parses the generated Agent metadata on first Schema
-// assembly only. Keeping the sync.Once at the access boundary ensures package
-// initialization and ordinary CLI commands never deserialize the embedded
-// fragments.
+var (
+	buildTimeAgentMetadataMu       sync.Mutex
+	buildTimeAgentMetadataOverride *embeddedAgentMetadata
+)
+
+// InstallBuildTimeAgentMetadataJSON installs generator-produced Agent metadata
+// for Catalog assembly only. Production binaries never call this; the Catalog
+// generator injects an in-memory snapshot so schema_agent_metadata/ is neither
+// committed nor embedded.
+func InstallBuildTimeAgentMetadataJSON(data []byte) error {
+	var metadata embeddedAgentMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return fmt.Errorf("decode build-time Agent metadata: %w", err)
+	}
+	if metadata.Products == nil {
+		metadata.Products = map[string]agentProductMetadata{}
+	}
+	if metadata.Tools == nil {
+		metadata.Tools = map[string]agentToolMetadata{}
+	}
+	buildTimeAgentMetadataMu.Lock()
+	defer buildTimeAgentMetadataMu.Unlock()
+	copied := metadata
+	buildTimeAgentMetadataOverride = &copied
+	return nil
+}
+
+// ClearBuildTimeAgentMetadata removes a Catalog-generator injection.
+func ClearBuildTimeAgentMetadata() {
+	buildTimeAgentMetadataMu.Lock()
+	defer buildTimeAgentMetadataMu.Unlock()
+	buildTimeAgentMetadataOverride = nil
+}
+
+// runtimeAgentMetadata returns build-time injected Agent metadata when the
+// Catalog generator installed one; otherwise an empty snapshot. Shipped
+// binaries no longer embed schema_agent_metadata/*.json.
 func runtimeAgentMetadata() embeddedAgentMetadata {
+	buildTimeAgentMetadataMu.Lock()
+	override := buildTimeAgentMetadataOverride
+	buildTimeAgentMetadataMu.Unlock()
+	if override != nil {
+		return *override
+	}
 	runtimeEmbeddedAgentMetadataLazy.once.Do(func() {
 		runtimeEmbeddedAgentMetadataLazyLoadCount.Add(1)
-		runtimeEmbeddedAgentMetadataLazy.metadata = loadEmbeddedAgentMetadata()
+		runtimeEmbeddedAgentMetadataLazy.metadata = emptyEmbeddedAgentMetadata()
 	})
 	return runtimeEmbeddedAgentMetadataLazy.metadata
 }
 
-func loadEmbeddedAgentMetadata() embeddedAgentMetadata {
-	return loadEmbeddedAgentMetadataFrom(embeddedAgentMetadataFS)
-}
-
+// loadEmbeddedAgentMetadataFrom remains a test-only seam for MapFS fixtures that
+// exercise the retired split-domain JSON shape. Production no longer embeds or
+// loads schema_agent_metadata/*.json.
 func loadEmbeddedAgentMetadataFrom(source fs.FS) embeddedAgentMetadata {
 	var metadata embeddedAgentMetadata
 	index, err := fs.ReadFile(source, "schema_agent_metadata/index.json")

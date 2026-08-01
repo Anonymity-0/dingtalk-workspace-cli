@@ -39,8 +39,12 @@ fi
 
 # The registry argument is validation-only and all go:generate outputs must be
 # downstream assets. Reject any directive that targets the reviewed input.
-if ! grep -Eq '^//go:generate .*cmd_schema_agent_metadata .* -registry internal/cli/schema_command_registry ' internal/cli/gen.go; then
-	printf '%s\n' 'go generate must validate the reviewed CommandRegistry explicitly' >&2
+if ! grep -Eq '^//go:generate .*cmd_schema_catalog ' internal/cli/gen.go; then
+	printf '%s\n' 'go generate must register the Catalog generator' >&2
+	exit 1
+fi
+if grep -E '^//go:generate' internal/cli/gen.go | grep -Eq 'cmd_schema_agent_metadata|schema_agent_metadata'; then
+	printf '%s\n' 'go generate must not regenerate retired schema_agent_metadata/' >&2
 	exit 1
 fi
 if policy_search_go '^//go:generate .*-(output|output-dir|audit-output)(=|[[:space:]]+)([^[:space:]]*/)?schema_command_registry\.json([[:space:]]|$)' \
@@ -51,11 +55,20 @@ if policy_search_go '^//go:generate .*-(output|output-dir|audit-output)(=|[[:spa
 	exit 1
 fi
 
-# Embedded Agent/MCP/parameter metadata is intentionally expensive and must be
+# Embedded MCP/parameter metadata is intentionally expensive and must be
 # parsed only through its sync.Once accessor. Each raw loader is allowed at
 # exactly two production locations: its declaration and the assignment inside
 # that accessor. Any third reference is an eager initializer or an accessor
 # bypass and fails this static check.
+# Agent metadata embed/loader is retired; production must not reopen it.
+if policy_search_production_go 'go:embed schema_agent_metadata' internal/cli; then
+	printf '%s\n' 'schema_agent_metadata must not be re-embedded' >&2
+	exit 1
+fi
+if policy_search_production_go 'loadEmbeddedAgentMetadata\(' internal/cli; then
+	printf '%s\n' 'retired loadEmbeddedAgentMetadata must not remain in production code' >&2
+	exit 1
+fi
 check_schema_loader_references() {
 	loader="$1"
 	allowed="$2"
@@ -73,9 +86,6 @@ check_schema_loader_references() {
 	fi
 }
 
-check_schema_loader_references \
-	'loadEmbeddedAgentMetadata' \
-	'^internal/cli/schema_agent_metadata\.go:[0-9]+:(func loadEmbeddedAgentMetadata\(\) embeddedAgentMetadata \{|[[:space:]]*runtimeEmbeddedAgentMetadataLazy\.metadata = loadEmbeddedAgentMetadata\(\))$'
 check_schema_loader_references \
 	'loadEmbeddedMCPMetadata' \
 	'^internal/cli/runtime_schema\.go:[0-9]+:(func loadEmbeddedMCPMetadata\(\) embeddedMCPMetadata \{|[[:space:]]*runtimeEmbeddedMCPMetadataLazy\.metadata = loadEmbeddedMCPMetadata\(\))$'

@@ -12,7 +12,7 @@
 
 1. cobra 实际注册的 flags / required / defaults；
 2. `--help` 的 Flags 与「参数约束」段；
-3. **嵌入后的** `dws schema` / Catalog（`schema_catalog` / agent metadata 生成物）中的 parameters、关系约束和 SafetySpec。
+3. **嵌入后的** `dws schema` / Catalog（交付物仅为 `schema_catalog/`，`go:embed`）中的 parameters、关系约束和 SafetySpec。Agent metadata 在 Catalog 生成时经内存 inject，不落盘、不 embed；`schema_agent_metadata/` 已退役，若存在则 policy 失败。
 
 嵌入机制（已落地）：
 
@@ -25,7 +25,8 @@ corecmd.Spec
        dws.schema.constraints
   → RegisterRuntimeContractFinal(SafetySpec + SchemaDecl)
   → Schema 组装透传 Contract Final
-  → go:embed schema_catalog / schema_agent_metadata
+    （Catalog 生成时内存 inject Agent metadata）
+  → go:embed schema_catalog
 ```
 
 command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷，不使用字符串枚举注解。
@@ -158,7 +159,7 @@ NewLeafCommand(LeafSpec{
 | Positionals | **声明** 或显式 annotate | 目标 `Args`；禁止推断 |
 | Safety.`effect/risk/confirmation/idempotency` | **声明**完整 `Safety`，或迁移期 `runtime_gate` / reviewed Safety | 四字段独立；不得互相推导 |
 | DryRun | 评审源 | dry-run capabilities registry |
-| Interface | 评审源 | MCP + agent metadata |
+| Interface | 评审源 | MCP + 内存 inject 的 Agent metadata |
 | Selection | 评审源 | `schema_hints/selection` |
 | FieldProvenance / Extensions | 组装派生或评审扩展 | 组装器；与 delivered value 一致 |
 | （非 Schema parameter）ConstParams | **声明** | 载荷；不上 parameters 表 |

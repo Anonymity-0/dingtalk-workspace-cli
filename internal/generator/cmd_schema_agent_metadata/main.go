@@ -46,13 +46,9 @@ var (
 	writeMetadataFileBytes = os.WriteFile
 	writeMetadataJSON      = writeJSON
 
-	newMetadataRoot              = app.NewSchemaSourceRootCommand
-	buildEffectiveMetadata       = cli.BuildEffectiveCommandRegistry
-	bindEffectiveMetadata        = cli.BindEffectiveCommandRegistry
-	loadSelectionMetadataHints   = cli.LoadAgentHintsFromSelectionForValidation
-	validateSelectionMetadataSet = cli.ValidateManualAgentHintSet
-	validateSelectionExamples    = cli.ValidateManualAgentHintExamples
-	validateSelectionContract    = cli.ValidateManualAgentSelectionContract
+	newMetadataRoot        = app.NewSchemaSourceRootCommand
+	buildEffectiveMetadata = cli.BuildEffectiveCommandRegistry
+	bindEffectiveMetadata  = cli.BindEffectiveCommandRegistry
 )
 
 func main() {
@@ -77,8 +73,8 @@ func main() {
 	flag.StringVar(&intentGuidePath, "intent-guide", "skills/mono/references/intent-guide.md", "Cross-product intent guide path")
 	flag.StringVar(&hintsDir, "hints", "internal/cli/schema_hints", "Versioned Agent hint JSON directory (required selection/; optional metadata/ shells)")
 	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "internal/cli/schema_mcp_metadata.json", "Sanitized versioned MCP metadata used only for fallback Agent summaries")
-	flag.StringVar(&outputPath, "output", "", "Output embedded Agent metadata JSON file (legacy single-file mode)")
-	flag.StringVar(&outputDir, "output-dir", "", "Output directory for split embedded Agent metadata JSON")
+	flag.StringVar(&outputPath, "output", "", "Optional diagnostic single-file Agent metadata JSON (not a Catalog input)")
+	flag.StringVar(&outputDir, "output-dir", "", "Optional diagnostic split Agent metadata directory (not a Catalog input; Catalog injects in-memory)")
 	flag.StringVar(&auditOutputPath, "audit-output", "", "Optional output path for build-time source and CommandRegistry diagnostics")
 	flag.StringVar(&registryPath, "registry", "internal/cli/schema_command_registry", "Reviewed CommandRegistry path, relative to --root; validation-only because the registry is embedded")
 	flag.StringVar(&legacySurfacePath, "surface", "", "Deprecated alias for --registry; the file must equal the embedded reviewed CommandRegistry")
@@ -87,9 +83,9 @@ func main() {
 	flag.BoolVar(&validateRegistry, "validate-registry", true, "Require Agent metadata to use the embedded reviewed CommandRegistry")
 	flag.BoolVar(&legacyValidateSurface, "validate-surface", true, "Deprecated alias; false is rejected because Registry validation cannot be bypassed")
 	flag.Parse()
-	if strings.TrimSpace(outputDir) == "" && strings.TrimSpace(outputPath) == "" {
-		outputDir = "internal/cli/schema_agent_metadata"
-	}
+	// Disk output is optional and diagnostic only. Catalog generation uses the
+	// in-memory agentmetadata pipeline and does not consume schema_agent_metadata/.
+	writeRequested := strings.TrimSpace(outputDir) != "" || strings.TrimSpace(outputPath) != ""
 	protectedInputs := []outputguard.Input{
 		{Name: "canonical main Skill input", Path: "skills/mono/SKILL.md"},
 		{Name: "canonical product Skill input directory", Path: "skills/mono/references/products"},
@@ -150,15 +146,19 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
+	delivery := "in-memory"
 	if strings.TrimSpace(outputDir) != "" {
 		if err := writeMetadataDirectoryOutput(outputDir, metadata); err != nil {
 			fail(err)
 		}
-		outputPath = outputDir
-	} else {
+		delivery = outputDir
+	} else if strings.TrimSpace(outputPath) != "" {
 		if err := writeMetadataFileOutput(outputPath, metadata); err != nil {
 			fail(err)
 		}
+		delivery = outputPath
+	} else if !writeRequested {
+		_, _ = fmt.Fprintln(os.Stderr, "schema Agent metadata validated in-memory (no --output/--output-dir; Catalog injects Agent metadata without this artifact)")
 	}
 	if strings.TrimSpace(auditOutputPath) != "" {
 		if err := writeMetadataAuditOutput(auditOutputPath, agentmetadata.BuildAudit(metadata, stats)); err != nil {
@@ -168,7 +168,7 @@ func main() {
 	_, _ = fmt.Fprintf(
 		os.Stderr,
 		"generated schema Agent metadata: output=%s sources=%d products=%d tools=%d summaries=%d interface_summaries=%d intents=%d examples=%d risk_rules=%d hint_files=%d hint_tools=%d unmatched=%d surface_tools=%d\n",
-		outputPath,
+		delivery,
 		stats.SourceFiles,
 		stats.Products,
 		stats.Tools,
@@ -304,14 +304,7 @@ func firstPathToken(path string) string {
 	return parts[0]
 }
 
-type commandRegistryProjection struct {
-	ToolPaths          map[string]string
-	CanonicalToolPaths map[string]string
-	ProductIDs         map[string]bool
-	Hash               string
-	ToolCount          int
-	Bound              cli.BoundCommandRegistry
-}
+type commandRegistryProjection = agentmetadata.RegistryProjection
 
 // loadEffectiveCommandRegistryProjection consumes the same reviewed registry
 // API as the Catalog generator. The registry file argument is validation only
@@ -341,31 +334,7 @@ func loadEffectiveCommandRegistryProjection(rootPath, registryPath string, valid
 // registry. Keeping projection below this boundary prevents a base-registry
 // allowlist from silently dropping reviewed manual-only commands.
 func projectEffectiveCommandRegistry(effective cli.EffectiveCommandRegistry) commandRegistryProjection {
-	projection := commandRegistryProjection{
-		ToolPaths:          map[string]string{},
-		CanonicalToolPaths: map[string]string{},
-		ProductIDs:         map[string]bool{},
-		Hash:               effective.SourceHash(),
-	}
-	for _, command := range effective.Commands {
-		if command.Visibility != cli.SchemaVisibilityPublic {
-			continue
-		}
-		projection.ToolCount++
-		primary := strings.TrimSpace(command.PrimaryCLIPath)
-		projection.ToolPaths[primary] = primary
-		projection.ToolPaths[command.CanonicalPath] = primary
-		projection.CanonicalToolPaths[command.CanonicalPath] = primary
-		if productID, _, ok := strings.Cut(command.CanonicalPath, "."); ok && strings.TrimSpace(productID) != "" {
-			projection.ProductIDs[strings.TrimSpace(productID)] = true
-		}
-		for _, alias := range command.Aliases {
-			if alias = strings.TrimSpace(alias); alias != "" {
-				projection.ToolPaths[alias] = primary
-			}
-		}
-	}
-	return projection
+	return agentmetadata.ProjectEffectiveRegistry(effective)
 }
 
 func validateCommandRegistryFile(rootPath, registryPath string) error {
@@ -439,40 +408,7 @@ func mergeRegistryShards(dir string) ([]byte, error) {
 }
 
 func validateSelectionHintInput(rootPath, hintsDir string, registry commandRegistryProjection) error {
-	hintsRoot := resolveRootPath(rootPath, hintsDir)
-	selectionRoot := filepath.Join(hintsRoot, "selection")
-	// selection/ is required. metadata/ is optional: empty tools shells or a
-	// missing directory are valid once leaf facts live on Contract (phase 5).
-	if info, err := os.Stat(selectionRoot); err != nil || !info.IsDir() {
-		return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
-	}
-	selectionFS := os.DirFS(selectionRoot)
-	agentHints, err := loadSelectionMetadataHints(selectionFS)
-	if err != nil {
-		return fmt.Errorf("load selection Agent hints: %w", err)
-	}
-	expectedTools := make(map[string]bool, len(registry.CanonicalToolPaths))
-	for canonical := range registry.CanonicalToolPaths {
-		expectedTools[canonical] = true
-	}
-	// Declared tools carry selection fields in the Contract final overlay
-	// (corecmd.SchemaDecl) and are exempt from hint-file coverage.
-	for canonical := range expectedTools {
-		bound, ok := registry.Bound.ByCanonical[canonical]
-		if ok && cli.HasRuntimeContractFinal(bound.PrimaryCommand) {
-			delete(expectedTools, canonical)
-		}
-	}
-	if err := validateSelectionMetadataSet(agentHints, registry.ProductIDs, expectedTools); err != nil {
-		return fmt.Errorf("validate selection Agent hints: %w", err)
-	}
-	if err := validateSelectionExamples(registry.Bound, agentHints); err != nil {
-		return fmt.Errorf("validate selection Agent hint examples: %w", err)
-	}
-	if _, err := validateSelectionContract(registry.Bound, agentHints); err != nil {
-		return fmt.Errorf("validate selection Agent selection contract: %w", err)
-	}
-	return nil
+	return agentmetadata.ValidateSelectionHints(rootPath, hintsDir, registry)
 }
 
 func resolveRootPath(root, path string) string {
@@ -504,6 +440,8 @@ func validateAgentMetadataOutputIsolation(rootPath string, inputs []outputguard.
 }
 
 func validateAgentMetadataOutputAllowlist(rootPath, outputPath, outputDir, auditOutputPath string) error {
+	// Optional diagnostic writes may still land on the retired on-disk paths,
+	// but Catalog generation never reads them.
 	for _, target := range []struct {
 		target  outputguard.Target
 		allowed string

@@ -17,40 +17,72 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/spf13/cobra"
 )
 
 func TestEmbeddedAgentMetadataLoadsSplitDomains(t *testing.T) {
-	metadata := loadEmbeddedAgentMetadata()
-	if len(metadata.Domains) < 2 {
-		t.Fatalf("domains = %#v, want split product metadata", metadata.Domains)
+	// Production no longer embeds or ships schema_agent_metadata/*.json.
+	// Runtime Agent metadata must stay empty; selection completeness now lives
+	// in schema_catalog (see TestEmbeddedSchemaCatalogSelectionCompleteness).
+	metadata := runtimeAgentMetadata()
+	if len(metadata.Tools) != 0 || len(metadata.Products) != 0 || len(metadata.Domains) != 0 {
+		t.Fatalf("retired embedded Agent metadata must be empty: %#v", metadata)
 	}
-	if len(metadata.Tools) != metadata.Coverage.ToolsWithMetadata {
-		t.Fatalf("tools = %d, coverage = %#v", len(metadata.Tools), metadata.Coverage)
+	// Temporary MapFS fixture only — exercises the retired split-domain loader
+	// seam without depending on a committed schema_agent_metadata/ directory.
+	fixture := fstest.MapFS{
+		"schema_agent_metadata/index.json":  {Data: []byte(`{"domains":["sample"],"coverage":{"tools_with_metadata":1}}`)},
+		"schema_agent_metadata/sample.json": {Data: []byte(`{"product_id":"sample","tools":{"sample.get":{"agent_summary":"S","use_when":["u"],"avoid_when":["a"],"examples":["dws sample get"],"interface_mode":"local","availability":"available"}}}`)},
 	}
-	if _, ok := metadata.Tools["calendar event create"]; !ok {
-		t.Fatalf("calendar domain did not load: %#v", metadata.Domains)
+	loaded := loadEmbeddedAgentMetadataFrom(fixture)
+	if len(loaded.Tools) != 1 || loaded.Tools["sample.get"].AgentSummary != "S" {
+		t.Fatalf("fixture loader = %#v", loaded)
 	}
-	coverage := metadata.Coverage
-	if coverage.ToolsWithUseWhen != len(metadata.Tools) ||
-		coverage.ToolsWithAvoidWhen != len(metadata.Tools) ||
-		coverage.ToolsWithExamples != len(metadata.Tools) ||
-		coverage.ToolsWithInterfaceMode != len(metadata.Tools) {
-		t.Fatalf("selection metadata coverage = %#v, tools=%d", coverage, len(metadata.Tools))
+}
+
+// TestEmbeddedSchemaCatalogSelectionCompleteness replaces the retired
+// schema_agent_metadata/*.json split-domain coverage gate: every delivered
+// Catalog tool must carry non-empty selection routing, interface disposition,
+// and examples that never bypass confirmation with --yes.
+func TestEmbeddedSchemaCatalogSelectionCompleteness(t *testing.T) {
+	if !embeddedSchemaCatalogAvailable() {
+		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
 	}
-	for path, tool := range metadata.Tools {
-		if len(tool.UseWhen) == 0 || len(tool.AvoidWhen) == 0 || len(tool.Examples) == 0 {
-			t.Errorf("tool %s has incomplete selection metadata: %#v", path, tool)
+	loaded := embeddedSchemaCatalog()
+	products := map[string]struct{}{}
+	for canonical, tool := range loaded.Snapshot.Tools {
+		product := schemaString(tool["product_id"])
+		if product == "" {
+			t.Errorf("tool %s missing product_id", canonical)
+			continue
 		}
-		if tool.InterfaceMode == "" || tool.Availability == "" {
-			t.Errorf("tool %s has incomplete interface disposition: %#v", path, tool)
+		products[product] = struct{}{}
+		if len(schemaStringSlice(tool["use_when"])) == 0 ||
+			len(schemaStringSlice(tool["avoid_when"])) == 0 ||
+			len(schemaStringSlice(tool["examples"])) == 0 {
+			t.Errorf("tool %s has incomplete selection metadata: use_when=%v avoid_when=%v examples=%v",
+				canonical, tool["use_when"], tool["avoid_when"], tool["examples"])
 		}
-		for _, example := range tool.Examples {
+		if schemaString(tool["interface_mode"]) == "" || schemaString(tool["availability"]) == "" {
+			t.Errorf("tool %s has incomplete interface disposition: mode=%q availability=%q",
+				canonical, schemaString(tool["interface_mode"]), schemaString(tool["availability"]))
+		}
+		for _, example := range schemaStringSlice(tool["examples"]) {
 			if strings.Contains(" "+example+" ", " --yes ") {
-				t.Errorf("tool %s example bypasses confirmation: %q", path, example)
+				t.Errorf("tool %s example bypasses confirmation: %q", canonical, example)
 			}
 		}
+	}
+	if len(products) < 2 {
+		t.Fatalf("catalog products = %d, want multi-product delivery", len(products))
+	}
+	if _, ok := loaded.Snapshot.Tools["calendar.create_calendar_event"]; !ok {
+		t.Fatalf("calendar.create_calendar_event missing from catalog tools (%d total)", len(loaded.Snapshot.Tools))
+	}
+	if got, want := len(loaded.Snapshot.Tools), len(loaded.Index.CanonicalPaths()); got != want {
+		t.Fatalf("catalog tools = %d, typed index = %d", got, want)
 	}
 }
 

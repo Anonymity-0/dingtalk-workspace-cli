@@ -148,9 +148,6 @@ func BenchmarkCatalogStageValidations(b *testing.B) {
 		if err := loadCatalogValidateProvenance(loaded.Registry); err != nil {
 			b.Fatal(err)
 		}
-		if err := loadCatalogValidateAgentMetadata(loaded.Registry); err != nil {
-			b.Fatal(err)
-		}
 	}
 }
 

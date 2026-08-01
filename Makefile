@@ -8,7 +8,7 @@ POLICY_GOTMPDIR ?= $(DWS_POLICY_TMPDIR)/go
 POLICY_ENV = DWS_POLICY_TMPDIR="$(DWS_POLICY_TMPDIR)" GOTMPDIR="$(POLICY_GOTMPDIR)"
 GO_SOURCE_LIST = git ls-files -z --cached --others --exclude-standard -- '*.go'
 
-.PHONY: all help build rebuild test test-plan test-auth-legacy-compat lint format-check fmt policy edition-test interface-integrity authoritative-interface-integrity coverage-gate coverage-gate-platform update-interface-baseline reset-interface-baseline schema-compatibility skill-command-integrity skill-context-budget cli-smoke mock-mcp-smoke test-schema-agent-examples generate-schema generate-schema-agent-metadata fetch-mcp-metadata generate-schema-catalog package release release-pre release-stable changelog-pre changelog-stable publish-homebrew-formula setup-hooks
+.PHONY: all help build rebuild test test-plan test-auth-legacy-compat lint format-check fmt policy edition-test interface-integrity authoritative-interface-integrity coverage-gate coverage-gate-platform update-interface-baseline reset-interface-baseline schema-compatibility skill-command-integrity skill-context-budget cli-smoke mock-mcp-smoke test-schema-agent-examples generate-schema fetch-mcp-metadata generate-schema-catalog package release release-pre release-stable changelog-pre changelog-stable publish-homebrew-formula setup-hooks
 
 all: setup-hooks fmt lint build test rebuild
 
@@ -34,8 +34,7 @@ help:
 	@printf "  make cli-smoke     - Verify help for every public top-level command\n"
 	@printf "  make mock-mcp-smoke - Verify HTTP and stdio MCP request/response transport\n"
 	@printf "  make test-schema-agent-examples - Contract-check all Agent examples and dry-run the eligible subset\n"
-	@printf "  make generate-schema - Regenerate embedded Agent metadata and the release Catalog\n"
-	@printf "  make generate-schema-agent-metadata - Regenerate versioned Agent metadata\n"
+	@printf "  make generate-schema - Regenerate the embedded release Catalog (Agent metadata is in-memory only)\n"
 	@printf "  make generate-schema-catalog - Regenerate the embedded release Catalog\n"
 	@printf "  make package       - Build all release artifacts locally\n"
 	@printf "  make changelog-pre VERSION=vX.Y.Z-beta.N - Prepare prerelease notes\n"
@@ -135,6 +134,9 @@ mock-mcp-smoke:
 test-schema-agent-examples:
 	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestManualAgentExamplesDryRun$$'
 
+# generate-schema rebuilds schema_catalog/ (+ param aliases). Agent metadata is
+# injected in-memory during catalog generation; schema_agent_metadata/ is retired
+# and must not remain as a delivery artifact (any temp write is removed below).
 generate-schema:
 	@set -e; \
 	registry_guard=$$(mktemp -d); \
@@ -153,6 +155,7 @@ generate-schema:
 	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
 	cp -R internal/cli/schema_hints/selection/. "$$selection_guard/"; \
 	$(GO) generate ./internal/cli; \
+	rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json; \
 	diff -qr internal/cli/schema_command_registry "$$registry_guard" >/dev/null || { \
 		printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry/' >&2; \
 		exit 1; \
@@ -183,17 +186,13 @@ generate-schema:
 		exit 1; \
 	}
 
-generate-schema-agent-metadata:
-	$(GO) run ./internal/generator/cmd_schema_agent_metadata \
-		-root . \
-		-registry internal/cli/schema_command_registry \
-		-output-dir internal/cli/schema_agent_metadata \
-		-audit-output internal/cli/schema_agent_metadata_audit.json
-
+# Catalog-only publication path (same as go:generate catalog step). Does not
+# write schema_agent_metadata/.
 generate-schema-catalog:
 	$(GO) run -a ./internal/generator/cmd_schema_catalog \
 		-root . \
 		-output internal/cli/schema_catalog
+	@rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json
 
 fetch-mcp-metadata:
 	@printf '  %sRefreshing MCP metadata from live server%s\n' "$(COLOR_RUN)" "$(COLOR_RESET)"

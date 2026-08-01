@@ -107,6 +107,8 @@ func TestCrossPlatformCoverageAgentMetadataRemainingPureEdges(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageEmbeddedAgentMetadataLoaderEdges(t *testing.T) {
+	// Temporary MapFS fixtures only — the retired split-domain loader seam must
+	// stay fail-soft without a committed schema_agent_metadata/ directory.
 	for _, source := range []fs.FS{
 		fstest.MapFS{},
 		fstest.MapFS{"schema_agent_metadata/index.json": {Data: []byte("{")}},

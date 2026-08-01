@@ -30,6 +30,7 @@ import (
 var (
 	validateCatalogParameterBindings = cli.ValidateEmbeddedSchemaParameterBindings
 	buildCatalogSnapshot             = cli.BuildSchemaCatalogSnapshot
+	installCatalogAgentMetadata      = installBuildTimeAgentMetadata
 	makeCatalogDirectory             = os.MkdirAll
 	writeCatalogFile                 = os.WriteFile
 	exitCatalogProcess               = os.Exit
@@ -49,7 +50,7 @@ func main() {
 	}
 
 	root := app.NewSchemaSourceRootCommand()
-	if err := generateSchemaCatalog(root, resolvedSurfacePath, outputPath); err != nil {
+	if err := generateSchemaCatalog(rootPath, root, resolvedSurfacePath, outputPath); err != nil {
 		fail(err)
 	}
 }
@@ -69,7 +70,6 @@ func validateCatalogOutputIsolation(rootPath, outputPath, surfacePath string) er
 		{Name: "intent guide metadata source", Path: "skills/mono/references/intent-guide.md"},
 		{Name: "structured metadata source directory", Path: "internal/cli/schema_hints"},
 		{Name: "reviewed CommandRegistry input", Path: "internal/cli/schema_command_registry"},
-		{Name: "generated Agent metadata input", Path: "internal/cli/schema_agent_metadata"},
 		{Name: "pinned MCP metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "reviewed MCP service disposition input", Path: "internal/cli/schema_mcp_service_review.json"},
 		{Name: "reviewed parameter binding input", Path: "internal/cli/schema_parameter_bindings.json"},
@@ -90,9 +90,10 @@ func validateCatalogOutputIsolation(rootPath, outputPath, surfacePath string) er
 // generateSchemaCatalog consumes the cli package's reviewed registry API. It
 // deliberately does not decode command identity itself: the compatibility
 // --surface flag is validated against the embedded registry and can never
-// replace it as an input source.
-func generateSchemaCatalog(root *cobra.Command, surfacePath, outputPath string) error {
-	return generateSchemaCatalogWithResolver(root, surfacePath, outputPath, cli.ResolveSchemaBuild)
+// replace it as an input source. Agent metadata is generated in-memory and
+// injected for assembly; schema_agent_metadata/ is not a delivery artifact.
+func generateSchemaCatalog(rootPath string, root *cobra.Command, surfacePath, outputPath string) error {
+	return generateSchemaCatalogWithResolver(rootPath, root, surfacePath, outputPath, cli.ResolveSchemaBuild)
 }
 
 type schemaBuildResolver func(*cobra.Command) (cli.ResolvedSchemaBuild, error)
@@ -101,7 +102,7 @@ type schemaBuildResolver func(*cobra.Command) (cli.ResolvedSchemaBuild, error)
 // contract observable in tests. Production passes cli.ResolveSchemaBuild; the
 // returned Effective/Bound/SchemaRegistry views then travel together through
 // every gate and the final serializer.
-func generateSchemaCatalogWithResolver(root *cobra.Command, surfacePath, outputPath string, resolve schemaBuildResolver) error {
+func generateSchemaCatalogWithResolver(rootPath string, root *cobra.Command, surfacePath, outputPath string, resolve schemaBuildResolver) error {
 	if root == nil {
 		return fmt.Errorf("schema source root is nil")
 	}
@@ -114,6 +115,10 @@ func generateSchemaCatalogWithResolver(root *cobra.Command, surfacePath, outputP
 	if err := validateCatalogParameterBindings(); err != nil {
 		return fmt.Errorf("validate reviewed parameter binding input: %w", err)
 	}
+	if err := installCatalogAgentMetadata(rootPath, root); err != nil {
+		return err
+	}
+	defer cli.ClearBuildTimeAgentMetadata()
 
 	resolved, err := resolve(root)
 	if err != nil {

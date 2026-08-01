@@ -726,12 +726,35 @@ func validateSchemaRegistryAgainstCommandRegistry(registry SchemaRegistry, comma
 // validateSchemaRegistryAgentMetadata compares exact canonical sets after
 // resolving generated metadata keys through the same SchemaIndex. Counts alone
 // cannot detect one missing tool being masked by one duplicate alias.
+//
+// When Agent metadata is not injected (shipped runtime / live assembly without
+// the Catalog generator), the retired embed is empty. In that mode validate that
+// every assembled tool already carries selection prose from ContractFinal
+// instead of reopening schema_agent_metadata/.
 func validateSchemaRegistryAgentMetadata(registry SchemaRegistry) error {
 	index, err := registry.Index()
 	if err != nil {
 		return err
 	}
 	metadata := finalSchemaAgentMetadata()
+	if len(metadata.Tools) == 0 {
+		var problems []string
+		for _, canonical := range index.CanonicalPaths() {
+			tool, ok := index.Resolve(canonical)
+			if !ok {
+				problems = append(problems, fmt.Sprintf("final Schema tool %s does not resolve", canonical))
+				continue
+			}
+			if strings.TrimSpace(tool.Selection.AgentSummary) == "" {
+				problems = append(problems, fmt.Sprintf("final Schema tool %s has no agent_summary without injected Agent metadata", canonical))
+			}
+		}
+		if len(problems) > 0 {
+			sort.Strings(problems)
+			return fmt.Errorf("%s", strings.Join(problems, "; "))
+		}
+		return nil
+	}
 	resolved := make(map[string]string, len(metadata.Tools))
 	var problems []string
 	keys := make([]string, 0, len(metadata.Tools))

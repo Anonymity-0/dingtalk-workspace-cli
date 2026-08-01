@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -230,18 +229,10 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 	originalRoot := newMetadataRoot
 	originalBuild := buildEffectiveMetadata
 	originalBind := bindEffectiveMetadata
-	originalLoadHints := loadSelectionMetadataHints
-	originalValidateSet := validateSelectionMetadataSet
-	originalExamples := validateSelectionExamples
-	originalContract := validateSelectionContract
 	t.Cleanup(func() {
 		newMetadataRoot = originalRoot
 		buildEffectiveMetadata = originalBuild
 		bindEffectiveMetadata = originalBind
-		loadSelectionMetadataHints = originalLoadHints
-		validateSelectionMetadataSet = originalValidateSet
-		validateSelectionExamples = originalExamples
-		validateSelectionContract = originalContract
 	})
 
 	if err := validateCommandRegistryFile(".", " "); err != nil {
@@ -285,28 +276,11 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 	if err := os.MkdirAll(selection, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) {
-		return cli.ManualAgentHintSet{}, errors.New("load")
+	if err := os.WriteFile(filepath.Join(selection, "sample.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "load selection") {
 		t.Fatalf("selection load error = %v", err)
-	}
-	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) { return cli.ManualAgentHintSet{}, nil }
-	validateSelectionMetadataSet = func(cli.ManualAgentHintSet, map[string]bool, map[string]bool) error { return errors.New("set") }
-	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "validate selection Agent hints") {
-		t.Fatalf("selection set error = %v", err)
-	}
-	validateSelectionMetadataSet = func(cli.ManualAgentHintSet, map[string]bool, map[string]bool) error { return nil }
-	validateSelectionExamples = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) error { return errors.New("examples") }
-	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "examples") {
-		t.Fatalf("selection examples error = %v", err)
-	}
-	validateSelectionExamples = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) error { return nil }
-	validateSelectionContract = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) (cli.ManualAgentSelectionReport, error) {
-		return cli.ManualAgentSelectionReport{}, errors.New("contract")
-	}
-	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "selection contract") {
-		t.Fatalf("selection contract error = %v", err)
 	}
 
 	abs := filepath.Join(t.TempDir(), "absolute")
@@ -316,22 +290,6 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 }
 
 func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.T) {
-	originalLoadHints := loadSelectionMetadataHints
-	originalValidateSet := validateSelectionMetadataSet
-	originalExamples := validateSelectionExamples
-	originalContract := validateSelectionContract
-	t.Cleanup(func() {
-		loadSelectionMetadataHints = originalLoadHints
-		validateSelectionMetadataSet = originalValidateSet
-		validateSelectionExamples = originalExamples
-		validateSelectionContract = originalContract
-	})
-
-	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "hints", "selection"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
 	declared := &cobra.Command{Use: "run"}
 	cli.RegisterRuntimeContractFinal(declared, cli.ContractFinalPayload{})
 	t.Cleanup(func() { cli.ClearRuntimeContractFinalForTest(declared) })
@@ -345,22 +303,8 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.
 			"sample.run": {PrimaryCommand: declared},
 		}},
 	}
-
-	var expected map[string]bool
-	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) { return cli.ManualAgentHintSet{}, nil }
-	validateSelectionMetadataSet = func(_ cli.ManualAgentHintSet, _ map[string]bool, tools map[string]bool) error {
-		expected = tools
-		return nil
-	}
-	validateSelectionExamples = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) error { return nil }
-	validateSelectionContract = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) (cli.ManualAgentSelectionReport, error) {
-		return cli.ManualAgentSelectionReport{}, nil
-	}
-
-	if err := validateSelectionHintInput(root, "hints", registry); err != nil {
-		t.Fatalf("validateSelectionHintInput() error = %v", err)
-	}
-	if expected == nil || expected["sample.run"] || !expected["sample.get"] {
+	expected := agentmetadata.SelectionHintCoverageTools(registry)
+	if expected["sample.run"] || !expected["sample.get"] {
 		t.Fatalf("declared tool must be exempt from hint coverage, expected = %#v", expected)
 	}
 }

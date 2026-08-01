@@ -28,15 +28,17 @@ registry_count="$(jq -r '.tools | length' "$catalog")"
 catalog_count="$registry_count"
 catalog_product_count="$(jq -r '.catalog.count' "$catalog")"
 mcp_snapshot_registry_count="$(jq -r '.coverage.surface_tools' internal/cli/schema_mcp_metadata.json)"
-agent_registry_count="$(jq -r '.coverage.surface_tools' internal/cli/schema_agent_metadata/index.json)"
-agent_product_count="$(jq -r '.coverage.products_with_metadata' internal/cli/schema_agent_metadata/index.json)"
-agent_selection_count="$(jq -r '[.coverage.tools_with_use_when, .coverage.tools_with_avoid_when, .coverage.tools_with_examples, .coverage.tools_with_interface_mode] | min' internal/cli/schema_agent_metadata/index.json)"
+# Agent metadata is no longer a shipped intermediate. Selection completeness is
+# proven on the Catalog itself (every tool/product carries Agent prose).
+agent_registry_count="$registry_count"
+agent_product_count="$catalog_product_count"
+agent_selection_count="$(jq -r '[.tools[] | select((.use_when|type)=="array" and (.avoid_when|type)=="array" and (.examples|type)=="array" and ((.interface_mode//"")|length)>0)] | length' "$catalog")"
 if [ "$agent_registry_count" != "$registry_count" ] ||
 	[ "$agent_product_count" != "$catalog_product_count" ] ||
 	[ "$agent_selection_count" != "$registry_count" ]; then
-	printf 'generated schema counts disagree: registry=%s catalog=%s products=%s agent=%s/%s\n' \
+	printf 'generated schema counts disagree: registry=%s catalog=%s products=%s selection=%s\n' \
 		"$registry_count" "$catalog_count" "$catalog_product_count" \
-		"$agent_product_count" "$agent_registry_count" >&2
+		"$agent_selection_count" >&2
 	exit 1
 fi
 
@@ -110,10 +112,8 @@ if ! jq -e '
 fi
 
 catalog_registry_hash="$(jq -r '.surface_hash' "$catalog")"
-agent_registry_hash="$(jq -r '.surface_hash' internal/cli/schema_agent_metadata/index.json)"
-if [ "$catalog_registry_hash" != "$agent_registry_hash" ]; then
-	printf 'schema CommandRegistry hashes disagree: catalog=%s agent=%s\n' \
-		"$catalog_registry_hash" "$agent_registry_hash" >&2
+if [ -z "$catalog_registry_hash" ] || [ "$catalog_registry_hash" = "null" ]; then
+	printf 'schema Catalog is missing surface_hash\n' >&2
 	exit 1
 fi
 
@@ -256,10 +256,14 @@ if policy_search_paths 'mcp-gw\.dingtalk\.com|mcp\.dingtalk\.com/server|Authoriz
 	"$catalog" \
 	internal/cli/schema_mcp_metadata.json \
 	internal/cli/schema_mcp_service_review.json \
-	internal/cli/schema_agent_metadata \
 	internal/cli/schema_parameter_bindings.json \
 	internal/cli/schema_hints; then
 	printf '%s\n' 'schema assets contain endpoint or credential material' >&2
+	exit 1
+fi
+
+if [ -e internal/cli/schema_agent_metadata ] || [ -e internal/cli/schema_agent_metadata_audit.json ]; then
+	printf '%s\n' 'retired schema_agent_metadata delivery artifact must not be present' >&2
 	exit 1
 fi
 

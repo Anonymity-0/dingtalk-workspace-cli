@@ -3,8 +3,11 @@
 This directory contains versioned, structured Agent inputs for Schema
 generation. Hints belong to the CLI Schema subsystem rather than either
 installable Skill layout. They are excluded from embedded binaries and release
-Skill bundles. Files generate `internal/cli/schema_agent_metadata/`; generated
-runtime metadata must not be edited directly.
+Skill bundles. Generation feeds `internal/cli/schema_catalog/` only (`go:embed`).
+Agent metadata is injected in-memory during Catalog generation
+(`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON`); the
+retired `schema_agent_metadata/` JSON directory must not reappear (policy
+fails if present). Do not hand-edit generated Catalog files.
 
 ## Layout
 
@@ -41,7 +44,7 @@ Skill Markdown and audit JSON in this directory remain authoring evidence.
 Normal generation does not semantically combine Markdown into the final Agent
 prose and never rewrites metadata/selection files.
 
-The Agent metadata generator also reads the committed `internal/cli/schema_mcp_metadata.json` after Skill and Hint parsing. A sanitized MCP description can fill an otherwise empty `agent_summary`; it is marked `reviewed: false`, retains revision provenance, and cannot infer or override risk/effect fields.
+The Agent metadata pipeline (invoked in-memory by Catalog generation) also reads the committed `internal/cli/schema_mcp_metadata.json` after Skill and Hint parsing. A sanitized MCP description can fill an otherwise empty `agent_summary`; it is marked `reviewed: false`, retains revision provenance, and cannot infer or override risk/effect fields.
 
 Tool keys should use stable `canonical_path` values from `internal/cli/schema_command_registry.json`. CLI paths and aliases are also accepted and are reconciled to the canonical public tool during generation.
 

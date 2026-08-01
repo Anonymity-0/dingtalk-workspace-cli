@@ -292,11 +292,10 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 	if err := loadCatalogValidateProvenance(registry); err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema provenance: %w", err)
 	}
-	if registry.Source == "embedded-command-catalog" {
-		if err := loadCatalogValidateAgentMetadata(registry); err != nil {
-			return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema Agent metadata set: %w", err)
-		}
-	}
+	// Agent metadata is no longer a shipped embed. Build-time Catalog generation
+	// still validates the injected Agent metadata set; the production loader
+	// trusts the committed catalog snapshot and must not reopen that retired
+	// intermediate artifact.
 	return loadedSchemaCatalog{Snapshot: snapshot, Registry: registry, Index: index}, nil
 }
 

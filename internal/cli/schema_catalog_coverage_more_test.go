@@ -117,9 +117,8 @@ func TestCrossPlatformCoverageLoadSchemaCatalogSnapshotGateFailures(t *testing.T
 	embedded.Catalog["source"] = "embedded-command-catalog"
 	embedded.SourceHash = schemaCatalogSnapshotHash(embedded)
 	installCatalogLoadNoops()
-	loadCatalogValidateAgentMetadata = func(SchemaRegistry) error { return failure }
-	if _, err := loadSchemaCatalogSnapshot(embedded); err == nil || !strings.Contains(err.Error(), "load gate failed") {
-		t.Fatalf("agent metadata load gate = %v", err)
+	if _, err := loadSchemaCatalogSnapshot(embedded); err != nil {
+		t.Fatalf("embedded catalog load without Agent metadata gate = %v", err)
 	}
 }
 

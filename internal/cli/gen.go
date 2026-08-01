@@ -13,7 +13,7 @@
 
 // gen.go is the single entry point for reviewed CLI asset generation. It isolates
 // all //go:generate pragmas from business code so that:
-//   - schema_agent_metadata.go / schema_catalog.go contain only types + embed.
+//   - schema_catalog.go contains only types + embed.
 //   - Generation is a standalone process (make generate-schema triggers this).
 //   - The authored-input → generated-output contract is documented in one place.
 //
@@ -27,17 +27,14 @@
 //
 // schema_hints/metadata/ is retired (directory may be absent).
 // index.metadata may be omitted or {}; leaf safety/params come from Contract.
+// schema_agent_metadata/ is retired: Catalog generation injects Agent metadata
+// in-memory and does not write or embed that intermediate JSON directory.
 //
 // Generation outputs (embedded at build):
-//   - schema_agent_metadata/*.json         per-product agent metadata
 //   - schema_catalog/                      per-product catalog shards
 //   - param_aliases_generated.go           per-command parameter normalization
 
 package cli
 
-//go:generate go run ../generator/cmd_schema_agent_metadata -root ../.. -registry internal/cli/schema_command_registry -output-dir schema_agent_metadata -audit-output schema_agent_metadata_audit.json
-// Rebuild all dependencies so the Catalog compiler cannot reuse the cli
-// package cached by the preceding metadata generator with the old embedded
-// JSON files.
 //go:generate go run -a ../generator/cmd_schema_catalog -root ../.. -output schema_catalog
 //go:generate go run ../generator/cmd_param_aliases -root ../.. -output param_aliases_generated.go

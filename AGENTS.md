@@ -12,8 +12,10 @@ unrelated work, and use `gofmt` for every modified Go file.
 - Check generated drift: `./scripts/policy/check-generated-drift.sh`
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
 
-Generated Schema JSON is committed. Change its source inputs and generators,
-then regenerate; do not hand-edit generated Catalog or Agent metadata files.
+Generated Schema JSON is committed under `schema_catalog/` only (`go:embed`).
+Change its source inputs and generators, then regenerate; do not hand-edit
+generated Catalog files. `schema_agent_metadata/` is retired: if that directory
+(or `schema_agent_metadata_audit.json`) is present, policy fails.
 `internal/cli/schema_command_registry.json` is different: it is a reviewed
 `CommandRegistry` source, not a generated snapshot. It is the single reviewed
 source of stable canonical identity,
@@ -112,13 +114,16 @@ The Schema system has two physically separated processes:
 **Generation** (build-time, slow, reviewed, one-way):
 - Entry point: `internal/cli/gen.go` (all `//go:generate` pragmas isolated here,
   not in business code).
-- Tools: `internal/generator/cmd_schema_agent_metadata` + `cmd_schema_catalog` +
-  `cmd_param_aliases` (standalone Go mains).
+- Tools: `cmd_schema_catalog` + `cmd_param_aliases` (standalone Go mains via
+  `//go:generate`). Catalog generation injects Agent metadata in-memory
+  (`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON`); it does
+  not write `schema_agent_metadata/`. `cmd_schema_agent_metadata` may remain as
+  a non-delivery helper/test binary and is not a `go:generate` entry.
 - Inputs: authored source groups (registry + required hints selection + MCP
   metadata + parameter bindings + reviewed parameter concepts + cobra tree).
   `schema_hints/metadata/` is retired and may be absent.
-- Output: `schema_catalog/` (per-product shards) + `schema_agent_metadata/` +
-  `param_aliases_generated.go`.
+- Output (delivery): `schema_catalog/` (per-product shards, `go:embed`) +
+  `param_aliases_generated.go`. `schema_agent_metadata/` must not reappear.
 - Refresh MCP metadata: `make fetch-mcp-metadata` (iterates 26 MCP server
   endpoints, merges with previous data for cross-server interface_ref).
 - Gates: `make generate-schema` (byte guards on inputs), `check-generated-drift.sh`,
@@ -175,9 +180,9 @@ When adding or changing an Agent-visible command, review all relevant inputs:
   assertions against `EffectiveCommandRegistry`. They must agree exactly and
   must never materialize, infer, or override registry identity.
 - Flag-to-interface property mappings and required/default semantics.
-- Generated files under `internal/cli/schema_agent_metadata/` and
-  `internal/cli/schema_catalog/` (catalog.json + tools/<product>.json) after
-  running generation.
+- Generated delivery under `internal/cli/schema_catalog/` (catalog.json +
+  tools/<product>.json) after running generation. Do not expect or commit
+  `schema_agent_metadata/`.
 
 Run the reverse-completeness tests whenever the Cobra tree changes. A command
 that works through `dws <path>` but cannot be found through the matching
@@ -237,8 +242,7 @@ For every curated tool:
    (`DeclareLeafMetadata` / `Shortcut.Schema` / ParamDecl).
 2. Edit `selection/<product>.json` for selection prose (`reviewed: true`,
    `review_reason`, `source_refs`).
-3. Run `make generate-schema`. Do not hand-edit generated
-   `schema_agent_metadata/` or `schema_catalog/`.
+3. Run `make generate-schema`. Do not hand-edit generated `schema_catalog/`.
 
 ### Pull live MCP descriptions (personal token)
 
