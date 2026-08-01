@@ -26,8 +26,8 @@
 package shortcut
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // Risk classifies the side effect of running a shortcut. It drives whether a
@@ -152,7 +152,7 @@ type Shortcut struct {
 	// Safety is an optional explicit Schema/runtime safety declaration. When
 	// non-empty it overrides Risk expansion in FromShortcut; otherwise Risk
 	// still drives ConfirmSafety so existing Execute bodies stay unchanged.
-	Safety cli.SafetySpec
+	Safety contract.SafetySpec
 	// Schema is the final Agent Schema overlay (selection/interface/dry-run).
 	// Empty keeps the legacy hints path until the command is migrated.
 	Schema corecmd.SchemaDecl

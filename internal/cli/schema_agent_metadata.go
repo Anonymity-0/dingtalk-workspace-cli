@@ -258,30 +258,6 @@ func projectAgentInterfaceRefProvenance(provenance FieldProvenance, ref *Interfa
 	return provenance
 }
 
-func resolvedFieldProvenance(value any, source, sourceRef, precedence, resolution, reviewReason string) FieldProvenance {
-	raw, err := json.Marshal(value)
-	if err != nil {
-		raw = json.RawMessage("null")
-	}
-	selected := true
-	return FieldProvenance{
-		Value:        append(json.RawMessage(nil), raw...),
-		Source:       strings.TrimSpace(source),
-		SourceRef:    strings.TrimSpace(sourceRef),
-		Precedence:   strings.TrimSpace(precedence),
-		Resolution:   strings.TrimSpace(resolution),
-		ReviewReason: strings.TrimSpace(reviewReason),
-		Candidates: []FieldCandidateProvenance{{
-			Value:        append(json.RawMessage(nil), raw...),
-			Source:       strings.TrimSpace(source),
-			SourceRef:    strings.TrimSpace(sourceRef),
-			Precedence:   strings.TrimSpace(precedence),
-			ReviewReason: strings.TrimSpace(reviewReason),
-			Selected:     &selected,
-		}},
-	}
-}
-
 // agentProductSelectionForIDsFromMetadata exposes generated product routing
 // through the same typed SelectionSpec used by ToolSpec.
 func agentProductSelectionForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (SelectionSpec, bool) {
@@ -302,7 +278,7 @@ func agentProductContractForIDsFromMetadata(source embeddedAgentMetadata, ids ..
 			AvoidWhen:          cloneOptionalStrings(metadata.AvoidWhen),
 			SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
 			MetadataSource:     embeddedAgentMetadataSource,
-		}.normalized()
+		}.Normalized()
 		return selection, cloneFieldProvenance(metadata.FieldProvenance), true
 	}
 	return SelectionSpec{}, nil, false
@@ -326,7 +302,7 @@ func agentToolSelection(metadata agentToolMetadata) SelectionSpec {
 		Reviewed:           reviewed,
 		SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
 		MetadataSource:     embeddedAgentMetadataSource,
-	}.normalized()
+	}.Normalized()
 }
 
 func cloneFieldProvenance(source map[string]FieldProvenance) map[string]FieldProvenance {

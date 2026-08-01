@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // SchemaDecl is the final Schema leaf payload authored on the command
@@ -152,7 +152,7 @@ func validateSchemaDecl(spec Spec) {
 	if iface := spec.Schema.Interface; iface == nil ||
 		strings.TrimSpace(iface.Mode) == "" || strings.TrimSpace(iface.Availability) == "" {
 		missing = append(missing, "Schema.Interface (mode/availability)")
-	} else if (iface.Mode == cli.InterfaceModeComposite || iface.Availability == cli.InterfaceUnavailable) &&
+	} else if (iface.Mode == contract.InterfaceModeComposite || iface.Availability == contract.InterfaceUnavailable) &&
 		strings.TrimSpace(iface.Reason) == "" {
 		missing = append(missing, "Schema.Interface.Reason")
 	}

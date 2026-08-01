@@ -203,11 +203,11 @@ func TestCrossPlatformCoverageRuntimeContractFinalRejectsForeignStoredValue(t *t
 
 	// Defensive branch: a stored value that is not a *ContractFinalPayload
 	// (or a typed nil) must fail the read instead of panicking.
-	contractFinalByCommand.Store(cmd, "not-a-payload")
+	storeRuntimeContractFinalRawForTest(cmd, "not-a-payload")
 	if _, ok := RuntimeContractFinal(cmd); ok {
 		t.Fatal("foreign stored value must not decode as ContractFinalPayload")
 	}
-	contractFinalByCommand.Store(cmd, (*ContractFinalPayload)(nil))
+	storeRuntimeContractFinalRawForTest(cmd, (*ContractFinalPayload)(nil))
 	if _, ok := RuntimeContractFinal(cmd); ok {
 		t.Fatal("typed nil payload must not decode as ContractFinalPayload")
 	}

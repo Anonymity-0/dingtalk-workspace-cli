@@ -66,17 +66,6 @@ type RuntimeSchemaConstraints struct {
 	RequireTogether   [][]string `json:"require_together,omitempty"`
 }
 
-// RuntimeSchemaPositional describes one ordered CLI argument. Name is also
-// used by RuntimeSchemaConstraints when a one-of group mixes flags and args.
-type RuntimeSchemaPositional struct {
-	Name        string `json:"name"`
-	Type        string `json:"type,omitempty"`
-	Description string `json:"description,omitempty"`
-	Required    bool   `json:"required"`
-	Variadic    bool   `json:"variadic,omitempty"`
-	Index       int    `json:"index"`
-}
-
 type embeddedMCPMetadata struct {
 	Version        int                                `json:"version"`
 	Source         string                             `json:"source"`

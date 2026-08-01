@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 var reviewedSelectionFields = map[string]bool{
@@ -87,7 +88,7 @@ func validateReviewedSelectionDelivery(file File, opts Options) error {
 		if !ok {
 			// ProductDecl-registered products may omit selection/ products{}
 			// rows; their contract_final prose is applied outside hint files.
-			if cli.HasProductDecl(productID) {
+			if contract.HasProductDecl(productID) {
 				continue
 			}
 			problems = append(problems, "missing product "+productID)
@@ -210,7 +211,7 @@ func selectionHintCoverageProducts(productIDs map[string]bool) map[string]bool {
 			continue
 		}
 		productID = strings.TrimSpace(productID)
-		if productID == "" || cli.HasProductDecl(productID) {
+		if productID == "" || contract.HasProductDecl(productID) {
 			continue
 		}
 		expected[productID] = true
@@ -245,7 +246,7 @@ func validateSelectionAuthoringContracts(opts Options) error {
 	expectedTools := expectedCanonicalToolSet(opts)
 	for canonical := range expectedTools {
 		bound, ok := opts.BoundCommands.ByCanonical[canonical]
-		if ok && cli.HasRuntimeContractFinal(bound.PrimaryCommand) {
+		if ok && contract.HasRuntimeContractFinal(bound.PrimaryCommand) {
 			delete(expectedTools, canonical)
 		}
 	}

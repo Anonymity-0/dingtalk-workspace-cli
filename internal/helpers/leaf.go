@@ -20,8 +20,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -156,7 +156,7 @@ type LeafSpec struct {
 
 	// Safety 直接使用 Agent Runtime Schema 的安全模型。Confirmation 驱动
 	// 运行时确认，其余字段原样进入 Schema；字段之间不做机械推导。
-	Safety cli.SafetySpec
+	Safety contract.SafetySpec
 
 	// ConfirmFirst 为 true 时确认门先于 required/约束/Validate 校验执行
 	//（devapp 旧版写守卫语义：写命令未带 --yes 时快速失败
@@ -325,7 +325,7 @@ func installContractRunEPipeline(cmd *cobra.Command, rt *contractRuntime) {
 type contractConfirmCaller struct {
 	inner     edition.ToolCaller
 	cmd       *cobra.Command
-	safety    cli.SafetySpec
+	safety    contract.SafetySpec
 	confirmed bool
 }
 

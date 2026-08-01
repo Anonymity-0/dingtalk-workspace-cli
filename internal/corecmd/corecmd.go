@@ -62,6 +62,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 )
@@ -205,9 +206,9 @@ const (
 //	Use/Short/Long/Example, Schema (ToolSpec groups)
 //
 // Schema assembly pass-throughs embedded dws.schema.* — no reviewed/hints
-// parallel authority for declared fields. Safety uses cli.SafetySpec directly:
-// confirmation drives the runtime gate, while effect/risk/idempotency are
-// published unchanged. No safety field is inferred from another.
+// parallel authority for declared fields. Safety uses contract.SafetySpec
+// directly: confirmation drives the runtime gate, while effect/risk/idempotency
+// are published unchanged. No safety field is inferred from another.
 //
 // Execution surface (hooks — not declaration):
 //
@@ -235,11 +236,11 @@ type Spec struct {
 	// ParameterProjection controls whether parameter facts are final
 	// declaration annotations or Cobra-backed compatibility facts.
 	ParameterProjection ParameterProjectionMode
-	// Safety is the command's single safety source. The same cli.SafetySpec is
-	// used for runtime confirmation and the published Schema. A completely
+	// Safety is the command's single safety source. The same contract.SafetySpec
+	// is used for runtime confirmation and the published Schema. A completely
 	// empty value keeps the historical read-only default; a non-empty value
 	// must declare effect/risk/confirmation/idempotency together.
-	Safety cli.SafetySpec
+	Safety contract.SafetySpec
 	// ConfirmFirst runs the Safety confirmation before required/constraint/
 	// Validate checks instead of after them. Use it where the legacy semantics
 	// were guard-first (a write without --yes fails fast with
@@ -1022,7 +1023,7 @@ func ValidateConstraints(cmd *cobra.Command, flags []FlagSpec, constraints []Con
 // non-Sheet leaves. Sheet destructive commands keep a separate --yes-only
 // outer gate (helpers.protectSheetMutationCommand) so agents cannot authorize
 // those via stdin alone.
-func ConfirmSafety(cmd *cobra.Command, safety cli.SafetySpec) error {
+func ConfirmSafety(cmd *cobra.Command, safety contract.SafetySpec) error {
 	if strings.TrimSpace(safety.Confirmation) != "user_required" ||
 		confirmationBypass(cmd) {
 		return nil
@@ -1203,7 +1204,7 @@ func embedSchemaDecl(cmd *cobra.Command, spec Spec) {
 // onto helpers while keeping execution substance frozen. Overwrites any prior
 // ContractFinal on cmd (catalog/agent metadata source); does not alter an
 // already-installed ConfirmSafety closure.
-func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, short, long string) {
+func AttachSchema(cmd *cobra.Command, safety contract.SafetySpec, schema SchemaDecl, short, long string) {
 	if cmd == nil || schema.empty() {
 		return
 	}
@@ -1212,7 +1213,7 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 	validateSchemaDecl(Spec{Use: cmd.Name(), Safety: safety, Schema: schema})
 	validateSafetySpec(Spec{Use: cmd.Name(), Safety: safety})
 
-	payload := cli.ContractFinalPayload{
+	payload := contract.ContractFinalPayload{
 		Title: firstNonEmpty(schema.Title, short),
 		// Cobra Long wins over the declared Description when the command authored
 		// one: Schema.Description is mandatory for every declaration, so letting it
@@ -1222,28 +1223,28 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 		Safety:      schemaSafetyFromDecl(safety),
 	}
 	if n := len(schema.Positionals); n > 0 {
-		payload.Positionals = make([]cli.RuntimeSchemaPositional, n)
+		payload.Positionals = make([]contract.RuntimeSchemaPositional, n)
 		for i, p := range schema.Positionals {
-			payload.Positionals[i] = cli.RuntimeSchemaPositional{
+			payload.Positionals[i] = contract.RuntimeSchemaPositional{
 				Name: p.Name, Type: p.Type, Description: p.Description,
 				Required: p.Required, Variadic: p.Variadic, Index: p.Index,
 			}
 		}
 	}
 	if schema.DryRun != nil && strings.TrimSpace(schema.DryRun.PreviewKind) != "" {
-		payload.DryRun = &cli.DryRunSpec{
+		payload.DryRun = &contract.DryRunSpec{
 			PreviewKind: strings.TrimSpace(schema.DryRun.PreviewKind),
 			RemoteReads: schema.DryRun.RemoteReads,
 		}
 	}
 	if schema.Interface != nil {
-		iface := &cli.InterfaceSpec{
+		iface := &contract.InterfaceSpec{
 			Mode:         strings.TrimSpace(schema.Interface.Mode),
 			Availability: strings.TrimSpace(schema.Interface.Availability),
 			Reason:       strings.TrimSpace(schema.Interface.Reason),
 		}
 		if pid := strings.TrimSpace(schema.Interface.ProductID); pid != "" {
-			iface.Ref = &cli.InterfaceRefSpec{ProductID: pid, RPCName: strings.TrimSpace(schema.Interface.RPCName)}
+			iface.Ref = &contract.InterfaceRefSpec{ProductID: pid, RPCName: strings.TrimSpace(schema.Interface.RPCName)}
 		}
 		if iface.Mode != "" || iface.Ref != nil || iface.Availability != "" || iface.Reason != "" {
 			payload.Interface = iface
@@ -1252,7 +1253,7 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 	if sel := schema.Selection; strings.TrimSpace(sel.AgentSummary) != "" || len(sel.UseWhen) > 0 ||
 		len(sel.AvoidWhen) > 0 || len(sel.Examples) > 0 || len(sel.Prerequisites) > 0 ||
 		len(sel.Tips) > 0 || len(sel.WorkflowRefs) > 0 {
-		payload.Selection = &cli.SelectionSpec{
+		payload.Selection = &contract.SelectionSpec{
 			AgentSummary: strings.TrimSpace(sel.AgentSummary),
 			UseWhen:      sel.UseWhen, AvoidWhen: sel.AvoidWhen,
 			Prerequisites: sel.Prerequisites, Tips: sel.Tips,
@@ -1260,7 +1261,7 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 		}
 	}
 	if id := schema.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" {
-		payload.Identity = &cli.ToolIdentitySpec{
+		payload.Identity = &contract.ToolIdentitySpec{
 			ProductID: strings.TrimSpace(id.ProductID), SourceProductID: strings.TrimSpace(id.SourceProductID),
 			Name: strings.TrimSpace(id.Name), CLIName: strings.TrimSpace(id.CLIName),
 			CanonicalPath: strings.TrimSpace(id.CanonicalPath), CLIPath: strings.TrimSpace(id.CLIPath),
@@ -1269,9 +1270,9 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 		}
 	}
 	if len(schema.Parameters) > 0 {
-		payload.Parameters = make([]cli.ParamDecl, 0, len(schema.Parameters))
+		payload.Parameters = make([]contract.ParamDecl, 0, len(schema.Parameters))
 		for _, p := range schema.Parameters {
-			payload.Parameters = append(payload.Parameters, cli.ParamDecl{
+			payload.Parameters = append(payload.Parameters, contract.ParamDecl{
 				Name:          p.Name,
 				Property:      p.Property,
 				Required:      p.Required,
@@ -1282,7 +1283,8 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 			})
 		}
 	}
-	cli.RegisterRuntimeContractFinal(cmd, payload)
+	cli.AnnotateRuntimeContract(cmd)
+	contract.RegisterRuntimeContractFinal(cmd, payload)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -1296,14 +1298,14 @@ func firstNonEmpty(values ...string) string {
 
 // schemaSafetyFromDecl copies the single command SafetySpec into the final
 // Schema payload. The zero value keeps the historical read-only default.
-func schemaSafetyFromDecl(safety cli.SafetySpec) *cli.SafetySpec {
+func schemaSafetyFromDecl(safety contract.SafetySpec) *contract.SafetySpec {
 	out := effectiveSafetySpec(safety)
 	out.EffectSource = "corecmd.contract"
 	return &out
 }
 
-func effectiveSafetySpec(safety cli.SafetySpec) cli.SafetySpec {
-	out := cli.SafetySpec{
+func effectiveSafetySpec(safety contract.SafetySpec) contract.SafetySpec {
+	out := contract.SafetySpec{
 		Effect:       strings.TrimSpace(safety.Effect),
 		Risk:         strings.TrimSpace(safety.Risk),
 		Confirmation: strings.TrimSpace(safety.Confirmation),

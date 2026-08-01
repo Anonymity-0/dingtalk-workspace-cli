@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cli
+package contract
 
 import (
 	"fmt"
@@ -37,8 +37,7 @@ type ProductSelectionDecl struct {
 }
 
 // ProductDecl is the product-level Schema routing declaration. Assembly writes
-// ProductSpec.Selection with provenance contract_final. Selection JSON rows
-// are optional when a product is registered here.
+// ProductSpec.Selection with provenance contract_final.
 type ProductDecl struct {
 	ID        string
 	Selection ProductSelectionDecl
@@ -92,8 +91,6 @@ func LookupProductDecl(productID string) (ProductDecl, bool) {
 }
 
 // HasProductDecl reports whether product-level routing is declared in code.
-// Selection-hint coverage gates use this to exempt Decl products from a
-// required selection/ products{} row.
 func HasProductDecl(productID string) bool {
 	_, ok := LookupProductDecl(productID)
 	return ok
@@ -132,9 +129,9 @@ func ProductSelectionFromDecl(decl ProductDecl) (SelectionSpec, map[string]Field
 		AvoidWhen:          append([]string(nil), decl.Selection.AvoidWhen...),
 		SourceRefs:         []string{ProductDeclSourceRef},
 		MetadataSource:     ProductDeclProvenanceSource,
-	}.normalized()
+	}.Normalized()
 	provenance := map[string]FieldProvenance{
-		"agent_summary": resolvedFieldProvenance(
+		"agent_summary": ResolvedFieldProvenance(
 			selection.AgentSummary,
 			ProductDeclProvenanceSource,
 			ProductDeclSourceRef,
@@ -142,7 +139,7 @@ func ProductSelectionFromDecl(decl ProductDecl) (SelectionSpec, map[string]Field
 			"contract_pass_through",
 			"ProductDecl final Schema pass-through",
 		),
-		"use_when": resolvedFieldProvenance(
+		"use_when": ResolvedFieldProvenance(
 			selection.UseWhen,
 			ProductDeclProvenanceSource,
 			ProductDeclSourceRef,
@@ -150,7 +147,7 @@ func ProductSelectionFromDecl(decl ProductDecl) (SelectionSpec, map[string]Field
 			"contract_pass_through",
 			"ProductDecl final Schema pass-through",
 		),
-		"avoid_when": resolvedFieldProvenance(
+		"avoid_when": ResolvedFieldProvenance(
 			selection.AvoidWhen,
 			ProductDeclProvenanceSource,
 			ProductDeclSourceRef,

@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -78,11 +78,11 @@ func applyContractFinalProductDeclarations(file *File, opts Options) error {
 	if file.Products == nil {
 		file.Products = map[string]ProductMetadata{}
 	}
-	for _, productID := range cli.RegisteredProductDeclIDs() {
+	for _, productID := range contract.RegisteredProductDeclIDs() {
 		if len(opts.ProductIDs) > 0 && !opts.ProductIDs[productID] {
 			continue
 		}
-		decl, ok := cli.LookupProductDecl(productID)
+		decl, ok := contract.LookupProductDecl(productID)
 		if !ok {
 			continue
 		}
@@ -118,12 +118,12 @@ func applyContractFinalProductDeclarations(file *File, opts Options) error {
 }
 
 // productDeclOrigin labels ProductDecl candidates in Agent-metadata provenance.
-const productDeclOrigin = cli.ProductDeclProvenanceSource
+const productDeclOrigin = contract.ProductDeclProvenanceSource
 
-func contractFinalProductMetadata(decl cli.ProductDecl) ProductMetadata {
+func contractFinalProductMetadata(decl contract.ProductDecl) ProductMetadata {
 	metadata := ProductMetadata{
-		AgentSummarySource: cli.ProductDeclSourceRef,
-		SourceRefs:         []string{cli.ProductDeclSourceRef},
+		AgentSummarySource: contract.ProductDeclSourceRef,
+		SourceRefs:         []string{contract.ProductDeclSourceRef},
 	}
 	if summary := strings.TrimSpace(decl.Selection.AgentSummary); summary != "" {
 		metadata.AgentSummary = summary
@@ -151,7 +151,7 @@ func contractFinalProductMetadata(decl cli.ProductDecl) ProductMetadata {
 // Absent payload sections stay absent (never authored-empty); declared
 // sections map field-by-field, preserving explicit empty-list authorship.
 func contractFinalToolMetadata(command *cobra.Command) (ToolMetadata, bool) {
-	payload, ok := cli.RuntimeContractFinal(command)
+	payload, ok := contract.RuntimeContractFinal(command)
 	if !ok {
 		return ToolMetadata{}, false
 	}

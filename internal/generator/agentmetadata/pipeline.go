@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -77,7 +78,7 @@ func SelectionHintCoverageTools(projection RegistryProjection) map[string]bool {
 	}
 	for canonical := range expectedTools {
 		bound, ok := projection.Bound.ByCanonical[canonical]
-		if ok && cli.HasRuntimeContractFinal(bound.PrimaryCommand) {
+		if ok && contract.HasRuntimeContractFinal(bound.PrimaryCommand) {
 			delete(expectedTools, canonical)
 		}
 	}

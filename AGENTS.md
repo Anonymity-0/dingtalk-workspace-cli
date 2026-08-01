@@ -28,7 +28,7 @@ changes must not rewrite it mechanically.
 - Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
 - Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Schema`) → `corecmd.New`
 - **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Schema` (ToolSpec groups)
-- `Safety` uses the existing `cli.SafetySpec` directly. Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); assembly **pass-throughs** Final.
+- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract`; `cli.SafetySpec` is a thin alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Schema` is set, convert once → `RegisterRuntimeContractFinal` (map store, no JSON/deep-clone); assembly **pass-throughs** Final.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
 - Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
 
@@ -167,7 +167,8 @@ When adding or changing an Agent-visible command, review all relevant inputs:
 - Leaf `Safety` / `Schema` / `ParamDecl` (helpers `LeafSpec` or shortcut
   `Schema`) for parameter facts, interface disposition, safety, and Agent
   selection prose. Delivered provenance is `contract_final` from
-  `corecmd.contract`. Product routing uses `ProductDecl` (`cli.product_decl`).
+  `corecmd.contract`. Product routing uses `ProductDecl`
+  (`internal/corecmd/contract`; provenance label remains `cli.product_decl`).
 - `internal/cli/schema_hints/` is fully retired. Do not reintroduce HintFiles,
   audit JSON, or `imported/` baselines; declare on ProductDecl / the owning
   leaf instead.

@@ -11,10 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cli
+package contract
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -37,60 +36,14 @@ type ContractFinalPayload struct {
 
 var contractFinalByCommand sync.Map // *cobra.Command → *ContractFinalPayload
 
-// ParamDecl is one parameter-level Schema fact declared on a command. It is
-// stored at DeclareLeafMetadata time and applied as annotations at assembly
-// time, when all flags are guaranteed to exist on the fully-built command tree.
-type ParamDecl struct {
-	Name          string
-	Property      string
-	Required      *bool
-	InterfaceType string
-	Description   string
-	RequiredWhen  string
-	Enum          []string
-}
-
-// ApplyParamDecls emits parameter declarations as dws.schema.* annotations on the
-// command's flags. Called at assembly time (runtimeToolSpecFromContractFinal)
-// when all flags exist on the fully-built command tree. The decls come from
-// the ContractFinalPayload, so no separate storage is needed.
-func ApplyParamDecls(cmd *cobra.Command, decls []ParamDecl) {
-	if cmd == nil || len(decls) == 0 {
-		return
-	}
-	for _, p := range decls {
-		name := strings.TrimSpace(p.Name)
-		if name == "" {
-			continue
-		}
-		if prop := strings.TrimSpace(p.Property); prop != "" {
-			AnnotateRuntimeFlagProperty(cmd, name, prop)
-		}
-		if p.Required != nil {
-			AnnotateRuntimeFlagRequiredValue(cmd, name, *p.Required)
-		}
-		if it := strings.TrimSpace(p.InterfaceType); it != "" {
-			AnnotateRuntimeFlagInterfaceType(cmd, name, it)
-		}
-		if desc := strings.TrimSpace(p.Description); desc != "" {
-			AnnotateRuntimeFlagDescription(cmd, name, desc)
-		}
-		if rw := strings.TrimSpace(p.RequiredWhen); rw != "" {
-			AnnotateRuntimeFlagRequiredWhen(cmd, name, rw)
-		}
-		if len(p.Enum) > 0 {
-			AnnotateRuntimeFlagEnum(cmd, name, p.Enum...)
-		}
-	}
-}
-
 // RegisterRuntimeContractFinal stores the typed final Schema overlay for a leaf.
 // Light runtime write: one map store, no JSON, no deep clone.
+// Annotation side-effects (dws.schema.contract) remain the caller's
+// responsibility so this package stays free of CLI delivery imports.
 func RegisterRuntimeContractFinal(cmd *cobra.Command, payload ContractFinalPayload) {
 	if cmd == nil {
 		return
 	}
-	AnnotateRuntimeContract(cmd)
 	p := payload
 	contractFinalByCommand.Store(cmd, &p)
 }
@@ -124,5 +77,12 @@ func HasRuntimeContractFinal(cmd *cobra.Command) bool {
 func ClearRuntimeContractFinalForTest(cmd *cobra.Command) {
 	if cmd != nil {
 		contractFinalByCommand.Delete(cmd)
+	}
+}
+
+// StoreRuntimeContractFinalRawForTest injects a raw map value (tests only).
+func StoreRuntimeContractFinalRawForTest(cmd *cobra.Command, raw any) {
+	if cmd != nil {
+		contractFinalByCommand.Store(cmd, raw)
 	}
 }
