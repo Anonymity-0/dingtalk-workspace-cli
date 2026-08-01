@@ -5264,10 +5264,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a non-blank tag name, builds a one-element userTags request, and invokes create_todo_tag without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "name"
                 },
                 {
@@ -5277,19 +5276,17 @@
                   "value": "name"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a non-blank tag name, builds a one-element userTags request, and invokes create_todo_tag without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "name"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a non-blank tag name, builds a one-element userTags request, and invokes create_todo_tag without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -5305,10 +5302,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a non-blank tag name, builds a one-element userTags request, and invokes create_todo_tag without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -6759,10 +6755,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -6772,19 +6767,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "tagCodes"
                 },
                 {
@@ -6794,19 +6787,17 @@
                   "value": "tagCodes"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "tagCodes"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -6822,10 +6813,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -8187,10 +8177,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "为 true 时跨组织查询全部待办；默认仅查询当前组织待办"
                 },
                 {
@@ -8206,10 +8195,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "为 true 时跨组织查询全部待办；默认仅查询当前组织待办"
             },
             "property": {
@@ -8237,10 +8225,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -8250,10 +8237,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -8295,10 +8281,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "角色类型列表；省略时运行时默认使用 executor"
                 },
                 {
@@ -8320,10 +8305,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "角色类型列表；省略时运行时默认使用 executor"
             },
             "example": {
@@ -8369,10 +8353,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "roleTypes"
                 },
                 {
@@ -8382,19 +8365,17 @@
                   "value": "roleTypes"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "roleTypes"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -8410,10 +8391,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -11642,10 +11622,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI rejects malformed or structurally invalid non-empty reminder rules before the reset mutation, while preserving omission and [] as explicit clear forms.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"
                 },
                 {
@@ -11661,10 +11640,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI rejects malformed or structurally invalid non-empty reminder rules before the reset mutation, while preserving omission and [] as explicit clear forms.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"
             },
             "property": {
@@ -18163,10 +18141,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -18176,19 +18153,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "tagCodes"
                 },
                 {
@@ -18198,19 +18173,17 @@
                   "value": "tagCodes"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "tagCodes"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -18226,10 +18199,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -18292,10 +18264,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "taskId"
                 },
                 {
@@ -18305,19 +18276,17 @@
                   "value": "taskId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "taskId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -18333,10 +18302,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -19335,10 +19303,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -19348,19 +19315,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "userTags"
                 },
                 {
@@ -19370,19 +19335,17 @@
                   "value": "userTags"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "userTags"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -19398,10 +19361,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

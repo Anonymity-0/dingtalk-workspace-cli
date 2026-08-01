@@ -9,82 +9,21 @@
   },
   "tools": {
     "contact.add_employee": {
-      "parameters": {
-        "org-user-name": {
-          "property": "orgUserName",
-          "required": true
-        },
-        "org-user-mobile": {
-          "property": "orgUserMobile",
-          "required": true
-        },
-        "depts": {
-          "property": "depts",
-          "required": false,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "contact user invite",
       "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate."
     },
     "contact.exclusive_account_create": {
-      "parameters": {
-        "org-user-name": {
-          "property": "orgUserName",
-          "required": true
-        },
-        "login-id": {
-          "property": "loginId",
-          "required": true
-        },
-        "org-user-mobile": {
-          "property": "orgUserMobile",
-          "required": false
-        },
-        "email": {
-          "property": "email",
-          "required": false
-        },
-        "dept-ids": {
-          "property": "deptIds",
-          "required": false,
-          "interface_type": "array"
-        },
-        "send-pwd-via-sms": {
-          "property": "sendPwdViaSms",
-          "required": false,
-          "interface_type": "boolean"
-        }
-      },
       "reviewed": true,
       "cli_path": "contact account create",
       "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate."
     },
     "contact.get_authorized_emp_rosterInfo": {
-      "parameters": {
-        "fields": {
-          "required": false
-        },
-        "staff-id": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "contact user profile get",
       "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope."
     },
     "contact.org_create": {
-      "parameters": {
-        "org-name": {
-          "property": "orgName",
-          "required": true
-        },
-        "creator-username": {
-          "property": "creatorUsername",
-          "required": true
-        }
-      },
       "reviewed": true,
       "cli_path": "contact org create",
       "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate."

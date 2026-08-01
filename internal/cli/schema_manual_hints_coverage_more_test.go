@@ -483,3 +483,29 @@ func TestCrossPlatformCoverageEmbeddedManualSchemaHintWrapperErrors(t *testing.T
 		t.Fatalf("ValidateEmbeddedManualAgentExampleDelivery() error = %v", err)
 	}
 }
+
+// TestCrossPlatformCoverageBuildManualAgentExampleExecutionPlanDefaultsMissingHintToEmpty pins the
+// defensive default: a canonical collected from the declared set whose bound
+// entry resolves without a ContractFinal payload and without a hint-file row
+// gets an empty hint instead of failing or reusing stale prose.
+func TestCrossPlatformCoverageBuildManualAgentExampleExecutionPlanDefaultsMissingHintToEmpty(t *testing.T) {
+	declaredCmd := &cobra.Command{Use: "get", Run: func(*cobra.Command, []string) {}}
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(declaredCmd) })
+	RegisterRuntimeContractFinal(declaredCmd, ContractFinalPayload{Title: "T"})
+
+	bareCmd := &cobra.Command{Use: "get", Run: func(*cobra.Command, []string) {}}
+	commandSpec := CommandSpec{CanonicalPath: "sample.get", PrimaryCLIPath: "sample get"}
+	bound := BoundCommandRegistry{
+		Commands: []BoundCommandSpec{{CommandSpec: commandSpec, PrimaryCommand: declaredCmd}},
+		ByCanonical: map[string]BoundCommandSpec{
+			"sample.get": {CommandSpec: commandSpec, PrimaryCommand: bareCmd},
+		},
+	}
+	plan, err := buildManualAgentExampleExecutionPlan(bound, nil, ManualAgentHintSet{})
+	if err != nil {
+		t.Fatalf("buildManualAgentExampleExecutionPlan() error = %v", err)
+	}
+	if plan.Total != 0 || len(plan.Examples) != 0 {
+		t.Fatalf("empty defensive hint must plan no examples, got %#v", plan)
+	}
+}

@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -67,5 +68,92 @@ func TestSchemaHintDeclLookupCoverage(t *testing.T) {
 	}
 	if _, ok := lookupSchemaHintDecl("doc.create_document"); ok {
 		t.Fatal("doc.create_document must not remain in compiled hint decls")
+	}
+}
+
+func TestCrossPlatformCoverageLookupSchemaHintDeclBlankCanonical(t *testing.T) {
+	if _, ok := lookupSchemaHintDecl(""); ok {
+		t.Fatal("empty canonical must not resolve a hint decl")
+	}
+	if _, ok := lookupSchemaHintDecl("   "); ok {
+		t.Fatal("blank canonical must not resolve a hint decl")
+	}
+}
+
+func TestCrossPlatformCoverageAttachSchemaHintDeclNilCommandIsNoOp(t *testing.T) {
+	// Must not panic and must not register anything.
+	attachSchemaHintDecl(nil, testSchemaHintDeclFixture())
+}
+
+func TestCrossPlatformCoverageAttachSchemaHintDeclCompletenessPanics(t *testing.T) {
+	mustPanic := func(t *testing.T, wantFragment string, decl schemaHintDecl) {
+		t.Helper()
+		cmd := &cobra.Command{Use: "probe", Short: "probe"}
+		defer func() {
+			recovered := recover()
+			if recovered == nil {
+				t.Fatalf("attachSchemaHintDecl must panic for %q", wantFragment)
+			}
+			message, ok := recovered.(string)
+			if !ok || !strings.Contains(message, wantFragment) {
+				t.Fatalf("panic = %v, want fragment %q", recovered, wantFragment)
+			}
+			if HasRuntimeContractFinal(cmd) {
+				t.Fatal("panicking attach must not register ContractFinal")
+			}
+		}()
+		attachSchemaHintDecl(cmd, decl)
+	}
+
+	t.Run("missing description", func(t *testing.T) {
+		decl := testSchemaHintDeclFixture()
+		decl.Description = "   "
+		mustPanic(t, "missing Description", decl)
+	})
+	t.Run("missing selection prose", func(t *testing.T) {
+		decl := testSchemaHintDeclFixture()
+		decl.Selection.UseWhen = nil
+		mustPanic(t, "missing Selection prose", decl)
+	})
+	t.Run("missing interface", func(t *testing.T) {
+		decl := testSchemaHintDeclFixture()
+		decl.Interface = nil
+		mustPanic(t, "missing Interface", decl)
+	})
+	t.Run("composite without reason", func(t *testing.T) {
+		decl := testSchemaHintDeclFixture()
+		decl.Interface = &InterfaceSpec{Mode: InterfaceModeComposite, Availability: InterfaceAvailable}
+		mustPanic(t, "missing Interface.Reason", decl)
+	})
+}
+
+func TestCrossPlatformCoverageAttachSchemaHintDeclDefaultsEmptySafetyToRead(t *testing.T) {
+	decl := testSchemaHintDeclFixture()
+	decl.Safety = SafetySpec{}
+	cmd := &cobra.Command{Use: "probe", Short: "probe"}
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(cmd) })
+	attachSchemaHintDecl(cmd, decl)
+	final, ok := RuntimeContractFinal(cmd)
+	if !ok || final.Safety == nil {
+		t.Fatalf("ContractFinal after attach = %#v ok=%v", final, ok)
+	}
+	if final.Safety.Effect != "read" || final.Safety.Risk != "low" ||
+		final.Safety.Confirmation != "not_required" || final.Safety.Idempotency != "idempotent" {
+		t.Fatalf("defaulted safety = %#v", final.Safety)
+	}
+	if final.Safety.EffectSource != "corecmd.contract" {
+		t.Fatalf("effect source = %q, want corecmd.contract", final.Safety.EffectSource)
+	}
+}
+
+func TestFirstNonEmptyTrim(t *testing.T) {
+	if got := firstNonEmptyTrim("  ", "", "\t"); got != "" {
+		t.Fatalf("all-blank firstNonEmptyTrim = %q, want empty", got)
+	}
+	if got := firstNonEmptyTrim(); got != "" {
+		t.Fatalf("no-arg firstNonEmptyTrim = %q, want empty", got)
+	}
+	if got := firstNonEmptyTrim("", "  value  "); got != "value" {
+		t.Fatalf("firstNonEmptyTrim = %q, want value", got)
 	}
 }

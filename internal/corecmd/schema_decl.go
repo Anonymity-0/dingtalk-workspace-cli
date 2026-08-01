@@ -25,16 +25,46 @@ import (
 // Cobra leaf and Schema assembly pass-throughs the values — no reviewed /
 // hints parallel authority for those fields.
 //
-// Shape mirrors cli.ToolSpec groups (minus Parameters/Constraints, which come
-// from Flags/Constraints, and minus FieldProvenance, which is derived).
+// Shape mirrors cli.ToolSpec groups (minus Constraints, which come from
+// Constraints, and minus FieldProvenance, which is derived).
 type SchemaDecl struct {
 	Title       string
 	Description string
 	Positionals []PositionalDecl
+	Parameters  []ParamDecl
 	DryRun      *DryRunDecl
 	Interface   *InterfaceDecl
 	Selection   SelectionDecl
 	Identity    IdentityDecl
+}
+
+// ParamDecl declares Schema facts about a flag that the command registers
+// itself. It exists because metadata-mode commands (DeclareLeafMetadata) own
+// their flag registration and cannot use FlagSpec; without this channel their
+// parameter facts could only live in schema_hints/metadata overlays.
+//
+// Each field maps to a dws.schema.* annotation at rank native_annotation (620),
+// which outranks tool_schema_hint (500). A declared value therefore wins over
+// any remaining hint overlay for the same flag, making the overlay redundant
+// once the declaration is in place.
+type ParamDecl struct {
+	// Name is the cobra flag name (kebab-case), e.g. "record-ids".
+	Name string
+	// Property is the interface property name (camelCase), e.g. "recordIds".
+	// Empty means the flag name is used as-is.
+	Property string
+	// Required overrides the cobra-level required marker for Schema purposes.
+	// Use a pointer so "not declared" (nil) is distinct from "explicitly false".
+	Required *bool
+	// InterfaceType is the wire type for the interface property, e.g. "string",
+	// "integer", "boolean", "array". Empty means derived from the flag kind.
+	InterfaceType string
+	// Description overrides the flag's help text for Schema purposes.
+	Description string
+	// RequiredWhen is a conditional-required expression, e.g. "identity=bot".
+	RequiredWhen string
+	// Enum restricts accepted values (string flags only).
+	Enum []string
 }
 
 // PositionalDecl is one ordered CLI argument in the Schema positionals list.
@@ -144,6 +174,9 @@ func (s SchemaDecl) empty() bool {
 		return false
 	}
 	if len(s.Positionals) > 0 {
+		return false
+	}
+	if len(s.Parameters) > 0 {
 		return false
 	}
 	if s.DryRun != nil && strings.TrimSpace(s.DryRun.PreviewKind) != "" {

@@ -138,6 +138,7 @@ func fromShortcutFlags(flags []Flag) []corecmd.FlagSpec {
 			Default:        f.Default,
 			Hidden:         f.Hidden,
 			Required:       f.Required,
+			RequiredWhen:   f.RequiredWhen,
 			ValidationMode: corecmd.ValidationShortcut,
 			RequiredError:  fmt.Sprintf("缺少必填参数 --%s：%s", f.Name, f.Desc),
 			Enum:           append([]string(nil), f.Enum...),

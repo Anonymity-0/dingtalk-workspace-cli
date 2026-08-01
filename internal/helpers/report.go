@@ -14,6 +14,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 const (
@@ -252,6 +254,9 @@ func newReportCommand() *cobra.Command {
 					"dws report entry submit --template-id <templateId> --contents-file ./report.json --format json",
 					"dws report entry submit --template-id <templateId> --contents '[{\"key\":\"今日完成\",\"sort\":\"0\",\"content\":\"完成了需求评审\",\"contentType\":\"markdown\",\"type\":\"1\"}]' --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "to-chat", Required: boolPtr(false)},
 			},
 		},
 	})

@@ -6,6 +6,8 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -88,6 +90,14 @@ func newHrbrainCommand() *cobra.Command {
 					"dws hrbrain talent-pool list --keyword \"储备干部\"",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "creator", Property: "creator", Required: boolPtr(false)},
+				{Name: "keyword", Property: "keyword", Required: boolPtr(false)},
+				{Name: "labels", Property: "labels", Required: boolPtr(false)},
+				{Name: "page", Property: "currentPage", Required: boolPtr(false)},
+				{Name: "page-size", Property: "pageSize", Required: boolPtr(false)},
+				{Name: "pool-type", Property: "poolType", Required: boolPtr(false)},
+			},
 		},
 	})
 	talentPoolListCmd.Flags().String("keyword", "", "人才池名称关键词 (可选)")
@@ -127,6 +137,9 @@ func newHrbrainCommand() *cobra.Command {
 				UseWhen:      []string{"已知 poolCode，需要查看某个人才池的详细信息时"},
 				AvoidWhen:    []string{"尚未取得 poolCode 时先用 dws hrbrain talent-pool list 查找"},
 				Examples:     []string{"dws hrbrain talent-pool detail --pool-code POOL_CODE"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "pool-code", Property: "poolCode", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -170,6 +183,11 @@ func newHrbrainCommand() *cobra.Command {
 				},
 				Examples: []string{"dws hrbrain talent-pool employees --pool-code POOL_CODE --page 1 --page-size 20"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "page", Property: "currentPage", Required: boolPtr(false)},
+				{Name: "page-size", Property: "pageSize", Required: boolPtr(false)},
+				{Name: "pool-code", Property: "poolCode", Required: boolPtr(true)},
+			},
 		},
 	})
 	talentPoolEmployeesCmd.Flags().String("pool-code", "", "人才池编码 (必填)")
@@ -212,6 +230,9 @@ func newHrbrainCommand() *cobra.Command {
 				UseWhen:      []string{"需要先了解某员工档案有哪些模块/字段，以构造 hrbrain profile query 的 --data-queries 参数时"},
 				AvoidWhen:    []string{"已知模块与字段编码，直接查询档案数据时改用 dws hrbrain profile query"},
 				Examples:     []string{"dws hrbrain profile metadata --work-no WORK_NO"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "work-no", Property: "workNo", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -262,6 +283,10 @@ func newHrbrainCommand() *cobra.Command {
 				},
 				Examples: []string{"dws hrbrain profile query --work-no WORK_NO --data-queries '[{\"modelCode\":\"basic\",\"fields\":[\"name\",\"dept\"]}]'"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "data-queries", Property: "dataQueries", Required: boolPtr(true)},
+				{Name: "work-no", Property: "workNo", Required: boolPtr(true)},
+			},
 		},
 	})
 	profileQueryCmd.Flags().String("work-no", "", "目标员工工号 (必填)")
@@ -303,6 +328,10 @@ func newHrbrainCommand() *cobra.Command {
 				AvoidWhen:    []string{"要查看职业历程或绩效记录时改用 dws hrbrain profile career / profile performance"},
 				Examples:     []string{"dws hrbrain profile labels --staff-ids WORK_NO1,WORK_NO2"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "all-label", Property: "allLabel", Required: boolPtr(false)},
+				{Name: "staff-ids", Property: "staffIds", Required: boolPtr(true)},
+			},
 		},
 	})
 	profileLabelsCmd.Flags().String("staff-ids", "", "员工工号列表，逗号分隔 (必填)")
@@ -338,6 +367,9 @@ func newHrbrainCommand() *cobra.Command {
 				AvoidWhen:    []string{"要查看绩效记录时改用 dws hrbrain profile performance"},
 				Examples:     []string{"dws hrbrain profile career --work-no WORK_NO"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "work-no", Property: "workNo", Required: boolPtr(true)},
+			},
 		},
 	})
 	profileCareerCmd.Flags().String("work-no", "", "员工工号 (必填)")
@@ -371,6 +403,9 @@ func newHrbrainCommand() *cobra.Command {
 				UseWhen:      []string{"需要查看某员工的历史绩效评级/记录时"},
 				AvoidWhen:    []string{"要查看职业历程时改用 dws hrbrain profile career"},
 				Examples:     []string{"dws hrbrain profile performance --work-no WORK_NO"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "work-no", Property: "workNo", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -435,6 +470,15 @@ func newHrbrainCommand() *cobra.Command {
 					"dws hrbrain search employees --keyword \"张三\" --page 1 --page-size 20",
 					"dws hrbrain search employees --dept-name \"技术部\" --job-level P7",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "dept-name", Property: "deptName", Required: boolPtr(false)},
+				{Name: "job-level", Property: "jobLevel", Required: boolPtr(false)},
+				{Name: "keyword", Property: "keyword", Required: boolPtr(false)},
+				{Name: "page", Property: "currentPage", Required: boolPtr(false)},
+				{Name: "page-size", Property: "pageSize", Required: boolPtr(false)},
+				{Name: "pool-code", Property: "poolCode", Required: boolPtr(false)},
+				{Name: "position-name", Property: "positionName", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -506,6 +550,13 @@ func newHrbrainCommand() *cobra.Command {
 					"尚未获取可用字段与操作符时先用 dws hrbrain search fields",
 				},
 				Examples: []string{"dws hrbrain search employees-structured --origin-json '{\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}' --fields '[{\"label\":\"姓名\",\"value\":\"name\"}]'"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "fields", Property: "fields", Required: boolPtr(true)},
+				{Name: "order-by", Property: "orderByClauses", Required: boolPtr(false)},
+				{Name: "origin-json", Property: "originJson", Required: boolPtr(true)},
+				{Name: "page", Property: "currentPage", Required: boolPtr(false)},
+				{Name: "page-size", Property: "pageSize", Required: boolPtr(false)},
 			},
 		},
 	})

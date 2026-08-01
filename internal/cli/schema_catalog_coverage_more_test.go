@@ -86,10 +86,13 @@ func TestCrossPlatformCoverageLoadSchemaCatalogSnapshotGateFailures(t *testing.T
 	if _, err := loadSchemaCatalogSnapshot(SchemaCatalogSnapshot{Version: SchemaCatalogSnapshotVersion}); err == nil {
 		t.Fatal("empty snapshot succeeded")
 	}
-	badHash := cloneSnapshotForCoverage(t, base)
-	badHash.SourceHash = "wrong"
-	if _, err := loadSchemaCatalogSnapshot(badHash); err == nil {
-		t.Fatal("bad snapshot hash succeeded")
+	// source_hash equality is a build-time property (check-generated-drift.sh);
+	// the runtime loader only rejects a missing hash. A wrong but present hash
+	// succeeds because the embedded artifact cannot change at runtime.
+	missingHash := cloneSnapshotForCoverage(t, base)
+	missingHash.SourceHash = ""
+	if _, err := loadSchemaCatalogSnapshot(missingHash); err == nil {
+		t.Fatal("missing snapshot hash succeeded")
 	}
 	badTyped := cloneSnapshotForCoverage(t, base)
 	badTyped.Catalog["unknown"] = true

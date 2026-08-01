@@ -883,10 +883,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed optional --to-chat switch defaults to false and only controls post-submit delivery; it is not required to create a report.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -902,10 +901,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed optional --to-chat switch defaults to false and only controls post-submit delivery; it is not required to create a report.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {

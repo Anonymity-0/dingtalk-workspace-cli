@@ -14,6 +14,7 @@
 package cli
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -26,6 +27,7 @@ type ContractFinalPayload struct {
 	Title       string
 	Description string
 	Positionals []RuntimeSchemaPositional
+	Parameters  []ParamDecl
 	Safety      *SafetySpec
 	DryRun      *DryRunSpec
 	Interface   *InterfaceSpec
@@ -34,6 +36,53 @@ type ContractFinalPayload struct {
 }
 
 var contractFinalByCommand sync.Map // *cobra.Command → *ContractFinalPayload
+
+// ParamDecl is one parameter-level Schema fact declared on a command. It is
+// stored at DeclareLeafMetadata time and applied as annotations at assembly
+// time, when all flags are guaranteed to exist on the fully-built command tree.
+type ParamDecl struct {
+	Name          string
+	Property      string
+	Required      *bool
+	InterfaceType string
+	Description   string
+	RequiredWhen  string
+	Enum          []string
+}
+
+// ApplyParamDecls emits parameter declarations as dws.schema.* annotations on the
+// command's flags. Called at assembly time (runtimeToolSpecFromContractFinal)
+// when all flags exist on the fully-built command tree. The decls come from
+// the ContractFinalPayload, so no separate storage is needed.
+func ApplyParamDecls(cmd *cobra.Command, decls []ParamDecl) {
+	if cmd == nil || len(decls) == 0 {
+		return
+	}
+	for _, p := range decls {
+		name := strings.TrimSpace(p.Name)
+		if name == "" {
+			continue
+		}
+		if prop := strings.TrimSpace(p.Property); prop != "" {
+			AnnotateRuntimeFlagProperty(cmd, name, prop)
+		}
+		if p.Required != nil {
+			AnnotateRuntimeFlagRequiredValue(cmd, name, *p.Required)
+		}
+		if it := strings.TrimSpace(p.InterfaceType); it != "" {
+			AnnotateRuntimeFlagInterfaceType(cmd, name, it)
+		}
+		if desc := strings.TrimSpace(p.Description); desc != "" {
+			AnnotateRuntimeFlagDescription(cmd, name, desc)
+		}
+		if rw := strings.TrimSpace(p.RequiredWhen); rw != "" {
+			AnnotateRuntimeFlagRequiredWhen(cmd, name, rw)
+		}
+		if len(p.Enum) > 0 {
+			AnnotateRuntimeFlagEnum(cmd, name, p.Enum...)
+		}
+	}
+}
 
 // RegisterRuntimeContractFinal stores the typed final Schema overlay for a leaf.
 // Light runtime write: one map store, no JSON, no deep clone.

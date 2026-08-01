@@ -9,52 +9,16 @@
   },
   "tools": {
     "doc.create_comment": {
-      "parameters": {
-        "mentioned-open-conversation-id": {
-          "required": false,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "doc comment create",
       "review_reason": "The reviewed handler normalizes repeated or comma-separated group conversation IDs into a stable de-duplicated array while preserving existing user mentions."
     },
     "doc.get_document_content": {
-      "parameters": {
-        "content-format": {
-          "property": "format",
-          "required": false
-        },
-        "scope": {
-          "required": false
-        },
-        "tags": {
-          "required": false,
-          "required_when": "--scope=tags"
-        },
-        "max-depth": {
-          "required": false,
-          "interface_type": "integer"
-        },
-        "start-block-id": {
-          "required": false,
-          "required_when": "--scope=range or --scope=section"
-        },
-        "end-block-id": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "doc read",
       "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output."
     },
     "doc.reply_comment": {
-      "parameters": {
-        "mentioned-open-conversation-id": {
-          "required": false,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "doc comment reply",
       "review_reason": "The reviewed handler normalizes group conversation IDs into a stable de-duplicated array and rejects group mentions for emoji replies, which the remote operation does not support."

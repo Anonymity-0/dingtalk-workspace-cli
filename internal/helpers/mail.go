@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -2126,6 +2128,10 @@ user 对象字段：
 				AvoidWhen:    []string{"列出当前用户自己的邮箱使用 mail mailbox list，搜索邮件内容使用 message search"},
 				Examples:     []string{"dws mail user search --email user@company.com --keyword \"张三\" --limit 20"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "employee-no", Required: boolPtr(false)},
+				{Name: "keyword", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -2375,6 +2381,11 @@ user 对象字段：
 				UseWhen:      []string{"已知 templateId 并需要修改名称、主题、正文或收件人时"},
 				AvoidWhen:    []string{"创建新模板时使用 mail template create"},
 				Examples:     []string{"dws mail template update --email user@company.com --id <templateId> --subject \"新标题\" --content \"新正文\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "content", Required: boolPtr(false)},
+				{Name: "name", Required: boolPtr(false)},
+				{Name: "subject", Required: boolPtr(false)},
 			},
 		},
 	})

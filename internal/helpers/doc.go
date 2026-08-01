@@ -16,6 +16,8 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -1094,6 +1096,14 @@ func newDocCommand() *cobra.Command {
 					"dws doc read --node <DOC_ID> --content-format jsonml --scope outline --max-depth 3",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "content-format", Property: "format", Required: boolPtr(false)},
+				{Name: "end-block-id", Required: boolPtr(false)},
+				{Name: "max-depth", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "scope", Required: boolPtr(false)},
+				{Name: "start-block-id", Required: boolPtr(false), RequiredWhen: "--scope=range or --scope=section"},
+				{Name: "tags", Required: boolPtr(false), RequiredWhen: "--scope=tags"},
+			},
 		},
 	})
 
@@ -1968,6 +1978,9 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 				Examples: []string{"dws doc rename --node <DOC_ID> --name \"新名称\" --format json"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
+			},
 		},
 	})
 
@@ -2476,6 +2489,9 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 					"dws doc comment create --node <DOC_ID> --content \"请review\" --mention uid1,uid2 --mentioned-open-conversation-id <openConversationId> --format json",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
+			},
 		},
 	})
 
@@ -2554,6 +2570,9 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"同意\" --mentioned-open-conversation-id <openConversationId> --format json",
 					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"比心\" --emoji --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
 			},
 		},
 	})

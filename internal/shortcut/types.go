@@ -89,6 +89,11 @@ type Flag struct {
 	Desc string `json:"description"`
 	// Required, when true, makes the framework error if the flag is not set.
 	Required bool `json:"required"`
+	// RequiredWhen publishes a conditional-required rule that Required cannot
+	// express, e.g. "identity=bot" for a credential only mandatory under one
+	// identity. It is published Schema metadata so an Agent can predict the
+	// failure; enforcement stays in Validate, which remains authoritative.
+	RequiredWhen string `json:"required_when,omitempty"`
 	// Enum, when non-empty, restricts the accepted values (string flags only).
 	Enum []string `json:"enum"`
 	// Hidden hides the flag from --help while keeping it usable.

@@ -987,3 +987,46 @@ func annotateTestCompatibilityPair(primary, alias *cobra.Command) {
 		Reviewed: true,
 	})
 }
+
+// TestCrossPlatformCoverageBindEffectiveCommandRegistryAttachesResidualHintDecl pins the bind-time
+// migration path: an undeclared leaf whose canonical still has a compiled
+// schema_hints declaration receives ContractFinal without replacing RunE.
+func TestCrossPlatformCoverageBindEffectiveCommandRegistryAttachesResidualHintDecl(t *testing.T) {
+	root := commandRegistryTestRoot("item get")
+	leaf := exactSchemaCommand(root, "item get")
+	if leaf == nil {
+		t.Fatal("missing item get leaf")
+	}
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(leaf) })
+
+	schemaHintDeclsByCanonical["item.get_item"] = testSchemaHintDeclFixture()
+	t.Cleanup(func() { delete(schemaHintDeclsByCanonical, "item.get_item") })
+
+	reviewed := mustCommandRegistry(t, []CommandSpec{{
+		CanonicalPath:  "item.get_item",
+		PrimaryCLIPath: "item get",
+	}})
+	manual := ManualSchemaHintSnapshot{
+		Version: manualSchemaHintVersion,
+		Commands: []ManualSchemaCommandHint{{
+			CLIPath:       "item get",
+			CanonicalPath: "item.get_item",
+			Reason:        "Confirms the reviewed primary identity",
+			Reviewed:      true,
+		}},
+	}
+	effective, err := buildEffectiveCommandRegistry(root, reviewed, manual)
+	if err != nil {
+		t.Fatalf("buildEffectiveCommandRegistry() error = %v", err)
+	}
+	if _, err := BindEffectiveCommandRegistry(root, effective); err != nil {
+		t.Fatalf("BindEffectiveCommandRegistry() error = %v", err)
+	}
+	if !HasRuntimeContractFinal(leaf) {
+		t.Fatal("residual hint decl must attach ContractFinal at bind time")
+	}
+	final, ok := RuntimeContractFinal(leaf)
+	if !ok || final.Description != testSchemaHintDeclFixture().Description {
+		t.Fatalf("attached ContractFinal = %#v ok=%v", final, ok)
+	}
+}

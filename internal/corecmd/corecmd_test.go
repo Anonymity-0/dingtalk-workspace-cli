@@ -16,6 +16,7 @@ package corecmd
 import (
 	"errors"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1201,7 +1202,7 @@ func TestRegisterFlagTypedDefaults(t *testing.T) {
 	}
 }
 
-func TestBuildArgsIntArgDefaultFloor(t *testing.T) {
+func TestCrossPlatformCoverageBuildArgsIntArgDefaultFloor(t *testing.T) {
 	flags := []FlagSpec{{
 		Name: "page-size", Usage: "P", Kind: KindInt,
 		Default: "20", ArgDefault: "20", Bind: "pageSize",
@@ -1247,5 +1248,364 @@ func TestNewCommandMergesConstParams(t *testing.T) {
 	}
 	if got["precheckOnly"] != false {
 		t.Fatalf("precheckOnly = %#v, want false", got["precheckOnly"])
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandConfirmFirstAnnotationAndOrder(t *testing.T) {
+	ran := false
+	build := func(postMount func(*cobra.Command)) *cobra.Command {
+		cmd := New(Spec{
+			Use:          "guard-first",
+			Safety:       testWriteSafety(),
+			ConfirmFirst: true,
+			Flags:        []FlagSpec{{Name: "x", Usage: "X", Required: true}},
+			PostMount:    postMount,
+			Invoke: func(*Ctx, map[string]any) error {
+				ran = true
+				return nil
+			},
+		})
+		cmd.PersistentFlags().Bool("yes", false, "")
+		cmd.PersistentFlags().Bool("dry-run", false, "")
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetErr(&strings.Builder{})
+		return cmd
+	}
+
+	// The declared marker is stamped even when a PostMount hook dropped the
+	// annotations map (defensive re-init path).
+	cleared := build(func(c *cobra.Command) { c.Annotations = nil })
+	if cleared.Annotations[ConfirmFirstAnnotation] != "true" {
+		t.Fatalf("annotations = %#v, want declared ConfirmFirst marker", cleared.Annotations)
+	}
+	if !HasDeclaredConfirmFirst(cleared) {
+		t.Fatal("HasDeclaredConfirmFirst must report a declared guard-first command")
+	}
+	if HasDeclaredConfirmFirst(nil) || HasDeclaredConfirmFirst(newTestCommand()) {
+		t.Fatal("HasDeclaredConfirmFirst must be false for nil/undeclared commands")
+	}
+
+	// Guard-first confirms BEFORE required validation: declining cancels even
+	// though the required --x is missing.
+	ran = false
+	declined := build(nil)
+	declined.SetIn(strings.NewReader("no\n"))
+	declined.SetArgs(nil)
+	if err := declined.Execute(); err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+		t.Fatalf("declined guard-first err = %v", err)
+	}
+	if ran {
+		t.Fatal("declined guard-first must not dispatch")
+	}
+
+	// After confirming, the declared Required check still gates dispatch.
+	ran = false
+	confirmed := build(nil)
+	confirmed.SetIn(strings.NewReader("yes\n"))
+	confirmed.SetArgs(nil)
+	if err := confirmed.Execute(); err == nil || !strings.Contains(err.Error(), "x") {
+		t.Fatalf("confirmed guard-first required err = %v", err)
+	}
+	if ran {
+		t.Fatal("guard-first must not dispatch with the required flag missing")
+	}
+
+	// A satisfied declaration dispatches exactly once, without a second prompt.
+	ran = false
+	satisfied := build(nil)
+	satisfied.SetIn(strings.NewReader("yes\n"))
+	satisfied.SetArgs([]string{"--x", "v"})
+	if err := satisfied.Execute(); err != nil {
+		t.Fatalf("satisfied guard-first err = %v", err)
+	}
+	if !ran {
+		t.Fatal("confirmed guard-first did not dispatch")
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandRunEHonorsConfirmation(t *testing.T) {
+	// The escape hatch keeps the declared confirmation gate: an unanswerable
+	// prompt fails closed before the RunE body runs.
+	ran := false
+	build := func() *cobra.Command {
+		cmd := New(Spec{
+			Use:    "guarded-rune",
+			Safety: testWriteSafety(),
+			Flags:  []FlagSpec{{Name: "x", Usage: "X"}},
+			RunE: func(*cobra.Command, []string) error {
+				ran = true
+				return nil
+			},
+		})
+		cmd.PersistentFlags().Bool("yes", false, "")
+		cmd.PersistentFlags().Bool("dry-run", false, "")
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		cmd.SetErr(&strings.Builder{})
+		return cmd
+	}
+
+	blocked := build()
+	blocked.SetIn(strings.NewReader(""))
+	blocked.SetArgs(nil)
+	err := blocked.Execute()
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("RunE confirmation err = %#v, want confirmation_required", err)
+	}
+	if ran {
+		t.Fatal("RunE body must not run when confirmation fails")
+	}
+
+	confirmed := build()
+	confirmed.SetArgs([]string{"--yes"})
+	if err := confirmed.Execute(); err != nil {
+		t.Fatalf("confirmed RunE err = %v", err)
+	}
+	if !ran {
+		t.Fatal("confirmed RunE did not run")
+	}
+}
+
+func TestCrossPlatformCoverageNewCommandPreflightEnumGate(t *testing.T) {
+	dispatched := false
+	cmd := New(Spec{
+		Use:   "enum-gate",
+		Flags: []FlagSpec{{Name: "mode", Usage: "M", Enum: []string{"a", "b"}}},
+		Invoke: func(*Ctx, map[string]any) error {
+			dispatched = true
+			return nil
+		},
+	})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--mode", "zzz"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), `参数 --mode 取值 "zzz" 不合法`) {
+		t.Fatalf("preflight enum err = %v", err)
+	}
+	if dispatched {
+		t.Fatal("enum failure must stop before dispatch")
+	}
+}
+
+func TestCrossPlatformCoverageValidateRequiredShortcutMessages(t *testing.T) {
+	// Without an authored RequiredError the unified default wording applies.
+	plain := []FlagSpec{{Name: "target", Usage: "T", Required: true, ValidationMode: ValidationShortcut}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, plain)
+	if err := ValidateRequired(cmd, plain); err == nil || err.Error() != "缺少必填参数 --target" {
+		t.Fatalf("shortcut default message = %v", err)
+	}
+
+	// A provided-but-blank list still fails with the emptiness wording.
+	slice := []FlagSpec{{
+		Name: "ids", Usage: "I", Kind: KindStringSlice, Required: true,
+		ValidationMode: ValidationShortcut, RequiredError: "缺少必填参数 --ids：列表",
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, slice)
+	_ = cmd.Flags().Set("ids", " , ")
+	if err := ValidateRequired(cmd, slice); err == nil || !strings.Contains(err.Error(), "必填参数 --ids 不能为空") {
+		t.Fatalf("shortcut blank slice message = %v", err)
+	}
+
+	// A provided-but-blank string fails with the same emptiness wording.
+	blank := []FlagSpec{{Name: "name", Usage: "N", Required: true, ValidationMode: ValidationShortcut}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, blank)
+	_ = cmd.Flags().Set("name", "   ")
+	if err := ValidateRequired(cmd, blank); err == nil || !strings.Contains(err.Error(), "必填参数 --name 不能为空") {
+		t.Fatalf("shortcut blank string message = %v", err)
+	}
+
+	// Shortcut-mode enum violations surface through ValidateRequired too.
+	enum := []FlagSpec{{Name: "mode", Usage: "M", ValidationMode: ValidationShortcut, Enum: []string{"a", "b"}}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, enum)
+	_ = cmd.Flags().Set("mode", "z")
+	if err := ValidateRequired(cmd, enum); err == nil || !strings.Contains(err.Error(), `参数 --mode 取值 "z" 不合法`) {
+		t.Fatalf("shortcut enum message = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageBuildArgsInvalidArgDefault(t *testing.T) {
+	flags := []FlagSpec{{Name: "page-size", Usage: "P", Kind: KindInt, ArgDefault: "not-a-number"}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	if _, err := BuildArgs(cmd, flags); err == nil || !strings.Contains(err.Error(), `invalid ArgDefault "not-a-number"`) {
+		t.Fatalf("invalid ArgDefault err = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageBindKeyKebabToCamel(t *testing.T) {
+	// Declared Bind always wins.
+	if got := bindKey(FlagSpec{Name: "disable-ssl-verify", Bind: "disableSSLVerify"}); got != "disableSSLVerify" {
+		t.Fatalf("explicit bind = %q", got)
+	}
+	// Single-word names pass through unchanged.
+	if got := bindKey(FlagSpec{Name: "plain"}); got != "plain" {
+		t.Fatalf("single-word bind = %q", got)
+	}
+	// Kebab names camelize mechanically; empty segments are skipped.
+	if got := bindKey(FlagSpec{Name: "page-size"}); got != "pageSize" {
+		t.Fatalf("kebab bind = %q", got)
+	}
+	if got := bindKey(FlagSpec{Name: "a--b-c"}); got != "aBC" {
+		t.Fatalf("empty-segment bind = %q", got)
+	}
+
+	// The derived key is what BuildArgs actually transmits.
+	flags := []FlagSpec{{Name: "page-size", Usage: "P", Kind: KindInt}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("page-size", "5")
+	args, err := BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args["pageSize"] != 5 {
+		t.Fatalf("camelized args = %#v, want pageSize=5", args)
+	}
+}
+
+// failingReader returns a non-EOF error so the confirmation read path must
+// fail closed instead of treating the answer as a decline.
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, errors.New("stdin read failed") }
+
+func TestCrossPlatformCoverageConfirmSafetyReadErrorFailsClosed(t *testing.T) {
+	cmd := newTestCommand()
+	cmd.PersistentFlags().Bool("yes", false, "")
+	cmd.SetIn(failingReader{})
+	cmd.SetErr(&strings.Builder{})
+	err := ConfirmSafety(cmd, testWriteSafety())
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("non-EOF stdin error must be confirmation_required, got %#v", err)
+	}
+}
+
+func TestCrossPlatformCoverageConfirmSafetyTerminalPromptsBeforeReading(t *testing.T) {
+	master, slave, ok := openTestPTY(t)
+	if !ok {
+		t.Skipf("no native pty on %s: the interactive prompt branch is terminal-only (unix)", runtime.GOOS)
+	}
+	defer master.Close()
+	defer slave.Close()
+
+	// Queue the answer on the master side before ConfirmSafety reads so the
+	// canonical-mode read can never block the test.
+	if _, err := master.WriteString("yes\n"); err != nil {
+		t.Fatalf("write pty answer: %v", err)
+	}
+	var stderr strings.Builder
+	cmd := newTestCommand()
+	cmd.PersistentFlags().Bool("yes", false, "")
+	cmd.PersistentFlags().Bool("dry-run", false, "")
+	cmd.SetIn(slave)
+	cmd.SetErr(&stderr)
+	if err := ConfirmSafety(cmd, testWriteSafety()); err != nil {
+		t.Fatalf("terminal yes answer must confirm, got %v", err)
+	}
+	if !strings.Contains(stderr.String(), "确认继续") {
+		t.Fatalf("terminal stdin must print the interactive prompt, got %q", stderr.String())
+	}
+}
+
+func TestCrossPlatformCoverageBoolFlagGettersNilCommand(t *testing.T) {
+	if got := boolFlagGetters(nil); got != nil {
+		t.Fatalf("boolFlagGetters(nil) = %#v, want nil", got)
+	}
+}
+
+func TestCrossPlatformCoverageEmbedContractCobraProjection(t *testing.T) {
+	cmd := New(Spec{
+		Use:                 "shortcut-leaf",
+		Short:               "short",
+		ParameterProjection: ProjectCobraParameters,
+		Flags: []FlagSpec{
+			{
+				Name: "mode", Usage: "M", Required: true,
+				Enum: []string{"a", "b"}, RequiredWhen: "when identity=user",
+			},
+			{Name: "internal", Usage: "I", Hidden: true, Required: true},
+		},
+		Safety: testWriteSafety(),
+		Schema: SchemaDecl{
+			Description: "desc",
+			Interface:   &InterfaceDecl{Mode: "mcp", Availability: "available", ProductID: "dev", RPCName: "op"},
+			Selection: SelectionDecl{
+				AgentSummary: "s", UseWhen: []string{"u"},
+				AvoidWhen: []string{"a"}, Examples: []string{"dws shortcut-leaf"},
+			},
+		},
+		Invoke: func(*Ctx, map[string]any) error { return nil },
+	})
+
+	mode := cmd.Flags().Lookup("mode")
+	if got := mode.Annotations["dws.schema.required"]; len(got) == 0 || got[0] != "true" {
+		t.Fatalf("cobra projection must annotate Required, got %#v", mode.Annotations)
+	}
+	if got := mode.Annotations["x-cli-enum"]; len(got) != 2 {
+		t.Fatalf("cobra projection must annotate Enum, got %#v", got)
+	}
+	if got := mode.Annotations["dws.schema.required_when"]; len(got) == 0 || got[0] != "when identity=user" {
+		t.Fatalf("cobra projection must annotate RequiredWhen, got %#v", got)
+	}
+	// Hidden flags stay Cobra-only facts: no projection annotations.
+	if got := cmd.Flags().Lookup("internal").Annotations["dws.schema.required"]; len(got) != 0 {
+		t.Fatalf("hidden flag must not be projected, got %#v", got)
+	}
+	// The authored SchemaDecl still lands as the typed ContractFinal.
+	final, ok := cli.RuntimeContractFinal(cmd)
+	if !ok || final.Description != "desc" {
+		t.Fatalf("cobra projection must still embed SchemaDecl, final=%#v ok=%v", final, ok)
+	}
+}
+
+func TestCrossPlatformCoverageAttachSchemaNilAndEmptyGuards(t *testing.T) {
+	// Both guards are no-ops: nil command, and a command with no authored decl.
+	AttachSchema(nil, testWriteSafety(), SchemaDecl{Description: "d"}, "s", "l")
+	cmd := newTestCommand()
+	AttachSchema(cmd, testWriteSafety(), SchemaDecl{}, "s", "l")
+	if cli.HasRuntimeContractFinal(cmd) {
+		t.Fatal("empty SchemaDecl must not register a ContractFinal")
+	}
+}
+
+func TestCrossPlatformCoverageEffectiveSafetySpecZeroValueDefaultsToRead(t *testing.T) {
+	got := effectiveSafetySpec(cli.SafetySpec{})
+	want := cli.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
+	if got != want {
+		t.Fatalf("effectiveSafetySpec(zero) = %+v, want %+v", got, want)
+	}
+	partial := effectiveSafetySpec(cli.SafetySpec{Effect: " write ", Risk: "high", Confirmation: "user_required", Idempotency: "unknown"})
+	if partial.Effect != "write" || partial.Risk != "high" {
+		t.Fatalf("effectiveSafetySpec(trim) = %+v", partial)
+	}
+}
+
+func TestCrossPlatformCoverageEmbedContractSkipsBlankAndHiddenFlags(t *testing.T) {
+	cmd := &cobra.Command{Use: "skip-blank-hidden"}
+	cmd.Flags().String("visible", "", "visible flag")
+	cmd.Flags().String("ghost", "", "hidden flag")
+	embedContractIntoSchema(cmd, Spec{
+		Use: "skip-blank-hidden",
+		Flags: []FlagSpec{
+			{Name: "  ", Usage: "blank name is skipped"},
+			{Name: "ghost", Usage: "hidden is skipped", Hidden: true},
+			{Name: "visible", Usage: "annotated", Required: true},
+		},
+	})
+	anns := cmd.Annotations
+	if anns == nil {
+		t.Fatal("expected runtime contract annotations")
+	}
+	for key := range anns {
+		if strings.Contains(key, "ghost") {
+			t.Fatalf("hidden flag must not be annotated: %s", key)
+		}
 	}
 }

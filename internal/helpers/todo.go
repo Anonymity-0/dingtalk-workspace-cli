@@ -15,6 +15,8 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -262,6 +264,10 @@ func newTodoCommand() *cobra.Command {
 					"dws todo task list --page 1 --size 20 --status false",
 					"dws todo task list --page 1 --size 20 --status false --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "query-all", Required: boolPtr(false), InterfaceType: "boolean", Description: "为 true 时跨组织查询全部待办；默认仅查询当前组织待办"},
+				{Name: "role-types", Property: "roleTypes", Required: boolPtr(false), Description: "角色类型列表；省略时运行时默认使用 executor"},
 			},
 		},
 	})
@@ -831,6 +837,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task reset-reminder --task-id <taskId> --reminder-rules '[{\"dueDateOffset\":-30,\"baseTime\":\"dueTime\"},{\"reminderTimeStamp\":\"2026-03-10T18:00:00+08:00\",\"baseTime\":\"customTime\"}]'",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "reminder-rules", Description: "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"},
+			},
 		},
 	})
 
@@ -1263,6 +1272,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				AvoidWhen:    []string{"尚无标签 code 时先用 todo tag list 或 todo tag create；修改标签定义应使用 todo tag update"},
 				Examples:     []string{"dws todo tag add --task-id <taskId> --tag-codes code1,code2"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "tag-codes", Property: "tagCodes", Required: boolPtr(true), InterfaceType: "array"},
+				{Name: "task-id", Property: "taskId", Required: boolPtr(true)},
+			},
 		},
 	})
 
@@ -1303,6 +1316,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				UseWhen:      []string{"用户明确要求删除已有标签 code，且已确认标签编码及不可逆影响"},
 				AvoidWhen:    []string{"只需从某个待办移除标签或重命名标签时不要删除标签定义；未确认 code 时先用 todo tag list"},
 				Examples:     []string{"dws todo tag delete --tag-codes code1,code2"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "tag-codes", Property: "tagCodes", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
 	})
@@ -1351,6 +1367,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				UseWhen:      []string{"已有标签 code，需要按 JSON 数组更新一个或多个标签定义"},
 				AvoidWhen:    []string{"给待办打标签应使用 todo tag add；创建没有 code 的新标签应使用 todo tag create"},
 				Examples:     []string{"dws todo tag update --user-tags '[{\"code\":\"code1\",\"name\":\"新名称\"}]'"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "user-tags", Property: "userTags", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
 	})
@@ -1418,6 +1437,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				UseWhen:      []string{"用户明确要求创建可复用的待办标签，且已给出非空标签名称"},
 				AvoidWhen:    []string{"给已有待办打上现有标签应使用 todo tag add；重命名已有标签应使用 todo tag update"},
 				Examples:     []string{"dws todo tag create --name \"项目标签\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Property: "name", Required: boolPtr(true)},
 			},
 		},
 	})

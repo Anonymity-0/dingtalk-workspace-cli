@@ -9,6 +9,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -954,6 +956,10 @@ contact user profile fields 获取可用字段列表。
 				},
 				Examples: []string{"dws contact user profile get --staff-id STAFF_ID --fields fieldCode1,fieldCode2"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "fields", Required: boolPtr(false)},
+				{Name: "staff-id", Required: boolPtr(false)},
+			},
 		},
 	})
 	contactUserProfileGetCmd.Flags().String("staff-id", "", "查询员工 ID（可选）")
@@ -1127,6 +1133,11 @@ contact user profile fields 获取可用字段列表。
 				UseWhen:      []string{"用户明确要求邀请或添加员工到当前企业，且已提供企业内姓名和手机号"},
 				AvoidWhen:    []string{"需要创建企业专属登录账号时使用 contact account create；需要创建企业组织本身时使用 contact org create"},
 				Examples:     []string{"dws contact user invite --org-user-name \"张三\" --org-user-mobile \"13800138000\" --depts '[{\"deptId\":1}]'"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "depts", Property: "depts", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "org-user-mobile", Property: "orgUserMobile", Required: boolPtr(true)},
+				{Name: "org-user-name", Property: "orgUserName", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -1327,6 +1338,10 @@ contact user profile fields 获取可用字段列表。
 				AvoidWhen:    []string{"请求中包含企业账号、专属账号或登录账号时改用 contact account create；邀请员工时改用 contact user invite"},
 				Examples:     []string{"dws contact org create --org-name \"我的企业\" --creator-username \"张三\""},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "creator-username", Property: "creatorUsername", Required: boolPtr(true)},
+				{Name: "org-name", Property: "orgName", Required: boolPtr(true)},
+			},
 		},
 	})
 	contactOrgCreateCmd.Flags().String("org-name", "", "企业名称 (必填)")
@@ -1405,6 +1420,14 @@ contact user profile fields 获取可用字段列表。
 				UseWhen:      []string{"用户明确要求创建企业账号、专属账号或企业登录账号，并已提供员工名称和登录号"},
 				AvoidWhen:    []string{"创建企业组织本身应使用 contact org create；仅邀请已有手机号员工入企应使用 contact user invite"},
 				Examples:     []string{"dws contact account create --org-user-name \"张三\" --login-id \"zhangsan001\" --org-user-mobile \"13800138000\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "dept-ids", Property: "deptIds", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "email", Property: "email", Required: boolPtr(false)},
+				{Name: "login-id", Property: "loginId", Required: boolPtr(true)},
+				{Name: "org-user-mobile", Property: "orgUserMobile", Required: boolPtr(false)},
+				{Name: "org-user-name", Property: "orgUserName", Required: boolPtr(true)},
+				{Name: "send-pwd-via-sms", Property: "sendPwdViaSms", Required: boolPtr(false), InterfaceType: "boolean"},
 			},
 		},
 	})

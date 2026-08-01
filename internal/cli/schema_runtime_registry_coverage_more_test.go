@@ -329,3 +329,72 @@ func TestCrossPlatformCoverageFinalSchemaProvenanceRejectsInvalidTool(t *testing
 		t.Fatalf("provenance error = %v", err)
 	}
 }
+
+// TestCrossPlatformCoverageLegacyMetadataContractOverlaysAndDryRunProvenance
+// pins the legacy (non-declared) assembly overlays: embedded Contract Risk and
+// runtime-gate annotations rewrite safety with reviewed provenance, and a
+// reviewed dry-run capability records its provenance winner.
+func TestCrossPlatformCoverageLegacyMetadataContractOverlaysAndDryRunProvenance(t *testing.T) {
+	entry := runtimeSchemaEntry{
+		ProductID:      "sample",
+		ToolName:       "run",
+		CLIName:        "run",
+		CLIPath:        "sample run",
+		PrimaryCLIPath: "sample run",
+		Source:         "test",
+		IdentityField: commandRegistryIdentityProvenance(BoundCommandSpec{CommandSpec: CommandSpec{
+			CanonicalPath:  "sample.run",
+			PrimaryCLIPath: "sample run",
+			Source:         "test",
+		}}),
+	}
+
+	riskCmd := &cobra.Command{Use: "run", Short: "short", Long: "long"}
+	AnnotateRuntimeRisk(riskCmd, "write")
+	entry.Command = riskCmd
+	spec, err := runtimeToolSpecFromLegacyMetadata(entry, runtimeSchemaMetadataSources{})
+	if err != nil {
+		t.Fatalf("legacy risk overlay error = %v", err)
+	}
+	if spec.Safety.Effect != "write" || spec.Safety.Risk != "medium" || spec.Safety.Confirmation != "user_required" {
+		t.Fatalf("legacy risk safety = %#v", spec.Safety)
+	}
+	for _, field := range []string{"risk", "confirmation", "effect"} {
+		if got := spec.FieldProvenance[field]; got.Source != "corecmd.contract" || got.SourceRef != "dws.schema.risk" {
+			t.Fatalf("risk provenance[%s] = %#v", field, got)
+		}
+	}
+
+	gateCmd := &cobra.Command{Use: "run", Short: "short", Long: "long"}
+	AnnotateRuntimeGate(gateCmd, "devAppRequireWriteGuard")
+	entry.Command = gateCmd
+	spec, err = runtimeToolSpecFromLegacyMetadata(entry, runtimeSchemaMetadataSources{})
+	if err != nil {
+		t.Fatalf("legacy gate overlay error = %v", err)
+	}
+	if spec.Safety.Confirmation != "user_required" || spec.Safety.Effect != "write" {
+		t.Fatalf("legacy gate safety = %#v", spec.Safety)
+	}
+	for _, field := range []string{"runtime_gate", "confirmation"} {
+		if got := spec.FieldProvenance[field]; got.Source != "corecmd.contract" || got.SourceRef != "dws.schema.runtime_gate" {
+			t.Fatalf("gate provenance[%s] = %#v", field, got)
+		}
+	}
+
+	oldDryRun := resolveReviewedDryRun
+	t.Cleanup(func() { resolveReviewedDryRun = oldDryRun })
+	resolveReviewedDryRun = func(string) (*DryRunSpec, error) {
+		return &DryRunSpec{PreviewKind: DryRunPreviewInvocation}, nil
+	}
+	entry.Command = &cobra.Command{Use: "run", Short: "short", Long: "long"}
+	spec, err = runtimeToolSpecFromLegacyMetadata(entry, runtimeSchemaMetadataSources{})
+	if err != nil {
+		t.Fatalf("legacy dry-run error = %v", err)
+	}
+	if spec.DryRun == nil || spec.DryRun.PreviewKind != DryRunPreviewInvocation {
+		t.Fatalf("legacy dry_run = %#v", spec.DryRun)
+	}
+	if got := spec.FieldProvenance["dry_run"]; got.Source != "reviewed_dry_run_registry" {
+		t.Fatalf("dry_run provenance = %#v", got)
+	}
+}

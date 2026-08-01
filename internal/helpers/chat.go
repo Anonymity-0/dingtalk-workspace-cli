@@ -20,6 +20,8 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 func resolveMessageForward(cmd *cobra.Command, defaultForward bool) (bool, error) {
@@ -2860,6 +2862,18 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"发送新消息应使用 chat message send；撤回消息应使用 chat message recall"},
 				Examples:     []string{"dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text \"更新后的内容\""},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
+				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "content", Property: "content", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "msg-id", Property: "openMessageId", Required: boolPtr(true)},
+				{Name: "text", Property: "text", Required: boolPtr(false)},
+				{Name: "title", Property: "title", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -3694,6 +3708,11 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"列出全部自定义分组应使用 chat category list；按 categoryId 查详情应使用 chat category batch-info"},
 				Examples:     []string{"dws chat category list-by-conv --group <openConversationId>"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -3732,6 +3751,9 @@ func newChatCommand() *cobra.Command {
 				UseWhen:      []string{"已经有一个或多个会话分组 categoryId，需要批量读取分组信息"},
 				AvoidWhen:    []string{"不知道 categoryId 时先用 chat category list；按会话反查所属分组应使用 chat category list-by-conv"},
 				Examples:     []string{"dws chat category batch-info --category-ids 123,456"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "category-ids", Property: "categoryIds", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
 	})
@@ -3848,6 +3870,12 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"发送文本消息或文字表情时不要使用"},
 				Examples:     []string{"dws chat message add-emoji --conversation-id <openConversationId> --msg-id <openMessageId> --emoji \"赞\""},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatMessageAddEmojiCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
@@ -3892,6 +3920,12 @@ func newChatCommand() *cobra.Command {
 				UseWhen:      []string{"需要取消此前添加的 emoji reaction 时"},
 				AvoidWhen:    []string{"移除文字表情时使用 chat message remove-text-emotion"},
 				Examples:     []string{"dws chat message remove-emoji --conversation-id <openConversationId> --msg-id <openMessageId> --emoji \"赞\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -3939,6 +3973,12 @@ func newChatCommand() *cobra.Command {
 				UseWhen:      []string{"已有文字表情定义并要附加到消息时"},
 				AvoidWhen:    []string{"需要先创建文字表情资源时使用 chat message create-text-emotion"},
 				Examples:     []string{"dws chat message add-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -3990,6 +4030,12 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"移除普通 emoji reaction 时使用 chat message remove-emoji"},
 				Examples:     []string{"dws chat message remove-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatMessageRemoveTextEmotionCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
@@ -4040,6 +4086,18 @@ func newChatCommand() *cobra.Command {
 					"只需清除文字表情时使用 chat message remove-text-emotion",
 				},
 				Examples: []string{"dws chat message update-text-emotion --conversation-id <openConversationId> --msg-id <openMessageId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name \"处理中\" --text \"处理中 2 分钟\" --background-id im_bg_5"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "background-id", Property: "backgroundId", Required: boolPtr(true), Description: "新文字表情的背景 ID"},
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId；与 --group、--id、--chat 四选一"},
+				{Name: "emotion-id", Property: "emotionId", Required: boolPtr(true), Description: "新的文字表情 ID，可通过 create-text-emotion 获取"},
+				{Name: "emotion-name", Property: "emotionName", Required: boolPtr(true), Description: "新的文字表情名称"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "msg-id", Property: "openMsgId", Required: boolPtr(true), Description: "需要原地更新文字表情的消息 openMsgId"},
+				{Name: "old-emotion-id", Property: "oldEmotionId", Required: boolPtr(true), Description: "消息上当前文字表情的 emotionId"},
+				{Name: "text", Property: "text", Required: boolPtr(true), Description: "新的文字表情内容"},
 			},
 		},
 	})
@@ -4514,6 +4572,12 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"群成员禁言属于发言权限，应使用 group-mute 命令"},
 				Examples:     []string{"dws chat mute --conversation-id <openConversationId>"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "off", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatMuteCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
@@ -4849,6 +4913,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"只查看置顶清单时使用 chat list-top-conversations"},
 				Examples:     []string{"dws chat set-top --conversation-id <openConversationId>"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "off", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatSetTopCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
@@ -4930,6 +4997,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				UseWhen:      []string{"需要控制整个群的发言权限时"},
 				AvoidWhen:    []string{"只禁言指定成员时使用 chat group-mute-member"},
 				Examples:     []string{"dws chat group-mute --group <openConversationId>"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "off", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -5014,6 +5084,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"需要全员禁言时使用 chat group-mute"},
 				Examples:     []string{"dws chat group-mute-member --group <openConversationId> --users userId1,userId2 --mute-time 3600000"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "off", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatGroupMuteMemberCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
@@ -5080,6 +5153,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				UseWhen:      []string{"需要变更指定成员的群管理员身份时"},
 				AvoidWhen:    []string{"自定义业务角色应使用 chat group-role 系列命令"},
 				Examples:     []string{"dws chat group set-admin --group <openConversationId> --users userId1,userId2"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "off", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -6131,6 +6207,10 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"按名称搜索任意可见群时使用 chat search"},
 				Examples:     []string{"dws chat group list-my-groups --role OWNER --limit 100"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", Required: boolPtr(false)},
+				{Name: "role", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatGroupListMyGroupsCmd.Flags().String("role", "", "角色过滤: OWNER(仅群主) / ADMIN(仅管理员)，不传返回全部")
@@ -6493,6 +6573,10 @@ status 可选值:
 					"dws chat group update-nick --group <openConversationId> --nick \"项目昵称\"",
 					"dws chat group update-nick --group <openConversationId>",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "nick", Property: "nick", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -6862,6 +6946,10 @@ status 可选值:
 				UseWhen:      []string{"群主明确要求保留现有会话并升级为可跨组织协作的外部群，且已确认不可逆影响"},
 				AvoidWhen:    []string{"新建外部群应使用 chat group create --type EXTERNAL；未确认群主身份和不可逆影响时不要执行"},
 				Examples:     []string{"dws chat group upgrade-to-external --group <openConversationId>"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "extension", Property: "extension", Required: boolPtr(false), InterfaceType: "object"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 			},
 		},
 	})

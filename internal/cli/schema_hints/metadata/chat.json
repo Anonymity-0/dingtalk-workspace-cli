@@ -9,47 +9,11 @@
   },
   "tools": {
     "chat.add_emoji_reaction": {
-      "parameters": {
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "group": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message add-emoji",
       "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
     },
     "chat.add_text_emotion": {
-      "parameters": {
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "group": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message add-text-emotion",
       "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
@@ -89,233 +53,66 @@
       "review_reason": "Preserve the reviewed CLI-to-interface conversion: Cobra validates --size as an integer from 1 to 100, then the helper serializes it to the string-valued list_message_favorites size property."
     },
     "chat.list_owned_or_admin_groups": {
-      "parameters": {
-        "limit": {
-          "required": false
-        },
-        "role": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat group list-my-groups",
       "review_reason": "The reviewed CLI lists all owned or administered groups when --role and --limit are omitted; both flags are optional filters despite stricter imported interface metadata."
     },
     "chat.remove_emoji_reaction": {
-      "parameters": {
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "group": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message remove-emoji",
       "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
     },
     "chat.remove_text_emotion": {
-      "parameters": {
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "group": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message remove-text-emotion",
       "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
     },
     "chat.set_group_member_mute_list": {
-      "parameters": {
-        "off": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat group-mute-member",
       "review_reason": "The reviewed Cobra contract makes --off an optional mode switch: omission adds members to the mute list, while --off removes them. The shared MCP schema incorrectly marks the boolean as unconditionally required."
     },
     "chat.set_group_mute": {
-      "parameters": {
-        "off": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat group-mute",
       "review_reason": "The reviewed optional --off switch selects unmute; omission deliberately selects mute, so false is a valid default rather than missing required input."
     },
     "chat.set_top_conversation": {
-      "parameters": {
-        "off": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat set-top",
       "review_reason": "The reviewed optional --off switch selects unpin; omission deliberately selects pin, so false is a valid default rather than missing required input."
     },
     "chat.update_conv_member_roles": {
-      "parameters": {
-        "off": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat group set-admin",
       "review_reason": "The reviewed optional --off switch selects administrator removal; omission deliberately selects administrator assignment."
     },
     "chat.update_notification_off": {
-      "parameters": {
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "off": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat mute",
       "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory."
     },
     "chat.edit_message": {
-      "parameters": {
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": true
-        },
-        "group": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "msg-id": {
-          "property": "openMessageId",
-          "required": true
-        },
-        "text": {
-          "property": "text",
-          "required": false
-        },
-        "title": {
-          "property": "title",
-          "required": false
-        },
-        "content": {
-          "property": "content",
-          "required": false
-        },
-        "at-all": {
-          "property": "atAll",
-          "required": false,
-          "interface_type": "boolean"
-        },
-        "at-open-dingtalk-ids": {
-          "property": "atOpenDingTalkIds",
-          "required": false,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message edit",
       "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message."
     },
     "chat.get_conv_categories_info": {
-      "parameters": {
-        "category-ids": {
-          "property": "categoryIds",
-          "required": true,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "chat category batch-info",
       "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate."
     },
     "chat.list_conv_categories_by_conv": {
-      "parameters": {
-        "group": {
-          "property": "openConversationId",
-          "required": true
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat category list-by-conv",
       "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate."
     },
     "chat.update_group_nick": {
-      "parameters": {
-        "group": {
-          "property": "openConversationId",
-          "required": true
-        },
-        "nick": {
-          "property": "nick",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat group update-nick",
       "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname."
     },
     "chat.upgrade_group_to_external": {
-      "parameters": {
-        "group": {
-          "property": "openConversationId",
-          "required": true
-        },
-        "extension": {
-          "property": "extension",
-          "required": false,
-          "interface_type": "object"
-        }
-      },
       "reviewed": true,
       "cli_path": "chat group upgrade-to-external",
       "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade."
@@ -332,55 +129,6 @@
       "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property."
     },
     "chat.update_text_emotion": {
-      "parameters": {
-        "background-id": {
-          "property": "backgroundId",
-          "description": "新文字表情的背景 ID",
-          "required": true
-        },
-        "chat": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "conversation-id": {
-          "property": "openConversationId",
-          "description": "会话 openConversationId；与 --group、--id、--chat 四选一",
-          "required": false
-        },
-        "emotion-id": {
-          "property": "emotionId",
-          "description": "新的文字表情 ID，可通过 create-text-emotion 获取",
-          "required": true
-        },
-        "emotion-name": {
-          "property": "emotionName",
-          "description": "新的文字表情名称",
-          "required": true
-        },
-        "group": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "id": {
-          "property": "openConversationId",
-          "required": false
-        },
-        "msg-id": {
-          "property": "openMsgId",
-          "description": "需要原地更新文字表情的消息 openMsgId",
-          "required": true
-        },
-        "old-emotion-id": {
-          "property": "oldEmotionId",
-          "description": "消息上当前文字表情的 emotionId",
-          "required": true
-        },
-        "text": {
-          "property": "text",
-          "description": "新的文字表情内容",
-          "required": true
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message update-text-emotion",
       "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."

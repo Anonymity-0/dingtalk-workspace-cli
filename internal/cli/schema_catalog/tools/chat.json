@@ -995,10 +995,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -1008,25 +1007,23 @@
                   "value": "chat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1042,10 +1039,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -1114,10 +1110,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -1127,25 +1122,23 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1167,10 +1160,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -1348,16 +1340,15 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "versioned_binding",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "versioned_parameter_binding",
                   "value": "openConversationId"
                 },
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -1367,25 +1358,23 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "versioned_parameter_binding",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1401,10 +1390,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -1473,10 +1461,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -1486,25 +1473,23 @@
                   "value": "id"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1520,10 +1505,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4011,10 +3995,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -4024,25 +4007,23 @@
                   "value": "chat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4058,10 +4039,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4130,10 +4110,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -4143,25 +4122,23 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4183,10 +4160,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4461,16 +4437,15 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "versioned_binding",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "versioned_parameter_binding",
                   "value": "openConversationId"
                 },
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -4480,25 +4455,23 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "versioned_parameter_binding",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4514,10 +4487,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4586,10 +4558,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -4599,25 +4570,23 @@
                   "value": "id"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4633,10 +4602,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -11430,10 +11398,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "atAll"
                 },
                 {
@@ -11443,19 +11410,17 @@
                   "value": "atAll"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "atAll"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -11465,10 +11430,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -11530,10 +11494,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -11543,19 +11506,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "atOpenDingTalkIds"
                 },
                 {
@@ -11565,19 +11526,17 @@
                   "value": "atOpenDingtalkIds"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "atOpenDingTalkIds"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -11587,10 +11546,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -11653,10 +11611,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "content"
                 },
                 {
@@ -11666,25 +11623,23 @@
                   "value": "content"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "content"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -11694,10 +11649,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -11759,10 +11713,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -11772,24 +11725,16 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -11806,10 +11751,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -11886,10 +11830,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openMessageId"
                 },
                 {
@@ -11899,19 +11842,17 @@
                   "value": "msgId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openMessageId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -11933,10 +11874,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -11998,10 +11938,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "text"
                 },
                 {
@@ -12011,25 +11950,23 @@
                   "value": "text"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "text"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -12039,10 +11976,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -12104,10 +12040,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "title"
                 },
                 {
@@ -12117,19 +12052,17 @@
                   "value": "title"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "title"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -12139,10 +12072,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -14294,10 +14226,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -14307,19 +14238,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "categoryIds"
                 },
                 {
@@ -14329,19 +14258,17 @@
                   "value": "categoryIds"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "categoryIds"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -14363,10 +14290,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -17036,10 +16962,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -17049,24 +16974,16 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -17083,10 +17000,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -22229,10 +22145,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI lists all owned or administered groups when --role and --limit are omitted; both flags are optional filters despite stricter imported interface metadata.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -22248,10 +22163,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI lists all owned or administered groups when --role and --limit are omitted; both flags are optional filters despite stricter imported interface metadata.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -22371,10 +22285,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI lists all owned or administered groups when --role and --limit are omitted; both flags are optional filters despite stricter imported interface metadata.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -22390,10 +22303,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI lists all owned or administered groups when --role and --limit are omitted; both flags are optional filters despite stricter imported interface metadata.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -31195,10 +31107,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -31208,25 +31119,23 @@
                   "value": "chat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -31242,10 +31151,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -31314,10 +31222,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -31327,25 +31234,23 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -31367,10 +31272,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -31548,16 +31452,15 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "versioned_binding",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "versioned_parameter_binding",
                   "value": "openConversationId"
                 },
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -31567,25 +31470,23 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "versioned_parameter_binding",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -31601,10 +31502,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -31673,10 +31573,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -31686,25 +31585,23 @@
                   "value": "id"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -31720,10 +31617,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -34223,10 +34119,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -34236,25 +34131,23 @@
                   "value": "chat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -34270,10 +34163,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -34342,10 +34234,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -34355,25 +34246,23 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -34395,10 +34284,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -34673,16 +34561,15 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "versioned_binding",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "versioned_parameter_binding",
                   "value": "openConversationId"
                 },
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -34692,25 +34579,23 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "versioned_parameter_binding",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -34726,10 +34611,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -34798,10 +34682,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -34811,25 +34694,23 @@
                   "value": "id"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -34845,10 +34726,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -51021,10 +50901,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Cobra contract makes --off an optional mode switch: omission adds members to the mute list, while --off removes them. The shared MCP schema incorrectly marks the boolean as unconditionally required.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -51040,10 +50919,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Cobra contract makes --off an optional mode switch: omission adds members to the mute list, while --off removes them. The shared MCP schema incorrectly marks the boolean as unconditionally required.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -51822,10 +51700,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed optional --off switch selects unmute; omission deliberately selects mute, so false is a valid default rather than missing required input.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -51841,10 +51718,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed optional --off switch selects unmute; omission deliberately selects mute, so false is a valid default rather than missing required input.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -53026,10 +52902,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed optional --off switch selects unpin; omission deliberately selects pin, so false is a valid default rather than missing required input.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -53045,10 +52920,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed optional --off switch selects unpin; omission deliberately selects pin, so false is a valid default rather than missing required input.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -78099,16 +77973,22 @@
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "identity=bot"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "native_annotation",
+              "value": "identity=bot"
             },
             "type": {
               "candidates": [
@@ -78127,6 +78007,7 @@
           },
           "property": "robotCode",
           "required": false,
+          "required_when": "identity=bot",
           "type": "string"
         },
         "text": {
@@ -78609,16 +78490,22 @@
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "identity=webhook"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "default",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
+              "source": "native_annotation",
+              "value": "identity=webhook"
             },
             "type": {
               "candidates": [
@@ -78637,6 +78524,7 @@
           },
           "property": "webhookToken",
           "required": false,
+          "required_when": "identity=webhook",
           "type": "string"
         }
       },
@@ -89307,10 +89195,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed optional --off switch selects administrator removal; omission deliberately selects administrator assignment.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -89326,10 +89213,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed optional --off switch selects administrator removal; omission deliberately selects administrator assignment.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -92000,10 +91886,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -92013,19 +91898,17 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -92047,10 +91930,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -92112,10 +91994,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "nick"
                 },
                 {
@@ -92125,19 +92006,17 @@
                   "value": "nick"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "nick"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -92147,10 +92026,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -93314,10 +93192,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -93327,25 +93204,23 @@
                   "value": "chat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -93361,10 +93236,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -93433,16 +93307,15 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "versioned_binding",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "versioned_parameter_binding",
                   "value": "openConversationId"
                 },
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -93452,25 +93325,23 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "versioned_parameter_binding",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -93492,10 +93363,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -93564,10 +93434,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -93577,25 +93446,23 @@
                   "value": "id"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -93611,10 +93478,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -93703,10 +93569,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -93722,10 +93587,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -95535,10 +95399,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "新文字表情的背景 ID"
                 },
                 {
@@ -95554,19 +95417,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "新文字表情的背景 ID"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "backgroundId"
                 },
                 {
@@ -95576,19 +95437,17 @@
                   "value": "backgroundId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "backgroundId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -95610,10 +95469,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -95675,10 +95533,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -95688,25 +95545,23 @@
                   "value": "chat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -95716,10 +95571,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -95761,10 +95615,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "会话 openConversationId；与 --group、--id、--chat 四选一"
                 },
                 {
@@ -95780,19 +95633,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "会话 openConversationId；与 --group、--id、--chat 四选一"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -95802,25 +95653,23 @@
                   "value": "conversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -95836,10 +95685,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -95896,10 +95744,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "新的文字表情 ID，可通过 create-text-emotion 获取"
                 },
                 {
@@ -95915,19 +95762,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "新的文字表情 ID，可通过 create-text-emotion 获取"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "emotionId"
                 },
                 {
@@ -95937,19 +95782,17 @@
                   "value": "emotionId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "emotionId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -95971,10 +95814,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -96031,10 +95873,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "新的文字表情名称"
                 },
                 {
@@ -96050,19 +95891,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "新的文字表情名称"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "emotionName"
                 },
                 {
@@ -96072,19 +95911,17 @@
                   "value": "emotionName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "emotionName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -96106,10 +95943,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -96171,10 +96007,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -96184,25 +96019,23 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -96212,10 +96045,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -96277,10 +96109,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -96290,25 +96121,23 @@
                   "value": "id"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -96318,10 +96147,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -96378,10 +96206,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "需要原地更新文字表情的消息 openMsgId"
                 },
                 {
@@ -96397,19 +96224,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "需要原地更新文字表情的消息 openMsgId"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openMsgId"
                 },
                 {
@@ -96419,19 +96244,17 @@
                   "value": "msgId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openMsgId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -96453,10 +96276,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -96513,10 +96335,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "消息上当前文字表情的 emotionId"
                 },
                 {
@@ -96532,19 +96353,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "消息上当前文字表情的 emotionId"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "oldEmotionId"
                 },
                 {
@@ -96554,19 +96373,17 @@
                   "value": "oldEmotionId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "oldEmotionId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -96588,10 +96405,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -96648,10 +96464,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "新的文字表情内容"
                 },
                 {
@@ -96667,19 +96482,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "新的文字表情内容"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "text"
                 },
                 {
@@ -96689,19 +96502,17 @@
                   "value": "text"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "text"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -96723,10 +96534,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -97152,10 +96962,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "object"
                 },
                 {
@@ -97165,19 +96974,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "extension"
                 },
                 {
@@ -97187,19 +96994,17 @@
                   "value": "extension"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "extension"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -97209,10 +97014,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -97290,10 +97094,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "openConversationId"
                 },
                 {
@@ -97303,19 +97106,17 @@
                   "value": "group"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "openConversationId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -97337,10 +97138,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

@@ -2088,10 +2088,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler normalizes repeated or comma-separated group conversation IDs into a stable de-duplicated array while preserving existing user mentions.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2101,10 +2100,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler normalizes repeated or comma-separated group conversation IDs into a stable de-duplicated array while preserving existing user mentions.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -9019,16 +9017,15 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "versioned_binding",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "versioned_parameter_binding",
                   "value": "format"
                 },
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "format"
                 },
                 {
@@ -9038,19 +9035,17 @@
                   "value": "contentFormat"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "versioned_parameter_binding",
               "value": "format"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -9066,10 +9061,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -9154,10 +9148,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -9167,10 +9160,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -9253,10 +9245,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -9266,10 +9257,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -9594,10 +9584,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -9607,10 +9596,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -9693,10 +9681,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -9706,24 +9693,16 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": "--scope=range or --scope=section"
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": "--scope=range or --scope=section"
                 },
@@ -9734,10 +9713,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "--scope=range or --scope=section"
             },
             "type": {
@@ -9807,10 +9785,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -9826,24 +9803,16 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": "--scope=tags"
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": "--scope=tags"
                 },
@@ -9854,10 +9823,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler preserves full Markdown/JSONML reads and adds validated outline, range, section, and tag-scoped JSONML fragment reads with optional file output.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "--scope=tags"
             },
             "type": {
@@ -19426,13 +19394,19 @@
       "parameter_count": 2,
       "parameters": {
         "name": {
-          "description": "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)",
+          "description": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名",
           "field_provenance": {
             "description": {
               "candidates": [
                 {
-                  "precedence": "cobra_contract",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
+                },
+                {
+                  "precedence": "cobra_contract",
+                  "selected": false,
                   "source": "cobra_usage",
                   "value": "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)"
                 },
@@ -19449,10 +19423,10 @@
                   "value": ""
                 }
               ],
-              "precedence": "cobra_contract",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)"
+              "source": "native_annotation",
+              "value": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
             },
             "property": {
               "candidates": [
@@ -20476,10 +20450,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler normalizes group conversation IDs into a stable de-duplicated array and rejects group mentions for emoji replies, which the remote operation does not support.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -20489,10 +20462,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler normalizes group conversation IDs into a stable de-duplicated array and rejects group mentions for emoji replies, which the remote operation does not support.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {

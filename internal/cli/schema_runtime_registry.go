@@ -200,6 +200,12 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final ContractFi
 	constraints := runtimeCommandConstraints(entry.Command)
 	hint := runtimeSchemaHintForEntry(entry)
 	embeddedMeta, _ := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
+	// Apply parameter declarations from the ContractFinalPayload before the
+	// resolver reads them. The decls were put there by AttachSchema at
+	// DeclareLeafMetadata time; now that all flags exist on the fully-built
+	// command tree, they can be emitted as dws.schema.* annotations (rank
+	// native_annotation 620, outranking tool_schema_hint 500).
+	ApplyParamDecls(entry.Command, final.Parameters)
 	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, hint.Parameters, embeddedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)

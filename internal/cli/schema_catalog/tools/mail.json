@@ -17875,16 +17875,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI accepts either a fuzzy keyword or an exact employee number, represented by a typed require-one-of constraint rather than two unconditional requirements.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -17900,10 +17899,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI accepts either a fuzzy keyword or an exact employee number, represented by a typed require-one-of constraint rather than two unconditional requirements.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -17986,16 +17984,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI accepts either a fuzzy keyword or an exact employee number, represented by a typed require-one-of constraint rather than two unconditional requirements.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -18011,10 +18008,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI accepts either a fuzzy keyword or an exact employee number, represented by a typed require-one-of constraint rather than two unconditional requirements.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -29679,16 +29675,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -29704,10 +29699,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -30093,16 +30087,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -30118,10 +30111,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -30204,16 +30196,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -30229,10 +30220,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {

@@ -379,10 +379,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -392,19 +391,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "depts"
                 },
                 {
@@ -414,19 +411,17 @@
                   "value": "depts"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "depts"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -436,10 +431,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -502,10 +496,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgUserMobile"
                 },
                 {
@@ -515,19 +508,17 @@
                   "value": "orgUserMobile"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgUserMobile"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -543,10 +534,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -608,10 +598,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgUserName"
                 },
                 {
@@ -621,19 +610,17 @@
                   "value": "orgUserName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgUserName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -649,10 +636,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires employee name and mobile, decodes optional --depts JSON to an array, and calls add_employee without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3355,10 +3341,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -3368,19 +3353,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "deptIds"
                 },
                 {
@@ -3390,19 +3373,17 @@
                   "value": "deptIds"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "deptIds"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3412,10 +3393,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3478,10 +3458,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "email"
                 },
                 {
@@ -3491,19 +3470,17 @@
                   "value": "email"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "email"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3513,10 +3490,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3578,10 +3554,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "loginId"
                 },
                 {
@@ -3591,19 +3566,17 @@
                   "value": "loginId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "loginId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -3619,10 +3592,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3684,10 +3656,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgUserMobile"
                 },
                 {
@@ -3697,19 +3668,17 @@
                   "value": "orgUserMobile"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgUserMobile"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3719,10 +3688,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3784,10 +3752,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgUserName"
                 },
                 {
@@ -3797,19 +3764,17 @@
                   "value": "orgUserName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgUserName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -3825,10 +3790,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3890,10 +3854,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "sendPwdViaSms"
                 },
                 {
@@ -3903,19 +3866,17 @@
                   "value": "sendPwdViaSms"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "sendPwdViaSms"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3925,10 +3886,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires enterprise display name and login ID, maps optional contact fields and department IDs, and calls exclusive_account_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5434,10 +5394,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5453,10 +5412,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5540,10 +5498,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5559,10 +5516,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed helper deliberately permits either or both optional filters and passes an empty request to query the caller's authorized roster scope.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -9036,10 +8992,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "creatorUsername"
                 },
                 {
@@ -9049,19 +9004,17 @@
                   "value": "creatorUsername"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "creatorUsername"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -9077,10 +9030,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -9142,10 +9094,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgName"
                 },
                 {
@@ -9155,19 +9106,17 @@
                   "value": "orgName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -9183,10 +9132,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

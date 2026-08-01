@@ -52,7 +52,7 @@ func TestBuildManualAgentSelectionEvalFixtureUsesReviewedScenariosAndRealCommand
 	}
 }
 
-func TestBuildManualAgentSelectionEvalFixtureRejectsFactualContractDrift(t *testing.T) {
+func TestCrossPlatformCoverageBuildManualAgentSelectionEvalFixtureRejectsFactualContractDrift(t *testing.T) {
 	tests := []struct {
 		name    string
 		mutate  func(*BoundCommandRegistry, *ManualAgentHintSet)
@@ -141,5 +141,25 @@ func manualAgentSelectionBoundFixture() BoundCommandRegistry {
 		Commands:    []BoundCommandSpec{spec},
 		ByCanonical: map[string]BoundCommandSpec{spec.CanonicalPath: spec},
 		ByCLIPath:   map[string]BoundCommandSpec{spec.PrimaryCLIPath: spec},
+	}
+}
+
+func TestCrossPlatformCoverageContractFinalSelectionHintWithoutDeclaredSelection(t *testing.T) {
+	// No ContractFinal at all: the synthesized hint stays empty but reviewed.
+	hint := contractFinalSelectionHint(&cobra.Command{Use: "bare"})
+	if !hint.Reviewed || hint.Revision != "contract" {
+		t.Fatalf("undeclared hint = %#v", hint)
+	}
+	if hint.AgentSummary != "" || hint.UseWhen != nil || hint.Examples != nil {
+		t.Fatalf("undeclared hint must carry no selection prose: %#v", hint)
+	}
+
+	// ContractFinal without Selection: same early return.
+	cmd := &cobra.Command{Use: "declared"}
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(cmd) })
+	RegisterRuntimeContractFinal(cmd, ContractFinalPayload{Title: "T"})
+	hint = contractFinalSelectionHint(cmd)
+	if !hint.Reviewed || hint.AgentSummary != "" || hint.UseWhen != nil {
+		t.Fatalf("selection-less declared hint = %#v", hint)
 	}
 }

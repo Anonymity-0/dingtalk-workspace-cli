@@ -250,9 +250,8 @@ func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 	if spec.Validate == nil && !confirm {
 		return cmd
 	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
+	// cmd.Annotations is always non-nil here: AttachSchema above registers the
+	// runtime-contract annotation on every declared leaf.
 	rt := &contractRuntime{validate: spec.Validate, confirm: confirm}
 	if confirm {
 		rt.safety = spec.Safety

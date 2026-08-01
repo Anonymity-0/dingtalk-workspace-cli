@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestAnnotateRuntimeRiskEmbedsContractMarker(t *testing.T) {
+func TestCrossPlatformCoverageAnnotateRuntimeRiskEmbedsContractMarker(t *testing.T) {
 	cmd := &cobra.Command{Use: "x"}
 	AnnotateRuntimeRisk(cmd, "write")
 	got, ok := RuntimeContractRisk(cmd)
@@ -35,7 +35,7 @@ func TestAnnotateRuntimeRiskEmbedsContractMarker(t *testing.T) {
 	}
 }
 
-func TestApplyContractRiskToSafety(t *testing.T) {
+func TestCrossPlatformCoverageApplyContractRiskToSafety(t *testing.T) {
 	base := SafetySpec{Idempotency: "unknown", Risk: "low", Confirmation: "not_required", Effect: "read"}
 	got := applyContractRiskToSafety(base, "high-risk-write")
 	if got.Effect != "destructive" || got.Risk != "high" || got.Confirmation != "user_required" {
@@ -54,7 +54,7 @@ func TestApplyContractRiskToSafety(t *testing.T) {
 	}
 }
 
-func TestAnnotateRuntimeGateDeclareOrAnnotate(t *testing.T) {
+func TestCrossPlatformCoverageAnnotateRuntimeGateDeclareOrAnnotate(t *testing.T) {
 	cmd := &cobra.Command{Use: "x"}
 	if HasDeclaredOrAnnotatedConfirmation(cmd) {
 		t.Fatal("bare command must not claim confirmation coverage")
@@ -72,7 +72,7 @@ func TestAnnotateRuntimeGateDeclareOrAnnotate(t *testing.T) {
 	}
 }
 
-func TestApplyContractGateToSafety(t *testing.T) {
+func TestCrossPlatformCoverageApplyContractGateToSafety(t *testing.T) {
 	base := SafetySpec{Confirmation: "not_required", Effect: "read", Risk: "low"}
 	got := applyContractGateToSafety(base, "devAppRequireWriteGuard")
 	if got.Confirmation != "user_required" {
@@ -88,5 +88,50 @@ func TestApplyContractGateToSafety(t *testing.T) {
 	got = applyContractGateToSafety(reviewed, "devAppRequireWriteGuard")
 	if got.Effect != "destructive" || got.Risk != "high" || got.Confirmation != "user_required" {
 		t.Fatalf("gate must keep reviewed effect/risk: %#v", got)
+	}
+	if got = applyContractGateToSafety(base, "   "); got != base {
+		t.Fatalf("blank gate must be a no-op, got %#v", got)
+	}
+}
+
+func TestCrossPlatformCoverageRuntimeContractAnnotationNilAndBlankGuards(t *testing.T) {
+	// Nil-command annotators must be safe no-ops.
+	AnnotateRuntimeFlagDescription(nil, "flag", "description")
+	AnnotateRuntimeContract(nil)
+	AnnotateRuntimeRisk(nil, "write")
+	AnnotateRuntimeGate(nil, "devAppRequireWriteGuard")
+
+	cmd := &cobra.Command{Use: "x"}
+	AnnotateRuntimeGate(cmd, "   ")
+	if _, ok := RuntimeContractGate(cmd); ok {
+		t.Fatal("blank AnnotateRuntimeGate must not record a gate")
+	}
+	if cmd.Annotations != nil && cmd.Annotations[runtimeSchemaContractAnnotation] == "command" {
+		t.Fatal("blank AnnotateRuntimeGate must not mark the command as Contract")
+	}
+
+	// A present-but-blank gate annotation must read back as no gate.
+	blank := &cobra.Command{Use: "y", Annotations: map[string]string{
+		runtimeSchemaRuntimeGateAnnotation: "   ",
+	}}
+	if _, ok := RuntimeContractGate(blank); ok {
+		t.Fatal("blank runtime_gate annotation must not report a gate")
+	}
+}
+
+func TestCrossPlatformCoverageHasDeclaredOrAnnotatedConfirmationDeclaredAndRiskBranches(t *testing.T) {
+	declared := &cobra.Command{Use: "declared"}
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(declared) })
+	RegisterRuntimeContractFinal(declared, ContractFinalPayload{
+		Safety: &SafetySpec{Confirmation: "not_required"},
+	})
+	if !HasDeclaredOrAnnotatedConfirmation(declared) {
+		t.Fatal("typed Contract SafetySpec confirmation must satisfy declare-OR-annotate")
+	}
+
+	risky := &cobra.Command{Use: "risky"}
+	AnnotateRuntimeRisk(risky, "read")
+	if !HasDeclaredOrAnnotatedConfirmation(risky) {
+		t.Fatal("Contract Risk annotation must satisfy declare-OR-annotate")
 	}
 }

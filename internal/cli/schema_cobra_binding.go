@@ -300,6 +300,45 @@ func validateCompatibilityLeafContract(spec CommandSpec, primary, alias *cobra.C
 	)
 }
 
+// filterSchemaAnnotations returns a copy of annotations without dws.schema.*
+// keys. Those are Schema-level metadata (ParamDecl / AttachSchema) that do not
+// affect command execution and are resolved through the shared assembly path.
+func filterSchemaAnnotations(annotations map[string][]string) map[string][]string {
+	if len(annotations) == 0 {
+		return nil
+	}
+	out := make(map[string][]string, len(annotations))
+	for k, v := range annotations {
+		if !strings.HasPrefix(k, "dws.schema.") {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// requiredContractEquivalent compares two Required contracts, tolerating
+// NativeRequired / NativeRequiredWhen being present on one side but empty on
+// the other. This happens when a ParamDecl annotation exists on the primary
+// command but not on its compatibility alias. Genuine drift (both non-empty
+// but different) is still caught.
+func requiredContractEquivalent(a, b compatibilityFlagRequiredContract) bool {
+	// Compare all fields except NativeRequired / NativeRequiredWhen strictly.
+	if a.CobraRequired != b.CobraRequired || a.UsageRequired != b.UsageRequired ||
+		a.UsageDefault != b.UsageDefault || a.MetadataRequired != b.MetadataRequired ||
+		a.MetadataRequiredWhen != b.MetadataRequiredWhen {
+		return false
+	}
+	// NativeRequired / NativeRequiredWhen: tolerate one-sided presence.
+	nativeEquiv := func(x, y string) bool {
+		return x == y || x == "" || y == ""
+	}
+	return nativeEquiv(a.NativeRequired, b.NativeRequired) &&
+		nativeEquiv(a.NativeRequiredWhen, b.NativeRequiredWhen)
+}
+
 func compatibilityHandlerContractProblems(primary, alias *cobra.Command) []string {
 	if primary == nil || alias == nil {
 		return []string{"execution handlers cannot be compared for a nil command"}
@@ -450,13 +489,19 @@ func compatibilityFlagContractProblems(canonicalPath string, primary, alias *cob
 		if primaryFlag.Origin != aliasFlag.Origin {
 			problems = append(problems, fmt.Sprintf("flag --%s local/persistent/inherited behavior differs: primary=%s compatibility=%s", name, primaryFlag.Origin, aliasFlag.Origin))
 		}
-		if !reflect.DeepEqual(primaryFlag.Required, aliasFlag.Required) {
+		if !requiredContractEquivalent(primaryFlag.Required, aliasFlag.Required) {
 			problems = append(problems, fmt.Sprintf("flag --%s required/required_when facts differ: primary=%s compatibility=%s",
 				name, compatibilityJSON(primaryFlag.Required), compatibilityJSON(aliasFlag.Required)))
 		}
-		if !reflect.DeepEqual(primaryFlag.Annotations, aliasFlag.Annotations) {
+		// Compare annotations excluding dws.schema.* keys: those are Schema-level
+		// metadata declarations (ParamDecl / AttachSchema) that do not affect
+		// command execution. The compatibility check verifies executable equivalence;
+		// Schema facts are resolved through the shared assembly path.
+		primaryExecAnnotations := filterSchemaAnnotations(primaryFlag.Annotations)
+		aliasExecAnnotations := filterSchemaAnnotations(aliasFlag.Annotations)
+		if !reflect.DeepEqual(primaryExecAnnotations, aliasExecAnnotations) {
 			problems = append(problems, fmt.Sprintf("flag --%s annotations differ: primary=%s compatibility=%s",
-				name, compatibilityJSON(primaryFlag.Annotations), compatibilityJSON(aliasFlag.Annotations)))
+				name, compatibilityJSON(primaryExecAnnotations), compatibilityJSON(aliasExecAnnotations)))
 		}
 	}
 	return problems, nil

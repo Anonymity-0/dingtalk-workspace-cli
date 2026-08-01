@@ -1,11 +1,16 @@
 package helpers
 
 import (
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
+
+// boolPtr returns a pointer to v, for ParamDecl.Required declarations.
+func boolPtr(v bool) *bool { return &v }
 
 // aisearchKeywordAliases 是 --keyword flag 的同义瞎猜兜底列表。
 // 模型可能写 --name / --q / --query / --text，这些都被识别为 keyword。
@@ -272,6 +277,10 @@ func newAisearchCommand() *cobra.Command {
   dws aisearch enterprise --queries "OKR" --types document,im,mail`,
 		RunE: runAisearchEnterprise,
 	}
+	// Register flags that carry ParamDecl before DeclareLeafMetadata so
+	// AttachSchema can emit their dws.schema.* annotations.
+	enterpriseCmd.Flags().String("queries", "", "内容关键词列表，多个用逗号分隔；汇总类场景可留空")
+	enterpriseCmd.Flags().String("time-range", "", "时间范围，仅当用户显式给出时间词时填写，如 今天/本周/9月/过去一周")
 	DeclareLeafMetadata(enterpriseCmd, LeafSpec{
 		Safety: cli.SafetySpec{
 			Effect: "read", Risk: "low",
@@ -299,15 +308,17 @@ func newAisearchCommand() *cobra.Command {
 					"dws aisearch enterprise --queries \"OKR\" --types mail --time-range \"最近\" --format json",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "queries", Required: boolPtr(false)},
+				{Name: "time-range", Required: boolPtr(false)},
+			},
 		},
 	})
-	enterpriseCmd.Flags().String("queries", "", "内容关键词列表，多个用逗号分隔；汇总类场景可留空")
 	enterpriseCmd.Flags().String("types", "all", "搜索类型: all/document/im/calendar/todo/minute/report/image/link/notable/baike/mail，多个用逗号分隔")
 	enterpriseCmd.Flags().String("search-types", "", "--types 的别名")
 	_ = enterpriseCmd.Flags().MarkHidden("search-types")
 	enterpriseCmd.Flags().String("searchTypes", "", "--types 的别名")
 	_ = enterpriseCmd.Flags().MarkHidden("searchTypes")
-	enterpriseCmd.Flags().String("time-range", "", "时间范围，仅当用户显式给出时间词时填写，如 今天/本周/9月/过去一周")
 	enterpriseCmd.Flags().String("timeRange", "", "--time-range 的别名")
 	_ = enterpriseCmd.Flags().MarkHidden("timeRange")
 	addAisearchKeywordCompatibilityFlag(enterpriseCmd)

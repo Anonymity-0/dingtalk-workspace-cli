@@ -134,7 +134,11 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 		t.Helper()
 		provenance := schemaMap(parameters[flagName]["field_provenance"])
 		winner := provenance[field]
-		if winner["source"] != "reviewed_manual_hint" || winner["precedence"] != "reviewed_manual" {
+		src, _ := winner["source"].(string)
+		prec, _ := winner["precedence"].(string)
+		// Accept both the legacy hints source and the migrated declaration source.
+		if (src != "reviewed_manual_hint" || prec != "reviewed_manual") &&
+			(src != "native_annotation" || prec != "native_annotation") {
 			t.Fatalf("%s.%s provenance = %#v", flagName, field, winner)
 		}
 	}

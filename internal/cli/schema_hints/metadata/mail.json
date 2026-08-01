@@ -19,30 +19,11 @@
       "review_reason": "Preserve the reviewed composite wrapper contract: the CLI maps --limit to the search_emails size property after constructing a folder KQL query."
     },
     "mail.search_mail_users": {
-      "parameters": {
-        "employee-no": {
-          "required": false
-        },
-        "keyword": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "mail user search",
       "review_reason": "The reviewed CLI accepts either a fuzzy keyword or an exact employee number, represented by a typed require-one-of constraint rather than two unconditional requirements."
     },
     "mail.update_user_message_template": {
-      "parameters": {
-        "content": {
-          "required": false
-        },
-        "name": {
-          "required": false
-        },
-        "subject": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "mail template update",
       "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement."

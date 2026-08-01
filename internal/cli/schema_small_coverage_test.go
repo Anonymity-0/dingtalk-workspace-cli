@@ -388,10 +388,10 @@ func resetReviewedDryRunCapabilitiesForTest() {
 	reviewedDryRunCapabilitiesLazy.err = nil
 }
 
-// TestDeclaredDryRunCapabilityAutoReviewed pins the single-source rule: a
+// TestCrossPlatformCoverageDeclaredDryRunCapabilityAutoReviewed pins the single-source rule: a
 // Contract-declared dry_run needs no manual allowlist entry to pass the
 // delivery gate, and a conflicting manual entry is a hard error.
-func TestDeclaredDryRunCapabilityAutoReviewed(t *testing.T) {
+func TestCrossPlatformCoverageDeclaredDryRunCapabilityAutoReviewed(t *testing.T) {
 	clearDeclaredDryRunCapabilitiesForTest()
 	t.Cleanup(clearDeclaredDryRunCapabilitiesForTest)
 	originalGroups := reviewedDryRunCapabilityGroups
@@ -545,4 +545,41 @@ func cloneCoverageSchemaMap(source map[string]any) map[string]any {
 		out[key] = value
 	}
 	return out
+}
+
+// TestCrossPlatformCoverageDeclaredDryRunCapabilityIndexGuards pins the defensive edges of the
+// declared dry-run index: blank canonicals are ignored, a successful lookup
+// returns a copy, and corrupted index entries fail closed.
+func TestCrossPlatformCoverageDeclaredDryRunCapabilityIndexGuards(t *testing.T) {
+	clearDeclaredDryRunCapabilitiesForTest()
+	t.Cleanup(clearDeclaredDryRunCapabilitiesForTest)
+
+	recordDeclaredDryRunCapability("   ", DryRunSpec{PreviewKind: DryRunPreviewInvocation})
+	capabilities, err := loadReviewedDryRunCapabilities()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for canonical := range capabilities {
+		if strings.TrimSpace(canonical) == "" {
+			t.Fatal("blank canonical must not be recorded")
+		}
+	}
+
+	recordDeclaredDryRunCapability("sample.lookup", DryRunSpec{PreviewKind: DryRunPreviewInvocation})
+	spec, err := reviewedDryRunCapability(" sample.lookup ")
+	if err != nil || spec == nil || spec.PreviewKind != DryRunPreviewInvocation {
+		t.Fatalf("declared capability lookup = %#v, %v", spec, err)
+	}
+
+	clearDeclaredDryRunCapabilitiesForTest()
+	declaredDryRunCapabilities.Store(42, DryRunSpec{PreviewKind: DryRunPreviewInvocation})
+	if _, err := loadReviewedDryRunCapabilities(); err == nil || !strings.Contains(err.Error(), "non-string key") {
+		t.Fatalf("non-string key error = %v", err)
+	}
+	declaredDryRunCapabilities.Delete(42)
+
+	declaredDryRunCapabilities.Store("sample.bad", "not-a-spec")
+	if _, err := loadReviewedDryRunCapabilities(); err == nil || !strings.Contains(err.Error(), "non-DryRunSpec value") {
+		t.Fatalf("non-DryRunSpec value error = %v", err)
+	}
 }

@@ -733,14 +733,39 @@ func sliceValue(cmd *cobra.Command, flag FlagSpec) []string {
 	return nil
 }
 
+// bindKey is the toolArgs key for a flag: the declared Bind, or the flag name
+// converted kebab-to-camel.
+//
+// The alternative default — sending the kebab name verbatim — is accepted by no
+// backend, so a forgotten Bind used to produce a silently wrong payload key;
+// deriving it makes that failure mode correct instead.
+//
+// It is deliberately *not* a licence to drop the explicit declarations: Bind is
+// also the declared source of the Schema property mapping, and relying on this
+// derivation downgrades that field's provenance to flag_name_inference, which
+// the "declared or annotated, never inference-only" rule forbids (measured:
+// dropping the 93 mechanical declarations produced 552 lines of catalog drift).
+func bindKey(flag FlagSpec) string {
+	if flag.Bind != "" {
+		return flag.Bind
+	}
+	parts := strings.Split(flag.Name, "-")
+	if len(parts) <= 1 {
+		return flag.Name
+	}
+	for i := 1; i < len(parts); i++ {
+		if parts[i] != "" {
+			parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
+		}
+	}
+	return strings.Join(parts, "")
+}
+
 // BuildArgs assembles toolArgs from the flag set by binding relationship.
 func BuildArgs(cmd *cobra.Command, flags []FlagSpec) (map[string]any, error) {
 	toolArgs := map[string]any{}
 	for _, flag := range flags {
-		bind := flag.Bind
-		if bind == "" {
-			bind = flag.Name
-		}
+		bind := bindKey(flag)
 		if flag.Kind == KindInt {
 			v, err := integerValue(cmd, flag)
 			if err != nil {
@@ -1117,6 +1142,12 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 			if len(flag.Enum) > 0 {
 				cli.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
 			}
+			// Same class as Enum: a declared rule the reviewed registry cannot
+			// derive. Without it a credential that is mandatory under one
+			// identity is published as plainly optional.
+			if flag.RequiredWhen != "" {
+				cli.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
+			}
 		}
 		embedSchemaDecl(cmd, spec)
 		return
@@ -1235,6 +1266,20 @@ func AttachSchema(cmd *cobra.Command, safety cli.SafetySpec, schema SchemaDecl, 
 			CanonicalPath: strings.TrimSpace(id.CanonicalPath), CLIPath: strings.TrimSpace(id.CLIPath),
 			PrimaryCLIPath: strings.TrimSpace(id.PrimaryCLIPath), Group: strings.TrimSpace(id.Group),
 			Aliases: id.Aliases, Source: strings.TrimSpace(id.Source),
+		}
+	}
+	if len(schema.Parameters) > 0 {
+		payload.Parameters = make([]cli.ParamDecl, 0, len(schema.Parameters))
+		for _, p := range schema.Parameters {
+			payload.Parameters = append(payload.Parameters, cli.ParamDecl{
+				Name:          p.Name,
+				Property:      p.Property,
+				Required:      p.Required,
+				InterfaceType: p.InterfaceType,
+				Description:   p.Description,
+				RequiredWhen:  p.RequiredWhen,
+				Enum:          p.Enum,
+			})
 		}
 	}
 	cli.RegisterRuntimeContractFinal(cmd, payload)

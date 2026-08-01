@@ -9,79 +9,31 @@
   },
   "tools": {
     "todo.get_user_todos_in_current_org": {
-      "parameters": {
-        "role-types": {
-          "property": "roleTypes",
-          "required": false,
-          "description": "角色类型列表；省略时运行时默认使用 executor"
-        },
-        "query-all": {
-          "required": false,
-          "interface_type": "boolean",
-          "description": "为 true 时跨组织查询全部待办；默认仅查询当前组织待办"
-        }
-      },
       "reviewed": true,
       "cli_path": "todo task list",
       "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true."
     },
     "todo.reset_todo_reminder": {
-      "parameters": {
-        "reminder-rules": {
-          "description": "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"
-        }
-      },
       "reviewed": true,
       "cli_path": "todo task reset-reminder",
       "review_reason": "The reviewed CLI rejects malformed or structurally invalid non-empty reminder rules before the reset mutation, while preserving omission and [] as explicit clear forms."
     },
     "todo.create_todo_tag": {
-      "parameters": {
-        "name": {
-          "property": "name",
-          "required": true
-        }
-      },
       "reviewed": true,
       "cli_path": "todo tag create",
       "review_reason": "The reviewed handler requires a non-blank tag name, builds a one-element userTags request, and invokes create_todo_tag without a runtime confirmation gate."
     },
     "todo.delete_todo_tag": {
-      "parameters": {
-        "tag-codes": {
-          "property": "tagCodes",
-          "required": true,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "todo tag delete",
       "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag."
     },
     "todo.tag_todo": {
-      "parameters": {
-        "task-id": {
-          "property": "taskId",
-          "required": true
-        },
-        "tag-codes": {
-          "property": "tagCodes",
-          "required": true,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "todo tag add",
       "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo."
     },
     "todo.update_todo_tag": {
-      "parameters": {
-        "user-tags": {
-          "property": "userTags",
-          "required": true,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "todo tag update",
       "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate."

@@ -269,6 +269,23 @@ func AnnotateRuntimeRequiredFlags(cmd *cobra.Command, flagNames ...string) {
 	}
 }
 
+// AnnotateRuntimeFlagRequiredValue sets an explicit required value ("true" or
+// "false") on a flag's dws.schema.required annotation. Use this when a
+// declaration needs to override a stale cobra-level or MCP-level required=true
+// with an explicit false.
+func AnnotateRuntimeFlagRequiredValue(cmd *cobra.Command, flagName string, required bool) {
+	if cmd == nil {
+		return
+	}
+	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+		v := "false"
+		if required {
+			v = "true"
+		}
+		setFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation, v)
+	}
+}
+
 // AnnotateRuntimeFlagDescription records the Schema parameter description.
 func AnnotateRuntimeFlagDescription(cmd *cobra.Command, flagName, description string) {
 	if cmd == nil {
@@ -298,6 +315,19 @@ func AnnotateRuntimeFlagFormat(cmd *cobra.Command, flagName, format string) {
 	}
 	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
 		setFlagAnnotation(flag, "x-cli-format", strings.TrimSpace(format))
+	}
+}
+
+// AnnotateRuntimeFlagInterfaceType records the wire type for a flag's interface
+// property (e.g. "string", "integer", "boolean", "array"). The resolver reads
+// this as a native_annotation candidate for interface_type, outranking
+// tool_schema_hint.
+func AnnotateRuntimeFlagInterfaceType(cmd *cobra.Command, flagName, interfaceType string) {
+	if cmd == nil {
+		return
+	}
+	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+		setFlagAnnotation(flag, runtimeSchemaFlagTypeAnnotation, strings.TrimSpace(interfaceType))
 	}
 }
 

@@ -269,9 +269,16 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 	if len(snapshot.Catalog) == 0 || len(snapshot.Tools) == 0 {
 		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot is empty")
 	}
-	if snapshot.SourceHash == "" || snapshot.SourceHash != schemaCatalogSnapshotHash(snapshot) {
-		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot source_hash does not match its content")
+	if snapshot.SourceHash == "" {
+		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot is missing source_hash")
 	}
+	// source_hash equality is a build-time property, enforced by
+	// check-generated-drift.sh, which regenerates and byte-compares the whole
+	// artifact set — strictly stronger than this hash, since it also catches a
+	// shard set that is self-consistent but stale. Recomputing it here re-marshals
+	// every decoded map (measured: 86.9ms, 65MB, 997k allocs) on each invocation
+	// that touches ResolveMeta, to re-derive a fact about an embedded artifact
+	// that cannot change at runtime.
 	registry, index, err := schemaRegistryFromSnapshot(snapshot)
 	if err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("load typed Schema registry: %w", err)

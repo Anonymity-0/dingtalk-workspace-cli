@@ -20,7 +20,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
-func TestNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
+func TestCrossPlatformCoverageNewCommandEmbedsFullSchemaDeclAsFinalSource(t *testing.T) {
 	cmd := New(Spec{
 		Use:   "create",
 		Short: "short",
@@ -142,7 +142,7 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 	}
 }
 
-func TestNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
+func TestCrossPlatformCoverageNewCommandPanicsOnPartialSchemaDecl(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		schema  SchemaDecl
@@ -279,7 +279,7 @@ func TestSchemaDeclEmptySkipsFinal(t *testing.T) {
 	}
 }
 
-func TestNewCommandRejectsPartialSafetySpec(t *testing.T) {
+func TestCrossPlatformCoverageNewCommandRejectsPartialSafetySpec(t *testing.T) {
 	defer func() {
 		recovered := recover()
 		if recovered == nil {
@@ -294,4 +294,37 @@ func TestNewCommandRejectsPartialSafetySpec(t *testing.T) {
 		Safety: cli.SafetySpec{Effect: "write", Risk: "medium", Idempotency: "unknown"},
 		Invoke: func(*Ctx, map[string]any) error { return nil },
 	})
+}
+
+func TestCrossPlatformCoverageSchemaDeclEmptyReportsEveryAuthoredSection(t *testing.T) {
+	if !(SchemaDecl{}).Empty() {
+		t.Fatal("zero SchemaDecl must be empty")
+	}
+
+	authored := map[string]SchemaDecl{
+		"title":       {Title: "T"},
+		"description": {Description: "D"},
+		"positionals": {Positionals: []PositionalDecl{{Name: "id"}}},
+		"dry_run":     {DryRun: &DryRunDecl{PreviewKind: "request"}},
+		"interface":   {Interface: &InterfaceDecl{Mode: "mcp"}},
+		"selection":   {Selection: SelectionDecl{Tips: []string{"tip"}}},
+		"identity":    {Identity: IdentityDecl{Name: "tool"}},
+	}
+	for name, decl := range authored {
+		if decl.Empty() {
+			t.Fatalf("%s: authored section must make SchemaDecl non-empty", name)
+		}
+	}
+
+	// Pointers without any authored payload still count as empty: a bare
+	// &DryRunDecl{} / &InterfaceDecl{} carries no final Schema fact.
+	unauthored := map[string]SchemaDecl{
+		"dry_run pointer":   {DryRun: &DryRunDecl{RemoteReads: true}},
+		"interface pointer": {Interface: &InterfaceDecl{}},
+	}
+	for name, decl := range unauthored {
+		if !decl.Empty() {
+			t.Fatalf("%s: payload-free pointer must stay empty", name)
+		}
+	}
 }

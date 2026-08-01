@@ -1020,10 +1020,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1039,10 +1038,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -1126,10 +1124,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1145,10 +1142,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {

@@ -379,10 +379,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workNo"
                 },
                 {
@@ -392,19 +391,17 @@
                   "value": "workNo"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workNo"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -420,10 +417,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -849,10 +845,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workNo"
                 },
                 {
@@ -862,19 +857,17 @@
                   "value": "workNo"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workNo"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -890,10 +883,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1319,10 +1311,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "allLabel"
                 },
                 {
@@ -1332,19 +1323,17 @@
                   "value": "allLabel"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "allLabel"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1354,10 +1343,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -1419,10 +1407,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "staffIds"
                 },
                 {
@@ -1432,19 +1419,17 @@
                   "value": "staffIds"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "staffIds"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -1460,10 +1445,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1889,10 +1873,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workNo"
                 },
                 {
@@ -1902,19 +1885,17 @@
                   "value": "workNo"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workNo"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -1930,10 +1911,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -2722,10 +2702,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --pool-code maps 1:1 to the poolCode MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "poolCode"
                 },
                 {
@@ -2735,19 +2714,17 @@
                   "value": "poolCode"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --pool-code maps 1:1 to the poolCode MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "poolCode"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: --pool-code maps 1:1 to the poolCode MCP call argument observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -2763,10 +2740,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: --pool-code maps 1:1 to the poolCode MCP call argument observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3196,10 +3172,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "currentPage"
                 },
                 {
@@ -3209,19 +3184,17 @@
                   "value": "page"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "currentPage"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3237,10 +3210,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3303,10 +3275,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "pageSize"
                 },
                 {
@@ -3316,19 +3287,17 @@
                   "value": "pageSize"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "pageSize"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3344,10 +3313,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3409,10 +3377,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "poolCode"
                 },
                 {
@@ -3422,19 +3389,17 @@
                   "value": "poolCode"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "poolCode"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -3450,10 +3415,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3885,10 +3849,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "creator"
                 },
                 {
@@ -3898,19 +3861,17 @@
                   "value": "creator"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "creator"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3920,10 +3881,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3985,10 +3945,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "keyword"
                 },
                 {
@@ -3998,19 +3957,17 @@
                   "value": "keyword"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "keyword"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4020,10 +3977,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -4085,10 +4041,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "labels"
                 },
                 {
@@ -4098,19 +4053,17 @@
                   "value": "labels"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "labels"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4120,10 +4073,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -4186,10 +4138,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "currentPage"
                 },
                 {
@@ -4199,19 +4150,17 @@
                   "value": "page"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "currentPage"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4227,10 +4176,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -4293,10 +4241,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "pageSize"
                 },
                 {
@@ -4306,19 +4253,17 @@
                   "value": "pageSize"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "pageSize"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4334,10 +4279,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -4399,10 +4343,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "poolType"
                 },
                 {
@@ -4412,19 +4355,17 @@
                   "value": "poolType"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "poolType"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4434,10 +4375,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -4866,10 +4806,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "dataQueries"
                 },
                 {
@@ -4879,19 +4818,17 @@
                   "value": "dataQueries"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "dataQueries"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -4907,10 +4844,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -4972,10 +4908,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workNo"
                 },
                 {
@@ -4985,19 +4920,17 @@
                   "value": "workNo"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workNo"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -5013,10 +4946,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -5448,10 +5380,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "deptName"
                 },
                 {
@@ -5461,19 +5392,17 @@
                   "value": "deptName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "deptName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5483,10 +5412,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5548,10 +5476,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "jobLevel"
                 },
                 {
@@ -5561,19 +5488,17 @@
                   "value": "jobLevel"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "jobLevel"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5583,10 +5508,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5648,10 +5572,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "keyword"
                 },
                 {
@@ -5661,19 +5584,17 @@
                   "value": "keyword"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "keyword"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5683,10 +5604,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5749,10 +5669,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "currentPage"
                 },
                 {
@@ -5762,19 +5681,17 @@
                   "value": "page"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "currentPage"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5790,10 +5707,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5856,10 +5772,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "pageSize"
                 },
                 {
@@ -5869,19 +5784,17 @@
                   "value": "pageSize"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "pageSize"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5897,10 +5810,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -5962,10 +5874,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "poolCode"
                 },
                 {
@@ -5975,19 +5886,17 @@
                   "value": "poolCode"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "poolCode"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -5997,10 +5906,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -6062,10 +5970,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "positionName"
                 },
                 {
@@ -6075,19 +5982,17 @@
                   "value": "positionName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "positionName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -6097,10 +6002,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -6529,10 +6433,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "fields"
                 },
                 {
@@ -6542,19 +6445,17 @@
                   "value": "fields"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "fields"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -6570,10 +6471,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -6635,10 +6535,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orderByClauses"
                 },
                 {
@@ -6648,19 +6547,17 @@
                   "value": "orderBy"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orderByClauses"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -6670,10 +6567,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -6735,10 +6631,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "originJson"
                 },
                 {
@@ -6748,19 +6643,17 @@
                   "value": "originJson"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "originJson"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -6776,10 +6669,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -6842,10 +6734,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "currentPage"
                 },
                 {
@@ -6855,19 +6746,17 @@
                   "value": "page"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "currentPage"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -6883,10 +6772,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -6949,10 +6837,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "pageSize"
                 },
                 {
@@ -6962,19 +6849,17 @@
                   "value": "pageSize"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "pageSize"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -6990,10 +6875,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
