@@ -14,6 +14,8 @@ func TestCrossPlatformCoverageRuntimeAnnotationAPIsCoverage(t *testing.T) {
 	AnnotateRuntimeFlag(nil, "x", "x", "string", false, "")
 	AnnotateRuntimeFlagProperty(nil, "x", "x")
 	AnnotateRuntimeRequiredFlags(nil, "x")
+	AnnotateRuntimeFlagRequiredValue(nil, "x", false)
+	AnnotateRuntimeFlagInterfaceType(nil, "x", "string")
 	AnnotateRuntimeFlagRequiredWhen(nil, "x", "when")
 	AnnotateRuntimeFlagFormat(nil, "x", "uri")
 	AnnotateRuntimeFlagEnum(nil, "x", "a")

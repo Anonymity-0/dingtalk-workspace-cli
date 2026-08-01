@@ -305,6 +305,7 @@ func TestCrossPlatformCoverageSchemaDeclEmptyReportsEveryAuthoredSection(t *test
 		"title":       {Title: "T"},
 		"description": {Description: "D"},
 		"positionals": {Positionals: []PositionalDecl{{Name: "id"}}},
+		"parameters":  {Parameters: []ParamDecl{{Name: "mode"}}},
 		"dry_run":     {DryRun: &DryRunDecl{PreviewKind: "request"}},
 		"interface":   {Interface: &InterfaceDecl{Mode: "mcp"}},
 		"selection":   {Selection: SelectionDecl{Tips: []string{"tip"}}},

@@ -598,6 +598,15 @@ var RecordQuery = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws aitable +record-query --base-id B --table-id T --query \"关键词\" --limit 50"},
 		},
+		// Execute maps --query → MCP keyword (not inferable); JSON flags keep
+		// wire types so Agents do not treat comma-strings as opaque text.
+		Parameters: []corecmd.ParamDecl{
+			{Name: "query", Property: "keyword"},
+			{Name: "filters", InterfaceType: "object"},
+			{Name: "sort", InterfaceType: "array"},
+			{Name: "record-ids", InterfaceType: "array"},
+			{Name: "field-ids", InterfaceType: "array"},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "Base ID", Required: true},

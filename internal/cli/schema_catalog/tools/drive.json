@@ -19620,13 +19620,19 @@
       "parameter_count": 2,
       "parameters": {
         "name": {
-          "description": "新名称 (必填；实际执行时仅去掉与节点当前扩展名完全匹配的一层后缀)",
+          "description": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名",
           "field_provenance": {
             "description": {
               "candidates": [
                 {
-                  "precedence": "cobra_contract",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
+                },
+                {
+                  "precedence": "cobra_contract",
+                  "selected": false,
                   "source": "cobra_usage",
                   "value": "新名称 (必填；实际执行时仅去掉与节点当前扩展名完全匹配的一层后缀)"
                 },
@@ -19643,10 +19649,10 @@
                   "value": ""
                 }
               ],
-              "precedence": "cobra_contract",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "新名称 (必填；实际执行时仅去掉与节点当前扩展名完全匹配的一层后缀)"
+              "source": "native_annotation",
+              "value": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
             },
             "property": {
               "candidates": [
@@ -22966,16 +22972,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -23032,7 +23044,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }
@@ -26074,16 +26086,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -26140,7 +26158,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         },
@@ -26731,16 +26749,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -26797,7 +26821,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }

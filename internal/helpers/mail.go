@@ -327,6 +327,12 @@ func newMailCommand() *cobra.Command {
 					"dws mail message list --email user@company.com --folder-id 1 --limit 50",
 				},
 			},
+			// Composite wrapper maps --limit onto search_emails.size (same RPC as
+			// mail message search). Declare here so clearing hints does not fall
+			// back to flag_name_inference → "limit".
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", Property: "size"},
+			},
 		},
 	})
 

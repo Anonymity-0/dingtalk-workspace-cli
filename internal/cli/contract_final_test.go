@@ -171,6 +171,32 @@ func TestCrossPlatformCoverageContractFinalNilCommandGuards(t *testing.T) {
 	ClearRuntimeContractFinalForTest(nil)
 }
 
+func TestCrossPlatformCoverageApplyParamDeclsSkipsBlankAndAnnotatesEnum(t *testing.T) {
+	cmd := &cobra.Command{Use: "apply-params"}
+	cmd.Flags().String("mode", "", "mode")
+	required := false
+	ApplyParamDecls(cmd, []ParamDecl{
+		{Name: "  "}, // blank names are skipped
+		{
+			Name: "mode", Property: "mode", Required: &required,
+			InterfaceType: "string", Description: "mode desc",
+			RequiredWhen: "when create", Enum: []string{"a", "b"},
+		},
+	})
+	flag := cmd.Flags().Lookup("mode")
+	if flag == nil {
+		t.Fatal("missing mode flag")
+	}
+	if got := flag.Annotations["dws.schema.property"]; len(got) == 0 || got[0] != "mode" {
+		t.Fatalf("property = %#v", flag.Annotations["dws.schema.property"])
+	}
+	if got := flag.Annotations["x-cli-enum"]; len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("enum = %#v", flag.Annotations["x-cli-enum"])
+	}
+	ApplyParamDecls(nil, []ParamDecl{{Name: "mode"}})
+	ApplyParamDecls(cmd, nil)
+}
+
 func TestCrossPlatformCoverageRuntimeContractFinalRejectsForeignStoredValue(t *testing.T) {
 	cmd := &cobra.Command{Use: "x"}
 	t.Cleanup(func() { ClearRuntimeContractFinalForTest(cmd) })

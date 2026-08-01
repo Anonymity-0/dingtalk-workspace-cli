@@ -204,14 +204,24 @@ func validateResourceDownloadOutputFlag(output, flagName string) error {
 	if output == "" {
 		return apperrors.NewValidation(flagName + " 不能为空")
 	}
-	if filepath.IsAbs(output) {
+	// Reject OS-absolute paths and Unix-rooted forms ("/x") even on Windows,
+	// where filepath.IsAbs("/x") is false but the path is still not a cwd-relative output.
+	if filepath.IsAbs(output) || strings.HasPrefix(filepath.ToSlash(output), "/") {
 		return apperrors.NewValidation(flagName + " 只接受工作目录内的相对路径")
 	}
-	clean := filepath.Clean(output)
-	if clean == ".." || strings.HasPrefix(clean, ".."+string(os.PathSeparator)) {
+	clean := filepath.Clean(filepath.FromSlash(output))
+	if resourcePathEscapesBase(clean) {
 		return apperrors.NewValidation(flagName + " 不允许使用 .. 逃逸工作目录")
 	}
 	return nil
+}
+
+// resourcePathEscapesBase reports whether rel escapes its base directory.
+// Rel values may use '/' or the OS separator (for example mocked filepath.Rel
+// results), so normalize before comparing against "..".
+func resourcePathEscapesBase(rel string) bool {
+	rel = filepath.Clean(filepath.FromSlash(strings.TrimSpace(rel)))
+	return rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 func resourceDownloadInfo(data map[string]any) (string, map[string]string, error) {
@@ -364,8 +374,7 @@ func resolveResourceDownloadPath(
 		return "", "", apperrors.NewInternal(fmt.Sprintf("解析输出目录失败: %v", err))
 	}
 	parentRel, err := resourceRel(realBase, realParent)
-	if err != nil || parentRel == ".." ||
-		strings.HasPrefix(parentRel, ".."+string(os.PathSeparator)) {
+	if err != nil || resourcePathEscapesBase(parentRel) {
 		return "", "", apperrors.NewValidation("--output 解析后逃逸工作目录")
 	}
 
@@ -393,8 +402,7 @@ func resolveResourceDownloadPath(
 
 func ensureResourceDownloadParent(baseDir, parent string) error {
 	relative, err := resourceRel(baseDir, parent)
-	if err != nil || relative == ".." ||
-		strings.HasPrefix(relative, ".."+string(os.PathSeparator)) {
+	if err != nil || resourcePathEscapesBase(relative) {
 		return apperrors.NewValidation("--output 解析后逃逸工作目录")
 	}
 	if relative == "." {

@@ -13155,16 +13155,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "size"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "limit"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "limit"
+              "source": "native_annotation",
+              "value": "size"
             },
             "required": {
               "candidates": [
@@ -13215,7 +13221,7 @@
               "value": "string"
             }
           },
-          "property": "limit",
+          "property": "size",
           "required": false,
           "type": "string"
         }
@@ -20954,16 +20960,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -21020,7 +21032,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }

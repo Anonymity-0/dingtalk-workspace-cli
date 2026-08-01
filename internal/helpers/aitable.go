@@ -1919,7 +1919,13 @@ newFieldName、config、aiConfig 至少传入一项。
 				Examples:     []string{"dws aitable record query --base-id <BASE_ID> --table-id <TABLE_ID>"},
 			},
 			Parameters: []corecmd.ParamDecl{
-				{Name: "record-ids", Required: boolPtr(false)},
+				// query→keyword is also in versioned bindings; keep a leaf-local
+				// ParamDecl so the mapping survives binding/hint churn.
+				{Name: "query", Property: "keyword"},
+				{Name: "record-ids", Property: "recordIds", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "field-ids", Property: "fieldIds", InterfaceType: "array"},
+				{Name: "filters", Property: "filters", InterfaceType: "object"},
+				{Name: "sort", Property: "sort", InterfaceType: "array"},
 			},
 		},
 	})
@@ -2424,6 +2430,9 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 				AvoidWhen:    []string{"纯新建用 create；纯更新用 update"},
 				Examples:     []string{"dws aitable record upsert --base-id <BASE_ID> --table-id <TABLE_ID> --records '[{\"cells\":{\"fldXXX\":\"值\"}}]'"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "records", Required: boolPtr(true), InterfaceType: "array"},
+			},
 		},
 	})
 
@@ -2606,6 +2615,11 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				UseWhen:      []string{"需要把文件作为记录附件字段上传时"},
 				AvoidWhen:    []string{"禁止改用 drive upload；电子表格附件用 sheet media-upload"},
 				Examples:     []string{"dws aitable attachment upload --base-id BASE_ID --file-name report.xlsx --size 204800"},
+			},
+			// size is validated in RunE (Int64); publish required via ParamDecl
+			// instead of relying on RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "size", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -4953,6 +4967,9 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 					"dws aitable chart update --base-id BASE_ID --dashboard-id DASHBOARD_ID --chart-id CHART_ID --config '{\"chartName\":\"新柱图名\",...}'",
 					"dws aitable chart update --base-id BASE_ID --dashboard-id DASHBOARD_ID --chart-id CHART_ID --layout '{\"x\":0,\"y\":4,\"w\":12,\"h\":4}'",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "config", Required: boolPtr(true), InterfaceType: "object"},
 			},
 		},
 	})

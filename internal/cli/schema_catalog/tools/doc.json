@@ -19394,19 +19394,13 @@
       "parameter_count": 2,
       "parameters": {
         "name": {
-          "description": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名",
+          "description": "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)",
           "field_provenance": {
             "description": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
-                },
-                {
                   "precedence": "cobra_contract",
-                  "selected": false,
+                  "selected": true,
                   "source": "cobra_usage",
                   "value": "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)"
                 },
@@ -19423,10 +19417,10 @@
                   "value": ""
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "cobra_contract",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"
+              "source": "cobra_usage",
+              "value": "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)"
             },
             "property": {
               "candidates": [
@@ -27250,16 +27244,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -27316,7 +27316,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }
@@ -29725,16 +29725,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -29779,7 +29785,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": false,
           "type": "string"
         },

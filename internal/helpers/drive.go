@@ -976,6 +976,9 @@ func newDriveCommand() *cobra.Command {
 					"dws drive upload --file ./README.md --node <dentryUuid> --format json",
 				},
 			},
+			// Composite multi-step leaf (get_upload_info → PUT → commit_upload):
+			// no single RPCName / interface_ref. Keep --node→nodeId on this leaf
+			// only; do not hang it on upload-info or commit.
 			Parameters: []corecmd.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(false)},
 			},
@@ -1450,6 +1453,11 @@ func newDriveCommand() *cobra.Command {
 					"dry-run 不读取节点元数据，输出名称尚未做基于当前扩展名的规范化",
 				},
 				Examples: []string{"dws drive rename --node <ID> --name \"新名称\" --format json"},
+			},
+			// Shared RPC rename_document with doc rename; keep this description
+			// on the drive leaf only (doc rename does not strip extensions).
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
 			},
 		},
 	})

@@ -17797,16 +17797,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -17863,7 +17869,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }

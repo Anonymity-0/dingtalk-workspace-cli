@@ -5010,8 +5010,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": true
                 },
@@ -5034,9 +5040,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -14285,8 +14291,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "object"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": "object"
                 },
@@ -14297,9 +14309,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {
@@ -14319,8 +14331,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": true
                 },
@@ -14337,9 +14355,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -39016,8 +39034,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": "array"
                 },
@@ -39034,23 +39058,29 @@
                   "value": "string"
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "fieldIds"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "fieldIds"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
+              "source": "native_annotation",
               "value": "fieldIds"
             },
             "required": {
@@ -39140,8 +39170,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "object"
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": "object"
                 },
@@ -39158,23 +39194,29 @@
                   "value": "string"
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "filters"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "filters"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
+              "source": "native_annotation",
               "value": "filters"
             },
             "required": {
@@ -39480,6 +39522,12 @@
                   "value": "keyword"
                 },
                 {
+                  "precedence": "native_annotation",
+                  "selected": false,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
                   "precedence": "inference",
                   "selected": false,
                   "source": "flag_name_inference",
@@ -39577,8 +39625,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": "array"
                 },
@@ -39595,23 +39649,29 @@
                   "value": "string"
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "recordIds"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "recordIds"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
+              "source": "native_annotation",
               "value": "recordIds"
             },
             "required": {
@@ -39707,8 +39767,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": "array"
                 },
@@ -39725,23 +39791,29 @@
                   "value": "string"
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "sort"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "sort"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
+              "source": "native_annotation",
               "value": "sort"
             },
             "required": {
@@ -42577,8 +42649,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": "array"
                 },
@@ -42589,23 +42667,29 @@
                   "value": "string"
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "fieldIds"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "fieldIds"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
+              "source": "native_annotation",
               "value": "fieldIds"
             },
             "required": {
@@ -42689,8 +42773,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": "array"
                 },
@@ -42701,23 +42791,29 @@
                   "value": "string"
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "recordIds"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "recordIds"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
+              "source": "native_annotation",
               "value": "recordIds"
             },
             "required": {
@@ -48026,8 +48122,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": "array"
                 },
@@ -48038,9 +48140,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
@@ -48060,8 +48162,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "tool_schema_hint",
+                  "selected": false,
                   "source": "tool_schema_hint",
                   "value": true
                 },
@@ -48084,9 +48192,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -57845,16 +57953,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -57899,7 +58013,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": false,
           "type": "string"
         },
@@ -61796,6 +61910,26 @@
               "source": "cobra_usage",
               "value": "结构化过滤条件 JSON（可选）"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": "object"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": "object"
+            },
             "property": {
               "candidates": [
                 {
@@ -61853,6 +61987,7 @@
               "value": "string"
             }
           },
+          "interface_type": "object",
           "property": "filters",
           "required": false,
           "type": "string"
@@ -61973,16 +62108,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -62027,7 +62168,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": false,
           "type": "string"
         },
@@ -62138,6 +62279,26 @@
               "source": "cobra_usage",
               "value": "排序条件 JSON 数组（可选）"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": "array"
+            },
             "property": {
               "candidates": [
                 {
@@ -62195,6 +62356,7 @@
               "value": "string"
             }
           },
+          "interface_type": "array",
           "property": "sort",
           "required": false,
           "type": "string"

@@ -355,6 +355,13 @@ func newReportCommand() *cobra.Command {
 		RunE:    withReportDeprecationWarning("create", "entry submit", runReportCreate),
 	}
 	addReportCreateFlags(createCmd)
+	// Mirror entry submit's reviewed --to-chat ParamDecl onto the deprecated
+	// create alias. Schema assembly still reads ContractFinal from the primary
+	// leaf; this keeps compatibility-equivalence NativeRequired annotations
+	// symmetric instead of relying only on one-sided tolerance.
+	cli.ApplyParamDecls(createCmd, []cli.ParamDecl{
+		{Name: "to-chat", Required: boolPtr(false)},
+	})
 
 	detailCmd := &cobra.Command{
 		Use:     "detail",

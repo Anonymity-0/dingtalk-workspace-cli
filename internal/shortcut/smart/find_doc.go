@@ -67,6 +67,10 @@ var FindDoc = shortcut.Shortcut{
 				"dws doc +find-doc --query 合同 --limit 10",
 			},
 		},
+		// Execute maps --query → MCP keyword (not inferable from flag name).
+		Parameters: []corecmd.ParamDecl{
+			{Name: "query", Property: "keyword"},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "按关键词搜索云文档（必填）", Required: true},

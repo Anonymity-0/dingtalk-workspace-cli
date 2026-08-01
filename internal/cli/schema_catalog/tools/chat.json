@@ -54493,16 +54493,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -54553,7 +54559,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }
@@ -66200,16 +66206,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -66260,7 +66272,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": true,
           "type": "string"
         }
@@ -77949,22 +77961,16 @@
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "identity=bot"
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "default",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "identity=bot"
+              "source": "default",
+              "value": ""
             },
             "type": {
               "candidates": [
@@ -77983,7 +77989,6 @@
           },
           "property": "robotCode",
           "required": false,
-          "required_when": "identity=bot",
           "type": "string"
         },
         "text": {
@@ -78466,22 +78471,16 @@
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "native_annotation",
-                  "selected": true,
-                  "source": "native_annotation",
-                  "value": "identity=webhook"
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": ""
                 }
               ],
-              "precedence": "native_annotation",
+              "precedence": "default",
               "resolution": "highest_precedence",
-              "source": "native_annotation",
-              "value": "identity=webhook"
+              "source": "default",
+              "value": ""
             },
             "type": {
               "candidates": [
@@ -78500,7 +78499,6 @@
           },
           "property": "webhookToken",
           "required": false,
-          "required_when": "identity=webhook",
           "type": "string"
         }
       },
@@ -84012,16 +84010,22 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "keyword"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "query"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "query"
+              "source": "native_annotation",
+              "value": "keyword"
             },
             "required": {
               "candidates": [
@@ -84072,7 +84076,7 @@
               "value": "string"
             }
           },
-          "property": "query",
+          "property": "keyword",
           "required": false,
           "type": "string"
         },

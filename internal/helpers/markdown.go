@@ -90,7 +90,9 @@ func newMarkdownFetchCmd() *cobra.Command {
 				Examples:     []string{"dws markdown fetch --node <nodeId>"},
 			},
 			Parameters: []corecmd.ParamDecl{
-				{Name: "id", Property: "nodeId", Required: boolPtr(false)},
+				// --id remains a hidden Cobra compat alias (flagOrFallback), but
+				// runtime schema skips Hidden flags — do not ParamDecl it or it
+				// suggests a published Schema surface that 87910880 never had.
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
 				{Name: "output", Property: "output", Required: boolPtr(false)},
 				{Name: "space-id", Property: "spaceId", Required: boolPtr(false)},

@@ -1978,9 +1978,9 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 				Examples: []string{"dws doc rename --node <DOC_ID> --name \"新名称\" --format json"},
 			},
-			Parameters: []corecmd.ParamDecl{
-				{Name: "name", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
-			},
+			// No ParamDecl for --name here: the extension-stripping description
+			// belongs to drive rename (shared RPC rename_document). doc rename
+			// keeps the Cobra usage ("原样传给服务端").
 		},
 	})
 
