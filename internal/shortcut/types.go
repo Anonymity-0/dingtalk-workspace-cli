@@ -154,7 +154,7 @@ type Shortcut struct {
 	// still drives ConfirmSafety so existing Execute bodies stay unchanged.
 	Safety contract.SafetySpec
 	// Contract is the final Agent Contract overlay (selection/interface/dry-run).
-	// Empty keeps legacy assembly until the command is migrated.
+	// Empty fails Catalog assembly; every Shortcut must declare Contract.
 	Contract corecmd.ContractDecl
 	// Flags are the command-specific flags. Global flags are injected separately.
 	Flags []Flag

@@ -203,7 +203,7 @@ const (
 // Declaration surface is the final Schema data source for managed leaves:
 //
 //	Flags (+ parameter Schema fields), Constraints, Safety, ConstParams,
-//	Use/Short/Long/Example, Schema (ToolSpec groups)
+//	Use/Short/Long/Example, Contract (ToolSpec groups)
 //
 // Schema assembly pass-throughs embedded dws.schema.* — no reviewed/hints
 // parallel authority for declared fields. Safety uses contract.SafetySpec

@@ -102,10 +102,10 @@ API Discovery → 代码生成 → surface command
 | 维度 | DWS command | lark-cli | GWS |
 |------|-------------|----------|-----|
 | 工具发现 | `dws schema --all` (静态 catalog) | `--print-schema` (运行时) | API Discovery |
-| 选择指引 | SelectionDecl (UseWhen/AvoidWhen) | Description + Tips | 无 |
+| 选择指引 | contract.SelectionSpec (UseWhen/AvoidWhen) | Description + Tips | 无 |
 | 安全声明 | contract.SafetySpec 直接声明 | Risk string | 无 |
-| dry-run 能力声明 | DryRunDecl (reviewed) | DryRun hook 存在性 | 无 |
-| 接口模式 | InterfaceDecl (local/pinned/composite) | 隐式 (全部 REST) | 隐式 (全部 REST) |
+| dry-run 能力声明 | contract.DryRunSpec (reviewed) | DryRun hook 存在性 | 无 |
+| 接口模式 | contract.InterfaceSpec (local/mcp/composite) | 隐式 (全部 REST) | 隐式 (全部 REST) |
 
 ### 4. Schema 生命周期
 
@@ -178,11 +178,11 @@ NewLeafCommand(LeafSpec{
         {Name: "name", Usage: "应用名称", Bind: "name",
          Trim: true, Required: true, RequiredHint: "--name 为必填"},
     },
-    Schema: LeafSchema{
+    Contract: ContractDecl{
         Description: "创建开放平台企业内部应用",
-        DryRun:    &LeafDryRunDecl{PreviewKind: "invocation"},
-        Interface: &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
-        Selection: LeafSelectionDecl{
+        DryRun:    &contract.DryRunSpec{PreviewKind: "invocation"},
+        Interface: &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "create then configure"},
+        Selection: contract.SelectionSpec{
             AgentSummary: "创建钉钉开放平台应用",
             UseWhen:      []string{"需要新建企业内部应用"},
             AvoidWhen:    []string{"应用已存在时用 update"},

@@ -346,11 +346,12 @@ def _self_test_fixtures():
 		},
 	}
 	DeclareLeafMetadata(messageSearchCmd, LeafSpec{
-		Schema: LeafSchema{
-			Interface: &LeafInterfaceDecl{
-				ProductID: "mail", RPCName: "search_emails",
+		Contract: ContractDecl{
+			Interface: &contract.InterfaceSpec{
+				Mode: "mcp",
+				Ref:  &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "search_emails"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AvoidWhen: []string{
 					"只列某文件夹邮件且无需复杂条件时优先 mail message list",
 				},
@@ -367,12 +368,12 @@ def _self_test_fixtures():
 		},
 	}
 	DeclareLeafMetadata(messageListCmd, LeafSpec{
-		Schema: LeafSchema{
-			Interface: &LeafInterfaceDecl{
+		Contract: ContractDecl{
+			Interface: &contract.InterfaceSpec{
 				Mode: "composite",
 				Reason: "wrapper around search_emails",
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AvoidWhen: []string{"需要组合条件时用 mail message search"},
 				Examples: []string{
 					"dws mail message list --email user@company.com",
@@ -390,11 +391,12 @@ def _self_test_fixtures():
 		},
 	}
 	DeclareLeafMetadata(renameCmd, LeafSpec{
-		Schema: LeafSchema{
-			Interface: &LeafInterfaceDecl{
-				ProductID: "doc", RPCName: "rename_document",
+		Contract: ContractDecl{
+			Interface: &contract.InterfaceSpec{
+				Mode: "mcp",
+				Ref:  &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "rename_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AvoidWhen: []string{
 					"文件或文件夹重命名优先用 dws drive rename，由该命令读取真实节点类型",
 				},
@@ -412,17 +414,18 @@ def _self_test_fixtures():
 		},
 	}
 	DeclareLeafMetadata(driveRenameCmd, LeafSpec{
-		Schema: LeafSchema{
-			Interface: &LeafInterfaceDecl{
-				ProductID: "doc", RPCName: "rename_document",
+		Contract: ContractDecl{
+			Interface: &contract.InterfaceSpec{
+				Mode: "mcp",
+				Ref:  &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "rename_document"},
 			},
-			Selection: LeafSelectionDecl{
+			Selection: contract.SelectionSpec{
 				AvoidWhen: []string{
 					"要改正文里的标题改用 dws doc block update，不要用 rename",
 				},
 				Examples: []string{"dws drive rename --node <ID> --name \"新名称\" --format json"},
 			},
-			Parameters: []corecmd.ParamDecl{
+			Parameters: []contract.ParamDecl{
 				{Name: "name", Description: "drive-only extension stripping"},
 			},
 		},
@@ -528,14 +531,20 @@ def migrate_product(product):
 
         lines = file_contents[found_file].split("\n")
 
-        # Find Schema block
+        # Find Contract block (legacy Schema: names kept for unmigrated trees)
         schema_start = -1
         for i in range(decl_start, min(decl_start + 80, len(lines))):
-            if "Schema: LeafSchema{" in lines[i] or "Schema: corecmd.SchemaDecl{" in lines[i]:
+            if (
+                "Contract: ContractDecl{" in lines[i]
+                or "Contract: corecmd.ContractDecl{" in lines[i]
+                or "Contract: LeafContract{" in lines[i]
+                or "Schema: LeafSchema{" in lines[i]
+                or "Schema: corecmd.SchemaDecl{" in lines[i]
+            ):
                 schema_start = i
                 break
         if schema_start < 0:
-            print(f"  WARNING: {tool_name} — no Schema block in {os.path.basename(found_file)}")
+            print(f"  WARNING: {tool_name} — no Contract block in {os.path.basename(found_file)}")
             continue
 
         schema_end = find_block_end(lines, schema_start)

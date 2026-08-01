@@ -37,14 +37,14 @@
 │  │  ConfirmFirst: bool (只控制确认门顺序)                         │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
-│  ┌─── Schema 声明 (Agent 可见的元数据) ──────────────────────────┐  │
+│  ┌─── Contract 声明 (Agent 可见的元数据) ────────────────────────┐  │
 │  │  ContractDecl                                                   │  │
 │  │  ├─ Title / Description                                      │  │
-│  │  ├─ DryRunDecl     {PreviewKind, RemoteReads}                │  │
-│  │  ├─ InterfaceDecl  {Mode, Availability, Reason, Ref}         │  │
-│  │  ├─ SelectionDecl  {AgentSummary, UseWhen, AvoidWhen,        │  │
-│  │  │                  Prerequisites, Tips, Examples}            │  │
-│  │  ├─ IdentityDecl   {ProductID, CanonicalPath, Aliases, ...}  │  │
+│  │  ├─ contract.DryRunSpec     {PreviewKind, RemoteReads}       │  │
+│  │  ├─ contract.InterfaceSpec  {Mode, Availability, Reason, Ref}│  │
+│  │  ├─ contract.SelectionSpec  {AgentSummary, UseWhen, AvoidWhen│  │
+│  │  │                          Prerequisites, Tips, Examples}    │  │
+│  │  ├─ contract.ToolIdentitySpec {ProductID, CanonicalPath, …}  │  │
 │  │  └─ Positionals[]  {Name, Type, Required, Variadic}          │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
@@ -86,11 +86,11 @@ corecmd.Spec ──── corecmd.New() ────▶ cobra.Command ───�
 | **Constraint** | struct | 参数间的关系约束 |
 | **Safety** | contract.SafetySpec | 运行时与 Schema 共用的安全契约 |
 | **ContractDecl** | struct | Agent 可见的完整工具规格声明 |
-| **SelectionDecl** | struct | Agent 选择该工具的语义指引 |
-| **InterfaceDecl** | struct | 工具的接口模式与可用性 |
-| **DryRunDecl** | struct | dry-run 能力声明 |
-| **IdentityDecl** | struct | 工具在注册表中的身份标识 |
-| **PositionalDecl** | struct | 有序位置参数声明 |
+| **contract.SelectionSpec** | struct | Agent 选择该工具的语义指引 |
+| **contract.InterfaceSpec** | struct | 工具的接口模式与可用性 |
+| **contract.DryRunSpec** | struct | dry-run 能力声明 |
+| **contract.ToolIdentitySpec** | struct | 工具在注册表中的身份标识 |
+| **contract.RuntimeSchemaPositional** | struct | 有序位置参数声明 |
 | **Ctx** | struct | 执行上下文（类型安全的 flag 读取） |
 | **New** | func | 统一构建器（`corecmd.Spec` → `*cobra.Command`） |
 
@@ -155,10 +155,10 @@ ArgDefault (兜底)
 
 ## ContractDecl 子结构
 
-### SelectionDecl（Agent 选择指引）
+### contract.SelectionSpec（Agent 选择指引）
 
 ```go
-SelectionDecl{
+contract.SelectionSpec{
     AgentSummary: "一句话描述工具做什么",
     UseWhen:      []string{"在什么场景下应该选择这个工具"},
     AvoidWhen:    []string{"什么场景不应该用，应该用什么替代"},
@@ -168,22 +168,24 @@ SelectionDecl{
 }
 ```
 
-### InterfaceDecl（接口模式）
+### contract.InterfaceSpec（接口模式）
 
 ```go
-InterfaceDecl{
-    Mode:         "composite",  // local / pinned / composite
+contract.InterfaceSpec{
+    Mode:         "composite",  // local / mcp / composite
     Availability: "available",  // available / unavailable
     Reason:       "...",        // composite/unavailable 时的原因
-    ProductID:    "...",        // pinned 时的 ref
-    RPCName:      "...",        // pinned 时的 ref
+    Ref: &contract.InterfaceRefSpec{ // mcp 时的 ref
+        ProductID: "...",
+        RPCName:   "...",
+    },
 }
 ```
 
-### DryRunDecl（dry-run 能力）
+### contract.DryRunSpec（dry-run 能力）
 
 ```go
-DryRunDecl{
+contract.DryRunSpec{
     PreviewKind: "invocation",  // invocation / request / plan
     RemoteReads: false,         // dry-run 时是否发起远端读
 }

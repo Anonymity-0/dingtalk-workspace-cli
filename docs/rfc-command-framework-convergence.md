@@ -314,7 +314,7 @@ Definition（仅声明；不可编译）
 
 | 模式 | 入口 | 声明面 | 执行面 | 适用 |
 |---|---|---|---|---|
-| **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Schema 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
+| **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Contract 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
 | **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Contract`（经 `AttachContract`） | **不**注册 flag、**不**接管参数投影；可选 `Validate` 与 `ConfirmSafety` **同挂 RunE 包装器**（Validate 在前）；无 Validate 时确认推迟到首次 `CallTool` | 既有命令补声明且执行体必须冻结 |
 
 选用规则：
@@ -344,7 +344,7 @@ Definition（仅声明；不可编译）
 | Schema 字段组 | 子字段 / 内容 | 权威类 | 今日写入面 | 框架声明？ |
 |---|---|---|---|---|
 | **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`ContractDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
-| **Display / Title / Description** | 产品展示名；工具 title/description | 评审源为主；cobra Short/Long 可作候选 | registry 产品名；hints/metadata / cobra help 解析 | Short/Long 可声明，但 **canonical 文案不以 Contract 胜 identity** |
+| **Display / Title / Description** | 产品展示名；工具 title/description | **title**：ContractDecl 声明优先，否则 Cobra Short；**description**：Cobra Long 优先（provenance `cobra_help` / `cobra_help_preferred`），无 Long 时用 ContractDecl description（`contract_final`） | registry 产品名；`ContractDecl` + Cobra Short/Long；组装 stamp 真实 winner | Short/Long 可声明；**canonical 文案不以 Contract 胜 identity**；description 以 Long 为交付权威 |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
 | | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |

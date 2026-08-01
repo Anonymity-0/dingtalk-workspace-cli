@@ -233,3 +233,98 @@ func TestAssembleSchemaRegistryRequiresContractFinalAndProductDecl(t *testing.T)
 		t.Fatalf("product selection = %#v", registry.Products[0].Selection)
 	}
 }
+
+func TestAssembleContractFinalDescriptionPrefersCobraLong(t *testing.T) {
+	tool := assembleContractFinalTextTool(t, "Run sample", "Cobra Long description wins", "Declared description")
+	if tool.Description != "Cobra Long description wins" {
+		t.Fatalf("description = %q, want Cobra Long", tool.Description)
+	}
+	prov := tool.FieldProvenance["description"]
+	if prov.Precedence != "cobra_help" {
+		t.Fatalf("description precedence = %q, want cobra_help", prov.Precedence)
+	}
+	if prov.Resolution != "cobra_help_preferred" {
+		t.Fatalf("description resolution = %q, want cobra_help_preferred", prov.Resolution)
+	}
+	if prov.Source != "cobra_help" {
+		t.Fatalf("description source = %q, want cobra_help", prov.Source)
+	}
+	// Title stays declared-first even when Short differs.
+	if tool.Title != "Declared title" {
+		t.Fatalf("title = %q, want declared title", tool.Title)
+	}
+	titleProv := tool.FieldProvenance["title"]
+	if titleProv.Precedence != "contract_final" {
+		t.Fatalf("title precedence = %q, want contract_final", titleProv.Precedence)
+	}
+}
+
+func TestAssembleContractFinalDescriptionUsesDeclaredWithoutLong(t *testing.T) {
+	tool := assembleContractFinalTextTool(t, "Run sample", "", "Declared description without Long")
+	if tool.Description != "Declared description without Long" {
+		t.Fatalf("description = %q, want declared ContractDecl description", tool.Description)
+	}
+	prov := tool.FieldProvenance["description"]
+	if prov.Precedence != "contract_final" {
+		t.Fatalf("description precedence = %q, want contract_final", prov.Precedence)
+	}
+	if prov.Resolution != "contract_pass_through" {
+		t.Fatalf("description resolution = %q, want contract_pass_through", prov.Resolution)
+	}
+	if prov.Source != "corecmd.contract" {
+		t.Fatalf("description source = %q, want corecmd.contract", prov.Source)
+	}
+}
+
+// assembleContractFinalTextTool builds a one-leaf tree, registers ContractFinal +
+// ProductDecl, and runs the production assembly path (schemaRegistryForTest).
+func assembleContractFinalTextTool(t *testing.T, short, long, declaredDescription string) ToolSpec {
+	t.Helper()
+	root := &cobra.Command{Use: "dws"}
+	leaf := &cobra.Command{
+		Use:   "run",
+		Short: short,
+		Long:  long,
+		Run:   func(*cobra.Command, []string) {},
+	}
+	AttachRuntimeSchema(leaf, "sample", "run", "test")
+	RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+		Title:       "Declared title",
+		Description: declaredDescription,
+		Safety: &contract.SafetySpec{
+			Effect: "read", Risk: "low", Confirmation: "none", Idempotency: "idempotent",
+		},
+		Interface: &contract.InterfaceSpec{
+			Mode: "local", Availability: "available",
+		},
+		Selection: &contract.SelectionSpec{
+			AgentSummary: "Run a sample tool",
+			UseWhen:      []string{"need sample run"},
+			AvoidWhen:    []string{"need other product"},
+		},
+	})
+	t.Cleanup(func() {
+		contract.ClearRuntimeContractFinalForTest(leaf)
+		contract.ClearProductDeclForTest("sample")
+	})
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "sample",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "Sample product",
+			UseWhen:      []string{"sample routing"},
+			AvoidWhen:    []string{"not sample"},
+		},
+	})
+	product := &cobra.Command{Use: "sample"}
+	product.AddCommand(leaf)
+	root.AddCommand(product)
+
+	registry, err := schemaRegistryForTest(root)
+	if err != nil {
+		t.Fatalf("assemble schema registry: %v", err)
+	}
+	if len(registry.Products) != 1 || len(registry.Products[0].Tools) != 1 {
+		t.Fatalf("registry = %#v", registry.Products)
+	}
+	return registry.Products[0].Tools[0]
+}

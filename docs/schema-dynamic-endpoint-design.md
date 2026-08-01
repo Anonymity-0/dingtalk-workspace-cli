@@ -211,7 +211,9 @@ versioned binding > command constraint > typed metadata
 命令 `title` / `description` 使用独立但同样确定的文本顺序：
 
 ```text
-ContractFinal / native declaration > command-specific Cobra Help > MCP metadata > inference
+description: Cobra Long > ContractDecl description (contract_final) > MCP metadata > inference
+             (Long 胜出时 provenance = cobra_help / cobra_help_preferred)
+title:       ContractDecl / ContractFinal > Cobra Short > MCP metadata > inference
 ```
 
 因此多个 CLI leaf 复用同一个 RPC 时，通用 RPC 文案只能作为未选中的

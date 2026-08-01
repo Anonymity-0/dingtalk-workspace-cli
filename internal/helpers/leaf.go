@@ -172,7 +172,7 @@ type LeafSpec struct {
 	// LeafFlag.Transform；可声明的互斥/至少一个应写 Constraints。
 	Validate func(cmd *cobra.Command, args []string) error
 
-	// RunE 非空时完全自定义执行体（逃生舱）；表面事实仍须 Flags/Schema 声明。
+	// RunE 非空时完全自定义执行体（逃生舱）；表面事实仍须 Flags/Contract 声明。
 	RunE func(cmd *cobra.Command, args []string) error
 
 	// PostMount 是挂载收尾钩子（领域工具等），不是声明面。
@@ -191,7 +191,7 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 }
 
 // DeclareLeafMetadata 是命令框架的「声明元数据模式」：把 LeafSpec 的声明面
-// （Safety + Schema）挂到既有命令上——不注册 flag、不接管参数投影。可选的
+// （Safety + Contract）挂到既有命令上——不注册 flag、不接管参数投影。可选的
 // Validate 与 ConfirmSafety 同挂在 RunE 包装器内（Validate 在前），保证
 // 本地可判定校验发生在确认之前（RFC §5.1 / §5.6），且直接调 RunE /
 // proxySubCmd 委派不会跳过校验。
@@ -203,7 +203,7 @@ func NewLeafCommand(spec LeafSpec) *cobra.Command {
 //     ConfirmSafety → 原 RunE（此类命令应补 Validate，见同源门禁）
 //
 // 该模式是迁移态而非终态：命令具备条件时应升级为 NewLeafCommand。传入
-// Flags/Constraints/ConstParams/Call/RunE/PostMount 或空 Schema 会 panic，
+// Flags/Constraints/ConstParams/Call/RunE/PostMount 或空 Contract 会 panic，
 // 防止误用成半接管（Validate 是唯一允许的执行钩子）。
 func DeclareLeafMetadata(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
 	if cmd == nil {

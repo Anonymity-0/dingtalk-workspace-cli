@@ -10,7 +10,7 @@
 
 命令框架将 CLI 命令的**声明**与**执行**分离：
 
-- **声明面** — 数据字段描述命令是什么（flag、约束、SafetySpec、Schema 元数据）
+- **声明面** — 数据字段描述命令是什么（flag、约束、SafetySpec、Contract 元数据）
 - **执行面** — 钩子函数描述命令做什么（校验、派发、编排）
 
 框架负责：flag 注册、有效值回退链、required/约束校验、SafetySpec 确认、toolArgs 装配、Agent Runtime Schema 投影。
@@ -120,7 +120,7 @@ flag 解析按以下顺序取值（先命中先生效）：
 
 1. **validateDispatchDecl** — 恰好一个执行体（Invoke/Orchestrate/RunE）
 2. **validateSafetySpec** — 非空 SafetySpec 的四个独立字段必须完整
-3. **validateContractDecl** — Schema 声明完整性（Description、AgentSummary、UseWhen、AvoidWhen、Examples、Interface）
+3. **validateContractDecl** — Contract 声明完整性（Description、AgentSummary、UseWhen、AvoidWhen、Examples、Interface）
 4. **RegisterFlags** — flag + alias 注册到 cobra
 5. **ValidateConstraintDecls** — 约束引用的 flag 必须存在
 6. **embedContractIntoSchema** — 投影到 dws.schema.* annotations
@@ -176,11 +176,11 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
             {Name: "name", Usage: "应用名称 (必填)", Bind: "name",
              Trim: true, Required: true, RequiredHint: "--name 为必填"},
         },
-        Schema: LeafSchema{
+        Contract: ContractDecl{
             Description: "创建开放平台企业内部应用",
-            DryRun:      &LeafDryRunDecl{PreviewKind: "invocation"},
-            Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
-            Selection: LeafSelectionDecl{
+            DryRun:      &contract.DryRunSpec{PreviewKind: "invocation"},
+            Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "create then configure"},
+            Selection: contract.SelectionSpec{
                 AgentSummary: "创建钉钉开放平台应用",
                 UseWhen:      []string{"需要新建企业内部应用"},
                 AvoidWhen:    []string{"应用已存在时用 update"},
@@ -194,7 +194,7 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 
 `NewLeafCommand` 经 `FromLeafSpec()` 归一为 `corecmd.Spec`，再交 `corecmd.New()` 构建。这是**完全托管模式**：声明 + 执行都归 command。
 
-### 声明元数据模式（既有命令补 Schema）
+### 声明元数据模式（既有命令补 Contract）
 
 执行体必须冻结时，用同一套 `LeafSpec` 词汇只声明元数据，写在命令字面量旁：
 
@@ -205,10 +205,10 @@ baseListCmd := &cobra.Command{
 }
 DeclareLeafMetadata(baseListCmd, LeafSpec{
     Safety: aitableSafetyRead(),
-    Schema: LeafSchema{
+    Contract: ContractDecl{
         Description: "列出最近访问的 AI 表格 Base。",
         Interface:   aitableMCPInterface("list_bases"),
-        Selection: LeafSelectionDecl{
+        Selection: contract.SelectionSpec{
             AgentSummary: "列出最近访问的 AI 表格 Base。",
             UseWhen:      []string{"只需浏览最近打开过的 Base 时"},
             AvoidWhen:    []string{"按名称查找优先 base search"},
@@ -252,7 +252,7 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 
 ## Schema 投影
 
-声明即 review：代码中的 Schema 声明经过 code review 后直接投影为：
+声明即 review：代码中的 Contract 声明经过 code review 后直接投影为：
 
 - **Agent Runtime Schema** (dws.schema.* cobra annotations)
 - **Agent Metadata** (agent-metadata JSON, 消费方为 Agent 选择器)
@@ -263,7 +263,7 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 
 ## 设计原则
 
-1. **声明 vs 执行分离** — Flags/Constraints/Safety/Schema 是声明；Invoke/Validate/PostMount 是执行
+1. **声明 vs 执行分离** — Flags/Constraints/Safety/Contract 是声明；Invoke/Validate/PostMount 是执行
 2. **单一数据源** — 一份声明驱动 --help、Schema、catalog、runtime 校验
 3. **安全字段不互推** — Confirmation 单独驱动确认，Effect/Risk/Idempotency 原样发布
 4. **构建时拦截 > 运行时报错** — 声明不完整在命令注册时 panic，不等到用户触发

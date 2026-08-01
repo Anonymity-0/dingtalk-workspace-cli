@@ -373,10 +373,13 @@ lower-precedence source. A higher-precedence declaration may still raise an
 optional flag to required. `cli_required` continues to mirror the executable
 Cobra marker.
 
-For command text, ContractFinal / native declaration wins first, then
-command-specific Cobra Help, then MCP metadata. Generic RPC prose may remain an
-unselected provenance candidate (and parameter-level `interface_description`);
-it must not overwrite a specialized leaf's title or description.
+For command-level description, Cobra Long wins when present (delivered
+provenance `cobra_help`, resolution `cobra_help_preferred`); without Long,
+ContractDecl description is delivered as `contract_final`. Title keeps declared
+ContractDecl / ContractFinal first, then Cobra Short, then MCP metadata.
+Generic RPC prose may remain an unselected provenance candidate (and
+parameter-level `interface_description`); it must not overwrite a specialized
+leaf's title or description.
 
 For every delivered `ToolSpec` and `ParameterSpec` field, the provenance
 winner value must exactly equal the delivered value. Checking only source,
