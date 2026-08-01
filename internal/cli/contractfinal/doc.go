@@ -11,13 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package contractfinal owns the Cobra-keyed ContractFinal runtime store and
-// the annotate+store registration seam.
+// Package contractfinal is a thin delivery-facing re-export of
+// internal/corecmd/contractfinal.
 //
-// Production product / helper / shortcut code should call
-// cli.RegisterRuntimeContractFinal (thin re-export). Framework code
-// (corecmd.AttachContract) calls RegisterRuntimeContractFinal here directly
-// so internal/corecmd never imports the cli root delivery package.
-//
-// Types remain in internal/corecmd/contract (DTO only — no cobra store).
+// Ownership of the Cobra-keyed ContractFinal store and Register seam lives
+// under the command framework. Production product code should prefer
+// cli.RegisterRuntimeContractFinal; framework code calls
+// corecmd/contractfinal.RegisterRuntimeContractFinal directly.
 package contractfinal

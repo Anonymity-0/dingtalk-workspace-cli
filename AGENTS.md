@@ -33,10 +33,16 @@ changes must not rewrite it mechanically.
 - `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Contract` is set, convert once via `contractfinal.RegisterRuntimeContractFinal` (framework) or `cli.RegisterRuntimeContractFinal` (product re-export); assembly **pass-throughs** Final.
 - Package seam:
   - types / ProductDecl → `corecmd/contract` (DTO only; **no** Cobra-keyed ContractFinal store)
-  - AnnotateRuntime* writers → `internal/cli/runtimeannotate` (`corecmd` may import; must **not** import `internal/cli` root)
-  - ContractFinal cobra store + Register → `internal/cli/contractfinal`
+  - AnnotateRuntime* writers → `internal/corecmd/runtimeannotate` (framework-owned)
+  - ContractFinal cobra store + Register → `internal/corecmd/contractfinal` (framework-owned)
   - homology gates → `internal/cli/homology`
-  - Catalog / `ResolveMeta` / go:embed → `internal/cli` root (thin re-exports of annotate/store APIs)
+  - Catalog / `ResolveMeta` / go:embed → `internal/cli` root (thin re-exports of annotate/store APIs; `cli/runtimeannotate` + `cli/contractfinal` are thin re-exports only)
+  - **Hard rule**: `internal/corecmd` (and its subpackages) must **not** import any `internal/cli` package
+- Authoring tiers (current, not aspirational):
+  - **Tier1** — `corecmd.New` / `NewLeafCommand` (fully managed declare + execute)
+  - **Tier2** — `DeclareLeafMetadata` (helpers migration; **Shortcut may also use this path — acceptable**)
+  - **Tier3** — bare Cobra (should shrink over time; reviewed exclusions where needed)
+  - Long-term outlook only: broader mcpbind / fewer hand-written `Execute` bodies. **Not** a current hard requirement to delete `Shortcut.Execute` or force mcpbind.
 - Description declare vs delivery: construction requires `ContractDecl.Description` (evidence). Catalog delivery prefers Cobra Long → provenance `cobra_help`; without Long, declared text → `contract_final`. Title: declared first, then Short, then MCP. Do **not** read this as "declare = wire final" or dual authority.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
 - Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared

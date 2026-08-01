@@ -23,8 +23,9 @@ import (
 )
 
 // Thin re-exports so helpers / app / shortcut keep the cli. prefix while the
-// implementations live in focused subpackages. corecmd imports those
-// subpackages directly and must not import this delivery root.
+// implementations live under internal/corecmd/{runtimeannotate,contractfinal}.
+// Framework code imports those packages directly; this delivery root and the
+// cli/* thin re-export subpackages only consume them.
 
 type RuntimeSchemaConstraints = runtimeannotate.RuntimeSchemaConstraints
 
@@ -59,7 +60,7 @@ var (
 
 // RegisterRuntimeContractFinal is the sole production registration entry for
 // product / helper / shortcut code (annotate + store). Framework code calls
-// contractfinal.RegisterRuntimeContractFinal directly.
+// corecmd/contractfinal.RegisterRuntimeContractFinal directly.
 func RegisterRuntimeContractFinal(cmd *cobra.Command, payload contract.ContractFinalPayload) {
 	contractfinal.RegisterRuntimeContractFinal(cmd, payload)
 }

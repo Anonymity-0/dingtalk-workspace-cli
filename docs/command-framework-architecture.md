@@ -220,6 +220,16 @@ DeclareLeafMetadata(baseListCmd, LeafSpec{
 
 `DeclareLeafMetadata` 调用 `corecmd.AttachContract` 挂 Safety+Contract；不注册 flag、不接管参数投影。可选 `Validate` 与 `ConfirmSafety` 同挂在 **RunE 包装器**内（不是 PreRunE）。当 `Safety.Confirmation=user_required` 时，用**同一份** SafetySpec 包一层 `ConfirmSafety`，保证执行门禁与 Catalog 同源；无 Validate 时确认推迟到 gated `CallTool`，成功返回却未确认则 fail-closed。迁移态入口；新命令仍应走 `NewLeafCommand`。
 
+### 三档路径（当前可接受）
+
+| 档 | 入口 | 说明 |
+|---|---|---|
+| **Tier1** | `corecmd.New` / `NewLeafCommand` | 完全托管：声明 + 执行都归框架 |
+| **Tier2** | `DeclareLeafMetadata` | helpers 迁移态；**Shortcut 也可采用，可接受** |
+| **Tier3** | 裸 Cobra | 应逐步收；新增裸叶需补声明或精确排除 |
+
+长期展望（非当前硬要求）：更多 Shortcut 可收敛到 mcpbind / 减少仅为参数装配的 `Execute`。**不要**把「Shortcut 必须去掉 Execute / 必须 mcpbind」当作当前门禁；也不要否定 Shortcut + `DeclareLeafMetadata`。
+
 ### Shortcut（智能快捷方式，已接入 live mount）
 
 ```go
@@ -239,6 +249,8 @@ spec := FromShortcut(Shortcut{
 Shortcut 当前仍保留自身的 `Risk`，adapter 只在边界将它展开成完整
 `contract.SafetySpec`；command/Leaf 不再保留该枚举。Shortcut 的 Cobra
 type/default/usage provenance 保持不变，command 统一补充 Required、Enum 和关系约束投影。
+需要补 Agent Schema 且执行体暂不迁入时，Shortcut 也可走 Tier2
+`DeclareLeafMetadata`（与 helpers 同一路径）。
 
 ## 文件结构
 
@@ -247,8 +259,8 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 | `internal/corecmd/corecmd.go` | 核心类型 + `New` 构建器 + 运行时管线 |
 | `internal/corecmd/contract_decl.go` | ContractDecl 载荷类型 + 声明完整性守卫 |
 | `internal/corecmd/contract/` | 契约 DTO（`SafetySpec` / `ParamDecl` / `ProductDecl` / `ContractFinalPayload`）；**无** Cobra-keyed Final store |
-| `internal/cli/runtimeannotate/` | `AnnotateRuntime*` 写注解；`corecmd` 可导入，**不得**反向依赖 `internal/cli` 根 |
-| `internal/cli/contractfinal/` | ContractFinal Cobra store + `RegisterRuntimeContractFinal` |
+| `internal/corecmd/runtimeannotate/` | `AnnotateRuntime*` 写注解（框架侧；`cli` 薄 re-export） |
+| `internal/corecmd/contractfinal/` | ContractFinal Cobra store + `RegisterRuntimeContractFinal`（框架侧；`cli` 薄 re-export） |
 | `internal/cli/homology/` | flag/help/schema 同源门禁（`HOM-*`） |
 | `internal/helpers/leaf.go` | LeafSpec 门面：`NewLeafCommand`（完全托管）+ `DeclareLeafMetadata`（声明元数据） |
 | `internal/shortcut/adapter.go` | FromShortcut 完整映射与 Risk 兼容边界 |

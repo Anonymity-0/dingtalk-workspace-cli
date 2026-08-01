@@ -59,9 +59,9 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 )
@@ -1263,6 +1263,10 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		len(sel.Tips) > 0 || len(sel.WorkflowRefs) > 0 {
 		copied := sel
 		copied.AgentSummary = strings.TrimSpace(sel.AgentSummary)
+		copied.AgentSummarySource = "corecmd.ContractDecl"
+		copied.SourceRefs = []string{"corecmd.ContractDecl"}
+		copied.MetadataSource = "corecmd.contract"
+		copied.Reviewed = nil
 		payload.Selection = &copied
 	}
 	if id := decl.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" {

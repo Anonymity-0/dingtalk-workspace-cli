@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
@@ -1576,6 +1576,33 @@ func TestCrossPlatformCoverageAttachContractNilAndEmptyGuards(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageAttachContractOverwritesLegacySelectionSources(t *testing.T) {
+	cmd := newTestCommand()
+	AttachContract(cmd, testWriteSafety(), ContractDecl{
+		Description: "Declared description for attach coverage",
+		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
+		Selection: contract.SelectionSpec{
+			AgentSummary:       "Declared summary",
+			UseWhen:            []string{"use declared"},
+			AvoidWhen:          []string{"avoid declared"},
+			Examples:           []string{"dws t"},
+			AgentSummarySource: "schema_hints/legacy",
+			SourceRefs:         []string{"schema_hints/selection/sample.json"},
+			MetadataSource:     "schema_hints",
+		},
+	}, "short", "long")
+	payload, ok := contractfinal.RuntimeContractFinal(cmd)
+	if !ok || payload.Selection == nil {
+		t.Fatal("expected ContractFinal selection payload")
+	}
+	sel := payload.Selection
+	if sel.AgentSummarySource != "corecmd.ContractDecl" ||
+		len(sel.SourceRefs) != 1 || sel.SourceRefs[0] != "corecmd.ContractDecl" ||
+		sel.MetadataSource != "corecmd.contract" || sel.Reviewed != nil {
+		t.Fatalf("selection sources = %#v", sel)
+	}
+}
+
 func TestCrossPlatformCoverageEffectiveSafetySpecZeroValueDefaultsToRead(t *testing.T) {
 	got := effectiveSafetySpec(contract.SafetySpec{})
 	want := contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
@@ -1608,5 +1635,14 @@ func TestCrossPlatformCoverageEmbedContractSkipsBlankAndHiddenFlags(t *testing.T
 		if strings.Contains(key, "ghost") {
 			t.Fatalf("hidden flag must not be annotated: %s", key)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageFirstNonEmpty(t *testing.T) {
+	if got := firstNonEmpty("", "  ", "value", "later"); got != "value" {
+		t.Fatalf("firstNonEmpty = %q", got)
+	}
+	if got := firstNonEmpty("", "  "); got != "" {
+		t.Fatalf("firstNonEmpty empty = %q", got)
 	}
 }

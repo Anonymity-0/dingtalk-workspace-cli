@@ -22,7 +22,8 @@ import (
 )
 
 // Production framework code must register ContractFinal through the
-// contractfinal annotate+store seam, not by importing the cli delivery root.
+// corecmd/contractfinal annotate+store seam, and must never import any
+// internal/cli package (root or subpackage).
 func TestAttachContractUsesContractFinalRegisterSeam(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -37,10 +38,51 @@ func TestAttachContractUsesContractFinalRegisterSeam(t *testing.T) {
 	if !strings.Contains(body, "contractfinal.RegisterRuntimeContractFinal(") {
 		t.Fatal("AttachContract/New must call contractfinal.RegisterRuntimeContractFinal")
 	}
-	if strings.Contains(body, `"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"`) {
-		t.Fatal("corecmd must not import internal/cli delivery root")
-	}
 	if strings.Contains(body, "cli.RegisterRuntimeContractFinal(") {
 		t.Fatal("corecmd must not call cli.RegisterRuntimeContractFinal; use contractfinal seam")
+	}
+	// Build the forbidden import prefix without embedding it as a contiguous
+	// literal in this test file (the walker below must not self-match).
+	forbidden := strings.Join([]string{
+		`"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/`,
+		`internal/cli`,
+	}, "")
+	if strings.Contains(body, forbidden) {
+		t.Fatal("corecmd must not import any internal/cli package")
+	}
+}
+
+func TestCorecmdPackageImportsForbidCLI(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Dir(thisFile)
+	forbidden := strings.Join([]string{
+		`"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/`,
+		`internal/cli`,
+	}, "")
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".go") {
+			return nil
+		}
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		if strings.Contains(string(raw), forbidden) {
+			rel, _ := filepath.Rel(root, path)
+			t.Errorf("%s must not import internal/cli", rel)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk corecmd: %v", err)
 	}
 }

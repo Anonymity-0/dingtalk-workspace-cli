@@ -56,6 +56,12 @@ func TestCrossPlatformCoverageContractFinalNilCommandGuards(t *testing.T) {
 	if HasRuntimeContractFinal(nil) {
 		t.Fatal("HasRuntimeContractFinal(nil) must be false")
 	}
+	registered := &cobra.Command{Use: "registered"}
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(registered) })
+	RegisterRuntimeContractFinal(registered, contract.ContractFinalPayload{Title: "T"})
+	if !HasRuntimeContractFinal(registered) {
+		t.Fatal("HasRuntimeContractFinal must be true after registration")
+	}
 	ClearRuntimeContractFinalForTest(nil)
 }
 
@@ -91,7 +97,7 @@ func TestCrossPlatformCoverageApplyParamDeclsSkipsBlankAndAnnotatesEnum(t *testi
 	}
 }
 
-func TestApplyParamDeclsRejectsUnknownFlag(t *testing.T) {
+func TestCrossPlatformCoverageApplyParamDeclsRejectsUnknownFlag(t *testing.T) {
 	cmd := &cobra.Command{Use: "apply-params"}
 	cmd.Flags().String("mode", "", "mode")
 	err := ApplyParamDecls(cmd, []contract.ParamDecl{

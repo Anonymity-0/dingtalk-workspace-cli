@@ -16,7 +16,7 @@
 // stores and Catalog / go:embed delivery code.
 //
 // This package is the sole definition point for:
-//   - ContractFinalPayload (DTO only — store lives in cli/contractfinal)
+//   - ContractFinalPayload (DTO only — store lives in corecmd/contractfinal)
 //   - ProductDecl (+ string-keyed registry; not Cobra-keyed)
 //   - SafetySpec / SelectionSpec / InterfaceSpec / DryRunSpec / identity /
 //     positionals / ParamDecl
@@ -28,9 +28,9 @@
 //   - Authoring wrapper → corecmd.ContractDecl (leaf-facing; nested fields are
 //     these contract types). Name is ContractDecl, not SchemaDecl: "Schema" in
 //     this repo means Catalog / ToolSpec delivery, not the author declaration.
-//   - AnnotateRuntime* writers → internal/cli/runtimeannotate
-//     (corecmd may import; must not import cli root).
-//   - ContractFinal cobra store + Register seam → internal/cli/contractfinal
+//   - AnnotateRuntime* writers → internal/corecmd/runtimeannotate
+//     (framework-owned; cli may thin re-export; corecmd must not import cli).
+//   - ContractFinal cobra store + Register seam → internal/corecmd/contractfinal
 //     (framework calls RegisterRuntimeContractFinal here; product code uses
 //     cli.RegisterRuntimeContractFinal re-export).
 //   - Catalog assembly / ResolveMeta / go:embed → internal/cli (delivery root).

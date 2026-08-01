@@ -18,8 +18,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 )
 
 var contractFinalByCommand sync.Map // *cobra.Command → *contract.ContractFinalPayload
@@ -27,7 +27,8 @@ var contractFinalByCommand sync.Map // *cobra.Command → *contract.ContractFina
 // RegisterRuntimeContractFinal annotates dws.schema.contract then stores the
 // typed final Schema overlay. This is the atomic annotate+store implementation.
 //
-// cli.RegisterRuntimeContractFinal is the delivery-facing name for product code;
+// Ownership lives under the command framework (this package). Product code
+// should call cli.RegisterRuntimeContractFinal (thin re-export);
 // corecmd.AttachContract calls this function directly.
 func RegisterRuntimeContractFinal(cmd *cobra.Command, payload contract.ContractFinalPayload) {
 	if cmd == nil {

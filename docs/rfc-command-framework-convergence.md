@@ -274,10 +274,12 @@ Definition（仅声明；不可编译）
 | 层 | 含义 | 今日落点 |
 |---|---|---|
 | **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段**（声明证据；交付见下） | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（DTO：`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`；**无** Cobra store） |
-| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `contractfinal.RegisterRuntimeContractFinal`（annotate + store；产品代码经 `cli.RegisterRuntimeContractFinal` 薄 re-export） |
-| **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/cli/runtimeannotate.AnnotateRuntime*`（`corecmd` 可依赖；**不** import `cli` 根；cli 根薄 re-export） |
-| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；Catalog embed / `ResolveMeta` | `internal/cli` 根（交付边界）；ContractFinal store 在 `cli/contractfinal` |
+| **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `corecmd/contractfinal.RegisterRuntimeContractFinal`（annotate + store；产品代码经 `cli.RegisterRuntimeContractFinal` 薄 re-export） |
+| **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/corecmd/runtimeannotate.AnnotateRuntime*`（框架侧；`cli` / `cli/runtimeannotate` 仅薄 re-export） |
+| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；Catalog embed / `ResolveMeta` | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli/contractfinal` 薄 re-export） |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
+
+依赖方向硬规则：`internal/corecmd`（含子包）**不得** import 任何 `internal/cli` 包；annotate 与 ContractFinal store 归属框架侧。
 
 硬规则：
 
@@ -308,21 +310,23 @@ Definition（仅声明；不可编译）
 3. 写副作用：新 Leaf 声明完整 `SafetySpec`（框架 `ConfirmSafety` + Schema Final）；未迁移旧路径显式标注 `runtime_gate`；二者皆无则不合格；
 4. Schema `ToolSpec` 全字段组均落在 §5.0.4 表中某一权威格，禁止无主字段。
 
-#### 5.0.2a 两种声明模式（完全托管 / 声明元数据）
+#### 5.0.2a 三档声明路径（Tier1 / Tier2 / Tier3）
 
-`LeafSpec` 词汇对应两种正式构建入口，产出同一 `ContractFinal`：
+当前生产允许的三档路径（同一 `ContractFinal` 语义；不是互相否定）：
 
-| 模式 | 入口 | 声明面 | 执行面 | 适用 |
+| 档 | 入口 | 声明面 | 执行面 | 适用 |
 |---|---|---|---|---|
-| **完全托管** | `NewLeafCommand(spec)` | Flags/Constraints/Safety/Contract 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
-| **声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Contract`（经 `AttachContract`） | **不**注册 flag、**不**接管参数投影；可选 `Validate` 与 `ConfirmSafety` **同挂 RunE 包装器**（Validate 在前）；无 Validate 时确认推迟到首次 `CallTool` | 既有命令补声明且执行体必须冻结 |
+| **Tier1 完全托管** | `corecmd.New` / `NewLeafCommand(spec)` | Flags/Constraints/Safety/Contract 全进 command | 框架接管 flag 注册、参数投影、`ConfirmSafety`、派发 | 新命令；可自由设计执行面 |
+| **Tier2 声明元数据** | `DeclareLeafMetadata(cmd, spec)` | 仅 `Safety` + `Contract`（经 `AttachContract`） | **不**注册 flag、**不**接管参数投影；可选 `Validate` 与 `ConfirmSafety` **同挂 RunE 包装器**（Validate 在前）；无 Validate 时确认推迟到首次 `CallTool` | helpers 迁移态；**Shortcut 也可采用此路径，可接受** |
+| **Tier3 裸 Cobra** | 手写 `*cobra.Command` | 无框架声明（或仅 annotate / 评审排除） | 调用方自管 | 应逐步收；新增裸叶需迁移元数据或精确排除 |
 
 选用规则：
 
-1. 新命令默认走完全托管模式。
-2. 既有命令要补 Agent Schema、但执行面暂时不能迁入 LeafSpec → 声明元数据模式；声明必须写在命令字面量旁（与完全托管同一作者点），禁止旁路 generated map。
-3. 声明元数据模式是**迁移态**：具备条件后应升级为完全托管；不得用它绕开「业务 flag 必须声明」的框架纪律。
+1. 新命令默认走 Tier1 完全托管。
+2. 既有 helpers / Shortcut 要补 Agent Schema、但执行面暂时不能迁入 LeafSpec → Tier2；声明必须写在命令字面量旁，禁止旁路 generated map。**Shortcut + `DeclareLeafMetadata` 是合法当前路径**，不得在文档或评审里否定。
+3. Tier2 是**迁移态**：具备条件后应升级为 Tier1；不得用它绕开「业务 flag 必须声明」的框架纪律。大规模 Tier2→Tier1 与 Shortcut→mcpbind 属于后续里程碑，**不是**本阶段硬门槛。
 4. `DeclareLeafMetadata` 传入 Flags/Call/RunE/PostMount 等执行面字段直接 panic，防止半接管；**唯一允许的执行钩子是 `Validate`**，与 `ConfirmSafety` 同在 RunE 层（禁止只挂 PreRunE——直接调 `RunE` / `proxySubCmd` 会跳过 PreRunE）。无独立 Caller 的本地/PAT 命令必须提供 `Validate`，否则会回退成确认抢先。
+5. **长期展望**（非当前硬要求）：更多 Shortcut 可收敛到 mcpbind 形态 1/2，并减少仅为参数装配而存在的 `Execute` 函数体。不得把「必须删除 `Shortcut.Execute` / 必须 mcpbind」写成当前门禁。
 
 #### 5.0.3 与目标 `Contract` 的对应
 

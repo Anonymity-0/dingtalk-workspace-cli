@@ -18,11 +18,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 )
 
-func TestHasDeclaredOrAnnotatedConfirmationBranches(t *testing.T) {
+func TestCrossPlatformCoverageHasDeclaredOrAnnotatedConfirmationBranches(t *testing.T) {
 	bare := &cobra.Command{Use: "bare"}
 	if HasDeclaredOrAnnotatedConfirmation(bare) {
 		t.Fatal("bare command must not claim confirmation coverage")

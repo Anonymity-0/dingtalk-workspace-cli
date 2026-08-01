@@ -11,10 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package runtimeannotate is a thin delivery-facing re-export of
-// internal/corecmd/runtimeannotate.
+// Package contractfinal owns the Cobra-keyed ContractFinal runtime store and
+// the annotate+store registration seam.
 //
-// Ownership of AnnotateRuntime* writers lives under the command framework.
-// Prefer cli root re-exports for product code; this subpackage exists so
-// existing import paths keep resolving to the same single implementation.
-package runtimeannotate
+// Production product / helper / shortcut code should call
+// cli.RegisterRuntimeContractFinal (thin re-export). Framework code
+// (corecmd.AttachContract) calls RegisterRuntimeContractFinal here directly
+// so internal/corecmd never imports any internal/cli package.
+//
+// Types remain in internal/corecmd/contract (DTO only — no cobra store).
+// Annotate writers live in internal/corecmd/runtimeannotate.
+package contractfinal

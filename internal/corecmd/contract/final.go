@@ -14,13 +14,13 @@
 package contract
 
 // ContractFinalPayload is the Contract-authored final Schema leaf overlay.
-// Registered in-process by the framework via the cli/contractfinal seam;
+// Registered in-process by the framework via the corecmd/contractfinal seam;
 // Schema assembly reads it as pass-through. No JSON bridge. Treat as
 // read-only after Register.
 //
 // The Cobra-keyed runtime store and Register live in
-// internal/cli/contractfinal (not this DTO package). AnnotateRuntime*
-// writers live in internal/cli/runtimeannotate. Production product code
+// internal/corecmd/contractfinal (not this DTO package). AnnotateRuntime*
+// writers live in internal/corecmd/runtimeannotate. Production product code
 // registers through cli.RegisterRuntimeContractFinal (thin re-export);
 // framework code calls contractfinal.RegisterRuntimeContractFinal directly.
 type ContractFinalPayload struct {
