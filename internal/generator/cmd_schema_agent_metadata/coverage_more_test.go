@@ -315,3 +315,55 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 		t.Fatal("absolute root path should be preserved")
 	}
 }
+
+func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.T) {
+	originalLoadHints := loadSelectionMetadataHints
+	originalValidateSet := validateSelectionMetadataSet
+	originalExamples := validateSelectionExamples
+	originalContract := validateSelectionContract
+	t.Cleanup(func() {
+		loadSelectionMetadataHints = originalLoadHints
+		validateSelectionMetadataSet = originalValidateSet
+		validateSelectionExamples = originalExamples
+		validateSelectionContract = originalContract
+	})
+
+	root := t.TempDir()
+	for _, dir := range []string{"selection", "metadata"} {
+		if err := os.MkdirAll(filepath.Join(root, "hints", dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	declared := &cobra.Command{Use: "run"}
+	cli.RegisterRuntimeContractFinal(declared, cli.ContractFinalPayload{})
+	t.Cleanup(func() { cli.ClearRuntimeContractFinalForTest(declared) })
+
+	registry := commandRegistryProjection{
+		CanonicalToolPaths: map[string]string{
+			"sample.run": "sample run",
+			"sample.get": "sample get",
+		},
+		Bound: cli.BoundCommandRegistry{ByCanonical: map[string]cli.BoundCommandSpec{
+			"sample.run": {PrimaryCommand: declared},
+		}},
+	}
+
+	var expected map[string]bool
+	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) { return cli.ManualAgentHintSet{}, nil }
+	validateSelectionMetadataSet = func(_ cli.ManualAgentHintSet, _ map[string]bool, tools map[string]bool) error {
+		expected = tools
+		return nil
+	}
+	validateSelectionExamples = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) error { return nil }
+	validateSelectionContract = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) (cli.ManualAgentSelectionReport, error) {
+		return cli.ManualAgentSelectionReport{}, nil
+	}
+
+	if err := validateSelectionHintInput(root, "hints", registry); err != nil {
+		t.Fatalf("validateSelectionHintInput() error = %v", err)
+	}
+	if expected == nil || expected["sample.run"] || !expected["sample.get"] {
+		t.Fatalf("declared tool must be exempt from hint coverage, expected = %#v", expected)
+	}
+}

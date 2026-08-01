@@ -14,12 +14,6 @@
       "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist."
     },
     "drive.upload": {
-      "parameters": {
-        "node": {
-          "property": "nodeId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "drive upload",
       "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."

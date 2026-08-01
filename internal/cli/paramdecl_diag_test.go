@@ -1,8 +1,8 @@
 package cli_test
 
 import (
-	"testing"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
+	"testing"
 )
 
 func TestParamDeclAnnotationCompare(t *testing.T) {

@@ -29,178 +29,26 @@
       "review_reason": "The reviewed Wukong-compatible handler requires an organization name and creator display name and calls org_create without a runtime confirmation gate."
     },
     "contact.department_create": {
-      "parameters": {
-        "name": {
-          "property": "deptName",
-          "required": true
-        },
-        "dept-name": {
-          "property": "deptName",
-          "required": false
-        },
-        "parent": {
-          "property": "superDeptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "super-dept-id": {
-          "property": "superDeptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "super-dept": {
-          "property": "superDeptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "create-dept-group": {
-          "property": "createDeptGroup",
-          "required": true,
-          "interface_type": "boolean"
-        }
-      },
       "reviewed": true,
       "cli_path": "contact dept create",
       "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create."
     },
     "contact.department_update": {
-      "parameters": {
-        "dept": {
-          "property": "deptId",
-          "required": true,
-          "interface_type": "integer"
-        },
-        "id": {
-          "property": "deptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "ids": {
-          "property": "deptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "dept-id": {
-          "property": "deptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "dept-ids": {
-          "property": "deptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "name": {
-          "property": "deptName",
-          "required": true
-        },
-        "dept-name": {
-          "property": "deptName",
-          "required": false
-        },
-        "parent": {
-          "property": "superDeptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "super-dept-id": {
-          "property": "superDeptId",
-          "required": false,
-          "interface_type": "integer"
-        },
-        "super-dept": {
-          "property": "superDeptId",
-          "required": false,
-          "interface_type": "integer"
-        }
-      },
       "reviewed": true,
       "cli_path": "contact dept update",
       "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update."
     },
     "contact.employee_update": {
-      "parameters": {
-        "user-id": {
-          "property": "userId",
-          "required": true
-        },
-        "id": {
-          "property": "userId",
-          "required": false
-        },
-        "userid": {
-          "property": "userId",
-          "required": false
-        },
-        "org-user-name": {
-          "property": "orgUserName",
-          "required": false
-        },
-        "depts": {
-          "property": "depts",
-          "required": false,
-          "interface_type": "array"
-        },
-        "master-user-id": {
-          "property": "masterUserId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "contact user update",
       "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update."
     },
     "contact.exclusive_account_user_update": {
-      "parameters": {
-        "user-id": {
-          "property": "userId",
-          "required": true
-        },
-        "id": {
-          "property": "userId",
-          "required": false
-        },
-        "userid": {
-          "property": "userId",
-          "required": false
-        },
-        "org-user-name": {
-          "property": "orgUserName",
-          "required": false
-        },
-        "depts": {
-          "property": "depts",
-          "required": false,
-          "interface_type": "array"
-        },
-        "master-user-id": {
-          "property": "masterUserId",
-          "required": false
-        },
-        "nick": {
-          "property": "nick",
-          "required": false
-        },
-        "avatar-file-id": {
-          "property": "avatarFileId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "contact account update",
       "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update."
     },
     "contact.self_user_profile_update": {
-      "parameters": {
-        "nick": {
-          "property": "nick",
-          "required": false
-        },
-        "avatar-file-id": {
-          "property": "avatarFileId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "contact user update-self",
       "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user."

@@ -1140,6 +1140,9 @@ var MessagesSendCard = shortcut.Shortcut{
 				"dws chat +messages-send-card --receiver <userId>",
 			},
 		},
+		Parameters: []corecmd.ParamDecl{
+			{Name: "receiver-open-dingtalk-id", Property: "receiverOpenDingTalkId"},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（与两个单聊接收者参数互斥）"},

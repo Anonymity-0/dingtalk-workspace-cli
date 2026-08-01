@@ -38738,10 +38738,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -38751,10 +38750,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
@@ -38851,10 +38849,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "mentionedOpenConversationIds"
                 },
                 {
@@ -38864,19 +38861,17 @@
                   "value": "mentionedOpenConversationId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "mentionedOpenConversationIds"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -38886,10 +38881,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {

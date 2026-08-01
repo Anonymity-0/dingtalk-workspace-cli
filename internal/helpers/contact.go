@@ -1162,6 +1162,14 @@ contact user profile fields 获取可用字段列表。
 				AvoidWhen:    []string{"修改当前用户自己的昵称或头像应使用 contact user update-self；创建企业专属账号应使用 contact account create"},
 				Examples:     []string{"dws contact user update --user-id user001 --org-user-name \"张三三\""},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "depts", Property: "depts", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "id", Property: "userId", Required: boolPtr(false)},
+				{Name: "master-user-id", Property: "masterUserId", Required: boolPtr(false)},
+				{Name: "org-user-name", Property: "orgUserName", Required: boolPtr(false)},
+				{Name: "user-id", Property: "userId", Required: boolPtr(true)},
+				{Name: "userid", Property: "userId", Required: boolPtr(false)},
+			},
 		},
 	})
 	contactUserUpdateSelfCmd := newContactUserUpdateSelfCommand()
@@ -1181,6 +1189,10 @@ contact user profile fields 获取可用字段列表。
 				UseWhen:      []string{"用户明确要求修改自己的 profile 昵称或头像 fileId"},
 				AvoidWhen:    []string{"修改其他员工的组织信息应使用 contact user update；修改企业专属账号应使用 contact account update"},
 				Examples:     []string{"dws contact user update-self --nick \"新昵称\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "avatar-file-id", Property: "avatarFileId", Required: boolPtr(false)},
+				{Name: "nick", Property: "nick", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -1243,6 +1255,14 @@ contact user profile fields 获取可用字段列表。
 				AvoidWhen:    []string{"修改已有部门名称或父级应使用 contact dept update；仅查找部门应使用 contact dept search"},
 				Examples:     []string{"dws contact dept create --name \"新产品部\" --create-dept-group=true"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "create-dept-group", Property: "createDeptGroup", Required: boolPtr(true), InterfaceType: "boolean"},
+				{Name: "dept-name", Property: "deptName", Required: boolPtr(false)},
+				{Name: "name", Property: "deptName", Required: boolPtr(true)},
+				{Name: "parent", Property: "superDeptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "super-dept", Property: "superDeptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "super-dept-id", Property: "superDeptId", Required: boolPtr(false), InterfaceType: "integer"},
+			},
 		},
 	})
 	contactDeptUpdateCmd := newContactDeptUpdateCommand()
@@ -1262,6 +1282,18 @@ contact user profile fields 获取可用字段列表。
 				UseWhen:      []string{"用户明确要求修改已有部门名称或迁移父部门，且已确认目标 deptId"},
 				AvoidWhen:    []string{"创建新部门应使用 contact dept create；仅查看部门信息应使用 contact dept get-info"},
 				Examples:     []string{"dws contact dept update --dept 12345 --name \"研发中心\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "dept", Property: "deptId", Required: boolPtr(true), InterfaceType: "integer"},
+				{Name: "dept-id", Property: "deptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "dept-ids", Property: "deptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "dept-name", Property: "deptName", Required: boolPtr(false)},
+				{Name: "id", Property: "deptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "ids", Property: "deptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "name", Property: "deptName", Required: boolPtr(true)},
+				{Name: "parent", Property: "superDeptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "super-dept", Property: "superDeptId", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "super-dept-id", Property: "superDeptId", Required: boolPtr(false), InterfaceType: "integer"},
 			},
 		},
 	})
@@ -1454,6 +1486,16 @@ contact user profile fields 获取可用字段列表。
 				UseWhen:      []string{"用户明确要求修改已有企业专属账号的姓名、部门、主管、昵称或头像"},
 				AvoidWhen:    []string{"创建新企业专属账号应使用 contact account create；修改普通员工组织信息应使用 contact user update"},
 				Examples:     []string{"dws contact account update --user-id user001 --nick \"新昵称\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "avatar-file-id", Property: "avatarFileId", Required: boolPtr(false)},
+				{Name: "depts", Property: "depts", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "id", Property: "userId", Required: boolPtr(false)},
+				{Name: "master-user-id", Property: "masterUserId", Required: boolPtr(false)},
+				{Name: "nick", Property: "nick", Required: boolPtr(false)},
+				{Name: "org-user-name", Property: "orgUserName", Required: boolPtr(false)},
+				{Name: "user-id", Property: "userId", Required: boolPtr(true)},
+				{Name: "userid", Property: "userId", Required: boolPtr(false)},
 			},
 		},
 	})

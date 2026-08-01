@@ -9,11 +9,6 @@
   },
   "tools": {
     "mail.list_emails": {
-      "parameters": {
-        "limit": {
-          "property": "size"
-        }
-      },
       "reviewed": true,
       "cli_path": "mail message list",
       "review_reason": "Preserve the reviewed composite wrapper contract: the CLI maps --limit to the search_emails size property after constructing a folder KQL query."

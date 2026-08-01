@@ -8438,10 +8438,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "群名称关键词列表，逗号分隔（可选）"
                 },
                 {
@@ -8457,19 +8456,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "群名称关键词列表，逗号分隔（可选）"
             },
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -8479,19 +8476,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "groupNameKeywords"
                 },
                 {
@@ -8501,19 +8496,17 @@
                   "value": "keywords"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "groupNameKeywords"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -8523,10 +8516,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -8569,10 +8561,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "群内成员 openDingTalkId 列表，逗号分隔（可选）"
                 },
                 {
@@ -8588,19 +8579,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "群内成员 openDingTalkId 列表，逗号分隔（可选）"
             },
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -8610,19 +8599,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "memberOpenDingTalkIds"
                 },
                 {
@@ -8632,19 +8619,17 @@
                   "value": "members"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "memberOpenDingTalkIds"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -8654,10 +8639,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -8715,10 +8699,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "分组名称 (必填)"
                 },
                 {
@@ -8734,19 +8717,17 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "分组名称 (必填)"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "categoryName"
                 },
                 {
@@ -8756,19 +8737,17 @@
                   "value": "name"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "categoryName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -8790,10 +8769,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -21027,10 +21005,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed CLI-to-interface conversion: Cobra validates --size as an integer from 1 to 100, then the helper serializes it to the string-valued list_message_favorites size property.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "string"
                 },
                 {
@@ -21040,10 +21017,9 @@
                   "value": "integer"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: Cobra validates --size as an integer from 1 to 100, then the helper serializes it to the string-valued list_message_favorites size property.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "string"
             },
             "property": {
@@ -80193,10 +80169,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "receiverOpenDingTalkId"
                 },
                 {
@@ -80206,24 +80181,16 @@
                   "value": "receiverOpenDingtalkId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "receiverOpenDingTalkId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": false
-                },
-                {
                   "precedence": "command_constraint",
-                  "selected": false,
+                  "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
                 },
@@ -80234,10 +80201,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {

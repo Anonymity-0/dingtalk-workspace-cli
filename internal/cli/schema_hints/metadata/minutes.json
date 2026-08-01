@@ -9,11 +9,6 @@
   },
   "tools": {
     "minutes.shortcut_replace_batch": {
-      "parameters": {
-        "pair": {
-          "description": "替换规则，格式 \"原文=>替换\"，可重复传多组（必填）；每组原文不能为空且不能重复"
-        }
-      },
       "reviewed": true,
       "cli_path": "minutes +replace-batch",
       "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate, composite interface, and the custom --pair format/uniqueness validation without inventing a direct MCP identity."

@@ -12,6 +12,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // parseBoolFlag reads a string flag and parses it as a boolean, accepting the
@@ -1916,6 +1918,9 @@ newFieldName、config、aiConfig 至少传入一项。
 				AvoidWhen:    []string{"已知 recordId 窄查可用 record get；空行用 query-empty；写入用 create/update；电子表格单元格用 sheet"},
 				Examples:     []string{"dws aitable record query --base-id <BASE_ID> --table-id <TABLE_ID>"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "record-ids", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -2999,6 +3004,9 @@ typed flag 与 --json 同时存在时，typed flag 优先。--no-cover 与 --cov
 					"dws aitable view update card --view-id KANBAN_ID --no-cover",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "json", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -3050,6 +3058,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 					"dws aitable view update timebar --view-id GANTT_ID --official-holiday=true",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "json", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -3099,6 +3110,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				AvoidWhen:    []string{"只读用 get aggregate"},
 				Examples:     []string{"dws aitable view update aggregate --view-id GRID_ID --field-id fldX --action SUM"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "json", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -3140,6 +3154,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				UseWhen:      []string{"调整列宽时"},
 				AvoidWhen:    []string{"只读用 get field-widths"},
 				Examples:     []string{"dws aitable view update field-widths --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --field-id fldX --width 200"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "json", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -4227,6 +4244,11 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				AvoidWhen:    []string{"已有工作流要修改时用 workflow update；仅启停已有工作流用 enable/disable；请求结果不确定时先 list 核对，避免非幂等重复创建"},
 				Examples:     []string{"dws aitable workflow create --base-id <BASE_ID> --dsl @workflow.json --locale zh-CN"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "dsl", Property: "dsl", Required: boolPtr(true), InterfaceType: "object"},
+				{Name: "locale", Property: "locale"},
+			},
 		},
 	})
 
@@ -4274,6 +4296,12 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				UseWhen:      []string{"用户明确要求修改已知工作流，且已先留底当前详情并准备完整 workflow-dsl/v1 目标定义时"},
 				AvoidWhen:    []string{"新建工作流用 create；只改变运行状态用 enable/disable；不要把局部 patch 或 workflow get 返回的 flowSchema 直接当作 DSL"},
 				Examples:     []string{"dws aitable workflow update --base-id <BASE_ID> --workflow-id <FLOW_ID> --dsl @workflow.json --locale zh-CN"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "dsl", Property: "dsl", Required: boolPtr(true), InterfaceType: "object"},
+				{Name: "locale", Property: "locale"},
+				{Name: "workflow-id", Property: "workflowId", Required: boolPtr(true)},
 			},
 		},
 	})

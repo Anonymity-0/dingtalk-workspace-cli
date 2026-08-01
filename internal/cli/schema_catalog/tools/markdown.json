@@ -421,10 +421,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "content"
                 },
                 {
@@ -434,25 +433,23 @@
                   "value": "content"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "content"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -462,10 +459,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -527,10 +523,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "filePath"
                 },
                 {
@@ -540,25 +535,23 @@
                   "value": "file"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "filePath"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -568,10 +561,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -633,10 +625,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "folderId"
                 },
                 {
@@ -646,19 +637,17 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "folderId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -668,10 +657,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -733,10 +721,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "fileName"
                 },
                 {
@@ -746,19 +733,17 @@
                   "value": "name"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "fileName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -774,24 +759,16 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": "--content is used"
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": "--content is used"
                 },
@@ -802,10 +779,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "--content is used"
             },
             "type": {
@@ -854,10 +830,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "spaceId"
                 },
                 {
@@ -867,19 +842,17 @@
                   "value": "spaceId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "spaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -889,10 +862,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -954,10 +926,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -967,19 +938,17 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -989,10 +958,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -1450,10 +1418,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -1463,24 +1430,16 @@
                   "value": "node"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -1497,10 +1456,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1562,10 +1520,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "output"
                 },
                 {
@@ -1575,19 +1532,17 @@
                   "value": "output"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "output"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1597,10 +1552,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -1662,10 +1616,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "spaceId"
                 },
                 {
@@ -1675,19 +1628,17 @@
                   "value": "spaceId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "spaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1697,10 +1648,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -1762,10 +1712,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -1775,19 +1724,17 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1797,10 +1744,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -2268,10 +2214,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "content"
                 },
                 {
@@ -2281,25 +2226,23 @@
                   "value": "content"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "content"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2309,10 +2252,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -2374,10 +2316,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "dryRun"
                 },
                 {
@@ -2387,19 +2328,17 @@
                   "value": "dryRun"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "dryRun"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2409,10 +2348,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -2474,10 +2412,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "filePath"
                 },
                 {
@@ -2487,25 +2424,23 @@
                   "value": "file"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "filePath"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2515,10 +2450,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -2580,10 +2514,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "fileName"
                 },
                 {
@@ -2593,19 +2526,17 @@
                   "value": "name"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "fileName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2615,10 +2546,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -2680,10 +2610,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -2693,24 +2622,16 @@
                   "value": "node"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -2727,10 +2648,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -2792,10 +2712,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "spaceId"
                 },
                 {
@@ -2805,19 +2724,17 @@
                   "value": "spaceId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "spaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2827,10 +2744,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -2892,10 +2808,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -2905,19 +2820,17 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2927,10 +2840,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3388,10 +3300,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "replacement"
                 },
                 {
@@ -3401,24 +3312,16 @@
                   "value": "content"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "replacement"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -3435,10 +3338,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3500,10 +3402,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "dryRun"
                 },
                 {
@@ -3513,19 +3414,17 @@
                   "value": "dryRun"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "dryRun"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3535,10 +3434,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3600,10 +3498,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -3613,24 +3510,16 @@
                   "value": "node"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -3647,10 +3536,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3712,10 +3600,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "pattern"
                 },
                 {
@@ -3725,24 +3612,16 @@
                   "value": "pattern"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "pattern"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -3759,10 +3638,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3824,10 +3702,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "regex"
                 },
                 {
@@ -3837,19 +3714,17 @@
                   "value": "regex"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "regex"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3859,10 +3734,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -3924,10 +3798,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "spaceId"
                 },
                 {
@@ -3937,19 +3810,17 @@
                   "value": "spaceId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "spaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3959,10 +3830,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -4024,10 +3894,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -4037,19 +3906,17 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4059,10 +3926,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {

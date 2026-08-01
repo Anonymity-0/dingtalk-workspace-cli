@@ -64,6 +64,9 @@ var ReplaceBatch = shortcut.Shortcut{
 				"dws minutes +replace-batch --id <taskUuid> --pair \"Q2=>第二季度\" --pair \"PM=>产品经理\"",
 			},
 		},
+		Parameters: []corecmd.ParamDecl{
+			{Name: "pair", Description: `替换规则，格式 "原文=>替换"，可重复传多组（必填）；每组原文不能为空且不能重复`},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid（必填）", Required: true},

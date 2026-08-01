@@ -263,6 +263,9 @@ func newMailCommand() *cobra.Command {
 				},
 				Examples: []string{"dws mail message search --email user@company.com --query \"subject:周报\""},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", Property: "size"},
+			},
 		},
 	})
 

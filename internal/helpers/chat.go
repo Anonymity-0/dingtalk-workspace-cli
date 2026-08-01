@@ -6157,6 +6157,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"需要搜索普通聊天记录、置顶消息或修改收藏状态时不要使用。"},
 				Examples:     []string{"dws chat message list-favorites --cursor 0 --size 20"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "size", InterfaceType: "string"},
+			},
 		},
 	})
 	chatMessageListFavoritesCmd.Flags().Int64("cursor", 0, "数字分页游标（默认 0；翻页时传上次返回的 nextCursor）")
@@ -7006,6 +7009,11 @@ status 可选值:
 				UseWhen:      []string{"需要自动归集符合条件的会话时"},
 				AvoidWhen:    []string{"只需查看现有分组或手工管理会话时不要使用"},
 				Examples:     []string{"dws chat category create-smart --name \"项目群\" --keywords \"项目,交付\""},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "keywords", Property: "groupNameKeywords", Required: boolPtr(false), InterfaceType: "array", Description: "群名称关键词列表，逗号分隔（可选）"},
+				{Name: "members", Property: "memberOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array", Description: "群内成员 openDingTalkId 列表，逗号分隔（可选）"},
+				{Name: "name", Property: "categoryName", Required: boolPtr(true), Description: "分组名称 (必填)"},
 			},
 		},
 	})

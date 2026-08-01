@@ -19,35 +19,11 @@
       "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
     },
     "chat.create_smart_conv_category": {
-      "parameters": {
-        "keywords": {
-          "description": "群名称关键词列表，逗号分隔（可选）",
-          "interface_type": "array",
-          "property": "groupNameKeywords",
-          "required": false
-        },
-        "members": {
-          "description": "群内成员 openDingTalkId 列表，逗号分隔（可选）",
-          "interface_type": "array",
-          "property": "memberOpenDingTalkIds",
-          "required": false
-        },
-        "name": {
-          "description": "分组名称 (必填)",
-          "property": "categoryName",
-          "required": true
-        }
-      },
       "reviewed": true,
       "cli_path": "chat category create-smart",
       "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract."
     },
     "chat.list_message_favorites": {
-      "parameters": {
-        "size": {
-          "interface_type": "string"
-        }
-      },
       "reviewed": true,
       "cli_path": "chat message list-favorites",
       "review_reason": "Preserve the reviewed CLI-to-interface conversion: Cobra validates --size as an integer from 1 to 100, then the helper serializes it to the string-valued list_message_favorites size property."
@@ -118,12 +94,6 @@
       "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade."
     },
     "chat.shortcut_messages_send_card": {
-      "parameters": {
-        "receiver-open-dingtalk-id": {
-          "property": "receiverOpenDingTalkId",
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "chat +messages-send-card",
       "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property."

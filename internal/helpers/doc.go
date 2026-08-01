@@ -2637,6 +2637,10 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 					"dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"请群内确认\" --mentioned-open-conversation-id <openConversationId>",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "mention", InterfaceType: "array"},
+				{Name: "mentioned-open-conversation-id", Property: "mentionedOpenConversationIds", Required: boolPtr(false), InterfaceType: "array"},
+			},
 		},
 	})
 	commentUpdateCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")

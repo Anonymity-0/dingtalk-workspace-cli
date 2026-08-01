@@ -1064,10 +1064,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "createDeptGroup"
                 },
                 {
@@ -1077,24 +1076,16 @@
                   "value": "createDeptGroup"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "createDeptGroup"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -1111,10 +1102,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1176,10 +1166,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "deptName"
                 },
                 {
@@ -1189,24 +1178,16 @@
                   "value": "name"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "deptName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -1223,10 +1204,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1288,10 +1268,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "integer"
                 },
                 {
@@ -1301,19 +1280,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "integer"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "superDeptId"
                 },
                 {
@@ -1323,19 +1300,17 @@
                   "value": "parent"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "superDeptId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1351,10 +1326,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-name spelling and an explicit boolean group choice, optionally parses a parent department ID, confirms, then invokes department_create.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -1781,10 +1755,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "integer"
                 },
                 {
@@ -1794,19 +1767,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "integer"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "deptId"
                 },
                 {
@@ -1816,24 +1787,16 @@
                   "value": "dept"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "deptId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -1850,10 +1813,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1916,10 +1878,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "deptName"
                 },
                 {
@@ -1929,24 +1890,16 @@
                   "value": "name"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "deptName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -1963,10 +1916,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -2028,10 +1980,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "integer"
                 },
                 {
@@ -2041,19 +1992,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "integer"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "superDeptId"
                 },
                 {
@@ -2063,19 +2012,17 @@
                   "value": "parent"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "superDeptId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2085,10 +2032,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one department-ID spelling and one department-name spelling, optionally parses a parent ID, confirms, then invokes department_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -2524,10 +2470,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -2537,19 +2482,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "depts"
                 },
                 {
@@ -2559,25 +2502,23 @@
                   "value": "depts"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "depts"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2587,10 +2528,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -2653,10 +2593,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "masterUserId"
                 },
                 {
@@ -2666,25 +2605,23 @@
                   "value": "masterUserId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "masterUserId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2694,10 +2631,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -2759,10 +2695,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgUserName"
                 },
                 {
@@ -2772,25 +2707,23 @@
                   "value": "orgUserName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgUserName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -2800,10 +2733,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -2865,10 +2797,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "userId"
                 },
                 {
@@ -2878,24 +2809,16 @@
                   "value": "userId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "userId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -2912,10 +2835,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one employee-ID spelling plus at least one update field, decodes optional department JSON, confirms, then invokes employee_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -4325,10 +4247,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "avatarFileId"
                 },
                 {
@@ -4338,25 +4259,23 @@
                   "value": "avatarFileId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "avatarFileId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4366,10 +4285,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4431,10 +4349,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -4444,19 +4361,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "depts"
                 },
                 {
@@ -4466,25 +4381,23 @@
                   "value": "depts"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "depts"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4494,10 +4407,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4560,10 +4472,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "masterUserId"
                 },
                 {
@@ -4573,25 +4484,23 @@
                   "value": "masterUserId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "masterUserId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4601,10 +4510,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4666,10 +4574,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "nick"
                 },
                 {
@@ -4679,25 +4586,23 @@
                   "value": "nick"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "nick"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4707,10 +4612,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4772,10 +4676,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "orgUserName"
                 },
                 {
@@ -4785,25 +4688,23 @@
                   "value": "orgUserName"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "orgUserName"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4813,10 +4714,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -4878,10 +4778,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "userId"
                 },
                 {
@@ -4891,24 +4790,16 @@
                   "value": "userId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "userId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": true
-                },
-                {
                   "precedence": "native_annotation",
-                  "selected": false,
+                  "selected": true,
                   "source": "native_annotation",
                   "value": true
                 },
@@ -4925,10 +4816,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires one enterprise-account user ID plus at least one profile or organization update field, confirms, then invokes exclusive_account_user_update.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -12123,10 +12013,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "avatarFileId"
                 },
                 {
@@ -12136,25 +12025,23 @@
                   "value": "avatarFileId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "avatarFileId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -12164,10 +12051,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -12229,10 +12115,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "nick"
                 },
                 {
@@ -12242,25 +12127,23 @@
                   "value": "nick"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "nick"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -12270,10 +12153,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed handler requires at least one of nickname or avatar file ID, confirms, then invokes self_user_profile_update for the current user.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {

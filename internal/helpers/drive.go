@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -973,6 +975,9 @@ func newDriveCommand() *cobra.Command {
 					"dws drive upload --file ./report.pdf --format json",
 					"dws drive upload --file ./README.md --node <dentryUuid> --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(false)},
 			},
 		},
 	})

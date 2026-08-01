@@ -20561,10 +20561,9 @@
             "description": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate, composite interface, and the custom --pair format/uniqueness validation without inventing a direct MCP identity.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "替换规则，格式 \"原文=\u003e替换\"，可重复传多组（必填）；每组原文不能为空且不能重复"
                 },
                 {
@@ -20580,10 +20579,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate, composite interface, and the custom --pair format/uniqueness validation without inventing a direct MCP identity.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "替换规则，格式 \"原文=\u003e替换\"，可重复传多组（必填）；每组原文不能为空且不能重复"
             },
             "property": {

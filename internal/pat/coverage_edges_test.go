@@ -572,3 +572,41 @@ func TestCrossPlatformCoverageLegacySchemaMismatchWithoutValidationKeyword(t *te
 		t.Fatal("ambiguous scope error triggered legacy fallback")
 	}
 }
+
+func TestCrossPlatformCoverageChmodValidateRequiresTargetSelection(t *testing.T) {
+	// The declared Validate hook mirrors the cobra Args gate for callers that
+	// bypass Args (the contract RunE pipeline runs Validate first): with no
+	// positional scope, no product/domain expansion, and no --recommend, the
+	// command must fail closed before any tool call.
+	cmd := newChmodCommand(&patEdgeCaller{})
+	err := cmd.RunE(cmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "accepts 1 arg(s), received 0") {
+		t.Fatalf("chmod validate without targets err = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageChmodValidateGrantTypeAndSessionRules(t *testing.T) {
+	// Pure string validation in the declared Validate hook: platform-neutral,
+	// fails closed before any tool call on both Windows and macOS.
+	cmd := newChmodCommand(&patEdgeCaller{})
+	if err := cmd.Flags().Set("grant-type", "forever"); err != nil {
+		t.Fatal(err)
+	}
+	err := cmd.RunE(cmd, []string{"mail.mail:read"})
+	if err == nil || !strings.Contains(err.Error(), `invalid --grant-type "forever"`) {
+		t.Fatalf("chmod invalid grant-type err = %v", err)
+	}
+
+	// session grants need an explicit --session-id when no session env is set.
+	t.Setenv("DINGTALK_SESSION_ID", "")
+	t.Setenv("DWS_SESSION_ID", "")
+	t.Setenv("REWIND_SESSION_ID", "")
+	cmd = newChmodCommand(&patEdgeCaller{})
+	if err := cmd.Flags().Set("grant-type", "session"); err != nil {
+		t.Fatal(err)
+	}
+	err = cmd.RunE(cmd, []string{"mail.mail:read"})
+	if err == nil || !strings.Contains(err.Error(), "--session-id is required when --grant-type is session") {
+		t.Fatalf("chmod session without session-id err = %v", err)
+	}
+}

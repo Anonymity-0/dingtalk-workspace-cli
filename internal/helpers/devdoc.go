@@ -5,6 +5,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 func newDevdocCommand() *cobra.Command {
@@ -91,6 +93,9 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 					"dws devdoc article search --query \"OAuth2 接入\" --format json",
 					"dws devdoc article search --query \"errcode 40078\" --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "query", Required: boolPtr(false)},
 			},
 		},
 	})

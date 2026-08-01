@@ -9,40 +9,16 @@
   },
   "tools": {
     "attendance.adjustment_search": {
-      "parameters": {
-        "limit": {
-          "required": false
-        },
-        "page": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "attendance adjustment search",
       "review_reason": "Cobra supplies reviewed page=1 and limit=20 defaults and RunE sends those defaults when omitted, so callers need not pass either pagination flag."
     },
     "attendance.group_search": {
-      "parameters": {
-        "limit": {
-          "required": false
-        },
-        "page": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "attendance group search",
       "review_reason": "Cobra supplies reviewed page=1 and limit=20 defaults and RunE materializes both PageQuery fields when omitted, so callers need not pass either flag."
     },
     "attendance.overtime_search": {
-      "parameters": {
-        "limit": {
-          "required": false
-        },
-        "page": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "attendance overtime search",
       "review_reason": "Cobra supplies reviewed page=1 and limit=20 defaults and RunE sends those defaults when omitted, so callers need not pass either pagination flag."

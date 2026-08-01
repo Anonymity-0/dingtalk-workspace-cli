@@ -11325,10 +11325,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the create_pivot_table properties object.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "object"
                 },
                 {
@@ -11338,10 +11337,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the create_pivot_table properties object.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {
@@ -58014,10 +58012,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed CLI-to-interface conversion: --sheets accepts inline JSON, @file, or stdin and is normalized to the table_put sheets array.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -58027,10 +58024,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: --sheets accepts inline JSON, @file, or stdin and is normalized to the table_put sheets array.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
@@ -67766,10 +67762,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the update_pivot_table properties object.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "object"
                 },
                 {
@@ -67779,10 +67774,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the update_pivot_table properties object.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {

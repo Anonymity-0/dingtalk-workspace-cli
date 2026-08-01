@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/spf13/cobra"
 )
 
 func TestCrossPlatformCoverageMetadataMarshalAndProjectionEdges(t *testing.T) {
@@ -565,4 +568,65 @@ func TestCrossPlatformCoverageGenerateFromSourcesFailureEdges(t *testing.T) {
 			t.Fatalf("interface disposition error = %v", err)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageContractFinalDeclarationFailureEdges(t *testing.T) {
+	declared := &cobra.Command{Use: "run"}
+	cli.RegisterRuntimeContractFinal(declared, cli.ContractFinalPayload{
+		Selection: &cli.SelectionSpec{AgentSummary: "declared summary"},
+	})
+	t.Cleanup(func() { cli.ClearRuntimeContractFinalForTest(declared) })
+	bound := cli.BoundCommandRegistry{ByCanonical: map[string]cli.BoundCommandSpec{
+		"sample.run": {PrimaryCommand: declared},
+	}}
+
+	// A declared overlay without a canonical CLI projection must fail loudly
+	// instead of silently dropping the declaration from the artifact.
+	missing := &File{Tools: map[string]ToolMetadata{}}
+	err := applyContractFinalDeclarations(missing, Options{BoundCommands: bound})
+	if err == nil || !strings.Contains(err.Error(), "no canonical CLI projection") {
+		t.Fatalf("missing projection error = %v", err)
+	}
+
+	// A same-precedence conflicting value must surface the merge conflict.
+	conflicted := &File{Tools: map[string]ToolMetadata{
+		"sample run": {
+			AgentSummary: "other summary", agentSummaryPresent: true,
+			agentSummaryRank: selectionRankContractFinal, agentSummaryOrigin: "other-origin",
+		},
+	}}
+	err = applyContractFinalDeclarations(conflicted, Options{
+		BoundCommands:      bound,
+		CanonicalToolPaths: map[string]string{"sample.run": "sample run"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("contract final merge conflict error = %v", err)
+	}
+
+	// generateFromSources propagates the declaration failure to its caller.
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "products"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "skill.md"), []byte("# skill\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := generateFromSources(Options{
+		Root: root, SkillPath: "skill.md", IntentGuidePath: "skill.md", ProductsDir: "products",
+		BoundCommands: bound,
+	}); err == nil || !strings.Contains(err.Error(), "no canonical CLI projection") {
+		t.Fatalf("generateFromSources contract final error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageReviewedSelectionPrecedenceLabels(t *testing.T) {
+	if isReviewedSelectionPrecedence("") || isReviewedSelectionPrecedence("skill_document") {
+		t.Fatal("non-reviewed precedence labels must report false")
+	}
+	if !isReviewedSelectionPrecedence(selectionPrecedenceReviewedExplicit) {
+		t.Fatal("reviewed_explicit must report true")
+	}
+	if !isReviewedSelectionPrecedence(selectionPrecedenceContractFinal) {
+		t.Fatal("contract_final must report true")
+	}
 }

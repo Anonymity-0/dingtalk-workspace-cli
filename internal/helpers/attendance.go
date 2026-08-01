@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -1412,6 +1414,10 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 					"dws attendance adjustment search --query \"标准\" --page 1 --limit 50",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", Required: boolPtr(false)},
+				{Name: "page", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -1517,6 +1523,10 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 					"dws attendance overtime search --query \"节假日\" --page 1 --limit 50",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", Required: boolPtr(false)},
+				{Name: "page", Required: boolPtr(false)},
+			},
 		},
 	})
 
@@ -1607,6 +1617,10 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 					"dws attendance group search --query \"<考勤组名称>\" --type TURN --format json",
 					"dws attendance group search --query \"研发组\" --type TURN --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "limit", Required: boolPtr(false)},
+				{Name: "page", Required: boolPtr(false)},
 			},
 		},
 	})

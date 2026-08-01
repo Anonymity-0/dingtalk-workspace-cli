@@ -24,16 +24,6 @@
       "review_reason": "The reviewed handler normalizes group conversation IDs into a stable de-duplicated array and rejects group mentions for emoji replies, which the remote operation does not support."
     },
     "doc.update_comment": {
-      "parameters": {
-        "mention": {
-          "interface_type": "array"
-        },
-        "mentioned-open-conversation-id": {
-          "property": "mentionedOpenConversationIds",
-          "required": false,
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "doc comment update",
       "review_reason": "Preserve the reviewed user-mention conversion and normalize repeated or comma-separated group conversation IDs into mentionedOpenConversationIds."

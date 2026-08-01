@@ -38,6 +38,22 @@ def all_helper_files():
     return files
 
 
+def helper_files_for_product(product):
+    """Prefer the product primary file, then the rest of helpers."""
+    files = all_helper_files()
+    primary = PRODUCT_FILES.get(product)
+    if not primary:
+        return files
+    preferred = os.path.join(HELPER_DIR, primary)
+    ordered = []
+    if preferred in files:
+        ordered.append(preferred)
+    for fp in files:
+        if fp != preferred:
+            ordered.append(fp)
+    return ordered
+
+
 def bool_ptr(v):
     return "boolPtr(true)" if v else "boolPtr(false)"
 
@@ -70,6 +86,32 @@ def find_block_end(lines, start_idx):
     return -1
 
 
+def find_cmd_var_for_call(lines, call_line):
+    """Find the nearest cmd := &cobra.Command{ whose block contains call_line."""
+    candidates = []
+    for i in range(call_line, -1, -1):
+        m = re.search(r'(\w+)\s*:?=\s*&cobra\.Command\s*{', lines[i])
+        if not m:
+            continue
+        end = find_block_end(lines, i)
+        if end >= call_line:
+            return m.group(1), i
+        # Keep searching further back; an outer command may still enclose us.
+        candidates.append((m.group(1), i))
+    return "", -1
+
+
+def find_declare_for_var(lines, var_name, after_line=0):
+    """Find DeclareLeafMetadata(var_name, ...) at or after after_line."""
+    if not var_name:
+        return -1
+    pat = re.compile(r'DeclareLeafMetadata\(\s*' + re.escape(var_name) + r'\s*,')
+    for i in range(max(after_line, 0), len(lines)):
+        if pat.search(lines[i]):
+            return i
+    return -1
+
+
 def migrate_product(product):
     hint_path = os.path.join(HINTS_DIR, f"{product}.json")
     hints = json.load(open(hint_path, encoding="utf-8"))
@@ -80,9 +122,18 @@ def migrate_product(product):
         print(f"{product}: no overlays, skipping")
         return True
 
+    # Optional canonical-path → actual MCP tool name when they diverge.
+    RPC_ALIASES = {
+        "attendance.adjustment_search": "get_adjustment_rule",
+        "attendance.group_search": "get_simple_groups",
+        "attendance.overtime_search": "get_overtime_rule",
+        "mail.list_emails": "search_emails",
+        "devdoc.search_open_platform_docs_rag": "search_open_platform_docs",
+    }
+
     # Load all helper files into memory
     file_contents = {}
-    for fp in all_helper_files():
+    for fp in helper_files_for_product(product):
         file_contents[fp] = open(fp, encoding="utf-8").read()
 
     modified_files = set()
@@ -90,7 +141,7 @@ def migrate_product(product):
     migrated_tools = set()  # only clear hints for tools we actually migrated
 
     for tool_name, params in sorted(overlays.items()):
-        rpc_name = tool_name.split(".")[-1]
+        rpc_name = RPC_ALIASES.get(tool_name, tool_name.split(".")[-1])
 
         # Strategy 1: RPCName field in Schema.Interface
         rpc_pattern = re.compile(r'RPCName:\s*"' + re.escape(rpc_name) + '"')
@@ -98,6 +149,7 @@ def migrate_product(product):
         call_patterns = [
             re.compile(r'callMCPTool\("' + re.escape(rpc_name) + '"'),
             re.compile(r'callMCPToolOnServer\([^,]+,\s*"' + re.escape(rpc_name) + '"'),
+            re.compile(r'callAitableTool\("' + re.escape(rpc_name) + '"'),
             re.compile(r'rt\.CallMCP\w*\("' + re.escape(rpc_name) + '"'),
         ]
 
@@ -126,32 +178,51 @@ def migrate_product(product):
                 break
 
         if not found_file:
+            # Strategy 3: composite helpers keyed by cobra Use (e.g. markdown.create).
+            use_name = tool_name.split(".", 1)[-1].replace("_", "-")
+            # Prefer last segment after dropping common prefixes.
+            for prefix in ("shortcut-",):
+                if use_name.startswith(prefix):
+                    use_name = use_name[len(prefix):]
+            use_pat = re.compile(r'Use:\s*"' + re.escape(use_name) + '"')
+            for fp, src in file_contents.items():
+                lines_src = src.split("\n")
+                for i, line in enumerate(lines_src):
+                    if use_pat.search(line):
+                        found_file = fp
+                        found_line = i
+                        break
+                if found_file:
+                    break
+
+        if not found_file:
             print(f"  WARNING: {tool_name} — RPCName '{rpc_name}' not found in any helper file")
             continue
 
         lines = file_contents[found_file].split("\n")
 
-        # Find DeclareLeafMetadata: search backwards first, then forwards
+        # Prefer command-variable association: call site → cmd var → DeclareLeafMetadata(cmd)
         decl_start = -1
-        search_range = list(range(found_line, max(found_line - 60, -1), -1)) + \
-                       list(range(found_line + 1, min(found_line + 60, len(lines))))
-        for i in search_range:
-            if "DeclareLeafMetadata(" in lines[i]:
-                # Verify this DeclareLeafMetadata's Schema contains the target
-                # RPCName (or the tool name) to avoid matching the wrong command.
+        cmd_var, cmd_line = find_cmd_var_for_call(lines, found_line)
+        if cmd_var:
+            decl_start = find_declare_for_var(lines, cmd_var, after_line=cmd_line)
+
+        # Fallback: any DeclareLeafMetadata whose block mentions the RPC name
+        if decl_start < 0:
+            for i, line in enumerate(lines):
+                if "DeclareLeafMetadata(" not in line:
+                    continue
                 block_end = find_block_end(lines, i)
                 block_text = "\n".join(lines[i:block_end + 1])
                 if rpc_name in block_text or tool_name in block_text:
                     decl_start = i
                     break
-                # Also check for callMCPTool("rpc_name") inside the block
                 if f'callMCPTool("{rpc_name}"' in block_text or \
-                   f'callMCPToolOnServer(' in block_text and rpc_name in block_text:
+                   (f'callMCPToolOnServer(' in block_text and rpc_name in block_text):
                     decl_start = i
                     break
-                # Skip this DeclareLeafMetadata — it doesn't belong to our tool
         if decl_start < 0:
-            print(f"  WARNING: {tool_name} — no matching DeclareLeafMetadata near line {found_line + 1} in {os.path.basename(found_file)}")
+            print(f"  WARNING: {tool_name} — no matching DeclareLeafMetadata near line {found_line + 1} in {os.path.basename(found_file)} (cmd_var={cmd_var!r})")
             continue
 
         # Find Schema block
@@ -189,7 +260,7 @@ def migrate_product(product):
         modified_files.add(found_file)
         file_contents[found_file] = "\n".join(lines)
         migrated_tools.add(tool_name)
-        print(f"  OK: {tool_name} — inserted {len(params)} param decls in {os.path.basename(found_file)} at line {insert_at + 1}")
+        print(f"  OK: {tool_name} — inserted {len(params)} param decls in {os.path.basename(found_file)} at line {insert_at + 1} (var={cmd_var})")
 
         # Check flag registration order
         for pname in params:

@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 func newTableCmds() []*cobra.Command {
@@ -137,6 +139,9 @@ func newTableCmds() []*cobra.Command {
 				UseWhen:      []string{"需要按结构化 table 协议写入表数据时"},
 				AvoidWhen:    []string{"普通区域写入用 range update/csv-put；AI 表格记录写入用 aitable record create"},
 				Examples:     []string{"dws sheet table-put --node NODE_ID --sheets '[{\"name\":\"Sheet1\",\"columns\":[\"name\"],\"data\":[[\"Alice\"]]}]'"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "sheets", InterfaceType: "array"},
 			},
 		},
 	})

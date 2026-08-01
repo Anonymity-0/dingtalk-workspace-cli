@@ -183,3 +183,48 @@ func TestCrossPlatformCoverageFromShortcutEmpty(t *testing.T) {
 		t.Fatalf("default safety = %#v, want read/low/not_required/idempotent", cs.Safety)
 	}
 }
+
+// TestCrossPlatformCoverageFromShortcutWithoutExecuteFailsClosed pins the
+// adapter's fail-closed body: a shortcut that never authored Execute must
+// surface a typed internal error instead of silently exiting 0.
+func TestCrossPlatformCoverageFromShortcutWithoutExecuteFailsClosed(t *testing.T) {
+	cmd := corecmd.New(FromShortcut(Shortcut{
+		Service: "chat", Command: "+noexec", Description: "缺少 Execute 的声明",
+	}))
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs(nil)
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "未实现 Execute") {
+		t.Fatalf("missing Execute err = %v, want 未实现 Execute internal error", err)
+	}
+	if !strings.Contains(err.Error(), "chat +noexec") {
+		t.Fatalf("missing Execute err = %v, want service/command identification", err)
+	}
+}
+
+// TestCrossPlatformCoverageFromShortcutUnknownConstraintKindPanics keeps the
+// adapter's build-time contract: an unmapped constraint kind is a programming
+// error caught at construction, never a silently dropped rule.
+func TestCrossPlatformCoverageFromShortcutUnknownConstraintKindPanics(t *testing.T) {
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			t.Fatal("unknown constraint kind must panic at construction")
+		}
+		if msg, _ := recovered.(string); !strings.Contains(msg, `unknown shortcut constraint kind "bogus"`) {
+			t.Fatalf("panic = %v, want unknown shortcut constraint kind", recovered)
+		}
+	}()
+	FromShortcut(Shortcut{
+		Service:     "chat",
+		Command:     "+bogus",
+		Description: "非法约束",
+		Flags: []Flag{
+			{Name: "a", Desc: "A"},
+			{Name: "b", Desc: "B"},
+		},
+		Constraints: []Constraint{{Kind: ConstraintKind("bogus"), Flags: []string{"a", "b"}}},
+		Execute:     func(*RuntimeContext) error { return nil },
+	})
+}

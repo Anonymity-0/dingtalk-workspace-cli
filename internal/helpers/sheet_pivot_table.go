@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 var validPivotSummarizeBy = map[string]bool{
@@ -230,6 +232,9 @@ func newPivotTableCmd() *cobra.Command {
 				AvoidWhen:    []string{"更新配置用 update；删除用 delete"},
 				Examples:     []string{"dws sheet pivot-table create --node NODE_ID --source \"'Sheet1'!A1:D100\" --properties '{\"rows\":[{\"field\":\"A\"}],\"values\":[{\"field\":\"D\",\"aggregation\":\"sum\"}]}'"},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "properties", InterfaceType: "object"},
+			},
 		},
 	})
 	createCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -275,6 +280,9 @@ func newPivotTableCmd() *cobra.Command {
 				UseWhen:      []string{"已知透视表 ID，需要调整行/列/值字段配置时"},
 				AvoidWhen:    []string{"新建用 create；删除用 delete"},
 				Examples:     []string{"dws sheet pivot-table update --node NODE_ID --sheet-id SHEET_ID --pivot-table-id PIVOT_TABLE_ID --properties '{\"show_subtotals\":false}'"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "properties", InterfaceType: "object"},
 			},
 		},
 	})

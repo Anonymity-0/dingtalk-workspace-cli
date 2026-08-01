@@ -13155,24 +13155,16 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "Preserve the reviewed composite wrapper contract: the CLI maps --limit to the search_emails size property after constructing a folder KQL query.",
-                  "selected": true,
-                  "source": "reviewed_manual_hint",
-                  "value": "size"
-                },
-                {
                   "precedence": "inference",
-                  "selected": false,
+                  "selected": true,
                   "source": "flag_name_inference",
                   "value": "limit"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "inference",
               "resolution": "highest_precedence",
-              "review_reason": "Preserve the reviewed composite wrapper contract: the CLI maps --limit to the search_emails size property after constructing a folder KQL query.",
-              "source": "reviewed_manual_hint",
-              "value": "size"
+              "source": "flag_name_inference",
+              "value": "limit"
             },
             "required": {
               "candidates": [
@@ -13223,7 +13215,7 @@
               "value": "string"
             }
           },
-          "property": "size",
+          "property": "limit",
           "required": false,
           "type": "string"
         }
@@ -17107,6 +17099,12 @@
                   "precedence": "versioned_binding",
                   "selected": true,
                   "source": "versioned_parameter_binding",
+                  "value": "size"
+                },
+                {
+                  "precedence": "native_annotation",
+                  "selected": false,
+                  "source": "native_annotation",
                   "value": "size"
                 },
                 {

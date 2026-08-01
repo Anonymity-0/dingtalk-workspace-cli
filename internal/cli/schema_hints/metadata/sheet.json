@@ -9,31 +9,16 @@
   },
   "tools": {
     "sheet.create_pivot_table": {
-      "parameters": {
-        "properties": {
-          "interface_type": "object"
-        }
-      },
       "reviewed": true,
       "cli_path": "sheet pivot-table create",
       "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the create_pivot_table properties object."
     },
     "sheet.table_put": {
-      "parameters": {
-        "sheets": {
-          "interface_type": "array"
-        }
-      },
       "reviewed": true,
       "cli_path": "sheet table-put",
       "review_reason": "Preserve the reviewed CLI-to-interface conversion: --sheets accepts inline JSON, @file, or stdin and is normalized to the table_put sheets array."
     },
     "sheet.update_pivot_table": {
-      "parameters": {
-        "properties": {
-          "interface_type": "object"
-        }
-      },
       "reviewed": true,
       "cli_path": "sheet pivot-table update",
       "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the update_pivot_table properties object."

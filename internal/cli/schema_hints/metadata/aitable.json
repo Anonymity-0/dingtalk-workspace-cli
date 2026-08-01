@@ -9,93 +9,36 @@
   },
   "tools": {
     "aitable.query_records": {
-      "parameters": {
-        "record-ids": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable record query",
       "review_reason": "The reviewed query command supports both an optional ID lookup mode and a table scan/filter mode, so --record-ids is not unconditionally required."
     },
     "aitable.view_update_aggregate": {
-      "parameters": {
-        "json": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable view update aggregate",
       "review_reason": "The reviewed CLI accepts --json, a --field-id/--action pair, or --clear-field-id; the registered typed constraints describe those alternatives."
     },
     "aitable.view_update_card": {
-      "parameters": {
-        "json": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable view update card",
       "review_reason": "The reviewed CLI merges optional typed card flags over an optional --json block; the registered typed constraints require at least one real update field."
     },
     "aitable.view_update_field_widths": {
-      "parameters": {
-        "json": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable view update field-widths",
       "review_reason": "The reviewed CLI accepts either --json or the paired --field-id/--width form, which is represented by typed require-one-of and require-together constraints."
     },
     "aitable.view_update_timebar": {
-      "parameters": {
-        "json": {
-          "required": false
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable view update timebar",
       "review_reason": "The reviewed CLI accepts either a complete --json block or one or more typed Gantt timebar fields; --json is therefore not unconditionally required."
     },
     "aitable.workflow_create": {
-      "parameters": {
-        "base-id": {
-          "property": "baseId",
-          "required": true
-        },
-        "dsl": {
-          "property": "dsl",
-          "required": true,
-          "interface_type": "object"
-        },
-        "locale": {
-          "property": "locale"
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable workflow create",
       "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional."
     },
     "aitable.workflow_update": {
-      "parameters": {
-        "base-id": {
-          "property": "baseId",
-          "required": true
-        },
-        "workflow-id": {
-          "property": "workflowId",
-          "required": true
-        },
-        "dsl": {
-          "property": "dsl",
-          "required": true,
-          "interface_type": "object"
-        },
-        "locale": {
-          "property": "locale"
-        }
-      },
       "reviewed": true,
       "cli_path": "aitable workflow update",
       "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional."

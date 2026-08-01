@@ -39617,10 +39617,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed query command supports both an optional ID lookup mode and a table scan/filter mode, so --record-ids is not unconditionally required.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -39630,10 +39629,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed query command supports both an optional ID lookup mode and a table scan/filter mode, so --record-ids is not unconditionally required.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -42729,6 +42727,12 @@
                   "selected": true,
                   "source": "typed_parameter_metadata",
                   "value": true
+                },
+                {
+                  "precedence": "native_annotation",
+                  "selected": false,
+                  "source": "native_annotation",
+                  "value": false
                 },
                 {
                   "precedence": "default",
@@ -87557,10 +87561,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI accepts --json, a --field-id/--action pair, or --clear-field-id; the registered typed constraints describe those alternatives.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -87576,10 +87579,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI accepts --json, a --field-id/--action pair, or --clear-field-id; the registered typed constraints describe those alternatives.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -88842,16 +88844,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI merges optional typed card flags over an optional --json block; the registered typed constraints require at least one real update field.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -88867,10 +88868,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI merges optional typed card flags over an optional --json block; the registered typed constraints require at least one real update field.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -89822,10 +89822,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI accepts either --json or the paired --field-id/--width form, which is represented by typed require-one-of and require-together constraints.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -89841,10 +89840,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI accepts either --json or the paired --field-id/--width form, which is represented by typed require-one-of and require-together constraints.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
@@ -96536,16 +96534,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The reviewed CLI accepts either a complete --json block or one or more typed Gantt timebar fields; --json is therefore not unconditionally required.",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "require_one_of_constraint",
                   "value": false
                 },
                 {
-                  "precedence": "command_constraint",
+                  "precedence": "native_annotation",
                   "selected": false,
-                  "source": "require_one_of_constraint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -96561,10 +96558,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "review_reason": "The reviewed CLI accepts either a complete --json block or one or more typed Gantt timebar fields; --json is therefore not unconditionally required.",
-              "source": "reviewed_manual_hint",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -98334,10 +98330,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "baseId"
                 },
                 {
@@ -98347,19 +98342,17 @@
                   "value": "baseId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "baseId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -98375,10 +98368,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -98440,10 +98432,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "object"
                 },
                 {
@@ -98453,19 +98444,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "dsl"
                 },
                 {
@@ -98475,19 +98464,17 @@
                   "value": "dsl"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "dsl"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -98503,10 +98490,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -98569,10 +98555,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "locale"
                 },
                 {
@@ -98582,10 +98567,9 @@
                   "value": "locale"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "locale"
             },
             "required": {
@@ -101414,10 +101398,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "baseId"
                 },
                 {
@@ -101427,19 +101410,17 @@
                   "value": "baseId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "baseId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -101455,10 +101436,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -101520,10 +101500,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "object"
                 },
                 {
@@ -101533,19 +101512,17 @@
                   "value": "string"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "object"
             },
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "dsl"
                 },
                 {
@@ -101555,19 +101532,17 @@
                   "value": "dsl"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "dsl"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -101583,10 +101558,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -101649,10 +101623,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "locale"
                 },
                 {
@@ -101662,10 +101635,9 @@
                   "value": "locale"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "locale"
             },
             "required": {
@@ -101741,10 +101713,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": "workflowId"
                 },
                 {
@@ -101754,19 +101725,17 @@
                   "value": "workflowId"
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": "workflowId"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "reviewed_manual",
-                  "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "reviewed_manual_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -101782,10 +101751,9 @@
                   "value": false
                 }
               ],
-              "precedence": "reviewed_manual",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional.",
-              "source": "reviewed_manual_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
