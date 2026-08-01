@@ -245,6 +245,10 @@ func TestCrossPlatformCoverageHintDirectoryLoaderRemainingEdges(t *testing.T) {
 	if _, err := loadParameterCommandsFromMetadata(fstest.MapFS{}, "["); err == nil {
 		t.Fatal("invalid metadata glob succeeded")
 	}
+	emptyCommands, err := loadParameterCommandsFromMetadata(fstest.MapFS{}, "*.json")
+	if err != nil || len(emptyCommands) != 0 {
+		t.Fatalf("empty metadata directory = %#v, %v", emptyCommands, err)
+	}
 	if _, err := loadParameterCommandsFromMetadata(directoryJSON, "*.json"); err == nil {
 		t.Fatal("metadata directory read succeeded")
 	}
@@ -289,6 +293,31 @@ func TestCrossPlatformCoverageHintDirectoryLoaderRemainingEdges(t *testing.T) {
 	invalidSelection := fstest.MapFS{"sample.json": {Data: []byte(`{"version":1,"tools":{"sample.get":{}}}`)}}
 	if _, err := loadManualSchemaHintsFromHintDirs(validMetadata, "*.json", invalidSelection, "*.json"); err == nil {
 		t.Fatal("wrapper selection validation failure succeeded")
+	}
+
+	// Optional metadata: nil FS or empty glob must still load selection.
+	for _, tc := range []struct {
+		name string
+		fs   fs.FS
+		glob string
+	}{
+		{name: "nil FS", fs: nil, glob: "*.json"},
+		{name: "empty glob", fs: validMetadata, glob: ""},
+		{name: "empty match", fs: fstest.MapFS{}, glob: "*.json"},
+	} {
+		snap, err := loadManualSchemaHintsFromHintDirs(tc.fs, tc.glob, validSelection, "*.json")
+		if err != nil {
+			t.Fatalf("optional metadata %s: %v", tc.name, err)
+		}
+		if len(snap.Commands) != 0 {
+			t.Fatalf("optional metadata %s: unexpected commands %#v", tc.name, snap.Commands)
+		}
+		if _, ok := snap.AgentHints.Tools["sample.get"]; !ok {
+			t.Fatalf("optional metadata %s: selection tools missing", tc.name)
+		}
+	}
+	if commands, err := loadParameterCommandsFromMetadata(nil, "*.json"); err != nil || len(commands) != 0 {
+		t.Fatalf("nil metadata FS = %#v, %v", commands, err)
 	}
 }
 

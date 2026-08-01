@@ -583,6 +583,10 @@ func newAttendanceCommand() *cobra.Command {
 					"dws attendance record get --user USER_ID --date 2026-03-08",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "user", Required: boolPtr(true)},
+				{Name: "date", Required: boolPtr(true)},
+			},
 		},
 	})
 
@@ -993,6 +997,11 @@ func newAttendanceCommand() *cobra.Command {
 					"要查考勤组规则时改用 rules",
 				},
 				Examples: []string{"dws attendance shift list --users userId1,userId2 --start 2026-03-03 --end 2026-03-07"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "users", Required: boolPtr(true), InterfaceType: "array"},
+				{Name: "start", Required: boolPtr(true)},
+				{Name: "end", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -2310,6 +2319,11 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 					"dws attendance summary --user USER_ID --date \"2026-03-12 15:00:00\" --stats-type month",
 				},
 			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "user", Required: boolPtr(true)},
+				{Name: "date", Required: boolPtr(true)},
+				{Name: "stats-type", Required: boolPtr(true)},
+			},
 		},
 	})
 
@@ -2364,6 +2378,9 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 					"dws attendance rules --date <今天日期> --format json",
 					"dws attendance rules --date 2026-03-14",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "date", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -4106,6 +4123,9 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 					"dws attendance boss-check --plan-id 123456 --time \"2025-04-21 08:30\"",
 					"dws attendance boss-check --result-id 789012 --result Normal",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "plan-id", Required: boolPtr(true)},
 			},
 		},
 	})

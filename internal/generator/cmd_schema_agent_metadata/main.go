@@ -75,7 +75,7 @@ func main() {
 	flag.StringVar(&skillPath, "skill", "skills/mono/SKILL.md", "Main DWS SKILL.md path")
 	flag.StringVar(&productsDir, "products", "skills/mono/references/products", "Product skill reference directory")
 	flag.StringVar(&intentGuidePath, "intent-guide", "skills/mono/references/intent-guide.md", "Cross-product intent guide path")
-	flag.StringVar(&hintsDir, "hints", "internal/cli/schema_hints", "Versioned Agent hint JSON directory (metadata/ + selection/)")
+	flag.StringVar(&hintsDir, "hints", "internal/cli/schema_hints", "Versioned Agent hint JSON directory (required selection/; optional metadata/ shells)")
 	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "internal/cli/schema_mcp_metadata.json", "Sanitized versioned MCP metadata used only for fallback Agent summaries")
 	flag.StringVar(&outputPath, "output", "", "Output embedded Agent metadata JSON file (legacy single-file mode)")
 	flag.StringVar(&outputDir, "output-dir", "", "Output directory for split embedded Agent metadata JSON")
@@ -441,11 +441,10 @@ func mergeRegistryShards(dir string) ([]byte, error) {
 func validateSelectionHintInput(rootPath, hintsDir string, registry commandRegistryProjection) error {
 	hintsRoot := resolveRootPath(rootPath, hintsDir)
 	selectionRoot := filepath.Join(hintsRoot, "selection")
-	metadataRoot := filepath.Join(hintsRoot, "metadata")
-	for _, dir := range []string{selectionRoot, metadataRoot} {
-		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
-			return fmt.Errorf("required Agent hint directory missing: %s", dir)
-		}
+	// selection/ is required. metadata/ is optional: empty tools shells or a
+	// missing directory are valid once leaf facts live on Contract (phase 5).
+	if info, err := os.Stat(selectionRoot); err != nil || !info.IsDir() {
+		return fmt.Errorf("required Agent hint directory missing: %s", selectionRoot)
 	}
 	selectionFS := os.DirFS(selectionRoot)
 	agentHints, err := loadSelectionMetadataHints(selectionFS)

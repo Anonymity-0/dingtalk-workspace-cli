@@ -13,65 +13,55 @@ import (
 
 func TestReviewedRoutedInterfacesReachFinalSchema(t *testing.T) {
 	type interfaceCase struct {
-		canonical    string
-		mode         string
-		reason       string
-		sourceSuffix string
+		canonical string
+		mode      string
+		reason    string
 	}
 	tests := []interfaceCase{
 		{
-			canonical:    "attendance.get_attendance_summary",
-			mode:         "composite",
-			reason:       "Reviewed unpinned remote adapter: the CLI calls attendance-wukong/get_user_attendance_summary, which is absent from the pinned MCP metadata snapshot; the incompatible attendance/get_attendance_summary contract must not be advertised.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/attendance.json",
+			canonical: "attendance.get_attendance_summary",
+			mode:      "composite",
+			reason:    "Reviewed unpinned remote adapter: the CLI calls attendance-wukong/get_user_attendance_summary, which is absent from the pinned MCP metadata snapshot; the incompatible attendance/get_attendance_summary contract must not be advertised.",
 		},
 		{
-			canonical:    "drive.list_files",
-			mode:         "composite",
-			reason:       "The CLI command routes by --workspace between drive/list_files and doc/list_nodes, so the reviewed executable wrapper has no single direct MCP interface.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/drive.json",
+			canonical: "drive.list_files",
+			mode:      "composite",
+			reason:    "The CLI command routes by --workspace between drive/list_files and doc/list_nodes, so the reviewed executable wrapper has no single direct MCP interface.",
 		},
 		{
-			canonical:    "chat.search_groups",
-			mode:         "composite",
-			reason:       "Reviewed unpinned remote adapter: the CLI calls im/search_groups with a flat payload, while the pinned snapshot only contains the incompatible chat/search_groups_by_keyword contract.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/chat.json",
+			canonical: "chat.search_groups",
+			mode:      "composite",
+			reason:    "Reviewed unpinned remote adapter: the CLI calls im/search_groups with a flat payload, while the pinned snapshot only contains the incompatible chat/search_groups_by_keyword contract.",
 		},
 		{
-			canonical:    "sheet.range_batch_set_style",
-			mode:         "composite",
-			reason:       "The CLI reads a local batch file and performs multiple sheet/update_range calls with local continue-on-error control; the workflow has no single direct MCP interface.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/sheet.json",
+			canonical: "sheet.range_batch_set_style",
+			mode:      "composite",
+			reason:    "The CLI reads a local batch file and performs multiple sheet/update_range calls with local continue-on-error control; the workflow has no single direct MCP interface.",
 		},
 		{
-			canonical:    "sheet.range_read",
-			mode:         "composite",
-			reason:       "Reviewed unpinned remote adapter: the CLI calls sheet/get_cell_infos, which is absent from the pinned MCP metadata snapshot; the incompatible sheet/get_range contract must not be advertised.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/sheet.json",
+			canonical: "sheet.range_read",
+			mode:      "composite",
+			reason:    "Reviewed unpinned remote adapter: the CLI calls sheet/get_cell_infos, which is absent from the pinned MCP metadata snapshot; the incompatible sheet/get_range contract must not be advertised.",
 		},
 		{
-			canonical:    "wiki.list_wikiSpaces",
-			mode:         "composite",
-			reason:       "The CLI command routes by --type between wiki/list_wikiSpaces and drive/list_spaces, so the reviewed executable wrapper has no single direct MCP interface.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/wiki.json",
+			canonical: "wiki.list_wikiSpaces",
+			mode:      "composite",
+			reason:    "The CLI command routes by --type between wiki/list_wikiSpaces and drive/list_spaces, so the reviewed executable wrapper has no single direct MCP interface.",
 		},
 		{
-			canonical:    "event.consume",
-			mode:         "composite",
-			reason:       "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/event.json",
+			canonical: "event.consume",
+			mode:      "composite",
+			reason:    "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
 		},
 		{
-			canonical:    "event.status",
-			mode:         "composite",
-			reason:       "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/event.json",
+			canonical: "event.status",
+			mode:      "composite",
+			reason:    "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
 		},
 		{
-			canonical:    "event.stop",
-			mode:         "composite",
-			reason:       "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/event.json",
+			canonical: "event.stop",
+			mode:      "composite",
+			reason:    "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
 		},
 	}
 	for _, canonical := range []string{
@@ -81,10 +71,9 @@ func TestReviewedRoutedInterfacesReachFinalSchema(t *testing.T) {
 		"aitable.view_update_timebar",
 	} {
 		tests = append(tests, interfaceCase{
-			canonical:    canonical,
-			mode:         "composite",
-			reason:       "The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface.",
-			sourceSuffix: "internal/cli/schema_hints/metadata/aitable.json",
+			canonical: canonical,
+			mode:      "composite",
+			reason:    "The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface.",
 		})
 	}
 

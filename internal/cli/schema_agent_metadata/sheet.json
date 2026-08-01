@@ -15055,13 +15055,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/sheet.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the create_pivot_table properties object."
             }
           ]
         },
@@ -15111,7 +15104,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/sheet.json",
         "skills/mono/references/products/sheet/sheet-pivot-table.md"
       ],
       "use_when": [
@@ -15807,13 +15799,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/sheet.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: --properties accepts inline JSON or @file text and is validated and decoded to the update_pivot_table properties object."
             }
           ]
         },
@@ -15863,7 +15848,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/sheet.json",
         "skills/mono/references/products/sheet/sheet-pivot-table.md"
       ],
       "use_when": [
@@ -19692,13 +19676,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/sheet.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: --sheets accepts inline JSON, @file, or stdin and is normalized to the table_put sheets array."
             }
           ]
         },
@@ -19748,7 +19725,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/sheet.json",
         "skills/mono/references/products/sheet/sheet-write-data.md"
       ],
       "use_when": [

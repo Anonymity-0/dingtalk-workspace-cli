@@ -90,6 +90,7 @@ func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *te
 }
 
 func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
+	// Fixture-only hint injection: production RegisterSchemaHints stays empty.
 	originalHints := defaultSchemaHintRegistry
 	t.Cleanup(func() { defaultSchemaHintRegistry = originalHints })
 	defaultSchemaHintRegistry = newSchemaHintRegistry()

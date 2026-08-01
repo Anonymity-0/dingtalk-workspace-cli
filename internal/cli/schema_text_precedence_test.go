@@ -3,7 +3,10 @@
 
 package cli
 
-import "testing"
+import (
+	"sort"
+	"testing"
+)
 
 func TestRuntimeToolTextPrefersCobraHelpOverGenericMCPMetadata(t *testing.T) {
 	entry := runtimeSchemaEntry{
@@ -37,7 +40,31 @@ func TestRuntimeToolTextPrefersCobraHelpOverGenericMCPMetadata(t *testing.T) {
 	}
 }
 
+func TestProductionRegisterSchemaHintsHasNoSubstantiveOverlays(t *testing.T) {
+	// Framework expectation after ParamDecl / ContractFinal migration: production
+	// RegisterSchemaHints must not publish tool_schema_hint overlays. Temporary
+	// registry injection is allowed only inside unit-test fixtures.
+	if got := len(defaultSchemaHintRegistry.tools); got != 0 {
+		paths := make([]string, 0, got)
+		for path := range defaultSchemaHintRegistry.tools {
+			paths = append(paths, path)
+		}
+		sort.Strings(paths)
+		t.Fatalf("production schema hint registry has %d tool overlay(s), want 0; paths=%v", got, paths)
+	}
+}
+
 func TestRuntimeToolTextKeepsReviewedHintAboveCobraHelp(t *testing.T) {
+	// Production RegisterSchemaHints maps are empty; inject a temporary
+	// reviewed tool_schema_hint so this precedence unit test stays self-contained.
+	originalHints := defaultSchemaHintRegistry
+	t.Cleanup(func() { defaultSchemaHintRegistry = originalHints })
+	defaultSchemaHintRegistry = newSchemaHintRegistry()
+	const wantDescription = "查询 AI 表格记录。默认返回单页；传 --all 时自动翻页累计全部记录。"
+	RegisterSchemaHints("aitable", map[string]ToolSchemaHint{
+		"query_records": {Description: wantDescription},
+	})
+
 	entry := runtimeSchemaEntry{
 		ProductID:      "aitable",
 		ToolName:       "query_records",
@@ -59,7 +86,6 @@ func TestRuntimeToolTextKeepsReviewedHintAboveCobraHelp(t *testing.T) {
 	if title != entry.Title {
 		t.Fatalf("title = %q, want Cobra Help title %q", title, entry.Title)
 	}
-	wantDescription := schemaHintForCanonicalPath("aitable.query_records").Description
 	if description != wantDescription {
 		t.Fatalf("description = %q, want reviewed hint %q", description, wantDescription)
 	}

@@ -5181,9 +5181,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -5205,9 +5205,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

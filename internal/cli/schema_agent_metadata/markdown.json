@@ -194,13 +194,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/markdown.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed workflow requires exactly one content source, requires an .md name for literal content, keeps workspace and Drive space mutually exclusive, and routes the upload without a confirmation gate."
             }
           ]
         },
@@ -250,7 +243,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/markdown.json",
         "skills/mono/references/products/markdown.md"
       ],
       "use_when": [
@@ -432,13 +424,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/markdown.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed workflow requires one node locator, keeps explicit Drive and Doc routes mutually exclusive, treats remote content as untrusted data, and protects local output paths."
             }
           ]
         },
@@ -482,7 +467,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/markdown.json",
         "skills/mono/references/products/markdown.md"
       ],
       "use_when": [
@@ -664,13 +648,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/markdown.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed workflow requires a target and exactly one content source, supports a command-owned diff preview, and confirms before replacing the remote file."
             }
           ]
         },
@@ -714,7 +691,6 @@
       "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/markdown.json",
         "skills/mono/references/products/markdown.md"
       ],
       "use_when": [
@@ -896,13 +872,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/markdown.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed workflow requires a target, pattern, and replacement; it blocks zero-hit and empty-result writes, supports a command-owned diff preview, and confirms before reupload."
             }
           ]
         },
@@ -946,7 +915,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/markdown.json",
         "skills/mono/references/products/markdown.md"
       ],
       "use_when": [

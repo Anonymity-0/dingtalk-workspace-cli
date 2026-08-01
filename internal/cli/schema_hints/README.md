@@ -1,25 +1,26 @@
 # DWS Agent Schema Hints
 
-This directory contains versioned, structured Agent metadata. Hints belong to
-the CLI Schema subsystem rather than either installable Skill layout. They are
-excluded from embedded binaries and release Skill bundles. Files generate
-`internal/cli/schema_agent_metadata/`; generated runtime metadata must not be
-edited directly.
+This directory contains versioned, structured Agent inputs for Schema
+generation. Hints belong to the CLI Schema subsystem rather than either
+installable Skill layout. They are excluded from embedded binaries and release
+Skill bundles. Files generate `internal/cli/schema_agent_metadata/`; generated
+runtime metadata must not be edited directly.
 
 ## Layout
 
-Human-authored inputs live in two blocks:
+Human-authored inputs:
 
-- `index.json` (`format: dws-agent-hint-index`) — maps product IDs to metadata
-  and selection files, plus reference review
-- `metadata/<product>.json` — command metadata: safety, interface,
-  `runtime_gate`, and optional parameter overrides
-- `selection/<product>.json` — Agent selection prose
+- `index.json` (`format: dws-agent-hint-index`) — maps product IDs to required
+  selection files and optional metadata map, plus reference review.
+  Strategy: `metadata` is optional (omitted or `{}`); the on-disk
+  `metadata/` directory is retired and may be absent.
+- `selection/<product>.json` — Agent selection prose (required)
 - `imported/` — sanitized baseline from a fixed external revision
 
-When `index.json` is present, the generator loads `imported/` plus the
-metadata and selection files listed in the index. Sibling review JSON files in
-this directory remain CI/audit inputs and are not applied as Agent metadata
+When `index.json` is present, the generator loads `imported/` plus any
+metadata files listed in `index.metadata` (optional) and the selection files
+listed in `index.selection` (required). Sibling review JSON files in this
+directory remain CI/audit inputs and are not applied as Agent metadata
 sources.
 
 For the end-to-end Agent curation workflow, see `AGENTS.md` § “Agent curation
@@ -27,9 +28,12 @@ workflow (Schema hints)”.
 
 ## Source kinds
 
-- `reviewed_explicit`: reviewed metadata or selection HintFiles under
-  `metadata/` / `selection/` (`reviewed: true`). Selection prose is delivered
-  only from `selection/`.
+- `contract_final`: leaf-declared Safety / Schema / ParamDecl
+  (`DeclareLeafMetadata`, `Shortcut.Schema`). This is the production authority
+  for safety, interface disposition, and parameter facts.
+- `reviewed_explicit`: reviewed selection HintFiles under `selection/`
+  (`reviewed: true`) for Agent selection prose. Residual metadata tool rows are
+  not used in production shells.
 - `explicit`: explicit but not per-tool-reviewed DWS hints.
 - `imported`: sanitized metadata from a fixed external revision. It fills missing Agent semantics but cannot redefine command paths or parameter contracts.
 
@@ -54,7 +58,7 @@ current public leaf. `alias` entries bind an old or cross-product path to an
 explicit current target. `group`, `stale`, and `out_of_surface` entries remain
 visible in the audit but are never fuzzy-matched to a leaf.
 
-`interface_ref` is a separate interface binding. Use it when a public helper/canonical tool calls a differently named MCP RPC or another source product:
+`interface_ref` is a separate interface binding. Use it when a public helper/canonical tool calls a differently named MCP RPC or another source product. Prefer declaring it on the leaf Contract (`Schema.Interface`) rather than adding a metadata tool row:
 
 ```json
 {
@@ -94,19 +98,23 @@ current CLI/Catalog tool count. Its `coverage.surface_scope` must remain
 `source_revision`, and policy verifies the snapshot's internal matched and
 unmatched arithmetic. Current Catalog interface coverage is instead proved for
 every generated tool: each tool must have one valid `interface_mode` /
-availability disposition and retain reviewed provenance to
-`selection-review.json`, `zz-interface-disposition-review.json`, or another
-reviewed interface source. This makes newly added CLI tools explicit without
-rewriting historical MCP evidence or promoting an unreviewed selection hint.
+availability disposition and retain reviewed provenance to a leaf Contract
+declaration (`contract_final`) or another reviewed interface source. This makes
+newly added CLI tools explicit without rewriting historical MCP evidence or
+promoting an unreviewed selection hint.
 
 Interface metadata contributes lower-priority typed candidates, including
 `required`; source precedence is value-neutral for most fields, so a candidate
 may raise or lower the Agent-facing value when no higher-priority source wins.
-It cannot override reviewed manual hints, versioned bindings, typed/native
+It cannot override leaf Contract declarations, versioned bindings, typed/native
 metadata, or current Cobra/constraint facts for those fields. `required` is
 special: Cobra `MarkFlagRequired` is a hard floor that cannot be projected away
 as optional. `cli_required` remains the executable Cobra marker with its own
 provenance.
+
+Production `RegisterSchemaHints` maps are empty after ParamDecl migration.
+Temporary `tool_schema_hint` injection is allowed only inside unit-test
+fixtures that exercise precedence edges.
 
 ```json
 {
@@ -120,39 +128,30 @@ provenance.
       "agent_summary": "管理日程、参与人、会议室和闲忙信息"
     }
   },
-  "tools": {
-    "calendar.get_calendar_detail": {
-      "agent_summary": "读取一个日程的完整详情",
-      "use_when": ["已经取得 eventId，需要查看详情"],
-      "effect": "read",
-      "reviewed": true
-    }
-  }
+  "tools": {}
 }
 ```
 
-Run `make generate-schema` after changing Hint or Skill sources. External Wukong metadata must be refreshed by the controlled offline import pipeline with an immutable revision, then committed together with its audit before regenerating the Catalog; runtime refresh is forbidden.
+Run `make generate-schema` after changing selection Hint or Skill sources, or
+after changing leaf Contract declarations that feed Schema generation. External
+Wukong metadata must be refreshed by the controlled offline import pipeline
+with an immutable revision, then committed together with its audit before
+regenerating the Catalog; runtime refresh is forbidden.
 
-## Metadata parameters and selection prose
+## Selection prose
 
-Agent semantic hints in this directory do not change the executable CLI
-contract beyond reviewed parameter overlays on metadata tools.
+Leaf facts live on Contract declarations; `index.metadata` may be `{}` or
+omitted. The on-disk `metadata/` directory is retired and must not be
+reintroduced as a leaf-fact source.
 
 | Block | Owns |
 |---|---|
-| `metadata/<product>.json` | safety, interface, `runtime_gate`, optional `parameters` / `cli_path` |
+| leaf Contract (`Safety` / `Schema` / ParamDecl) | safety, interface, parameter facts (`contract_final`) |
 | `selection/<product>.json` | `agent_summary`, `use_when`, `avoid_when`, `examples` |
-
-Parameter overlays may override Schema description, interface-property/type
-mapping, `required`, and `required_when` for flags that already exist on that
-command. They cannot create a command or flag, target a hidden/group command,
-define an interface, or mark an unknown RPC available. Missing commands and
-flags, wildcards, canonical conflicts, duplicate paths, and unreviewed entries
-fail generation.
 
 Selection prose is committed as a reviewed source. `go generate` only reads,
 validates, and projects this data. It must never call a model, copy a previous
-Catalog, or overwrite metadata/selection files. Selection cannot change command
+Catalog, or overwrite selection files. Selection cannot change command
 identity, flags, parameters, safety, or interface facts.
 
 Commands intentionally kept outside Schema remain in the separate exact
@@ -163,13 +162,11 @@ that exclusion as stale.
 ### Agent editing workflow
 
 1. Locate the real Cobra leaf and verify its exact path and current flags.
-2. Edit only the owning block (`metadata/` or `selection/`); do not mix fields.
+2. Declare safety/interface/parameters on the owning leaf; edit
+   `selection/<product>.json` for selection prose only.
 3. Add only fields that need review. Do not copy generated Catalog fields into
    the input.
-4. Use `property` and `interface_type` only for a real CLI-to-interface
-   conversion. `required` and `required_when` describe the Schema projection;
-   they do not modify Cobra execution validation.
-5. Run:
+4. Run:
 
    ```bash
    make generate-schema
@@ -179,6 +176,11 @@ that exclusion as stale.
    go test ./internal/cli ./internal/app
    ```
 
-6. Review the generated Catalog diff. A parameter overlay should affect only
-   the intended contract. A selection edit updates prose provenance to
-   `reviewed_explicit` from `selection/`.
+   `check-runtime-confirmation-truth.sh` accepts optional/empty metadata
+   shells (`tools: {}` or absent directory); gated confirmation truth comes
+   from leaf Contract SafetySpec, not from metadata tool rows.
+
+6. Review the generated Catalog diff. A leaf declaration change should affect
+   only the intended contract. A selection edit updates prose provenance to
+   `reviewed_explicit` from `selection/`; safety/interface provenance stays
+   `contract_final`.

@@ -2973,9 +2973,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -2997,9 +2997,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3389,9 +3389,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3401,17 +3401,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-range-type is numbered"
                 },
                 {
@@ -3421,9 +3421,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-range-type is numbered"
             },
             "type": {
@@ -3492,9 +3492,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3504,17 +3504,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-type is absoluteMonthly or absoluteYearly"
                 },
                 {
@@ -3524,9 +3524,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-type is absoluteMonthly or absoluteYearly"
             },
             "type": {
@@ -3595,9 +3595,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3607,17 +3607,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-type is weekly or relativeMonthly"
                 },
                 {
@@ -3627,9 +3627,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-type is weekly or relativeMonthly"
             },
             "type": {
@@ -3718,9 +3718,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3730,17 +3730,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-range-type is endDate"
                 },
                 {
@@ -3750,9 +3750,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-range-type is endDate"
             },
             "type": {
@@ -3918,9 +3918,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -3930,17 +3930,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-type is relativeMonthly"
                 },
                 {
@@ -3950,9 +3950,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-type is relativeMonthly"
             },
             "type": {
@@ -4021,9 +4021,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4039,17 +4039,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "any recurrence-* flag is provided"
                 },
                 {
@@ -4059,9 +4059,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "any recurrence-* flag is provided"
             },
             "type": {
@@ -4130,9 +4130,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4148,17 +4148,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "any recurrence-* flag is provided"
                 },
                 {
@@ -4168,9 +4168,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "any recurrence-* flag is provided"
             },
             "type": {
@@ -4239,9 +4239,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -4257,17 +4257,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "any recurrence-* flag is provided"
                 },
                 {
@@ -4277,9 +4277,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "any recurrence-* flag is provided"
             },
             "type": {
@@ -4713,9 +4713,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -4737,9 +4737,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -4932,9 +4932,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -4956,9 +4956,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -12875,12 +12875,6 @@
                   "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -26708,9 +26702,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -26720,17 +26714,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-range-type is numbered"
                 },
                 {
@@ -26740,9 +26734,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-range-type is numbered"
             },
             "type": {
@@ -26811,9 +26805,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -26823,17 +26817,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-type is absoluteMonthly or absoluteYearly"
                 },
                 {
@@ -26843,9 +26837,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-type is absoluteMonthly or absoluteYearly"
             },
             "type": {
@@ -26914,9 +26908,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -26926,17 +26920,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-type is weekly or relativeMonthly"
                 },
                 {
@@ -26946,9 +26940,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-type is weekly or relativeMonthly"
             },
             "type": {
@@ -27037,9 +27031,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -27049,17 +27043,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-range-type is endDate"
                 },
                 {
@@ -27069,9 +27063,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-range-type is endDate"
             },
             "type": {
@@ -27237,9 +27231,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -27249,17 +27243,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "recurrence-type is relativeMonthly"
                 },
                 {
@@ -27269,9 +27263,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "recurrence-type is relativeMonthly"
             },
             "type": {
@@ -27340,9 +27334,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -27358,17 +27352,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "any recurrence-* flag is provided"
                 },
                 {
@@ -27378,9 +27372,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "any recurrence-* flag is provided"
             },
             "type": {
@@ -27449,9 +27443,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -27467,17 +27461,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "any recurrence-* flag is provided"
                 },
                 {
@@ -27487,9 +27481,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "any recurrence-* flag is provided"
             },
             "type": {
@@ -27558,9 +27552,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -27576,17 +27570,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "any recurrence-* flag is provided"
                 },
                 {
@@ -27596,9 +27590,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "any recurrence-* flag is provided"
             },
             "type": {

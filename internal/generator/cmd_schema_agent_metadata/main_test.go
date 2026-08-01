@@ -16,6 +16,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -236,6 +237,35 @@ func TestValidateSelectionHintInputRequiresHintDirs(t *testing.T) {
 	err := validateSelectionHintInput(root, "internal/cli/schema_hints", commandRegistryProjection{})
 	if err == nil || !strings.Contains(err.Error(), "required Agent hint directory missing") {
 		t.Fatalf("validateSelectionHintInput() error = %v", err)
+	}
+}
+
+func TestValidateSelectionHintInputAllowsMissingMetadataDir(t *testing.T) {
+	originalLoadHints := loadSelectionMetadataHints
+	originalValidateSet := validateSelectionMetadataSet
+	originalExamples := validateSelectionExamples
+	originalContract := validateSelectionContract
+	t.Cleanup(func() {
+		loadSelectionMetadataHints = originalLoadHints
+		validateSelectionMetadataSet = originalValidateSet
+		validateSelectionExamples = originalExamples
+		validateSelectionContract = originalContract
+	})
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "hints", "selection"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) {
+		return cli.ManualAgentHintSet{}, nil
+	}
+	validateSelectionMetadataSet = func(cli.ManualAgentHintSet, map[string]bool, map[string]bool) error { return nil }
+	validateSelectionExamples = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) error { return nil }
+	validateSelectionContract = func(cli.BoundCommandRegistry, cli.ManualAgentHintSet) (cli.ManualAgentSelectionReport, error) {
+		return cli.ManualAgentSelectionReport{}, nil
+	}
+	if err := validateSelectionHintInput(root, "hints", commandRegistryProjection{}); err != nil {
+		t.Fatalf("missing metadata/ must be optional: %v", err)
 	}
 }
 

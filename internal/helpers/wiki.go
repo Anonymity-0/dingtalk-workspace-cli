@@ -2,11 +2,12 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/spf13/cobra"
 )
 
@@ -196,6 +197,11 @@ func newWikiCommand() *cobra.Command {
 					"dws wiki space create --name \"技术方案\" --desc \"团队技术方案归档\" --format json",
 				},
 			},
+			// name is validated in RunE; publish required via ParamDecl
+			// instead of relying on RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
+			},
 		},
 	})
 
@@ -234,6 +240,11 @@ func newWikiCommand() *cobra.Command {
 				UseWhen:      []string{"查看指定知识库详情（名称、描述、创建者等）时"},
 				AvoidWhen:    []string{"列知识库用 list；删库用 space delete（需确认）"},
 				Examples:     []string{"dws wiki space get --workspace <workspaceId> --format json"},
+			},
+			// workspace is validated in RunE; publish required via ParamDecl
+			// (former RegisterSchemaHints keyed stale "space").
+			Parameters: []corecmd.ParamDecl{
+				{Name: "workspace", Required: boolPtr(true)},
 			},
 		},
 	})

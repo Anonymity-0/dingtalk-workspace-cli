@@ -36,16 +36,17 @@ type HintFile struct {
 	ReferenceReview map[string]ReferenceReview `json:"reference_review,omitempty"`
 }
 
-// HintIndex is the human-authored entrypoint. It maps product IDs to metadata
-// (safety/interface/parameters/runtime_gate) and selection (Agent routing prose)
-// HintFile paths. Index-level runtime_gates were removed; gates live on each
-// metadata tool as runtime_gate.
+// HintIndex is the human-authored entrypoint. It maps product IDs to optional
+// metadata HintFile paths (legacy safety/interface/parameters/runtime_gate
+// overlays; may be omitted once leaf facts live on Contract) and required
+// selection (Agent routing prose) HintFile paths. Index-level runtime_gates
+// were removed; residual gates live on each metadata tool as runtime_gate.
 type HintIndex struct {
 	Version         int                        `json:"version"`
 	Format          string                     `json:"format"`
 	Source          HintSource                 `json:"source"`
 	Coverage        HintCoverage               `json:"coverage,omitempty"`
-	Metadata        map[string]string          `json:"metadata"`
+	Metadata        map[string]string          `json:"metadata,omitempty"`
 	Selection       map[string]string          `json:"selection"`
 	ReferenceReview map[string]ReferenceReview `json:"reference_review,omitempty"`
 }
@@ -221,14 +222,16 @@ func parseHintSources(out *File, files []sourceFile, opts Options, stats *Stats,
 			}
 			return nil
 		}
-		if len(index.Metadata) == 0 {
-			return false, fmt.Errorf("decode Agent hint index %s: metadata map is required", indexFile.display)
-		}
+		// Metadata is optional: Contract/Safety owns leaf safety and params.
+		// An omitted or empty map is a valid migration end-state for phase 5
+		// (directory deletion). Selection remains required.
 		if len(index.Selection) == 0 {
 			return false, fmt.Errorf("decode Agent hint index %s: selection map is required", indexFile.display)
 		}
-		if err := appendMapped("metadata", index.Metadata, hintRoleMetadata); err != nil {
-			return false, err
+		if len(index.Metadata) > 0 {
+			if err := appendMapped("metadata", index.Metadata, hintRoleMetadata); err != nil {
+				return false, err
+			}
 		}
 		if err := appendMapped("selection", index.Selection, hintRoleSelection); err != nil {
 			return false, err

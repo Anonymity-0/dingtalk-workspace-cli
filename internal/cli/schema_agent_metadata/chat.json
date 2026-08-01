@@ -9138,13 +9138,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed against authenticated contact-search resolution, create-only, two-action dry-run, create/update success, missing bizId, and partial-failure behavior that preserves the created bizId; the explicit openDingTalkId flag is bound to the lower interface's exact receiverOpenDingTalkId property."
             }
           ]
         },
@@ -9187,8 +9180,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你要发送一张流式卡片消息时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
@@ -11266,13 +11258,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires a comma-separated category-ID list, parses it to integers, and invokes get_conv_categories_info without a mutation or confirmation gate."
             }
           ]
         },
@@ -11322,7 +11307,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -11522,13 +11506,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Expose the existing smart-category helper through the reviewed Agent Schema and preserve its CLI-to-interface parameter contract."
             }
           ]
         },
@@ -11578,7 +11555,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -12039,13 +12015,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler accepts one of three conversation locator aliases and invokes list_conv_categories_by_conv without a mutation or confirmation gate."
             }
           ]
         },
@@ -12095,7 +12064,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -14362,11 +14330,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI lists all owned or administered groups when --role and --limit are omitted; both flags are optional filters despite stricter imported interface metadata."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.list_owned_or_admin_groups",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -14419,7 +14386,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.list_owned_or_admin_groups",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
@@ -16212,11 +16178,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed optional --off switch selects administrator removal; omission deliberately selects administrator assignment."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.update_conv_member_roles",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -16269,7 +16234,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.update_conv_member_roles",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
@@ -17256,13 +17220,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires the target conversation while intentionally allowing omitted --nick to send an empty nickname and clear the current user's group nickname."
             }
           ]
         },
@@ -17312,7 +17269,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
       ],
@@ -17756,13 +17712,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler validates the target group and optional string-valued extension object, permits caller-authoritative dry-run, and requires explicit --yes before the irreversible upgrade."
             }
           ]
         },
@@ -17806,7 +17755,6 @@
       "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -18456,11 +18404,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed optional --off switch selects unmute; omission deliberately selects mute, so false is a valid default rather than missing required input."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.set_group_mute",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -18513,7 +18460,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.set_group_mute",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
@@ -18719,11 +18665,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed Cobra contract makes --off an optional mode switch: omission adds members to the mute list, while --off removes them. The shared MCP schema incorrectly marks the boolean as unconditionally required."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.set_group_member_mute_list",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -18776,7 +18721,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.set_group_member_mute_list",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
@@ -21063,11 +21007,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.add_emoji_reaction",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -21120,7 +21063,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.add_emoji_reaction",
         "skills/mono/references/products/chat.md"
       ],
@@ -21573,11 +21515,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.add_text_emotion",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -21630,7 +21571,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.add_text_emotion",
         "skills/mono/references/products/chat.md"
       ],
@@ -22582,13 +22522,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires one conversation locator, a message ID, and exactly one of text or raw content; it optionally derives a title and maps mention controls before invoking edit_message."
             }
           ]
         },
@@ -22632,7 +22565,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -24636,13 +24568,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Preserve the reviewed CLI-to-interface conversion: Cobra validates --size as an integer from 1 to 100, then the helper serializes it to the string-valued list_message_favorites size property."
             }
           ]
         },
@@ -24692,7 +24617,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -27247,11 +27171,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.remove_emoji_reaction",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -27304,7 +27227,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.remove_emoji_reaction",
         "skills/mono/references/products/chat.md"
       ],
@@ -27757,11 +27679,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The four reviewed conversation locator flags are aliases for one openConversationId property; the typed require-one-of constraint owns their conditional requirement."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.remove_text_emotion",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -27814,7 +27735,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.remove_text_emotion",
         "skills/mono/references/products/chat.md"
       ],
@@ -30604,13 +30524,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Ported from dws-wukong commits d6831318 and bcf56ccf, merged at 30f13f02. The four conversation locators alias one property; the other six business parameters are required by Cobra before the single im/update_text_emotion call."
             }
           ]
         },
@@ -30660,7 +30573,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "skills/mono/references/products/chat.md"
       ],
       "use_when": [
@@ -30864,11 +30776,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed locator aliases feed one openConversationId property, while optional --off selects unmute; typed constraints require one locator without making the mode switch mandatory."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.update_notification_off",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -30921,7 +30832,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.update_notification_off",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"
@@ -31677,11 +31587,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/chat.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed optional --off switch selects unpin; omission deliberately selects pin, so false is a valid default rather than missing required input."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.chat.set_top_conversation",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -31734,7 +31643,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/chat.json",
         "internal/cli/schema_mcp_metadata.json#tools.chat.set_top_conversation",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/chat.md"

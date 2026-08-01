@@ -474,11 +474,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aisearch.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI supports an all-content search with default --types all, while --queries and --time-range are optional filters; imported MCP required markers must not turn them into mandatory CLI input."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -533,7 +532,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aisearch.json",
         "internal/cli/schema_mcp_metadata.json#tools.aisearch.search_enterprise",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/aisearch.md"

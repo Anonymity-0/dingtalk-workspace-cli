@@ -59,9 +59,15 @@ type hintDirTool struct {
 }
 
 func loadManualSchemaHintsFromHintDirs(metadataFS fs.FS, metadataGlob string, selectionFS fs.FS, selectionGlob string) (ManualSchemaHintSnapshot, error) {
-	commands, err := loadParameterCommandsFromMetadata(metadataFS, metadataGlob)
-	if err != nil {
-		return ManualSchemaHintSnapshot{}, err
+	// Metadata is optional and normally nil/empty after phase 5 deleted
+	// schema_hints/metadata/. Nil FS or empty glob = no parameter overlays.
+	var commands []ManualSchemaCommandHint
+	if metadataFS != nil && strings.TrimSpace(metadataGlob) != "" {
+		var err error
+		commands, err = loadParameterCommandsFromMetadata(metadataFS, metadataGlob)
+		if err != nil {
+			return ManualSchemaHintSnapshot{}, err
+		}
 	}
 	agentHints, err := loadAgentHintsFromSelection(selectionFS, selectionGlob)
 	if err != nil {
@@ -80,6 +86,11 @@ func loadManualSchemaHintsFromHintDirs(metadataFS fs.FS, metadataGlob string, se
 }
 
 func loadParameterCommandsFromMetadata(metadataFS fs.FS, globPattern string) ([]ManualSchemaCommandHint, error) {
+	// Nil FS, empty glob, or zero matches are all OK (no overlays). The
+	// on-disk schema_hints/metadata/ directory may be absent.
+	if metadataFS == nil || strings.TrimSpace(globPattern) == "" {
+		return nil, nil
+	}
 	files, err := fs.Glob(metadataFS, globPattern)
 	if err != nil {
 		return nil, fmt.Errorf("list metadata hints: %w", err)

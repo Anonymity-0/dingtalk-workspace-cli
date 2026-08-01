@@ -22231,13 +22231,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed query command supports both an optional ID lookup mode and a table scan/filter mode, so --record-ids is not unconditionally required."
             }
           ]
         },
@@ -22292,7 +22285,6 @@
         "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.aitable.prod.json#aitable.query_records",
         "internal/cli/schema_hints/imported/wukong.json",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "internal/cli/schema_mcp_metadata.json#tools.aitable.query_records",
         "skills/mono/references/products/aitable-record-ops.md",
         "skills/mono/references/products/aitable.md",
@@ -31570,11 +31562,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI accepts --json, a --field-id/--action pair, or --clear-field-id; the registered typed constraints describe those alternatives."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_aggregate",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -31624,7 +31615,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_aggregate",
         "skills/mono/references/products/aitable/aitable-view-config.md"
       ],
@@ -31850,11 +31840,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI merges optional typed card flags over an optional --json block; the registered typed constraints require at least one real update field."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_card",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -31904,7 +31893,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_card",
         "skills/mono/references/products/aitable/aitable-view-config.md"
       ],
@@ -32127,11 +32115,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI accepts either --json or the paired --field-id/--width form, which is represented by typed require-one-of and require-together constraints."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_field_widths",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -32181,7 +32168,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_field_widths",
         "skills/mono/references/products/aitable/aitable-view-config.md"
       ],
@@ -34227,11 +34213,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI accepts either a complete --json block or one or more typed Gantt timebar fields; --json is therefore not unconditionally required."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_timebar",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -34281,7 +34266,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "internal/cli/schema_mcp_metadata.json#tools.aitable.view_update_timebar",
         "skills/mono/references/products/aitable/aitable-view-config.md"
       ],
@@ -34742,13 +34726,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The command maps --base-id and a decoded workflow-dsl/v1 --dsl object to aitable/create_workflow. The call intentionally bypasses retries because creation is non-idempotent; locale remains optional."
             }
           ]
         },
@@ -34798,7 +34775,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "skills/mono/references/products/aitable/aitable-workflow.md"
       ],
       "use_when": [
@@ -36038,13 +36014,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/aitable.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The command maps --base-id, --workflow-id and a decoded complete workflow-dsl/v1 --dsl object to aitable/update_workflow. This is full replacement rather than a partial patch; locale remains optional."
             }
           ]
         },
@@ -36094,7 +36063,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/aitable.json",
         "skills/mono/references/products/aitable/aitable-workflow.md"
       ],
       "use_when": [

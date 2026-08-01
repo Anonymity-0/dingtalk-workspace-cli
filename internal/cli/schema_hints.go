@@ -50,8 +50,6 @@ type SchemaHintRegistry struct {
 	tools map[string]ToolSchemaHint
 }
 
-func boolPtr(v bool) *bool { return &v }
-
 var defaultSchemaHintRegistry = newSchemaHintRegistry()
 
 func newSchemaHintRegistry() *SchemaHintRegistry {
@@ -60,10 +58,12 @@ func newSchemaHintRegistry() *SchemaHintRegistry {
 	}
 }
 
-// RegisterSchemaHints registers curated hints for one product. Keys in tools may
-// be either RPC names ("send_ding_message") or canonical paths
-// ("ding.send_ding_message"). Duplicate canonical paths panic during init so
-// conflicting product hint files are caught early.
+// RegisterSchemaHints registers curated tool_schema_hint overlays for one
+// product. Production init no longer registers any product; ParamDecl /
+// LeafSchema owns those pins. The registry and this helper remain so runtime
+// lookup and test fixtures can still inject temporary hints for precedence
+// coverage. Keys may be RPC names ("send_ding_message") or canonical paths
+// ("ding.send_ding_message"). Duplicate canonical paths panic.
 func RegisterSchemaHints(productID string, tools map[string]ToolSchemaHint) {
 	defaultSchemaHintRegistry.RegisterProduct(productID, tools)
 }

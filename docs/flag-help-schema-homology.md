@@ -140,7 +140,7 @@ NewLeafCommand(LeafSpec{
 | `cli.AnnotateRuntimeGate` / `devAppMetaWrite` | `dws.schema.runtime_gate=devAppRequireWriteGuard` | 尚未迁移到 SafetySpec 的旧写命令（`HOM-S2`） |
 | `cli.AnnotateRuntimeRisk` | `dws.schema.risk=…` | Shortcut 暂存的旧兼容路径；command/Leaf 禁止新增 |
 | `cli.AnnotateRuntimeFlag` / Constraints | 与 embed 同形 | 手写 cobra 叶补齐表面（长期应迁入 Contract） |
-| reviewed `schema_hints/metadata` Safety | effect/risk/confirmation | 迁移期遗留；受管命令收敛后让位于 Safety/gate |
+| reviewed `schema_hints/metadata` Safety | effect/risk/confirmation | 已迁出：metadata 壳为 `tools: {}`；受管命令以 Contract.Safety / gate 为准 |
 
 标注与声明冲突时：**Contract 声明胜**（路径 A）。标注不得发明未注册的 CLI flag。
 
@@ -174,8 +174,8 @@ NewLeafCommand(LeafSpec{
 | canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
 | use_when / avoid_when / examples / agent_summary 文案 | `schema_hints/selection` | Schema selection |
 | RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + `schema_parameter_bindings` | Schema `interface_*` 字段；**不得创建 flag** |
-| 参数描述 overlay（可选） | `schema_hints/metadata` 仅补充 usage 文案 | 与 Contract/cobra 冲突时 **Contract/cobra 胜** |
-| 遗留 Safety 文案（迁移期） | 今日仍可读 `schema_hints/metadata` safety | 受管命令收敛后以 Contract.Safety / runtime_gate 为准（见 §4） |
+| 参数描述 overlay（可选） | 生产 metadata 壳为空；参数事实走 ParamDecl / FlagSpec | **Contract/cobra 胜** |
+| 遗留 Safety 文案（迁移期） | 生产 metadata 壳为空；Safety 走 Contract | 以 Contract.Safety / runtime_gate 为准（见 §4） |
 | dry-run 正能力 | reviewed dry-run registry | Schema `dry_run` |
 | positionals | Contract Args / 显式 annotate | Schema `positionals` |
 | FieldProvenance | 组装派生 | Schema provenance（与值一致） |

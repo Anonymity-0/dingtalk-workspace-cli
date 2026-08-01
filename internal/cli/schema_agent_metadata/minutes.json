@@ -1297,13 +1297,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/minutes.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command: publishes the executable risk gate, composite interface, and the custom --pair format/uniqueness validation without inventing a direct MCP identity."
             }
           ]
         },
@@ -1346,8 +1339,7 @@
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
-        "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/minutes.json"
+        "corecmd.SchemaDecl"
       ],
       "use_when": [
         "当你要在同一条听记里一次性纠正多个词（如把多个错识别的人名/术语统一替换），而底层工具一次只能替换一组时使用；内部按多个 --pair \"原文=\u003e替换\" 逐组调用替换工具，先在本地校验去重（同一个「原文」不能出现两次，避免两条规则互相打架），再逐组应用并聚合每组的成功/失败结果，某一组失败不会中断其余组。这是写操作，会实际修改听记文字内容，请确认 taskUuid 与替换规则无误。"

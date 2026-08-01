@@ -2878,9 +2878,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -2902,9 +2902,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3035,9 +3035,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -3059,9 +3059,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3132,9 +3132,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -3150,9 +3150,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
@@ -3178,9 +3178,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -3202,9 +3202,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -3753,9 +3753,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -3765,9 +3765,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -9850,9 +9850,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -9868,9 +9868,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -9953,9 +9953,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -9971,9 +9971,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -10056,9 +10056,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -10074,9 +10074,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -10544,9 +10544,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -10568,9 +10568,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -10660,9 +10660,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -10684,9 +10684,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -19976,9 +19976,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -20000,9 +20000,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

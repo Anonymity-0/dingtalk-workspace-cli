@@ -7899,11 +7899,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/drive.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI reads node metadata before mutation and strips only the exact current extension for non-folder nodes, avoiding both duplicate extensions and dotted-folder corruption without a suffix whitelist."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.drive.rename_document",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -7956,7 +7955,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/drive.json",
         "internal/cli/schema_mcp_metadata.json#tools.drive.rename_document",
         "skills/mono/references/products/drive.md"
       ],
@@ -9823,13 +9821,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/drive.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed helper preserves the stable command-level Schema contract for ordinary uploads; --node switches to overwrite mode and the runtime still requires explicit confirmation unless --yes is supplied."
             }
           ]
         },
@@ -9883,7 +9874,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/drive.json",
         "skills/mono/references/intent-guide.md",
         "skills/mono/references/products/drive.md"
       ],

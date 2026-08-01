@@ -390,7 +390,7 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 - `skills/mono/` — 单 skill 布局（一个 `SKILL.md` + `references/products/`），默认推荐。
 - `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ...），每个 skill 自带 `SKILL.md`。🧪 **试验版 / Preview — 各 multi `SKILL.md` 头部有详细注意事项。**
 
-Schema 生成共享的 reviewed 输入单独位于 `internal/cli/schema_hints/`。它们不是 Agent Skill，也不会进入二进制或发布 skill 包。
+Schema 生成共享输入单独位于 `internal/cli/schema_hints/`（必需的 reviewed `selection/`；`metadata/` 已退役且可缺席；叶子 safety/参数由 Contract 声明）。它们不是 Agent Skill，也不会进入发布 skill 包。
 
 安装之后，Claude Code / Cursor 等 AI 工具就能通过自然语言直接操作钉钉：
 

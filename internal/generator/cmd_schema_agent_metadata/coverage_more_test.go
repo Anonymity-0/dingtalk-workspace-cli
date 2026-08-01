@@ -277,15 +277,14 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 	}
 
 	root := t.TempDir()
+	registry := commandRegistryProjection{CanonicalToolPaths: map[string]string{"sample.run": "sample run"}}
+	if err := validateSelectionHintInput(root, "hints", registry); err == nil || !strings.Contains(err.Error(), "required Agent hint directory missing") {
+		t.Fatalf("missing selection/ error = %v", err)
+	}
 	selection := filepath.Join(root, "hints", "selection")
-	metadata := filepath.Join(root, "hints", "metadata")
 	if err := os.MkdirAll(selection, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(metadata, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	registry := commandRegistryProjection{CanonicalToolPaths: map[string]string{"sample.run": "sample run"}}
 	loadSelectionMetadataHints = func(fs.FS) (cli.ManualAgentHintSet, error) {
 		return cli.ManualAgentHintSet{}, errors.New("load")
 	}
@@ -329,10 +328,8 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.
 	})
 
 	root := t.TempDir()
-	for _, dir := range []string{"selection", "metadata"} {
-		if err := os.MkdirAll(filepath.Join(root, "hints", dir), 0o755); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(filepath.Join(root, "hints", "selection"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 
 	declared := &cobra.Command{Use: "run"}

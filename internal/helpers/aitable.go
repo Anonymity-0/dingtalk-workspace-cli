@@ -1642,6 +1642,11 @@ config 结构参考：
 				AvoidWhen:    []string{"改字段名/配置用 field update（不可改类型）；删字段用 field delete；调列顺序用 view update"},
 				Examples:     []string{"dws aitable field create --base-id <BASE_ID> --table-id <TABLE_ID> --name \"状态\" --type singleSelect"},
 			},
+			// fields required was RegisterSchemaHints tool_schema_hint; publish via
+			// ParamDecl (Agent may still use --name/--type as a single-field path).
+			Parameters: []corecmd.ParamDecl{
+				{Name: "fields", Required: boolPtr(true), InterfaceType: "array"},
+			},
 		},
 	})
 
@@ -3227,6 +3232,10 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				AvoidWhen:    []string{"没有独立 field reorder；只读用 get visible-fields；首列字段须保留第一位"},
 				Examples:     []string{"dws aitable view update visible-fields --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --field-ids fld1,fld2,fld3"},
 			},
+			// field-ids required was RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "field-ids", Required: boolPtr(true)},
+			},
 		},
 	})
 
@@ -4587,6 +4596,11 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				AvoidWhen:    []string{"配置模板先看 config-example；删仪表盘用 delete"},
 				Examples:     []string{"dws aitable dashboard create --base-id <BASE_ID> --name \"运营看板\""},
 			},
+			// name required was RegisterSchemaHints tool_schema_hint (Agent prefers
+			// --name; runtime still accepts --config alone).
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
+			},
 		},
 	})
 
@@ -4640,6 +4654,11 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 				UseWhen:      []string{"需要改仪表盘名称或配置时"},
 				AvoidWhen:    []string{"排版布局用 dashboard arrange；删用 delete"},
 				Examples:     []string{"dws aitable dashboard update --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --name \"新看板\""},
+			},
+			// name required was RegisterSchemaHints tool_schema_hint (Agent prefers
+			// --name; runtime still accepts --config alone).
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
 			},
 		},
 	})

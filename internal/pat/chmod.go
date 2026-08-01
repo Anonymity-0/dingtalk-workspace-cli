@@ -29,10 +29,13 @@ import (
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
+
+func boolPtr(v bool) *bool { return &v }
 
 type LoginRecommendOptions struct {
 	// ProductCodes limits the recommend plan to service-owned product domains.
@@ -460,6 +463,15 @@ agentCode 配置:
 					"只要改本地浏览器打开策略时用 pat browser-policy",
 				},
 				Examples: []string{"dws pat chmod --products calendar,aitable --grant-type session --session-id <SESSION_ID> --dry-run --format json"},
+			},
+			// session-id is conditionally required in Validate; publish via
+			// ParamDecl instead of relying on RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{
+					Name:         "session-id",
+					Required:     boolPtr(false),
+					RequiredWhen: "grant-type is session",
+				},
 			},
 		},
 	})

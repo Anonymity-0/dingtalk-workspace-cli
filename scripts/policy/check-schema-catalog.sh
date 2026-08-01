@@ -268,6 +268,8 @@ if policy_search_go '\.ListTools\(' internal/app internal/cli; then
 	exit 1
 fi
 
+# Optional/empty schema_hints/metadata shells are fine; gated confirmation
+# truth is Contract SafetySpec (+ residual runtime_gate only if present).
 ./scripts/policy/check-runtime-confirmation-truth.sh
 
 # Run the typed content gates as policy, rather than treating non-empty

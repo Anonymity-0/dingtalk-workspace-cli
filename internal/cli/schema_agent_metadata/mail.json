@@ -7140,13 +7140,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/mail.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Preserve the reviewed composite wrapper contract: the CLI maps --limit to the search_emails size property after constructing a folder KQL query."
             }
           ]
         },
@@ -7196,7 +7189,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/mail.json",
         "skills/mono/references/products/mail.md"
       ],
       "use_when": [
@@ -9752,11 +9744,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/mail.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed patch command accepts any non-empty subset of mutable template fields; a typed require-one-of constraint owns that requirement."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.mail.update_user_message_template",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -9809,7 +9800,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/mail.json",
         "internal/cli/schema_mcp_metadata.json#tools.mail.update_user_message_template",
         "skills/mono/references/products/mail.md"
       ],
@@ -10276,11 +10266,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/mail.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI accepts either a fuzzy keyword or an exact employee number, represented by a typed require-one-of constraint rather than two unconditional requirements."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.mail.search_mail_users",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -10333,7 +10322,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/mail.json",
         "internal/cli/schema_mcp_metadata.json#tools.mail.search_mail_users",
         "skills/mono/references/products/mail.md"
       ],

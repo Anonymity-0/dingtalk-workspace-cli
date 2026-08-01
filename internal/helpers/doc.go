@@ -1097,6 +1097,7 @@ func newDocCommand() *cobra.Command {
 				},
 			},
 			Parameters: []corecmd.ParamDecl{
+				{Name: "node", Required: boolPtr(true)},
 				{Name: "content-format", Property: "format", Required: boolPtr(false)},
 				{Name: "end-block-id", Required: boolPtr(false)},
 				{Name: "max-depth", Required: boolPtr(false), InterfaceType: "integer"},
@@ -1218,6 +1219,9 @@ func newDocCommand() *cobra.Command {
 					"dws doc create --name \"项目周报\" --format json",
 					"dws doc create --name \"Q1 总结\" --content \"# Q1 总结\" --folder <FOLDER_ID> --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -1343,6 +1347,9 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"dws doc update --node <DOC_ID> --content \"# 追加内容\" --mode append --format json",
 					"dws doc update --node <DOC_ID> --content-file ./body.md --mode overwrite --dry-run",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "node", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -2025,6 +2032,9 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"删块用 doc block delete；删评论用 doc comment delete",
 				},
 				Examples: []string{"dws doc delete --node <DOC_ID> --format json"},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "node", Required: boolPtr(true)},
 			},
 		},
 	})

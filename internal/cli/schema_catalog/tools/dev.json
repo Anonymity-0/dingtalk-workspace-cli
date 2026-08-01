@@ -19745,12 +19745,6 @@
                   "value": false
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -24043,12 +24037,6 @@
                   "selected": true,
                   "source": "native_annotation",
                   "value": false
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
                 },
                 {
                   "precedence": "default",

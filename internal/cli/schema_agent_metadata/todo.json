@@ -3445,13 +3445,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/todo.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires a task ID and at least one non-empty tag code before invoking tag_todo."
             }
           ]
         },
@@ -3501,7 +3494,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/todo.json",
         "skills/mono/references/products/todo.md"
       ],
       "use_when": [
@@ -3701,13 +3693,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/todo.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires a non-blank tag name, builds a one-element userTags request, and invokes create_todo_tag without a runtime confirmation gate."
             }
           ]
         },
@@ -3757,7 +3742,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/todo.json",
         "skills/mono/references/products/todo.md"
       ],
       "use_when": [
@@ -3957,13 +3941,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/todo.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires at least one non-empty tag code, permits caller-authoritative dry-run, and requires explicit --yes before invoking delete_todo_tag."
             }
           ]
         },
@@ -4013,7 +3990,6 @@
       "risk": "high",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/todo.json",
         "skills/mono/references/products/todo.md"
       ],
       "use_when": [
@@ -4461,13 +4437,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/todo.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler requires a non-null JSON array of tag update records and invokes update_todo_tag without a runtime confirmation gate."
             }
           ]
         },
@@ -4517,7 +4486,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/todo.json",
         "skills/mono/references/products/todo.md"
       ],
       "use_when": [
@@ -7153,11 +7121,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/todo.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed handler defaults omitted role-types to executor, preserves current-organization behavior by default, and switches both single-page and auto-page calls to get_user_todos only when --query-all is explicitly true."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.todo.get_user_todos_in_current_org",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -7210,7 +7177,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/todo.json",
         "internal/cli/schema_mcp_metadata.json#tools.todo.get_user_todos_in_current_org",
         "skills/mono/references/products/todo.md"
       ],
@@ -8210,11 +8176,10 @@
               "selected": true
             },
             {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/todo.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed CLI rejects malformed or structurally invalid non-empty reminder rules before the reset mutation, while preserving omission and [] as explicit clear forms."
+              "value": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.todo.reset_todo_reminder",
+              "precedence": "mcp_fallback",
+              "selected": false
             }
           ]
         },
@@ -8267,7 +8232,6 @@
       "risk": "medium",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/todo.json",
         "internal/cli/schema_mcp_metadata.json#tools.todo.reset_todo_reminder",
         "skills/mono/references/products/todo.md"
       ],

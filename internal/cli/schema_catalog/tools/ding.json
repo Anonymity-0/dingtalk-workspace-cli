@@ -932,12 +932,6 @@
                   "value": "消息内容 (必填)"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "DING 消息内容。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -972,9 +966,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -996,9 +990,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1047,12 +1041,6 @@
                   "value": "机器人 ID，发 DING 的机器人编码 (必填，可从 应用管理→机器人 获取，或设 DINGTALK_DING_ROBOT_CODE)"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "DING 机器人编码。通常来自开放平台或应用机器人配置。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -1087,9 +1075,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -1111,9 +1099,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -1161,12 +1149,6 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "提醒类型: app/sms/call (默认 app)"
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "提醒类型。CLI 默认使用 app，对应应用内提醒。"
                 },
                 {
                   "precedence": "mcp_metadata",
@@ -1299,12 +1281,6 @@
                   "value": "接收人 userId 列表 (必填)"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "接收人的 userId 列表。CLI 使用逗号分隔，例如 user1,user2。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -1325,9 +1301,9 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "array"
                 },
                 {
@@ -1343,9 +1319,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
@@ -1371,9 +1347,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -1395,9 +1371,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

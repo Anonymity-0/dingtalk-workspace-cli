@@ -2,8 +2,9 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +51,11 @@ func newWorkbookCmds() []*cobra.Command {
 					"dws sheet create --name \"Q1 数据\" --folder <FOLDER_ID>",
 				},
 			},
+			// name is validated via mustGetFlag; publish required via ParamDecl
+			// instead of relying on RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
+			},
 		},
 	})
 	createCmd.Flags().String("name", "", "表格名称 (必填)")
@@ -88,6 +94,11 @@ nodeId 支持传入文档链接 URL 或文档 ID（dentryUuid），系统自动�
 				UseWhen:      []string{"需要拿到 sheetId/工作表名称，作为后续读写的前置步骤时"},
 				AvoidWhen:    []string{"要看单个工作表行列边界与合并区用 sheet info；读单元格内容用 sheet range read"},
 				Examples:     []string{"dws sheet list --node <NODE_ID>"},
+			},
+			// node is validated via mustGetFlag; publish required via ParamDecl
+			// instead of relying on RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "node", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -179,6 +190,12 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"已有 axls 文档，需要新增一个工作表页签时"},
 				AvoidWhen:    []string{"要新建整份表格文档用 sheet create；复制已有工作表用 sheet copy；删除工作表用 sheet delete-sheet"},
 				Examples:     []string{"dws sheet new --node <NODE_ID> --name \"Sheet2\""},
+			},
+			// node/name validated via mustGetFlag; publish required via ParamDecl
+			// instead of relying on RegisterSchemaHints tool_schema_hint.
+			Parameters: []corecmd.ParamDecl{
+				{Name: "node", Required: boolPtr(true)},
+				{Name: "name", Required: boolPtr(true)},
 			},
 		},
 	})

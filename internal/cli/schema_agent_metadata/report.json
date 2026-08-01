@@ -1193,13 +1193,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/report.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "The reviewed optional --to-chat switch defaults to false and only controls post-submit delivery; it is not required to create a report."
             }
           ]
         },
@@ -1254,7 +1247,6 @@
         "corecmd.SchemaDecl",
         "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.report.prod.json#report.create_report",
         "internal/cli/schema_hints/imported/wukong.json",
-        "internal/cli/schema_hints/metadata/report.json",
         "internal/cli/schema_mcp_metadata.json#tools.report.create_report",
         "skills/mono/references/products/report.md"
       ],

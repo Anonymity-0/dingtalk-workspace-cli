@@ -4697,13 +4697,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/attendance.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Cobra supplies reviewed page=1 and limit=20 defaults and RunE sends those defaults when omitted, so callers need not pass either pagination flag."
             }
           ]
         },
@@ -4753,7 +4746,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/attendance.json",
         "skills/mono/references/products/attendance.md"
       ],
       "use_when": [
@@ -8781,13 +8773,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/attendance.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Cobra supplies reviewed page=1 and limit=20 defaults and RunE materializes both PageQuery fields when omitted, so callers need not pass either flag."
             }
           ]
         },
@@ -8837,7 +8822,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/attendance.json",
         "skills/mono/references/products/attendance-schedule.md",
         "skills/mono/references/products/attendance.md"
       ],
@@ -9818,13 +9802,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/attendance.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Cobra supplies reviewed page=1 and limit=20 defaults and RunE sends those defaults when omitted, so callers need not pass either pagination flag."
             }
           ]
         },
@@ -9874,7 +9851,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/attendance.json",
         "skills/mono/references/products/attendance.md"
       ],
       "use_when": [

@@ -51,7 +51,6 @@ func TestCrossPlatformCoverageHintUnmarshalAndIndexValidationEdges(t *testing.T)
 		{"version", `{"version":2}`, nil, "unsupported version"},
 		{"format", `{"version":1,"format":"other"}`, nil, "unsupported format"},
 		{"source kind", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"imported"}}`, nil, "unsupported source kind"},
-		{"metadata required", `{"version":1,"format":"dws-agent-hint-index","selection":{"sample":"selection.json"}}`, nil, "metadata map is required"},
 		{"selection required", `{"version":1,"format":"dws-agent-hint-index","metadata":{"sample":"metadata.json"}}`, nil, "selection map is required"},
 		{"empty metadata path", validCoverageIndex("", "selection.json"), map[string]string{"selection.json": validHint}, "missing path"},
 		{"escaping metadata path", validCoverageIndex("../outside.json", "selection.json"), map[string]string{"selection.json": validHint}, "escapes hints root"},
@@ -68,6 +67,32 @@ func TestCrossPlatformCoverageHintUnmarshalAndIndexValidationEdges(t *testing.T)
 				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
 		})
+	}
+
+	// Metadata map may be omitted or empty; selection alone is enough.
+	for _, tc := range []struct {
+		name  string
+		index string
+	}{
+		{"metadata omitted", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"selection":{"sample":"selection.json"}}`},
+		{"metadata empty", `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"metadata":{},"selection":{"sample":"selection.json"}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if used, err := parseCoverageHints(root, map[string]string{"index.json": tc.index, "selection.json": validHint}); err != nil || !used {
+				t.Fatalf("optional metadata = %v, %v", used, err)
+			}
+		})
+	}
+
+	// Empty-shell metadata files (tools: {}) remain valid when still mapped.
+	emptyShell := `{"version":1,"source":{"kind":"explicit"},"tools":{}}`
+	indexWithShell := validCoverageIndex("metadata.json", "selection.json")
+	if used, err := parseCoverageHints(root, map[string]string{
+		"index.json":     indexWithShell,
+		"metadata.json":  emptyShell,
+		"selection.json": validHint,
+	}); err != nil || !used {
+		t.Fatalf("empty-shell metadata = %v, %v", used, err)
 	}
 
 	indexWithProjection := `{"version":1,"format":"dws-agent-hint-index","source":{"kind":"explicit"},"coverage":{"source_tools":1},"metadata":{"sample":"metadata.json"},"selection":{"sample":"selection.json"},"reference_review":{"old path":{"status":"stale","reason":"removed"}}}`

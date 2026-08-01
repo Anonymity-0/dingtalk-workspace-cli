@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/spf13/cobra"
 )
 
@@ -468,6 +469,13 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event create --title \"周会\" --start \"2026-03-10T14:00:00+08:00\" --end \"2026-03-10T15:00:00+08:00\" --attendees userId1,userId2",
 				},
 			},
+			// Former RegisterSchemaHints pins (create required + recurrence
+			// required_when) — native_annotation outranks tool_schema_hint.
+			Parameters: append([]corecmd.ParamDecl{
+				{Name: "title", Required: boolPtr(true)},
+				{Name: "start", Required: boolPtr(true)},
+				{Name: "end", Required: boolPtr(true)},
+			}, calendarRecurrenceParamDecls()...),
 		},
 	})
 
@@ -548,6 +556,7 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event update --id <EVENT_ID> --desc \"新描述\" --timezone Asia/Tokyo",
 				},
 			},
+			Parameters: calendarRecurrenceParamDecls(),
 		},
 	})
 
@@ -2502,6 +2511,22 @@ var recurrenceFlagNames = []string{
 	"recurrence-type", "recurrence-interval", "recurrence-days-of-week",
 	"recurrence-day-of-month", "recurrence-index", "recurrence-first-day-of-week",
 	"recurrence-range-type", "recurrence-end-date", "recurrence-count",
+}
+
+// calendarRecurrenceParamDecls migrates former RegisterSchemaHints recurrence
+// required/required_when pins onto create/update event leaves so Schema
+// assembly resolves them as native_annotation (outranking tool_schema_hint).
+func calendarRecurrenceParamDecls() []corecmd.ParamDecl {
+	return []corecmd.ParamDecl{
+		{Name: "recurrence-day-of-month", Required: boolPtr(false), RequiredWhen: "recurrence-type is absoluteMonthly or absoluteYearly"},
+		{Name: "recurrence-days-of-week", Required: boolPtr(false), RequiredWhen: "recurrence-type is weekly or relativeMonthly"},
+		{Name: "recurrence-index", Required: boolPtr(false), RequiredWhen: "recurrence-type is relativeMonthly"},
+		{Name: "recurrence-interval", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+		{Name: "recurrence-type", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+		{Name: "recurrence-end-date", Required: boolPtr(false), RequiredWhen: "recurrence-range-type is endDate"},
+		{Name: "recurrence-count", Required: boolPtr(false), RequiredWhen: "recurrence-range-type is numbered"},
+		{Name: "recurrence-range-type", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+	}
 }
 
 // recurrenceIncompleteSuggestion is the canonical reminder appended to any

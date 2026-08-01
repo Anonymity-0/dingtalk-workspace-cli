@@ -811,6 +811,8 @@ func TestRuntimeSchemaParameterPrecedenceNativeAndCobraBeatHints(t *testing.T) {
 }
 
 func TestRuntimeSchemaParameterPrecedenceToolHintBeatsMCPWithoutChangingFlagIdentity(t *testing.T) {
+	// Fixture-only ParameterSchemaHint injection: production RegisterSchemaHints
+	// stays empty after ParamDecl migration.
 	_, leaf := manualSchemaHintTestTree()
 	parameters, err := runtimeCommandParameters(leaf, "sample.search_items", map[string]ParameterSchemaHint{
 		"query": {

@@ -45,7 +45,8 @@ skills/mono Markdown + internal/cli/schema_hints/*.json |
                          +-----------------------+
                          |
 live Cobra flag facts / typed parameter metadata
-  + schema_hints/metadata/*.json      (reviewed parameter overlay + safety)
+  + leaf Contract (Safety / Schema / ParamDecl → contract_final)
+  + schema_hints/metadata/*.json      (reserved product shells; tools: {})
   + schema_hints/selection/*.json     (reviewed Agent selection prose)
   + schema_parameter_bindings.json    (reviewed flag -> RPC property)
   + schema_mcp_metadata.json          (pinned, sanitized interface facts)
@@ -130,7 +131,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 | reviewed manual command additions | 将一个精确存在的 runnable Cobra leaf 合并进 `EffectiveCommandRegistry`；必须 reviewed 且带 reason | 运行时 fallback、覆盖冲突 identity、创建命令 |
 | Go/Cobra | Contract 编译后的可执行投影：路径是否真实可执行、Cobra 接受的 flag、DefValue、help 文本 | 稳定 canonical identity、Agent 场景选择、虚构 RPC；**不得**成为与 Contract 平行的第二套 flag 权威 |
 | native Schema identity annotations | implementation-side consistency evidence；存在时必须与 `EffectiveCommandRegistry` 精确一致 | 提供、补全、推断或覆盖 identity |
-| `schema_hints/metadata/*.json` parameter overlays | 补充 flag **description** 等文案；迁移期可读 safety | 创建命令/flag；**不得**静默改写 type/required/default（与 Contract 冲突时 Contract/cobra 胜）；不得绕过 completeness、虚构 RPC |
+| `schema_hints/metadata/*.json` product shells | 保留产品壳（`tools: {}`）；叶子事实已迁入 Contract/ParamDecl | 重新填入 reviewed 工具行或 parameter overlay；创建命令/flag；绕过 completeness、虚构 RPC |
 | typed parameter metadata / constraints | 由 Contract 约束投影而来的 `require_one_of` / 互斥等；以及仍需 reviewed 的 `required_when` 等 | 命令 identity |
 | `schema_parameter_bindings.json` | 稳定 CLI flag 到 RPC property 的映射 | 命令发现、risk 推断、创建 CLI flag |
 | `schema_mcp_metadata.json` | pinned RPC identity、接口描述和脱敏参数事实（interface 同源） | CLI identity、运行时路由、**创建 CLI flag**、risk 推断 |
@@ -329,6 +330,6 @@ go test ./internal/cli ./internal/app ./internal/generator/... -count=1
 - renderer、query 或 gate 在 `SchemaRegistry` 之后重新读取 source 并做第二次 merge。
 - 用 prefix/wildcard exclusion 隐藏未来命令。
 - 让 manual hint、CommandRegistry 或 interface metadata 宣称一个不存在的命令、flag 或 RPC 可用。
-- 让 `schema_hints/metadata` overlay 在与 Contract/cobra 冲突时赢得 type/required/default。
+- 让 `schema_hints/metadata` 重新承载 reviewed 工具行 / parameter overlay，或让任何残留 overlay 在与 Contract/cobra 冲突时赢得 type/required/default。
 - 把 `schema --all` 当作普通业务数据查询，或把其完整结果无条件注入 Agent 上下文。
 - 将 LeafSpec、`+shortcut` 或 write-guard/cursor/多步命令注册为 `mcp_passthrough` 表面。

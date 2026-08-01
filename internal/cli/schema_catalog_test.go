@@ -742,7 +742,7 @@ func TestEmbeddedCatalogMinutesReplaceBatchPairDescriptionIsNative(t *testing.T)
 }
 
 func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
-	// Spot-check former schema_hints/metadata/todo.json overlays (87910880).
+	// Spot-check former metadata/todo.json overlays now declared as ParamDecl (87910880).
 	// --query-all is a Cobra Bool: merge-base catalog publishes type=boolean from
 	// cobra_flag_type (no separate interface_type field), while required/description
 	// stay native_annotation after ParamDecl migration.
@@ -858,7 +858,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 }
 
 func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
-	// Former schema_hints/metadata/sheet.json overlays (87910880).
+	// Former metadata/sheet.json overlays now declared as ParamDecl (87910880).
 	for _, tc := range []struct {
 		path string
 		flag string
@@ -879,6 +879,48 @@ func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
 		prov := schemaMap(param["field_provenance"])["interface_type"]
 		if src, _ := prov["source"].(string); src != "native_annotation" {
 			t.Fatalf("%s --%s interface_type source = %#v, want native_annotation", tc.path, tc.flag, prov)
+		}
+	}
+}
+
+func TestEmbeddedCatalogPatSheetWikiRegisterSchemaHintParamDecls(t *testing.T) {
+	// Former RegisterSchemaHints required / required_when pins for pat, sheet,
+	// and wiki must publish via ParamDecl (native_annotation).
+	for _, tc := range []struct {
+		path         string
+		flag         string
+		wantRequired bool
+		requiredWhen string
+	}{
+		{"pat chmod", "session-id", false, "grant-type is session"},
+		{"sheet create", "name", true, ""},
+		{"sheet list", "node", true, ""},
+		{"sheet new", "node", true, ""},
+		{"sheet new", "name", true, ""},
+		{"wiki space create", "name", true, ""},
+		{"wiki space get", "workspace", true, ""},
+	} {
+		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		if err != nil {
+			t.Fatalf("%s: %v", tc.path, err)
+		}
+		param := schemaMap(leaf["parameters"])[tc.flag]
+		if param["required"] != tc.wantRequired {
+			t.Fatalf("%s --%s required = %#v, want %v", tc.path, tc.flag, param["required"], tc.wantRequired)
+		}
+		reqProv := schemaMap(param["field_provenance"])["required"]
+		if got, _ := reqProv["source"].(string); got != "native_annotation" {
+			t.Fatalf("%s --%s required source = %#v, want native_annotation", tc.path, tc.flag, reqProv)
+		}
+		if tc.requiredWhen == "" {
+			continue
+		}
+		if param["required_when"] != tc.requiredWhen {
+			t.Fatalf("%s --%s required_when = %#v, want %q", tc.path, tc.flag, param["required_when"], tc.requiredWhen)
+		}
+		whenProv := schemaMap(param["field_provenance"])["required_when"]
+		if got, _ := whenProv["source"].(string); got != "native_annotation" {
+			t.Fatalf("%s --%s required_when source = %#v, want native_annotation", tc.path, tc.flag, whenProv)
 		}
 	}
 }
@@ -1083,6 +1125,10 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 		{"aitable attachment upload", "size"},
 		{"aitable chart update", "config"},
 		{"aitable record upsert", "records"},
+		{"aitable field create", "fields"},
+		{"aitable dashboard create", "name"},
+		{"aitable dashboard update", "name"},
+		{"aitable view update visible-fields", "field-ids"},
 	} {
 		leaf, err := embeddedSchemaPayload([]string{tc.path})
 		if err != nil {
@@ -1158,8 +1204,8 @@ func TestEmbeddedCatalogShortcutQueryMapsToKeyword(t *testing.T) {
 }
 
 func TestEmbeddedCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
-	// Former schema_hints/metadata/contact.json overlays at 87910880 must stay
-	// on the published primary flags after ParamDecl migration. Hidden Cobra
+	// Former metadata/contact.json overlays at 87910880 must stay on the
+	// published primary flags after ParamDecl migration. Hidden Cobra
 	// aliases (--id/--userid/--dept-name/--super-dept*) must not appear.
 	type wantParam struct {
 		property      string
@@ -1318,7 +1364,7 @@ func TestEmbeddedCatalogChatParamDeclsFrom87910880Hints(t *testing.T) {
 		}
 	}
 
-	// Former schema_hints/metadata/chat.json overlays (87910880) must stay on
+	// Former metadata/chat.json overlays (87910880) must stay on
 	// helpers/shortcut leaves via ParamDecl after hint clearance.
 	for _, tc := range []struct {
 		path          string

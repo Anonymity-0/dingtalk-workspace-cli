@@ -345,13 +345,13 @@ Definition（仅声明；不可编译）
 | **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`SchemaDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
 | **Display / Title / Description** | 产品展示名；工具 title/description | 评审源为主；cobra Short/Long 可作候选 | registry 产品名；hints/metadata / cobra help 解析 | Short/Long 可声明，但 **canonical 文案不以 Contract 胜 identity** |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
-| | `description`（usage 文案） | 声明 usage；hints 可 overlay 文案 | `FlagSpec.Usage`；`schema_hints/metadata` 仅补 description | usage **是**；overlay 不得改 type/required/default |
+| | `description`（usage 文案） | 声明 usage；生产 metadata 壳为空 | `FlagSpec.Usage` / ParamDecl；勿再往 `schema_hints/metadata` 填 overlay | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
 | | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍 hints/手工；目标进 Contract / reviewed 约束 | 有则须 declare 或 reviewed annotate |
 | | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
 | **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
 | **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
-| **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `cli.SafetySpec`）**或标注**（`runtime_gate`）或迁移期 reviewed Safety | `Safety` / `AnnotateRuntimeGate` / `schema_hints/metadata` safety | 四字段独立；confirmation 单独驱动运行时 |
+| **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `cli.SafetySpec`）**或标注**（`runtime_gate`） | `Safety` / `AnnotateRuntimeGate`（metadata 壳 `tools: {}`，不再承载 reviewed Safety） | 四字段独立；confirmation 单独驱动运行时 |
 | | `idempotency` | 评审源（或未来 Contract） | reviewed metadata | 今日非框架声明；不得推断 |
 | | `effect_source` / provenance | 组装派生物 | resolver 写入 `FieldProvenance` | 派生，不手写 |
 | **DryRun** | `preview_kind`, `remote_reads` | 评审源 | `schema_dry_run_capabilities`（正能力声明） | 否；无条目 ≠ 推断「不支持」之外的假能力 |

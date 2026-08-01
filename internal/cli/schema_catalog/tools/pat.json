@@ -1112,9 +1112,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": false
                 },
                 {
@@ -1124,17 +1124,17 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": false
             },
             "required_when": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": "grant-type is session"
                 },
                 {
@@ -1144,9 +1144,9 @@
                   "value": ""
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": "grant-type is session"
             },
             "type": {

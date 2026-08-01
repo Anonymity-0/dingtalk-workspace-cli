@@ -16,8 +16,8 @@ type finalSchemaSafetyWant struct {
 	confirmation string
 	idempotency  string
 	// provenance is the expected field_provenance precedence; empty defaults
-	// to "reviewed_explicit" (hints path). Contract-declared tools (devapp)
-	// deliver "contract_final".
+	// to "contract_final" (DeclareLeafMetadata / corecmd.Contract). Production
+	// metadata shells no longer carry reviewed tool rows.
 	provenance string
 }
 
@@ -88,7 +88,7 @@ func assertFinalSchemaSafety(t *testing.T, wants []finalSchemaSafetyWant) {
 			}
 			wantProvenance := want.provenance
 			if wantProvenance == "" {
-				wantProvenance = "reviewed_explicit"
+				wantProvenance = "contract_final"
 			}
 			provenance := schemaContractMap(tool["field_provenance"])
 			for field, expected := range values {

@@ -30,10 +30,19 @@ concepts_guard="$tmp/param_concepts.json"
 concepts_schema_guard="$tmp/param_concepts.schema.json"
 cp internal/cli/param_concepts.json "$concepts_guard"
 cp internal/cli/param_concepts.schema.json "$concepts_schema_guard"
-# Also guard human-authored metadata + selection hint trees.
-metadata_guard="$tmp/metadata-hints"
+# Guard human-authored selection (required) and metadata (optional).
+# schema_hints/metadata may be absent, an empty directory, or hold only
+# reserved product shells with tools: {} / missing tools — none of those
+# alone is drift. When the directory is present, keep a byte guard so
+# generation cannot rewrite those shells; never fail solely because the
+# directory is missing or every product shell has empty tools.
+metadata_dir="internal/cli/schema_hints/metadata"
+metadata_guard=""
+if [ -d "$metadata_dir" ]; then
+	metadata_guard="$tmp/metadata-hints"
+	cp -R "$metadata_dir" "$metadata_guard"
+fi
 selection_guard="$tmp/selection-hints"
-cp -R internal/cli/schema_hints/metadata "$metadata_guard"
 cp -R internal/cli/schema_hints/selection "$selection_guard"
 
 metadata_tmp="$tmp/metadata"
@@ -94,8 +103,19 @@ if ! cmp -s internal/cli/param_concepts.schema.json "$concepts_schema_guard"; th
 	exit 1
 fi
 
-if ! diff -qr internal/cli/schema_hints/metadata "$metadata_guard" >/dev/null; then
-	printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/metadata' >&2
+# Optional metadata: presence/absence and empty tools:{} shells are all OK.
+# Fail only if generation mutates, removes, or invents the directory tree.
+if [ -n "$metadata_guard" ]; then
+	if [ ! -d "$metadata_dir" ]; then
+		printf '%s\n' 'generation removed reviewed input internal/cli/schema_hints/metadata' >&2
+		exit 1
+	fi
+	if ! diff -qr "$metadata_dir" "$metadata_guard" >/dev/null; then
+		printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/metadata' >&2
+		exit 1
+	fi
+elif [ -d "$metadata_dir" ]; then
+	printf '%s\n' 'generation created reviewed input internal/cli/schema_hints/metadata' >&2
 	exit 1
 fi
 

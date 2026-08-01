@@ -5016,12 +5016,6 @@
                   "value": true
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -14337,12 +14331,6 @@
                   "value": true
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
-                },
-                {
                   "precedence": "inference",
                   "selected": false,
                   "source": "usage_required_inference",
@@ -17119,9 +17107,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -17131,9 +17119,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -20529,9 +20517,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -20541,9 +20529,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -22425,8 +22413,14 @@
             "interface_type": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": "array"
                 },
@@ -22437,9 +22431,9 @@
                   "value": "string"
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "native_annotation",
               "value": "array"
             },
             "property": {
@@ -22459,9 +22453,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -22477,9 +22471,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {
@@ -26547,12 +26541,6 @@
                   "selected": true,
                   "source": "require_one_of_constraint",
                   "value": false
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -32371,6 +32359,26 @@
               "source": "cobra_usage",
               "value": "待新增字段列表 JSON 数组，至少包含 1 个字段，单次最多 15 个。系统会按数组顺序依次创建，返回结果顺序与入参保持一致，并逐项标明成功/失败状态。若是单个字段可直接使用 --name/--type/--config"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": "array"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": "array"
+            },
             "property": {
               "candidates": [
                 {
@@ -32388,16 +32396,22 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "native_annotation",
                   "selected": true,
+                  "source": "native_annotation",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
-              "value": false
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": true
             },
             "required_when": {
               "candidates": [
@@ -32428,8 +32442,9 @@
               "value": "string"
             }
           },
+          "interface_type": "array",
           "property": "fields",
-          "required": false,
+          "required": true,
           "type": "string"
         },
         "name": {
@@ -38808,12 +38823,6 @@
                   "value": "Base ID（通过 base list / base search 获取）(必填)"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "Base ID。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -39008,12 +39017,6 @@
                   "value": "指定要返回的字段 ID 列表，逗号分隔。省略则返回所有字段。建议在字段较多时按需传入，可显著减少响应体积；单次最多 100 个"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "Field ID 列表，CLI 使用逗号分隔。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -39037,12 +39040,6 @@
                   "precedence": "native_annotation",
                   "selected": true,
                   "source": "native_annotation",
-                  "value": "array"
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
                   "value": "array"
                 },
                 {
@@ -39144,12 +39141,6 @@
                   "value": "结构化过滤条件 JSON，不传则返回全部记录（受 limit 限制）"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "过滤条件 JSON。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -39173,12 +39164,6 @@
                   "precedence": "native_annotation",
                   "selected": true,
                   "source": "native_annotation",
-                  "value": "object"
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
                   "value": "object"
                 },
                 {
@@ -39599,12 +39584,6 @@
                   "value": "指定要获取的记录 ID 列表，逗号分隔，单次最多 100 个。传入时按 ID 返回，忽略 filters 和 sort。适用于已知 recordId（如关联字段中的 linkedRecordIds）时的精准取数"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "Record ID 列表，CLI 使用逗号分隔。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -39628,12 +39607,6 @@
                   "precedence": "native_annotation",
                   "selected": true,
                   "source": "native_annotation",
-                  "value": "array"
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
                   "value": "array"
                 },
                 {
@@ -39741,12 +39714,6 @@
                   "value": "排序条件 JSON 数组，按数组顺序依次生效"
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "排序 JSON 数组。"
-                },
-                {
                   "precedence": "mcp_metadata",
                   "selected": false,
                   "source": "mcp_metadata",
@@ -39770,12 +39737,6 @@
                   "precedence": "native_annotation",
                   "selected": true,
                   "source": "native_annotation",
-                  "value": "array"
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
                   "value": "array"
                 },
                 {
@@ -39875,12 +39836,6 @@
                   "selected": true,
                   "source": "cobra_usage",
                   "value": "Table ID（通过 base get 获取）(必填)"
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": "Table ID。"
                 },
                 {
                   "precedence": "mcp_metadata",
@@ -48165,12 +48120,6 @@
                   "precedence": "native_annotation",
                   "selected": true,
                   "source": "native_annotation",
-                  "value": true
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
                   "value": true
                 },
                 {
@@ -87729,12 +87678,6 @@
                   "value": false
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -89018,12 +88961,6 @@
                   "value": false
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -89988,12 +89925,6 @@
                   "selected": true,
                   "source": "native_annotation",
                   "value": false
-                },
-                {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
                 },
                 {
                   "precedence": "default",
@@ -96708,12 +96639,6 @@
                   "value": false
                 },
                 {
-                  "precedence": "tool_schema_hint",
-                  "selected": false,
-                  "source": "tool_schema_hint",
-                  "value": true
-                },
-                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -97756,9 +97681,9 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "tool_schema_hint",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "tool_schema_hint",
+                  "source": "native_annotation",
                   "value": true
                 },
                 {
@@ -97768,9 +97693,9 @@
                   "value": false
                 }
               ],
-              "precedence": "tool_schema_hint",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "tool_schema_hint",
+              "source": "native_annotation",
               "value": true
             },
             "required_when": {

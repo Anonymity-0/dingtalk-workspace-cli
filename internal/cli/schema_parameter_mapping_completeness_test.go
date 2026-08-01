@@ -103,14 +103,13 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 		for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
 			entry := provenance[field]
 			prec := schemaString(entry["precedence"])
-			if prec != "reviewed_explicit" && prec != "contract_final" {
-				t.Errorf("%s local %s precedence = %q, want reviewed_explicit or contract_final", canonical, field, prec)
+			// Production leaf interface facts come from ContractFinal
+			// (DeclareLeafMetadata / Schema). metadata/*.json shells keep
+			// tools:{} and must not win reviewed_explicit for these fields.
+			if prec != "contract_final" {
+				t.Errorf("%s local %s precedence = %q, want contract_final", canonical, field, prec)
 			}
-			source := schemaString(entry["source"])
-			if prec == "reviewed_explicit" && !strings.Contains(source, "internal/cli/schema_hints/metadata/") {
-				t.Errorf("%s local %s source = %q, want metadata/", canonical, field, source)
-			}
-			if prec == "contract_final" && source != "corecmd.contract" {
+			if source := schemaString(entry["source"]); source != "corecmd.contract" {
 				t.Errorf("%s local %s source = %q, want corecmd.contract", canonical, field, source)
 			}
 		}
@@ -212,10 +211,10 @@ func TestSchemaParameterMappingAuditExclusionRules(t *testing.T) {
 			tools["sample.read"]["interface_ref"] = nil
 			tools["sample.read"]["interface_reason"] = "Reviewed composite fixture"
 			tools["sample.read"]["field_provenance"] = map[string]any{
-				"interface_mode":   map[string]any{"precedence": "reviewed_explicit"},
-				"availability":     map[string]any{"precedence": "reviewed_explicit"},
-				"interface_ref":    map[string]any{"precedence": "reviewed_explicit"},
-				"interface_reason": map[string]any{"precedence": "reviewed_explicit"},
+				"interface_mode":   map[string]any{"precedence": "contract_final"},
+				"availability":     map[string]any{"precedence": "contract_final"},
+				"interface_ref":    map[string]any{"precedence": "contract_final"},
+				"interface_reason": map[string]any{"precedence": "contract_final"},
 			}
 		}
 		return tools
@@ -626,13 +625,12 @@ func auditCompositeSchemaDisposition(canonical string, tool map[string]any) []st
 	provenance := schemaMap(tool["field_provenance"])
 	for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
 		entry := provenance[field]
-		// A composite disposition must be backed by an explicit authoritative
-		// source: legacy reviewed hints ("reviewed_explicit") or a Contract
-		// SchemaDecl pass-through ("contract_final"); declaration is the
-		// stronger backing per the declare-or-annotate rule.
+		// Composite dispositions must pass through ContractFinal
+		// (declare-or-annotate). Production metadata shells are empty and
+		// must not supply reviewed_explicit for these fields.
 		precedence := strings.TrimSpace(schemaString(entry["precedence"]))
-		if precedence != "reviewed_explicit" && precedence != "contract_final" {
-			problems = append(problems, fmt.Sprintf("%s composite %s is not backed by reviewed_explicit/contract_final provenance", canonical, field))
+		if precedence != "contract_final" {
+			problems = append(problems, fmt.Sprintf("%s composite %s is not backed by contract_final provenance", canonical, field))
 		}
 	}
 	return problems

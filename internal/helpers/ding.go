@@ -2,11 +2,13 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -90,6 +92,11 @@ func newDingCommand() *cobra.Command {
 					"dws ding message send --robot-code <ROBOT_CODE> --users userId1,userId2 --content \"请查看\" --format json",
 					"dws ding message send --robot-code <ROBOT_CODE> --type call --users userId1 --content \"紧急告警\" --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "content", Required: boolPtr(true)},
+				{Name: "robot-code", Required: boolPtr(true)},
+				{Name: "users", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
 	})

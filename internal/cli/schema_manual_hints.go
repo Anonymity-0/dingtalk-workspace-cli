@@ -37,16 +37,10 @@ const (
 	runtimeSchemaManualReasonAnnotation    = "dws.schema.manual.reason"
 )
 
-//go:embed schema_hints/metadata/*.json
-var embeddedMetadataFS embed.FS
-
 //go:embed schema_hints/selection/*.json
 var embeddedSelectionFS embed.FS
 
-const (
-	embeddedMetadataGlob  = "schema_hints/metadata/*.json"
-	embeddedSelectionGlob = "schema_hints/selection/*.json"
-)
+const embeddedSelectionGlob = "schema_hints/selection/*.json"
 
 // ManualSchemaHintSnapshot is the human-owned bridge from an existing
 // public Cobra leaf to Schema. It cannot create commands, flags, exclusions, or
@@ -218,9 +212,12 @@ var (
 	applyManualParameter      = annotateManualSchemaParameter
 )
 
-// ApplyEmbeddedManualSchemaHints applies the committed human review
-// file to an already-built Cobra tree. The operation is deterministic and
-// idempotent.
+// ApplyEmbeddedManualSchemaHints loads committed hint dirs and applies any
+// residual metadata parameter overlays to an already-built Cobra tree.
+// Selection prose is loaded (and validated) as part of the same snapshot for
+// generators/tests; this function only annotates Commands. Metadata overlays
+// are optional: empty tools shells produce an empty Commands list. The
+// operation is deterministic and idempotent.
 func ApplyEmbeddedManualSchemaHints(root *cobra.Command) (ManualSchemaHintReport, error) {
 	snapshot, err := loadManualSchemaHints()
 	if err != nil {
@@ -231,8 +228,11 @@ func ApplyEmbeddedManualSchemaHints(root *cobra.Command) (ManualSchemaHintReport
 
 func embeddedManualSchemaHints() (ManualSchemaHintSnapshot, error) {
 	manualSchemaHintsOnce.Do(func() {
+		// Selection FS/glob are required. Metadata overlays are retired:
+		// pass nil/empty so loadManualSchemaHintsFromHintDirs yields no
+		// parameter Commands (schema_hints/metadata/ may be absent).
 		manualSchemaHintsSnapshot, manualSchemaHintsErr = loadManualSchemaHintsFromHintDirs(
-			embeddedMetadataFS, embeddedMetadataGlob,
+			nil, "",
 			embeddedSelectionFS, embeddedSelectionGlob,
 		)
 	})

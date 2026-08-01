@@ -2,9 +2,10 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"strconv"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/spf13/cobra"
 )
 
@@ -187,6 +188,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes get summary --id <taskUuid>",
 					"dws minutes get summary --id <taskUuid> --format json",
 				},
+			},
+			Parameters: []corecmd.ParamDecl{
+				{Name: "id", Required: boolPtr(true)},
 			},
 		},
 	})

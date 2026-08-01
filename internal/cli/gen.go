@@ -19,12 +19,14 @@
 //
 // Generation inputs (authored, reviewed):
 //   1. schema_command_registry/             identity (canonical/aliases/navigation)
-//   2. schema_hints/metadata/*.json        safety (effect/risk/confirmation)
-//   3. schema_hints/selection/*.json       selection (use_when/avoid_when)
-//   4. schema_mcp_metadata.json            MCP server tool definitions
-//   5. schema_parameter_bindings.json      parameter type/property mappings
-//   6. param_concepts.json + schema       reviewed parameter synonym policy
-//   7. cobra command tree (Go runtime)     flags/usage/required (reflected)
+//   2. schema_hints/selection/*.json       selection (use_when/avoid_when) — required
+//   3. schema_mcp_metadata.json            MCP server tool definitions
+//   4. schema_parameter_bindings.json      parameter type/property mappings
+//   5. param_concepts.json + schema       reviewed parameter synonym policy
+//   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
+//
+// schema_hints/metadata/ is retired (directory may be absent).
+// index.metadata may be omitted or {}; leaf safety/params come from Contract.
 //
 // Generation outputs (embedded at build):
 //   - schema_agent_metadata/*.json         per-product agent metadata

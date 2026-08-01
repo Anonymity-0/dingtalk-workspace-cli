@@ -176,13 +176,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -226,7 +219,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -408,13 +400,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the get_profile_label MCP call arguments observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -458,7 +443,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -640,13 +624,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -690,7 +667,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -872,13 +848,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: --work-no maps 1:1 to the workNo MCP call argument observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -922,7 +891,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -1125,13 +1093,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the query_profile_data MCP call arguments observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -1181,7 +1142,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -1387,13 +1347,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees MCP call arguments observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -1443,7 +1396,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -1646,13 +1598,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the search_employees_structured MCP call arguments observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -1702,7 +1647,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -2150,13 +2094,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: --pool-code maps 1:1 to the poolCode MCP call argument observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -2206,7 +2143,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -2391,13 +2327,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_pool_employees MCP call arguments observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -2441,7 +2370,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
@@ -2647,13 +2575,6 @@
               "source": "corecmd.contract",
               "precedence": "contract_final",
               "selected": true
-            },
-            {
-              "value": true,
-              "source": "internal/cli/schema_hints/metadata/hrbrain.json",
-              "precedence": "reviewed_explicit",
-              "selected": false,
-              "review_reason": "Reviewed unpinned remote adapter: flags map 1:1 to the list_talent_pools MCP call arguments observed in internal/helpers/hrbrain.go."
             }
           ]
         },
@@ -2703,7 +2624,6 @@
       "risk": "low",
       "source_refs": [
         "corecmd.SchemaDecl",
-        "internal/cli/schema_hints/metadata/hrbrain.json",
         "skills/mono/references/products/hrbrain.md"
       ],
       "use_when": [
