@@ -25,8 +25,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

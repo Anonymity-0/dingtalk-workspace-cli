@@ -25,6 +25,6 @@
 //
 // Dependency direction: corecmd and corecmd/contractfinal import this package.
 // This package must never import internal/cli (root or subpackages).
-// Product / delivery code may consume via cli root thin re-exports or
-// internal/cli/runtimeannotate (thin re-export of this package).
+// Product / delivery code consumes this package directly, or via the cli
+// root's package-local aliases (internal/cli/runtime_schema_seam.go).
 package runtimeannotate

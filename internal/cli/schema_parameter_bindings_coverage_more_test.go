@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -236,11 +237,9 @@ func TestCrossPlatformCoverageSchemaParameterBindingHelpersAndLoaderErrors(t *te
 		t.Fatalf("binding annotation = %#v", got)
 	}
 
-	previous := schemaParameterBindingData
-	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{}, errors.New("binding data failed")
-	}
-	t.Cleanup(func() { schemaParameterBindingData = previous })
+	})
 	if err := ValidateSchemaParameterBindings(); err == nil || !strings.Contains(err.Error(), "binding data failed") {
 		t.Fatalf("ValidateSchemaParameterBindings() error = %v", err)
 	}

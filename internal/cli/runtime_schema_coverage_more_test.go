@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -48,25 +49,18 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 }
 
 func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *testing.T) {
-	originalValidate := bindValidateParameterBindings
-	originalRegistry := loadReviewedCommandRegistry
-	t.Cleanup(func() {
-		bindValidateParameterBindings = originalValidate
-		loadReviewedCommandRegistry = originalRegistry
-	})
-
-	bindValidateParameterBindings = func() error { return errors.New("bindings failed") }
+	testseam.Swap(t, &bindValidateParameterBindings, func() error { return errors.New("bindings failed") })
 	if _, err := collectRuntimeSchemaEntries(&cobra.Command{Use: "dws"}); err == nil || !strings.Contains(err.Error(), "bindings failed") {
 		t.Fatalf("validation error = %v", err)
 	}
 
-	bindValidateParameterBindings = func() error { return nil }
-	loadReviewedCommandRegistry = func() (CommandRegistry, error) {
+	testseam.Swap(t, &bindValidateParameterBindings, func() error { return nil })
+	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) {
 		return CommandRegistry{Commands: []CommandSpec{{
 			CanonicalPath: "sample.run", PrimaryCLIPath: "sample run",
 			Visibility: SchemaVisibilityPublic, Source: "reviewed_registry", ReviewReason: "test binding failure",
 		}}}, nil
-	}
+	})
 	if _, err := collectRuntimeSchemaEntries(&cobra.Command{Use: "dws"}); err == nil {
 		t.Fatal("missing Cobra path should fail binding")
 	}
@@ -196,58 +190,50 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 	cmd.Flags().String("value", "", "value")
 	flag := cmd.Flags().Lookup("value")
 
-	originalBindingData := schemaParameterBindingData
-	originalResolver := resolveRuntimeSchemaField
-	originalPayloadSpecs := runtimeCommandParameterSpecsForPayload
-	t.Cleanup(func() {
-		schemaParameterBindingData = originalBindingData
-		resolveRuntimeSchemaField = originalResolver
-		runtimeCommandParameterSpecsForPayload = originalPayloadSpecs
-	})
-
 	if specs, err := runtimeCommandParameterSpecs(nil, "sample.run", nil, RuntimeSchemaConstraints{}); err != nil || specs != nil {
 		t.Fatalf("nil command specs = %#v, err = %v", specs, err)
 	}
-	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{}, errors.New("load failed")
-	}
+	})
 	if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "load failed") {
 		t.Fatalf("binding load error = %v", err)
 	}
-	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{Bindings: map[string]map[string]string{}, MappingExclusions: map[string]string{}}, nil
-	}
+	})
 	if _, _, err := runtimeSchemaParameterMappingCandidates(schemaParameterBindingSnapshot{
 		Bindings:          map[string]map[string]string{},
 		MappingExclusions: map[string]string{"sample.run --value": " "},
 	}, "sample.run", "value"); err == nil {
 		t.Fatal("empty mapping exclusion reason should fail")
 	}
-	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{
 			Bindings:          map[string]map[string]string{},
 			MappingExclusions: map[string]string{"sample.run --value": " "},
 		}, nil
-	}
+	})
 	if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "mapping exclusion") {
 		t.Fatalf("mapping exclusion error = %v", err)
 	}
-	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{Bindings: map[string]map[string]string{}, MappingExclusions: map[string]string{}}, nil
-	}
+	})
 
+	realResolver := resolveRuntimeSchemaField
 	for _, target := range []string{"property", "interface_type", "description", "required", "required_when", "format", "enum", "example"} {
-		resolveRuntimeSchemaField = func(field string, candidates ...runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, error) {
+		testseam.Swap(t, &resolveRuntimeSchemaField, func(field string, candidates ...runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, error) {
 			if field == target {
 				return runtimeSchemaFieldCandidate{}, errors.New("forced " + target)
 			}
 			return resolveRuntimeSchemaCandidate(field, candidates...)
-		}
+		})
 		if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), target) {
 			t.Fatalf("%s resolution error = %v", target, err)
 		}
 	}
-	resolveRuntimeSchemaField = originalResolver
+	resolveRuntimeSchemaField = realResolver
 
 	if specs, err := runtimeCommandParameterSpecs(&cobra.Command{Use: "empty"}, "sample.empty", nil, RuntimeSchemaConstraints{}); err != nil || specs != nil {
 		t.Fatalf("empty specs = %#v, err = %v", specs, err)
@@ -255,9 +241,9 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 	if payload, err := runtimeCommandParameters(nil, "", nil, RuntimeSchemaConstraints{}); err != nil || payload != nil {
 		t.Fatalf("empty payload = %#v, err = %v", payload, err)
 	}
-	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+	testseam.Swap(t, &runtimeCommandParameterSpecsForPayload, func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 		return []ParameterSpec{{Name: "bad", Example: json.RawMessage("{")}}, nil
-	}
+	})
 	if _, err := runtimeCommandParameters(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "serialize Schema parameter") {
 		t.Fatalf("payload serialization error = %v", err)
 	}

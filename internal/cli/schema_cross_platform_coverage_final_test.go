@@ -13,6 +13,7 @@ import (
 	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -220,9 +221,7 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 	})
 
 	t.Run("validateSchemaRegistryAgentMetadata missing summary", func(t *testing.T) {
-		prev := finalSchemaAgentMetadata
-		finalSchemaAgentMetadata = func() agentMetadata { return agentMetadata{} }
-		t.Cleanup(func() { finalSchemaAgentMetadata = prev })
+		testseam.Swap(t, &finalSchemaAgentMetadata, func() agentMetadata { return agentMetadata{} })
 		registry := SchemaRegistry{Products: []ProductSpec{{
 			ID: "sample",
 			Tools: []ToolSpec{{
@@ -336,9 +335,7 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 	})
 
 	t.Run("NewSchemaCommand catalog load failure", func(t *testing.T) {
-		original := schemaCommandCatalogError
-		t.Cleanup(func() { schemaCommandCatalogError = original })
-		schemaCommandCatalogError = func() error { return errors.New("catalog broken") }
+		testseam.Swap(t, &schemaCommandCatalogError, func() error { return errors.New("catalog broken") })
 		cmd := NewSchemaCommand(nil)
 		cmd.SetArgs([]string{"--all"})
 		if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "load typed Schema registry") {

@@ -11,6 +11,7 @@ import (
 	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -206,11 +207,9 @@ func TestCrossPlatformCoverageReviewedCommandRegistrySourceHash(t *testing.T) {
 	if err != nil || hash == "" {
 		t.Fatalf("ReviewedCommandRegistrySourceHash = %q err=%v", hash, err)
 	}
-	prev := loadReviewedCommandRegistry
-	t.Cleanup(func() { loadReviewedCommandRegistry = prev })
-	loadReviewedCommandRegistry = func() (CommandRegistry, error) {
+	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) {
 		return CommandRegistry{}, fmt.Errorf("load boom")
-	}
+	})
 	if _, err := ReviewedCommandRegistrySourceHash(); err == nil || !strings.Contains(err.Error(), "load boom") {
 		t.Fatalf("ReviewedCommandRegistrySourceHash error = %v", err)
 	}

@@ -111,22 +111,6 @@ func RegisteredProductDeclIDs() []string {
 	return ids
 }
 
-// ClearProductDeclForTest removes a registration (tests only).
-func ClearProductDeclForTest(productID string) {
-	productID = strings.TrimSpace(productID)
-	if productID != "" {
-		productDecls.Delete(productID)
-	}
-}
-
-// StoreProductDeclRawForTest stores an arbitrary map value (tests only).
-func StoreProductDeclRawForTest(productID string, value any) {
-	productID = strings.TrimSpace(productID)
-	if productID != "" {
-		productDecls.Store(productID, value)
-	}
-}
-
 // ProductSelectionFromDecl projects a ProductDecl into SelectionSpec plus
 // contract_final FieldProvenance for ProductSpec assembly.
 func ProductSelectionFromDecl(decl ProductDecl) (SelectionSpec, map[string]FieldProvenance) {

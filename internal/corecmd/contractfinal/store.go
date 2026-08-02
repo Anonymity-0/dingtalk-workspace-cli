@@ -63,17 +63,3 @@ func HasRuntimeContractFinal(cmd *cobra.Command) bool {
 	_, ok := contractFinalByCommand.Load(cmd)
 	return ok
 }
-
-// ClearRuntimeContractFinalForTest removes a registration (tests only).
-func ClearRuntimeContractFinalForTest(cmd *cobra.Command) {
-	if cmd != nil {
-		contractFinalByCommand.Delete(cmd)
-	}
-}
-
-// StoreRuntimeContractFinalRawForTest injects a raw map value (tests only).
-func StoreRuntimeContractFinalRawForTest(cmd *cobra.Command, raw any) {
-	if cmd != nil {
-		contractFinalByCommand.Store(cmd, raw)
-	}
-}

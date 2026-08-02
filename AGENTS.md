@@ -39,7 +39,7 @@ changes must not rewrite it mechanically.
   - AnnotateRuntime* writers → `internal/corecmd/runtimeannotate` (framework-owned)
   - ContractFinal cobra store + Register → `internal/corecmd/contractfinal` (framework-owned)
   - homology gates → `internal/cli/homology`
-  - Catalog assembly / `ResolveMeta` (`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`); go:embed only for reviewed inputs → `internal/cli` root (thin re-exports of annotate/store APIs; `cli/runtimeannotate` + `cli/contractfinal` are thin re-exports only)
+  - Catalog assembly / `ResolveMeta` (`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`); go:embed only for reviewed inputs → `internal/cli` root (package-local aliases for annotate/store APIs live in `runtime_schema_seam.go`; the former `cli/runtimeannotate` / `cli/contractfinal` shim packages are removed — import `corecmd/*` directly)
   - **Hard rule**: `internal/corecmd` (and its subpackages) must **not** import any `internal/cli` package
 - Authoring tiers (current, not aspirational):
   - **Tier1** — `corecmd.New` / `NewLeafCommand` (fully managed declare + execute)

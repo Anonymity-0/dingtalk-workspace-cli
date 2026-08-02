@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/spf13/cobra"
 )
 

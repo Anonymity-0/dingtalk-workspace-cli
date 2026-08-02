@@ -67,14 +67,6 @@ var (
 	runtimeDeliverySchemaMetaIndexLazyCount atomic.Uint64
 )
 
-func resetMetaByCLIPathStateForTest() {
-	metaByCLIPathOnce = sync.Once{}
-	metaByCLIPath = nil
-	runtimeDeliverySchemaMetaIndexErr = nil
-	runtimeDeliverySchemaMetaIndexLazyCount.Store(0)
-	resetDeliverySchemaCatalogStateForTest()
-}
-
 // installDeliveryCommandMeta materializes the ResolveMeta lookup from an
 // assembled Catalog. Called from deliverySchemaCatalog's sync.Once so Meta
 // shares assembly and subsequent ResolveMeta is a plain map read.

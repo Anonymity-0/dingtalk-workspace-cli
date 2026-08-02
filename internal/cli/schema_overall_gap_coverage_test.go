@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -704,9 +705,8 @@ func TestOverallCoverageGapSchemaCommandAndFieldResolve(t *testing.T) {
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("--all with path must fail")
 	}
-	prevCatalog := schemaCommandCatalogError
-	t.Cleanup(func() { schemaCommandCatalogError = prevCatalog })
-	schemaCommandCatalogError = func() error { return fmt.Errorf("catalog boom") }
+	realCatalogError := schemaCommandCatalogError
+	testseam.Swap(t, &schemaCommandCatalogError, func() error { return fmt.Errorf("catalog boom") })
 	cmd = NewSchemaCommand(nil)
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
@@ -728,7 +728,7 @@ func TestOverallCoverageGapSchemaCommandAndFieldResolve(t *testing.T) {
 		t.Fatalf("review-reason tie-break = %#v err=%v", winner, err)
 	}
 
-	schemaCommandCatalogError = prevCatalog
+	schemaCommandCatalogError = realCatalogError
 	// Delivery is installed by TestMain; exercise success + compact branches.
 	for _, args := range [][]string{
 		{},
@@ -946,9 +946,7 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prevLoad := loadReviewedCommandRegistry
-	t.Cleanup(func() { loadReviewedCommandRegistry = prevLoad })
-	loadReviewedCommandRegistry = func() (CommandRegistry, error) { return CommandRegistry{}, fmt.Errorf("embed boom") }
+	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) { return CommandRegistry{}, fmt.Errorf("embed boom") })
 	if _, err := ValidateCommandRegistrySource(merged); err == nil || !strings.Contains(err.Error(), "embed boom") {
 		t.Fatalf("embed load error = %v", err)
 	}
@@ -958,16 +956,14 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loadReviewedCommandRegistry = func() (CommandRegistry, error) { return alt, nil }
+	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) { return alt, nil })
 	if _, err := ValidateCommandRegistrySource(merged); err == nil || !strings.Contains(err.Error(), "disagrees") {
 		t.Fatalf("semantic disagree error = %v", err)
 	}
 
-	prevBind := schemaParameterBindingData
-	t.Cleanup(func() { schemaParameterBindingData = prevBind })
-	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{Bindings: map[string]map[string]string{"a.b": {"flag": "prop"}}}, nil
-	}
+	})
 	if got, err := LoadSchemaParameterBindings(); err != nil || got["a.b"]["flag"] != "prop" {
 		t.Fatalf("LoadSchemaParameterBindings() = %#v err=%v", got, err)
 	}
@@ -1065,20 +1061,18 @@ func TestOverallCoverageGapRuntimeParamsAndAgentMetadata(t *testing.T) {
 		t.Fatal("ghost group product miss must surface")
 	}
 
-	prevMeta := finalSchemaAgentMetadata
-	t.Cleanup(func() { finalSchemaAgentMetadata = prevMeta })
-	finalSchemaAgentMetadata = func() agentMetadata {
+	testseam.Swap(t, &finalSchemaAgentMetadata, func() agentMetadata {
 		return agentMetadata{Tools: map[string]agentToolMetadata{
 			"sample.group.run": {},
 			"sample group run": {},
 		}}
-	}
+	})
 	if err := validateSchemaRegistryAgentMetadata(registry); err == nil || !strings.Contains(err.Error(), "both resolve") {
 		t.Fatalf("duplicate agent metadata keys error = %v", err)
 	}
-	finalSchemaAgentMetadata = func() agentMetadata {
+	testseam.Swap(t, &finalSchemaAgentMetadata, func() agentMetadata {
 		return agentMetadata{Tools: map[string]agentToolMetadata{"sample.group.run": {}}}
-	}
+	})
 	if err := validateSchemaRegistryAgentMetadata(registry); err != nil {
 		t.Fatalf("matching agent metadata should pass: %v", err)
 	}

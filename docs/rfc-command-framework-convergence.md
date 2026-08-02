@@ -275,8 +275,8 @@ Definition（仅声明；不可编译）
 |---|---|---|
 | **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段**（声明证据；交付见下） | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（DTO：`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`；**无** Cobra store） |
 | **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `corecmd/contractfinal.RegisterRuntimeContractFinal`（annotate + store；产品代码经 `cli.RegisterRuntimeContractFinal` 薄 re-export） |
-| **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/corecmd/runtimeannotate.AnnotateRuntime*`（框架侧；`cli` / `cli/runtimeannotate` 仅薄 re-export） |
-| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`（`ResolveMeta` 自同一组装投影）；go:embed 仅限 reviewed 输入（registry / MCP meta / bindings 等），不得 embed Catalog | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli/contractfinal` 薄 re-export） |
+| **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/corecmd/runtimeannotate.AnnotateRuntime*`（框架侧；`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/runtimeannotate` 垫片包已删，一律直引 corecmd） |
+| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`（`ResolveMeta` 自同一组装投影）；go:embed 仅限 reviewed 输入（registry / MCP meta / bindings 等），不得 embed Catalog | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/contractfinal` 垫片包已删） |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
 
 依赖方向硬规则：`internal/corecmd`（含子包）**不得** import 任何 `internal/cli` 包；annotate 与 ContractFinal store 归属框架侧。

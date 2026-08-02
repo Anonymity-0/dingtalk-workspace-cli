@@ -12,8 +12,9 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -337,60 +338,52 @@ func TestCrossPlatformCoverageMetadataSourceAndPathEdges(t *testing.T) {
 	if _, _, _, err := GenerateFromCommandRoot(".", nil, Options{}); err == nil || !strings.Contains(err.Error(), "schema source root is nil") {
 		t.Fatalf("GenerateFromCommandRoot nil root = %v", err)
 	}
-	prevBuild := pipelineBuildEffectiveRegistry
-	prevBind := pipelineBindEffectiveRegistry
-	prevGenerate := pipelineGenerateMetadata
-	t.Cleanup(func() {
-		pipelineBuildEffectiveRegistry = prevBuild
-		pipelineBindEffectiveRegistry = prevBind
-		pipelineGenerateMetadata = prevGenerate
-	})
-	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+	testseam.Swap(t, &pipelineBuildEffectiveRegistry, func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
 		return cli.EffectiveCommandRegistry{}, nil
-	}
-	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+	})
+	testseam.Swap(t, &pipelineBindEffectiveRegistry, func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
 		return cli.BoundCommandRegistry{}, nil
-	}
-	pipelineGenerateMetadata = func(Options) (File, Stats, error) {
+	})
+	testseam.Swap(t, &pipelineGenerateMetadata, func(Options) (File, Stats, error) {
 		return File{}, Stats{}, nil
-	}
+	})
 	if _, _, _, err := GenerateFromCommandRoot("  ", &cobra.Command{Use: "dws"}, Options{}); err != nil {
 		t.Fatalf("GenerateFromCommandRoot empty rootPath defaults: %v", err)
 	}
-	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+	testseam.Swap(t, &pipelineBuildEffectiveRegistry, func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
 		return cli.EffectiveCommandRegistry{}, errors.New("build boom")
-	}
+	})
 	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "build effective") {
 		t.Fatalf("build error = %v", err)
 	}
-	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+	testseam.Swap(t, &pipelineBuildEffectiveRegistry, func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
 		return cli.EffectiveCommandRegistry{}, nil
-	}
-	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+	})
+	testseam.Swap(t, &pipelineBindEffectiveRegistry, func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
 		return cli.BoundCommandRegistry{}, errors.New("bind boom")
-	}
+	})
 	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "bind effective") {
 		t.Fatalf("bind error = %v", err)
 	}
-	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+	testseam.Swap(t, &pipelineBindEffectiveRegistry, func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
 		return cli.BoundCommandRegistry{}, nil
-	}
-	pipelineGenerateMetadata = func(Options) (File, Stats, error) {
+	})
+	testseam.Swap(t, &pipelineGenerateMetadata, func(Options) (File, Stats, error) {
 		return File{}, Stats{}, errors.New("generate boom")
-	}
+	})
 	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "generate in-memory") {
 		t.Fatalf("generate error = %v", err)
 	}
-	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+	testseam.Swap(t, &pipelineBuildEffectiveRegistry, func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
 		return cli.EffectiveCommandRegistry{Commands: []cli.CommandSpec{{
 			CanonicalPath:  "coverage.missing",
 			PrimaryCLIPath: "coverage missing",
 			Visibility:     cli.SchemaVisibilityPublic,
 		}}}, nil
-	}
-	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+	})
+	testseam.Swap(t, &pipelineBindEffectiveRegistry, func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
 		return cli.BoundCommandRegistry{}, nil
-	}
+	})
 	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "selection coverage incomplete") {
 		t.Fatalf("selection coverage error = %v", err)
 	}

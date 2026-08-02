@@ -11,11 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package contractfinal is a thin delivery-facing re-export of
-// internal/corecmd/contractfinal.
-//
-// Ownership of the Cobra-keyed ContractFinal store and Register seam lives
-// under the command framework. Production product code should prefer
-// cli.RegisterRuntimeContractFinal; framework code calls
-// corecmd/contractfinal.RegisterRuntimeContractFinal directly.
 package contractfinal
+
+import "github.com/spf13/cobra"
+
+// Cross-package test helpers for this package's command-keyed store.
+// Production code must not call these; the ForTest suffix is the boundary.
+
+// ClearRuntimeContractFinalForTest removes a registration (tests only).
+func ClearRuntimeContractFinalForTest(cmd *cobra.Command) {
+	if cmd != nil {
+		contractFinalByCommand.Delete(cmd)
+	}
+}
+
+// StoreRuntimeContractFinalRawForTest injects a raw map value (tests only).
+func StoreRuntimeContractFinalRawForTest(cmd *cobra.Command, raw any) {
+	if cmd != nil {
+		contractFinalByCommand.Store(cmd, raw)
+	}
+}

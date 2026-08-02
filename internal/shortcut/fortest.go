@@ -11,10 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package runtimeannotate is a thin delivery-facing re-export of
-// internal/corecmd/runtimeannotate.
-//
-// Ownership of AnnotateRuntime* writers lives under the command framework.
-// Prefer cli root re-exports for product code; this subpackage exists so
-// existing import paths keep resolving to the same single implementation.
-package runtimeannotate
+package shortcut
+
+import "github.com/spf13/cobra"
+
+// Cross-package test helpers. Production code must not call these; the
+// ForTest suffix is the boundary.
+
+// RuntimeContextForTest constructs a RuntimeContext for cross-package tests.
+func RuntimeContextForTest(cmd *cobra.Command, s Shortcut) *RuntimeContext {
+	return &RuntimeContext{cmd: cmd, shortcut: s}
+}

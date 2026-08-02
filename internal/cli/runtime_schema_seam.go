@@ -17,15 +17,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 )
 
-// Thin re-exports so helpers / app / shortcut keep the cli. prefix while the
-// implementations live under internal/corecmd/{runtimeannotate,contractfinal}.
-// Framework code imports those packages directly; this delivery root and the
-// cli/* thin re-export subpackages only consume them.
+// The declaration model and its runtime stores live under internal/corecmd/*
+// and every package imports them directly from there. This file only keeps
+// the cli.* convenience aliases so the delivery root's own code reads flat;
+// no separate cli shim packages exist.
 
 type RuntimeSchemaConstraints = runtimeannotate.RuntimeSchemaConstraints
 

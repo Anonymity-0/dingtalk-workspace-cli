@@ -26,6 +26,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -1549,9 +1550,7 @@ func TestCrossPlatformCoverageConfirmSafetyTerminalPromptsBeforeReading(t *testi
 }
 
 func TestCrossPlatformCoverageConfirmSafetyTerminalProbeHook(t *testing.T) {
-	prev := stdinIsTerminalFn
-	t.Cleanup(func() { stdinIsTerminalFn = prev })
-	stdinIsTerminalFn = func(io.Reader) bool { return true }
+	testseam.Swap(t, &stdinIsTerminalFn, func(io.Reader) bool { return true })
 
 	var stderr strings.Builder
 	cmd := newTestCommand()

@@ -15,8 +15,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )

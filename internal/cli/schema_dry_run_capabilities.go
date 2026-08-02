@@ -57,22 +57,6 @@ func recordDeclaredDryRunCapability(canonical string, spec contract.DryRunSpec) 
 	declaredDryRunCapabilities.Store(canonical, spec)
 }
 
-// clearDeclaredDryRunCapabilitiesForTest resets the declared index (tests only).
-func clearDeclaredDryRunCapabilitiesForTest() {
-	declaredDryRunCapabilities.Range(func(key, _ any) bool {
-		declaredDryRunCapabilities.Delete(key)
-		return true
-	})
-}
-
-func resetReviewedDryRunCapabilitiesLazyForTest() {
-	reviewedDryRunCapabilitiesLazy = struct {
-		once        sync.Once
-		byCanonical map[string]contract.DryRunSpec
-		err         error
-	}{}
-}
-
 func setReviewedDryRunCapabilityGroupsForTest(groups []dryRunCapabilityGroup) func() {
 	previous := reviewedDryRunCapabilityGroups
 	reviewedDryRunCapabilityGroups = groups
