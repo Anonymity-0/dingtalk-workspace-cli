@@ -15,7 +15,7 @@ package testseam
 
 import "testing"
 
-func TestSwapSetsAndRestores(t *testing.T) {
+func TestCrossPlatformCoverageSwapSetsAndRestores(t *testing.T) {
 	value := 1
 	t.Run("child", func(t *testing.T) {
 		Swap(t, &value, 42)
@@ -32,7 +32,7 @@ func TestSwapSetsAndRestores(t *testing.T) {
 	}
 }
 
-func TestSwapFunctionSeam(t *testing.T) {
+func TestCrossPlatformCoverageSwapFunctionSeam(t *testing.T) {
 	called := false
 	fn := func() int { return 7 }
 	t.Run("child", func(t *testing.T) {

@@ -617,7 +617,7 @@ func TestRunLogsExemptedNonExecutableFiles(t *testing.T) {
 	}
 }
 
-func TestPhysicalPath(t *testing.T) {
+func TestCrossPlatformCoveragePhysicalPath(t *testing.T) {
 	real := t.TempDir()
 	link := filepath.Join(t.TempDir(), "link")
 	if err := os.Symlink(real, link); err != nil {
@@ -636,7 +636,7 @@ func TestPhysicalPath(t *testing.T) {
 	}
 }
 
-func TestGoListBuildableFilesIncludesSelfPackage(t *testing.T) {
+func TestCrossPlatformCoverageGoListBuildableFilesIncludesSelfPackage(t *testing.T) {
 	buildable, err := goListBuildableFiles()
 	if err != nil {
 		t.Fatalf("goListBuildableFiles: %v", err)
