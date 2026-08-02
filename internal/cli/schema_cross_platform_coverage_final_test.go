@@ -350,9 +350,7 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 		resetMetaByCLIPathStateForTest()
 		t.Cleanup(func() {
 			restorePackageCLISchemaDeliveryForTest()
-			assembleDeliverySchemaCatalogFn = assembleDeliverySchemaCatalogFn
 			resetMetaByCLIPathStateForTest()
-			restorePackageCLISchemaDeliveryForTest()
 		})
 		RegisterSchemaSourceRoot(func() *cobra.Command {
 			return &cobra.Command{Use: "dws"}
