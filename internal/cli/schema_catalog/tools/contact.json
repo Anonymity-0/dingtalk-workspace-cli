@@ -122,7 +122,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -131,7 +131,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "通过手机号邀请单个员工加入当前企业。\n\n参数：\n  --org-user-name    员工在企业内的名称\n  --org-user-mobile  员工手机号\n  --depts            员工所属部门列表 JSON 数组，格式: [{\"deptId\":1}]\n\n认证信息（corpId、optUserId）由系统自动注入，无需手动传入。"
@@ -306,7 +306,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -315,7 +315,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "邀请员工加入企业"
@@ -807,7 +807,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -816,7 +816,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "在当前企业下创建部门。--create-dept-group 必须显式传 true 或 false。\n不传 --parent 时使用企业根部门。该写操作执行前需要确认，自动化场景在用户明确授权后传 --yes。"
@@ -991,7 +991,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1000,7 +1000,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "创建部门"
@@ -1498,7 +1498,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1507,7 +1507,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新部门名称，并可选择调整父部门。该写操作执行前需要确认，自动化场景在用户明确授权后传 --yes。"
@@ -1682,7 +1682,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1691,7 +1691,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新部门信息"
@@ -2213,7 +2213,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2222,7 +2222,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "修改员工的企业内姓名、所属部门或直属主管。至少提供一个修改项，执行前需要确认。"
@@ -2397,7 +2397,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2406,7 +2406,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "修改员工信息"
@@ -3006,7 +3006,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3015,7 +3015,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "为当前企业创建一个专属登录账号。\n\n必填：--org-user-name、--login-id\n可选：--org-user-mobile、--email、--dept-ids、--send-pwd-via-sms\n\n注意：\n  - 登录号（--login-id）请勿包含手机号等联系方式，否则可能被运营商拦截短信\n  - --send-pwd-via-sms 控制是否通过手机短信/邮件发送登录邀请\n\n认证信息（corpId、optUserId）由系统自动注入，无需手动传入。"
@@ -3190,7 +3190,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3199,7 +3199,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "创建企业专属账号"
@@ -3990,7 +3990,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3999,7 +3999,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新企业账号的员工姓名、部门、直属主管、昵称或头像。至少提供一个修改项，执行前需要确认。"
@@ -4174,7 +4174,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4183,7 +4183,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新企业账号用户信息"
@@ -4990,7 +4990,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4999,7 +4999,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询员工花名册字段信息，根据当前用户指定员工和字段列表，查询相应管理范围内员工的字段值信息。\n\n花名册字段包含：试用/转正信息、个人/家庭信息、学历信息、银行卡/合同信息、\n紧急联系人和其他企业自定义信息。\n\n返回字段枚举说明：\n  - employeeType 员工类型：0 无类型，1 全职，2 兼职，3 实习，4 劳务派遣，5 退休返聘，6 劳务外包\n  - employeeStatus 员工状态：-1 无状态，1 待入职，2 试用，3 正式，4 离职，5 待离职，6 试岗，7 已退休\n\n认证信息（corpId、optUserId）由系统自动注入，无需手动传入。\n--staff-id 为查询员工 ID，--fields 为指定字段集合（逗号分隔），可通过\ncontact user profile fields 获取可用字段列表。\n\n【适用场景】\n  - 查询某员工的学历、家庭、银行卡、紧急联系人、合同等档案信息\n\n【不适用场景】\n  - 查询用户的部门、主管、管理员权限 → 请用 contact user get"
@@ -5162,7 +5162,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5171,7 +5171,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询员工花名册字段信息（个人档案）"
@@ -5264,9 +5264,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "fieldCodeList"
                 },
                 {
@@ -5276,9 +5276,9 @@
                   "value": "fields"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "fieldCodeList"
             },
             "required": {
@@ -5578,7 +5578,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5587,7 +5587,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取当前登录用户的 userId 与基本信息。\n\n触发词：我是谁 / 我的信息 / 我的 userId / 当前用户 / 本人 / self / me / whoami / current。\n别名：self / me / whoami / current 均等价于 get-self。\n无需参数；禁止用 `dws contact user get --ids me/self` 代替（会返回空数据的假成功）。"
@@ -5750,7 +5750,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5759,7 +5759,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取当前用户信息（我是谁 / 本人）"
@@ -6104,7 +6104,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6113,7 +6113,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取部门详情（部门ID、名称、人数）"
@@ -6226,9 +6226,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "deptId"
                 },
                 {
@@ -6238,9 +6238,9 @@
                   "value": "dept"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "deptId"
             },
             "required": {
@@ -6438,7 +6438,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6447,7 +6447,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看指定部门的成员列表。\n\n范围：仅返回传入 deptId 的**本部门**直接成员，**不递归下级部门**。\n跨层级需求：先 'dws contact dept list-children --dept \u003c父deptId\u003e' 枚举子部门，再对子 deptId 分别或合并调用本命令。"
@@ -6610,7 +6610,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6619,7 +6619,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看部门成员（仅本部门，不含下级）"
@@ -6712,9 +6712,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "deptIds"
                 },
                 {
@@ -6724,9 +6724,9 @@
                   "value": "depts"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "deptIds"
             },
             "required": {
@@ -7095,7 +7095,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7104,7 +7104,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看子部门"
@@ -7217,9 +7217,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "deptId"
                 },
                 {
@@ -7229,9 +7229,9 @@
                   "value": "dept"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "deptId"
             },
             "required": {
@@ -7432,7 +7432,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7441,7 +7441,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "批量获取用户详情，返回用户的组织管理信息（来自通讯录领域）。\n\n返回字段：\n  - isAdmin: 是否为管理员\n  - orgEmployeeModel.orgUserId / orgUserName: 用户 ID / 姓名\n  - orgEmployeeModel.orgName / orgId: 所属组织名称 / ID\n  - orgEmployeeModel.orgMasterUserId / orgMasterDisplayName: 直属主管\n  - orgEmployeeModel.depts: 所属部门列表（含 deptId、deptName）\n  - orgEmployeeModel.labels: 角色列表\n\n【适用场景】\n  - 想知道某个用户在哪个部门、上级是谁、是不是管理员\n\n【不适用场景】\n  - 查询学历、家庭、银行卡、合同、紧急联系人等档案信息 → 请用 contact user profile get"
@@ -7604,7 +7604,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7613,7 +7613,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "批量获取用户详情（组织管理信息）"
@@ -7706,9 +7706,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "user_id_list"
                 },
                 {
@@ -7718,9 +7718,9 @@
                   "value": "ids"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "user_id_list"
             },
             "required": {
@@ -7917,7 +7917,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7926,7 +7926,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询花名册有权限的字段列表，根据当前用户查询花名册有权限的字段列表。\n\n花名册字段包含：试用/转正信息、个人/家庭信息、学历信息、银行卡/合同信息、\n紧急联系人和其他企业自定义信息。\n\n认证信息（corpId、optUserId）由系统自动注入，无需手动传入。\n\n【典型用法】\n  通常作为 contact user profile get 的前置步骤，用于获取可查询的字段 code 列表。"
@@ -8089,7 +8089,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -8098,7 +8098,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询花名册有权限的字段列表"
@@ -8443,7 +8443,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -8452,7 +8452,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取当前用户的特别关注列表"
@@ -8625,7 +8625,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -8634,7 +8634,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "创建一个新的钉钉企业。需提供企业名称和当前用户在企业内的名称（作为创建者）。\n\n认证信息（corpId、optUserId）由系统自动注入，无需手动传入。"
@@ -8809,7 +8809,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -8818,7 +8818,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "创建企业"
@@ -9202,7 +9202,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -9211,7 +9211,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "分页获取离职员工列表，支持按员工姓名、离职时间范围、部门进行过滤。\n\n认证信息（corpId、optUserId）由系统自动注入，无需手动传入。\n  --name              员工姓名，模糊搜索（可选）\n  --start             离职日期查询范围开始，格式 YYYY-MM-DD（可选）\n  --end               离职日期查询范围结束，格式 YYYY-MM-DD（可选）\n  --depts             部门 ID 列表，逗号分隔（可选）\n  --hide-retirement   是否隐藏退休，默认 true（可选）\n  --hide-partner      是否隐藏合作伙伴，默认 false（可选）\n  --page              页码，从 1 开始（可选，默认 1）\n  --limit             页大小，200 以内（可选，默认 20）\n\n注意：--start 和 --end 必须同时设置或同时不设置，不允许只设置其中一个。\n\n【适用场景】\n  - 查询公司离职员工名单\n  - 按时间范围/部门/姓名筛选离职员工\n\n【不适用场景】\n  - 查询在职员工 → 使用 contact user search"
@@ -9376,7 +9376,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -9385,7 +9385,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "分页获取离职员工列表"
@@ -9452,9 +9452,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchVO.depts"
                 },
                 {
@@ -9464,9 +9464,9 @@
                   "value": "depts"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchVO.depts"
             },
             "required": {
@@ -9542,9 +9542,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchVO.endDate"
                 },
                 {
@@ -9554,9 +9554,9 @@
                   "value": "end"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchVO.endDate"
             },
             "required": {
@@ -9632,9 +9632,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchVO.hidePartner"
                 },
                 {
@@ -9644,9 +9644,9 @@
                   "value": "hidePartner"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchVO.hidePartner"
             },
             "required": {
@@ -9729,9 +9729,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchVO.hideRetirement"
                 },
                 {
@@ -9741,9 +9741,9 @@
                   "value": "hideRetirement"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchVO.hideRetirement"
             },
             "required": {
@@ -9852,9 +9852,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "pageSize"
                 },
                 {
@@ -9864,9 +9864,9 @@
                   "value": "limit"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "pageSize"
             },
             "required": {
@@ -9950,9 +9950,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchVO.empName"
                 },
                 {
@@ -9962,9 +9962,9 @@
                   "value": "name"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchVO.empName"
             },
             "required": {
@@ -10067,9 +10067,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "pageNum"
                 },
                 {
@@ -10079,9 +10079,9 @@
                   "value": "page"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "pageNum"
             },
             "required": {
@@ -10165,9 +10165,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchVO.startDate"
                 },
                 {
@@ -10177,9 +10177,9 @@
                   "value": "start"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchVO.startDate"
             },
             "required": {
@@ -10540,7 +10540,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -10549,7 +10549,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按关键词搜索用户"
@@ -10622,9 +10622,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "keyword"
                 },
                 {
@@ -10634,9 +10634,9 @@
                   "value": "query"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "keyword"
             },
             "required": {
@@ -11004,7 +11004,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -11013,7 +11013,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "搜索部门"
@@ -11462,7 +11462,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -11471,7 +11471,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按手机号搜索用户"
@@ -11756,7 +11756,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -11765,7 +11765,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新当前用户的昵称或头像。头像需先上传到钉盘取得 fileId；执行前需要确认。"
@@ -11940,7 +11940,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -11949,7 +11949,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新当前用户自己的 profile 信息"
@@ -12324,7 +12324,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12333,7 +12333,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道对方手机号、想一步拿到其完整资料（部门、职位、联系方式、是否管理员等）而不想先按手机号搜出 userId 再单独查详情时使用；内部先用手机号在通讯录里查出对应的 userId，若没有人绑定该手机号会明确报错，再用该 userId 取完整详情。这是纯只读操作，不会修改任何数据。"
@@ -12508,7 +12508,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12517,7 +12517,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按手机号查询某人的完整资料（自动解析 userId 后取详情）"
@@ -12783,7 +12783,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12792,7 +12792,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道某个部门的名称、想知道该部门里都有哪些成员时使用；内部先按部门名搜索出唯一的 deptId（匹配到 0 个或多个时不猜测，而是列出候选部门名与 deptId 让你选），再打印该部门的直接成员列表（仅本部门，不递归下级部门）。只读，不做任何修改。"
@@ -12967,7 +12967,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12976,7 +12976,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按部门名列出部门成员（自动解析 deptId）"
@@ -13242,7 +13242,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13251,7 +13251,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想列出一个或多个部门本级的员工（不含下级子部门）以便群发通知、统计或指派任务时使用；输入部门 ID 列表（--depts，逗号分隔），返回这些部门下的成员，如需含下级需自行遍历子部门。"
@@ -13426,7 +13426,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13435,7 +13435,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看部门成员（仅本部门，不含下级）"
@@ -13701,7 +13701,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13710,7 +13710,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想查看本人在通讯录里「特别关注」的联系人名单（例如常打交道的同事、上级）时使用；无需输入，返回关注对象的用户列表，可用于快速定位这些人的 userId 再发消息或排日程。"
@@ -13885,7 +13885,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13894,7 +13894,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取当前用户的特别关注列表"
@@ -14063,7 +14063,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14072,7 +14072,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你已知某个角色 ID、想列出该角色（标签）下的全部成员以便群发通知或统计人群时使用；输入角色 ID（--id），返回该角色下的用户列表，通常先用 +search-role 拿到角色 ID 再调用。"
@@ -14247,7 +14247,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14256,7 +14256,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询角色下的成员列表"
@@ -14522,7 +14522,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14531,7 +14531,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想总览企业里都有哪些角色/员工标签（如「管理员」「财务」「销售」）及其角色 ID 时使用；无需输入，返回全量角色列表，常用于按角色圈定人群前先摸清有哪些角色可选。"
@@ -14706,7 +14706,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14715,7 +14715,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取企业所有角色（标签）列表"
@@ -14884,7 +14884,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14893,7 +14893,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想逐层浏览组织架构、查看某个部门下一级的子部门时使用；输入父部门 ID（--dept，根部门为 1），返回其直属子部门列表，可用于自顶向下遍历部门树。"
@@ -15068,7 +15068,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15077,7 +15077,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看指定部门的子部门"
@@ -15343,7 +15343,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15352,7 +15352,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道对方姓名、想一步拿到其完整资料（部门、职位、联系方式等）而不想先搜 userId 再查详情时使用；内部先按姓名搜通讯录解析出唯一 userId，再取详情，姓名匹配到多人时会列出候选让你区分。只读操作。"
@@ -15527,7 +15527,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15536,7 +15536,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按姓名查询某人的完整资料（自动解析 userId 后取详情）"
@@ -15802,7 +15802,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15811,7 +15811,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你（或 AI agent）需要知道「我是谁」——我自己的 userId、姓名、所在部门、组织、手机号，用于后续按名解析他人前先确定自己身份、或填充发起人信息时使用；内部调用零参数的 get_current_user_profile（永远是「我」，无需传姓名），再把冗长的原始资料投影成 {name,userId,mobile,dept,org,email} 几个关键字段。这是纯只读操作，不修改任何资料。"
@@ -15986,7 +15986,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15995,7 +15995,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看我自己的通讯录资料（姓名/userId/手机/部门/组织，干净投影）"
@@ -16164,7 +16164,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16173,7 +16173,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道某位同事的姓名、想知道 TA 所在部门（部门ID、名称、人数）时使用；内部先按姓名解析出唯一 userId，再取 TA 的组织信息拿到主部门 deptId，最后打印该部门的详情。只读，不做任何修改。"
@@ -16348,7 +16348,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16357,7 +16357,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按姓名查某人所在部门的详情（自动解析 userId 与 deptId）"
@@ -16623,7 +16623,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16632,7 +16632,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道某个部门的名称（或名称里的关键词）、想把它解析成可直接用于后续工具的 deptId 时使用；内部按 --name 关键词调用 search_dept_by_keyword 搜索部门，再在本地投影出每个候选的 deptId 和 name。如果只命中一个部门就直接返回它的 deptId；如果命中多个则列出全部候选让你消歧，绝不替你瞎猜；如果一个都没命中则提示未找到。这是纯只读操作，只做搜索与本地投影，不会修改任何部门，也不会列出部门成员。"
@@ -16807,7 +16807,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16816,7 +16816,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按名称搜索部门并解析出唯一 deptId（只读）"
@@ -17082,7 +17082,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17091,7 +17091,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你手里只有某人的手机号、需要反查出对应的通讯录用户和 userId 时使用；输入手机号（--mobile），返回该手机号所属的用户信息，适合从电话或名片信息定位到具体员工。"
@@ -17266,7 +17266,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17275,7 +17275,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按手机号搜索通讯录用户"
@@ -17541,7 +17541,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17550,7 +17550,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道某人的姓名、花名或部分名字，需要把它解析成 userId 及部门等信息以便后续发消息、排日程或指派任务时使用；输入搜索关键词（--query），返回匹配的用户列表。"
@@ -17725,7 +17725,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17734,7 +17734,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按关键词搜索通讯录用户"
@@ -18000,7 +18000,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -18009,7 +18009,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只知道某位同事的姓名、想知道 TA 所在部门里都有哪些成员时使用；内部先按姓名解析出唯一 userId，再取 TA 的组织信息拿到主部门 deptId，最后打印该部门的直接成员列表（仅本部门，不递归下级部门）。只读，不做任何修改。"
@@ -18184,7 +18184,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -18193,7 +18193,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按姓名列出某人所在部门的成员（自动解析 userId 与 deptId）"

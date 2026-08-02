@@ -5,7 +5,7 @@ package contract
 
 import "testing"
 
-func TestProductDeclRegistryRoundTrip(t *testing.T) {
+func TestCrossPlatformCoverageProductDeclRegistryRoundTrip(t *testing.T) {
 	t.Cleanup(func() { ClearProductDeclForTest("sample") })
 	ClearProductDeclForTest("sample")
 
@@ -61,7 +61,15 @@ func TestProductDeclRegistryRoundTrip(t *testing.T) {
 	}
 }
 
-func TestProductDeclRegisterPanicsOnIncompleteSelection(t *testing.T) {
+func TestCrossPlatformCoverageProductDeclLookupRejectsWrongType(t *testing.T) {
+	t.Cleanup(func() { productDecls.Delete("broken-type") })
+	productDecls.Store("broken-type", "not-a-product-decl")
+	if _, ok := LookupProductDecl("broken-type"); ok {
+		t.Fatal("LookupProductDecl must reject non-ProductDecl values")
+	}
+}
+
+func TestCrossPlatformCoverageProductDeclRegisterPanicsOnIncompleteSelection(t *testing.T) {
 	defer func() {
 		if recover() == nil {
 			t.Fatal("expected panic for incomplete ProductDecl")

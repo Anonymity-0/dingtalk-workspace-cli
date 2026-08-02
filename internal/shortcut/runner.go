@@ -100,6 +100,11 @@ func (rt *RuntimeContext) Changed(name string) bool {
 	return f != nil && f.Changed
 }
 
+// RuntimeContextForTest constructs a RuntimeContext for cross-package tests.
+func RuntimeContextForTest(cmd *cobra.Command, s Shortcut) *RuntimeContext {
+	return &RuntimeContext{cmd: cmd, shortcut: s}
+}
+
 // DryRun reports whether --dry-run is set (inherited from the root command).
 func (rt *RuntimeContext) DryRun() bool { return globalBool(rt.cmd, "dry-run") }
 

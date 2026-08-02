@@ -375,6 +375,22 @@ func newRangeSetStyleCmd() *cobra.Command {
 				AvoidWhen:    []string{"写单元格值/公式用 range update；多区域不同样式配置用 range batch-set-style"},
 				Examples:     []string{"dws sheet range set-style --node <NODE_ID> --sheet-id <SHEET_ID> --range \"B2:B10\" --number-format \"¥#,##0.00\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "bg-color", Property: "backgroundColors"},
+				{Name: "bg-colors-json", Property: "backgroundColors"},
+				{Name: "font-color", Property: "fontColors"},
+				{Name: "font-colors-json", Property: "fontColors"},
+				{Name: "font-size", Property: "fontSizes"},
+				{Name: "font-sizes-json", Property: "fontSizes"},
+				{Name: "font-weight", Property: "fontWeights"},
+				{Name: "font-weights-json", Property: "fontWeights"},
+				{Name: "h-align", Property: "horizontalAlignments"},
+				{Name: "h-aligns-json", Property: "horizontalAlignments"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "range", Property: "rangeAddress"},
+				{Name: "v-align", Property: "verticalAlignments"},
+				{Name: "v-aligns-json", Property: "verticalAlignments"},
+			},
 		},
 	})
 	return cmd
@@ -581,6 +597,9 @@ func newRangeBatchSetStyleCmd() *cobra.Command {
 				UseWhen:      []string{"多个区域样式不同、希望用配置文件一次提交时"},
 				AvoidWhen:    []string{"单一区域统一样式用 range set-style"},
 				Examples:     []string{"dws sheet range batch-set-style --node <NODE_ID> --batch ./styles.json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

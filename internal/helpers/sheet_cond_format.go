@@ -56,6 +56,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"创建/更新/删除分别用 cond-format create/update/delete"},
 				Examples:     []string{"dws sheet cond-format list --node <NODE_ID> --sheet-id <SHEET_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	condFormatListCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -198,6 +201,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"改已有规则用 update；删规则用 delete；普通样式刷用 set-style"},
 				Examples:     []string{"dws sheet cond-format create --node NODE_ID --sheet-id SHEET_ID --ranges '[\"A1:E10\"]' --condition '{\"numberCondition\":{\"operator\":\"greater\",\"value1\":\"80\"}}' --cell-style '{\"backgroundColor\":\"#FFEB3B\"}'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	condFormatCreateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -304,6 +310,9 @@ ruleId 可通过 cond-format list 获取。`,
 				AvoidWhen:    []string{"新建用 create；删除用 delete"},
 				Examples:     []string{"dws sheet cond-format update --node NODE_ID --sheet-id SHEET_ID --rule-id RULE_ID --condition '{\"numberCondition\":{\"operator\":\"greater\",\"value1\":\"90\"}}'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	condFormatUpdateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -355,6 +364,9 @@ ruleId 可通过 cond-format list 获取。`,
 				UseWhen:      []string{"用户明确要求删除某条条件格式规则时"},
 				AvoidWhen:    []string{"只想改规则用 update；列目录用 list"},
 				Examples:     []string{"dws sheet cond-format delete --node NODE_ID --sheet-id SHEET_ID --rule-id RULE_ID"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

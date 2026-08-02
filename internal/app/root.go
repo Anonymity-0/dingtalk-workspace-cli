@@ -369,6 +369,7 @@ func commandRequestsJSONErrors(cmd *cobra.Command) bool {
 // is propagated to background goroutines and the Cobra command tree so
 // that SIGINT/SIGTERM can cancel in-flight work.
 func NewRootCommand(ctx ...context.Context) *cobra.Command {
+	registerSchemaRuntimeDelivery()
 	var rootCtx context.Context
 	if len(ctx) > 0 && ctx[0] != nil {
 		rootCtx = ctx[0]
@@ -391,6 +392,7 @@ func NewSchemaSourceRootCommand(ctx ...context.Context) *cobra.Command {
 // optional pipeline engine for input correction. When engine is nil,
 // no pipeline processing is applied.
 func NewRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine) *cobra.Command {
+	registerSchemaRuntimeDelivery()
 	return newRootCommandWithEngine(rootCtx, engine, true)
 }
 

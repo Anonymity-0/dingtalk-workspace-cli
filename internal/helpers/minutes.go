@@ -59,6 +59,13 @@ func newMinutesCommand() *cobra.Command {
 				AvoidWhen:    []string{"只要共享听记时改用 list shared；要覆盖全部可访问时改用 list all"},
 				Examples:     []string{"dws minutes list mine --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "createTimeEnd"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "query", Property: "keyword"},
+				{Name: "start", Property: "createTimeStart"},
+			},
 		},
 	})
 
@@ -90,6 +97,13 @@ func newMinutesCommand() *cobra.Command {
 				UseWhen:      []string{"需要查看别人共享给我的听记，或在共享范围内按关键词/时间搜索时"},
 				AvoidWhen:    []string{"只要自己创建时改用 list mine；要全部可访问时改用 list all"},
 				Examples:     []string{"dws minutes list shared --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "createTimeEnd"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "query", Property: "keyword"},
+				{Name: "start", Property: "createTimeStart"},
 			},
 		},
 	})
@@ -126,6 +140,13 @@ func newMinutesCommand() *cobra.Command {
 				UseWhen:      []string{"需要按关键词/时间范围覆盖全部可访问听记（含他人共享）时"},
 				AvoidWhen:    []string{"明确只要自己创建的听记时改用 list mine；只要共享给我的时改用 list shared"},
 				Examples:     []string{"dws minutes list all --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "createTimeEnd"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "query", Property: "keyword"},
+				{Name: "start", Property: "createTimeStart"},
 			},
 		},
 	})
@@ -164,6 +185,9 @@ func newMinutesCommand() *cobra.Command {
 				UseWhen:      []string{"已知 taskUuid，需要获取创建人/起止时间/标题/访问链接等基础信息时"},
 				AvoidWhen:    []string{"要摘要或转写时改用 get summary/transcription"},
 				Examples:     []string{"dws minutes get info --id <taskUuid>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
 			},
 		},
 	})
@@ -208,7 +232,7 @@ func newMinutesCommand() *cobra.Command {
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "id", Required: boolPtr(true)},
+				{Name: "id", Property: "taskUuid", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -243,6 +267,9 @@ func newMinutesCommand() *cobra.Command {
 				UseWhen:      []string{"已知 taskUuid，需要获取听记关键字列表时"},
 				AvoidWhen:    []string{"要摘要/转写/待办时改用对应 get 命令"},
 				Examples:     []string{"dws minutes get keywords --id <taskUuid>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
 			},
 		},
 	})
@@ -302,6 +329,10 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes get transcription --id <taskUuid> --direction 1",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "id", Property: "taskUuid"},
+			},
 		},
 	})
 
@@ -340,6 +371,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes get todos --id <taskUuid>",
 					"dws minutes get todos --id <taskUuid> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
 			},
 		},
 	})
@@ -389,6 +423,9 @@ func newMinutesCommand() *cobra.Command {
 				AvoidWhen:    []string{"听记已删除、无痕模式或媒体未就绪时可能无地址；不要用本命令改内容"},
 				Examples:     []string{"dws minutes get audio --id <taskUuid> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
 		},
 	})
 
@@ -430,6 +467,9 @@ func newMinutesCommand() *cobra.Command {
 				},
 				Examples: []string{"dws minutes get batch --ids uuid1,uuid2,uuid3"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "requestBody.taskUuids"},
+			},
 		},
 	})
 
@@ -469,6 +509,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes update title --id <taskUuid> --title \"Q2 复盘会议\"",
 					"dws minutes update title --id <taskUuid> --title \"新标题\" --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
 			},
 		},
 	})
@@ -617,6 +660,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes record pause --id <taskUuid> --session-id <sessionId>",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "uuid"},
+			},
 		},
 	})
 
@@ -660,6 +706,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes record resume --id <taskUuid> --session-id <sessionId>",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "uuid"},
+			},
 		},
 	})
 
@@ -702,6 +751,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes record stop --id <taskUuid>",
 					"dws minutes record stop --id <taskUuid> --session-id <sessionId>",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "uuid"},
 			},
 		},
 	})
@@ -765,6 +817,10 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes update summary --id <taskUuid> --content \"新的纪要内容\" --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "summaryText"},
+				{Name: "id", Property: "taskUuid"},
+			},
 		},
 	})
 	minutesUpdateSummaryCmd.Flags().String("id", "", "听记 taskUuid (必填)")
@@ -811,6 +867,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes mind-graph create --id <taskUuid> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
 		},
 	})
 	mindGraphCreateCmd.Flags().String("id", "", "听记 taskUuid (必填)")
@@ -856,6 +915,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes mind-graph status --id <taskUuid>",
 					"dws minutes mind-graph status --id <taskUuid> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
 			},
 		},
 	})
@@ -915,6 +977,11 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes speaker replace --id <taskUuid> --from \"张三\" --to \"李四\" --target-uid <uid>",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "from", Property: "speakerNick"},
+				{Name: "id", Property: "taskUuid"},
+				{Name: "to", Property: "targetNickName"},
+			},
 		},
 	})
 	speakerReplaceCmd.Flags().String("id", "", "听记 taskUuid (必填)")
@@ -967,6 +1034,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes speaker summary create --task-uuids <uuid1,uuid2>",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "uuids"},
+			},
 		},
 	})
 	speakerSummaryCreateCmd.Flags().String("ids", "", "听记 taskUuid 列表，逗号分隔 (必填)")
@@ -1011,6 +1081,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes speaker summary get --ids <uuid1,uuid2>",
 					"dws minutes speaker summary get --task-uuids <uuid1,uuid2>",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "uuids"},
 			},
 		},
 	})
@@ -1060,6 +1133,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes hot-word add --words \"钉钉\"",
 					"dws minutes hot-word add --words \"OKR,钉钉,Copilot\"",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "words", Property: "hotWordList"},
 			},
 		},
 	})
@@ -1140,6 +1216,11 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes replace-text --id <taskUuid> --search \"旧文字\" --replace \"新文字\"",
 					"dws minutes replace-text --id <taskUuid> --search \"发言人1\" --replace \"张三\" --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+				{Name: "replace", Property: "replacedText"},
+				{Name: "search", Property: "originalText"},
 			},
 		},
 	})
@@ -1232,6 +1313,11 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes upload create --file-name \"meeting.mp4\" --file-size 102400",
 					"dws minutes upload create --file-name \"meeting.mp4\" --file-size 102400 --title \"周会录音\"",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "enable-message-card", Property: "minutesOption.enableMessageCard"},
+				{Name: "input-language", Property: "minutesOption.inputLanguage"},
+				{Name: "template-id", Property: "minutesOption.templateId"},
 			},
 		},
 	})
@@ -1434,6 +1520,12 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes permission add --ids <uuid> --member-uids 123456 --policy 2 --cover",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cover", Property: "coverPermission"},
+				{Name: "ids", Property: "uuids"},
+				{Name: "policy", Property: "policyId"},
+				{Name: "sub-resources", Property: "roleSubResourceIds"},
+			},
 		},
 	})
 	permissionAddCmd.Flags().String("ids", "", "听记 taskUuid 列表，逗号分隔 (必填)")
@@ -1495,6 +1587,9 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes permission remove --ids <uuid1,uuid2> --member-uids 123456,789012",
 					"dws minutes permission remove --ids <uuid> --member-uids 123456",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "uuids"},
 			},
 		},
 	})
@@ -1601,6 +1696,10 @@ func newMinutesCommand() *cobra.Command {
 					"dws minutes tag query --tag-id <tagId>",
 					"dws minutes tag query --tag-id <tagId> --limit 20",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "limit", Property: "maxResults"},
 			},
 		},
 	})

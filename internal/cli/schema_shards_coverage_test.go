@@ -221,9 +221,9 @@ func TestRenderSafetyAnnotation(t *testing.T) {
 	}
 }
 
-// TestAssembleEmbeddedSchemaCatalogPropagatesAssemblyError 通过临时替换嵌入的
-// envelope 字节，覆盖 assembleEmbeddedSchemaCatalog 的错误透传分支。
-func TestAssembleEmbeddedSchemaCatalogPropagatesAssemblyError(t *testing.T) {
+// TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalogPropagatesAssemblyError
+// 通过临时替换嵌入的 envelope 字节，覆盖 assembleEmbeddedSchemaCatalog 的错误透传分支。
+func TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalogPropagatesAssemblyError(t *testing.T) {
 	orig := embeddedSchemaCatalogEnvelopeJSON
 	t.Cleanup(func() { embeddedSchemaCatalogEnvelopeJSON = orig })
 	embeddedSchemaCatalogEnvelopeJSON = []byte("{bad")

@@ -535,6 +535,9 @@ func newDriveCommand() *cobra.Command {
 				},
 				Examples: []string{"dws drive info --node <dentryUuid> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "fileId"},
+			},
 		},
 	})
 
@@ -635,6 +638,9 @@ func newDriveCommand() *cobra.Command {
 					"dws drive download --node <dentryUuid> --output ./report.pdf --format json",
 					"dws drive download --node <dentryUuid> --output ~/downloads/ --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "fileId"},
 			},
 		},
 	})
@@ -782,6 +788,9 @@ func newDriveCommand() *cobra.Command {
 					"dws drive mkdir --name \"子目录\" --folder <dentryUuid> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "parentId"},
+			},
 		},
 	})
 
@@ -838,6 +847,9 @@ func newDriveCommand() *cobra.Command {
 				},
 				Examples: []string{"dws drive upload-info --file-name \"report.pdf\" --file-size 102400 --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "parentId"},
+			},
 		},
 	})
 
@@ -890,6 +902,9 @@ func newDriveCommand() *cobra.Command {
 					"尚未 PUT 成功或 uploadId 过期时不要 commit；需重新 upload-info",
 				},
 				Examples: []string{"dws drive commit --file-name \"report.pdf\" --file-size 102400 --upload-id <UPLOAD_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "parentId"},
 			},
 		},
 	})
@@ -1073,7 +1088,8 @@ func newDriveCommand() *cobra.Command {
 			// interface_type=number is a merge-base contract change; declare integer so
 			// resolution equals cobra_flag_type and omits a separate interface_type field.
 			Parameters: []contract.ParamDecl{
-				{Name: "limit", InterfaceType: "integer"},
+				{Name: "limit", Property: "maxResults", InterfaceType: "integer"},
+				{Name: "cursor", Property: "nextToken"},
 			},
 		},
 	})
@@ -1233,6 +1249,17 @@ func newDriveCommand() *cobra.Command {
 					"dws drive search --query \"合同\" --target file --extensions pdf,docx --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "created-from", Property: "createdTimeFrom"},
+				{Name: "created-to", Property: "createdTimeTo"},
+				{Name: "creator-uids", Property: "creatorUserIds"},
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "modified-from", Property: "modifiedTimeFrom"},
+				{Name: "modified-to", Property: "modifiedTimeTo"},
+				{Name: "query", Property: "keyword"},
+				{Name: "target", Property: "searchTarget"},
+			},
 		},
 	})
 	driveSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
@@ -1300,6 +1327,9 @@ func newDriveCommand() *cobra.Command {
 				},
 				Examples: []string{"dws drive delete --node <dentryUuid> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	driveDeleteCmd.Flags().String("node", "", "文件/文件夹 ID (dentryUuid)，即 drive list 返回的 fileId (必填)")
@@ -1366,6 +1396,11 @@ func newDriveCommand() *cobra.Command {
 					"dws drive copy --node <源dentryUuid> --workspace <TARGET_WS_ID> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	driveCopyCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
@@ -1428,6 +1463,11 @@ func newDriveCommand() *cobra.Command {
 					"dws drive move --node <源dentryUuid> --workspace <TARGET_WS_ID> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	driveMoveCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
@@ -1489,7 +1529,8 @@ func newDriveCommand() *cobra.Command {
 			// Shared RPC rename_document with doc rename; keep this description
 			// on the drive leaf only (doc rename does not strip extensions).
 			Parameters: []contract.ParamDecl{
-				{Name: "name", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
+				{Name: "name", Property: "newName", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1532,6 +1573,9 @@ func newDriveCommand() *cobra.Command {
 					"只要元信息（名称/类型）改用 dws drive info 或 dws doc info",
 				},
 				Examples: []string{"dws drive stats --node <NODE_ID_OR_URL> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1588,6 +1632,11 @@ func newDriveCommand() *cobra.Command {
 					"dws drive shortcut --node <SOURCE_NODE> --format json",
 					"dws drive shortcut --node <SOURCE_NODE> --folder <TARGET_FOLDER> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -1661,6 +1710,12 @@ func newDriveCommand() *cobra.Command {
 				},
 				Examples: []string{"dws drive permission add --node <ID> --users uid1,uid2 --role READER --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	drivePermAddCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
@@ -1721,6 +1776,12 @@ func newDriveCommand() *cobra.Command {
 				},
 				Examples: []string{"dws drive permission update --node <ID> --users uid1 --role EDITOR --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	drivePermUpdateCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
@@ -1780,6 +1841,12 @@ func newDriveCommand() *cobra.Command {
 				},
 				Examples: []string{"dws drive permission list --node <ID> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "filter-role", Property: "filterRoleIds"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	drivePermListCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
@@ -1833,6 +1900,11 @@ func newDriveCommand() *cobra.Command {
 					"移除知识库容器成员用 dws wiki member remove",
 				},
 				Examples: []string{"dws drive permission remove --node <ID> --users uid1 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})

@@ -392,6 +392,9 @@ func newMailCommand() *cobra.Command {
 				AvoidWhen:    []string{"只需筛选邮件列表时使用 message list 或 search"},
 				Examples:     []string{"dws mail message get --email user@company.com --id <messageId>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "messageId"},
+			},
 		},
 	})
 
@@ -476,6 +479,11 @@ func newMailCommand() *cobra.Command {
 				},
 				Examples: []string{"dws mail message send --from user@company.com --to colleague@company.com --subject \"周报\" --content \"本周完成...\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cc", Property: "ccRecipients"},
+				{Name: "content", Property: "body"},
+				{Name: "to", Property: "toRecipients"},
+			},
 		},
 	})
 
@@ -529,6 +537,9 @@ func newMailCommand() *cobra.Command {
 				UseWhen:      []string{"需要取得 folderId 或浏览邮箱目录时"},
 				AvoidWhen:    []string{"按文件夹列出邮件时使用 mail message list"},
 				Examples:     []string{"dws mail folder list --email user@company.com"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "folderId"},
 			},
 		},
 	})
@@ -957,6 +968,9 @@ func newMailCommand() *cobra.Command {
 				AvoidWhen:    []string{"只有单封 messageId 时使用 mail message get"},
 				Examples:     []string{"dws mail thread get --email user@company.com --id <conversationId>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "conversationId"},
+			},
 		},
 	})
 
@@ -1254,6 +1268,10 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				AvoidWhen:    []string{"需要回复全部参与者时使用 mail message reply-all"},
 				Examples:     []string{"dws mail message reply --from user@company.com --id <messageId> --subject \"Re: 周报\" --content \"已收到\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "body"},
+				{Name: "id", Property: "messageId"},
+			},
 		},
 	})
 
@@ -1322,6 +1340,11 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				UseWhen:      []string{"已知原邮件 ID 且回复需要覆盖所有相关收件人时"},
 				AvoidWhen:    []string{"只回复原发件人时使用 mail message reply"},
 				Examples:     []string{"dws mail message reply-all --from user@company.com --id <messageId> --subject \"Re: 周报\" --content \"感谢大家\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "body"},
+				{Name: "id", Property: "messageId"},
+				{Name: "to", Property: "toRecipients"},
 			},
 		},
 	})
@@ -1392,6 +1415,11 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				AvoidWhen:    []string{"直接发送全新邮件使用 mail message send"},
 				Examples:     []string{"dws mail message forward --from user@company.com --to colleague@company.com --id <messageId> --subject \"Fwd: 周报\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "body"},
+				{Name: "id", Property: "messageId"},
+				{Name: "to", Property: "toRecipients"},
+			},
 		},
 	})
 
@@ -1433,6 +1461,9 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				UseWhen:      []string{"已知邮件 ID 列表和目标 folderId 时"},
 				AvoidWhen:    []string{"永久删除邮件时使用 mail message batch-delete"},
 				Examples:     []string{"dws mail message batch-move --email user@company.com --ids <id1>,<id2> --folder 6"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "destinationFolderId"},
 			},
 		},
 	})
@@ -1661,6 +1692,11 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				AvoidWhen:    []string{"用户要求立即发信时使用 mail message send"},
 				Examples:     []string{"dws mail draft create --from user@company.com --to colleague@company.com --subject \"草稿标题\" --content \"草稿正文\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cc", Property: "ccRecipients"},
+				{Name: "content", Property: "body"},
+				{Name: "to", Property: "toRecipients"},
+			},
 		},
 	})
 
@@ -1739,6 +1775,11 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				AvoidWhen:    []string{"已发送邮件不能用草稿更新"},
 				Examples:     []string{"dws mail draft update --from user@company.com --id <messageId> --subject \"新标题\" --content \"新正文\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cc", Property: "ccRecipients"},
+				{Name: "content", Property: "body"},
+				{Name: "to", Property: "toRecipients"},
+			},
 		},
 	})
 
@@ -1785,6 +1826,9 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				UseWhen:      []string{"已知邮件 ID 并需要取得附件 ID、名称或大小时"},
 				AvoidWhen:    []string{"实际保存附件时使用 mail attachment download"},
 				Examples:     []string{"dws mail attachment list --email user@company.com --id <messageId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "messageId"},
 			},
 		},
 	})
@@ -2084,6 +2128,10 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				AvoidWhen:    []string{"创建或编辑草稿分别使用 draft create 和 draft update"},
 				Examples:     []string{"dws mail draft send --from user@company.com --id <messageId>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "from", Property: "email"},
+				{Name: "id", Property: "messageId"},
+			},
 		},
 	})
 
@@ -2176,6 +2224,7 @@ user 对象字段：
 			Parameters: []contract.ParamDecl{
 				{Name: "employee-no", Required: boolPtr(false)},
 				{Name: "keyword", Required: boolPtr(false)},
+				{Name: "limit", Property: "size"},
 			},
 		},
 	})
@@ -2250,6 +2299,11 @@ user 对象字段：
 				AvoidWhen:    []string{"只创建一次性草稿时使用 mail draft create"},
 				Examples:     []string{"dws mail template create --email user@company.com --from user@company.com --name \"周报模板\" --subject \"周报\" --content \"本周工作总结\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cc", Property: "ccRecipients"},
+				{Name: "content", Property: "body"},
+				{Name: "to", Property: "toRecipients"},
+			},
 		},
 	})
 
@@ -2310,6 +2364,9 @@ user 对象字段：
 				UseWhen:      []string{"需要浏览模板或取得 templateId 时"},
 				AvoidWhen:    []string{"查看单个模板详情时使用 mail template get"},
 				Examples:     []string{"dws mail template list --email user@company.com --limit 20"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "size"},
 			},
 		},
 	})
@@ -2432,9 +2489,11 @@ user 对象字段：
 				Examples:     []string{"dws mail template update --email user@company.com --id <templateId> --subject \"新标题\" --content \"新正文\""},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "content", Required: boolPtr(false)},
+				{Name: "content", Property: "body", Required: boolPtr(false)},
 				{Name: "name", Required: boolPtr(false)},
 				{Name: "subject", Required: boolPtr(false)},
+				{Name: "cc", Property: "ccRecipients"},
+				{Name: "to", Property: "toRecipients"},
 			},
 		},
 	})
@@ -2604,6 +2663,9 @@ user 对象字段：
 				UseWhen:      []string{"需要浏览自己的联系人或取得 contactId 时"},
 				AvoidWhen:    []string{"搜索企业通讯录用户时使用 mail user search"},
 				Examples:     []string{"dws mail contact list --email user@company.com --limit 20"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "size"},
 			},
 		},
 	})

@@ -294,7 +294,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -303,7 +303,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "撤回 DING 消息"
@@ -376,9 +376,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "openDingId"
                 },
                 {
@@ -388,9 +388,9 @@
                   "value": "id"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "openDingId"
             },
             "required": {
@@ -696,7 +696,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -705,7 +705,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "发送 DING 消息。类型:\n  app  = 应用内 DING (默认)\n  sms  = 短信 DING (有成本)\n  call = 电话 DING (有成本)"
@@ -870,7 +870,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -879,7 +879,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "发送 DING 消息"
@@ -1191,9 +1191,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "remindType"
                 },
                 {
@@ -1203,9 +1203,9 @@
                   "value": "type"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "remindType"
             },
             "required": {
@@ -1327,9 +1327,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "receiverUserIdList"
                 },
                 {
@@ -1339,9 +1339,9 @@
                   "value": "users"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "receiverUserIdList"
             },
             "required": {
@@ -1544,7 +1544,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1553,7 +1553,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想查看当前身份收到或发出的 DING 消息、回顾有哪些强提醒或获取某条 DING 的 openDingId 以便后续查已读或撤回时使用；可选按类型过滤并用 cursor 翻页，只读不产生副作用。"
@@ -1728,7 +1728,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1737,7 +1737,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询 DING 消息列表"
@@ -2082,7 +2082,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2091,7 +2091,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你以本人身份发出的某条 DING 发错人或内容有误、想收回时使用（对应 send-personal/send-by-message 发出的 DING）；需提供该 DING 的 openDingId，会真实撤回它，接收人将不再看到该提醒。"
@@ -2266,7 +2266,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2275,7 +2275,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "撤回本人发起的 DING"
@@ -2541,7 +2541,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2550,7 +2550,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你发出一条 DING 后想确认每位接收人是否已读、追踪谁还没看到以便催办时使用；需提供该 DING 的 openDingId，返回各接收人的已读/未读状态，只读操作。"
@@ -2725,7 +2725,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2734,7 +2734,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询 DING 消息接收人已读状态"
@@ -3000,7 +3000,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3009,7 +3009,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"
@@ -3184,7 +3184,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3193,7 +3193,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "以本人身份发送 DING 给指定人"

@@ -100,7 +100,7 @@ func TestValidateCatalogStructureAcceptsValidEntry(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureRejectsViolations(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureRejectsViolations(t *testing.T) {
 	cases := []struct {
 		name   string
 		mutate func(entry map[string]any)
@@ -301,7 +301,7 @@ func TestValidateCatalogStructureRejectsViolations(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
 	if err := ValidateCatalogStructure([]byte(`{"version":99,"tools":{}}`)); err == nil {
 		t.Fatal("ValidateCatalogStructure() = nil, want version error")
 	}
@@ -313,7 +313,7 @@ func TestValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
 	// 两个工具各制造两条违规，驱动排序比较器的 tool 与 message 两个分支。
 	bad1 := validCatalogToolEntry()
 	bad1["effect"] = "mutate"
@@ -342,7 +342,7 @@ func TestValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureTruncatesViolationList(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureTruncatesViolationList(t *testing.T) {
 	// 单工具制造超过 25 条违规，验证截断提示。
 	entry := validCatalogToolEntry()
 	for i := 0; i < 30; i++ {

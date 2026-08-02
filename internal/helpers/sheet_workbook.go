@@ -54,6 +54,8 @@ func newWorkbookCmds() []*cobra.Command {
 			// name is validated via mustGetFlag; publish required via ParamDecl
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -97,7 +99,7 @@ nodeId 支持传入文档链接 URL 或文档 ID（dentryUuid），系统自动�
 			},
 			// node is validated via mustGetFlag; publish required via ParamDecl
 			Parameters: []contract.ParamDecl{
-				{Name: "node", Required: boolPtr(true)},
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -154,6 +156,10 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"只要工作表列表用 sheet list；读单元格值用 sheet range read"},
 				Examples:     []string{"dws sheet info --node <NODE_ID> --sheet-id <SHEET_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "include", Property: "include"},
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	infoCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -194,7 +200,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			},
 			// node/name validated via mustGetFlag; publish required via ParamDecl
 			Parameters: []contract.ParamDecl{
-				{Name: "node", Required: boolPtr(true)},
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
 				{Name: "name", Required: boolPtr(true)},
 			},
 		},
@@ -306,6 +312,10 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"改单元格内容用 range update；删整张工作表用 delete-sheet；复制工作表用 copy"},
 				Examples:     []string{"dws sheet update --node <NODE_ID> --sheet-id <SHEET_ID> --title \"汇总表\" --frozen-row-count 2"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "title"},
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	updateSheetCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -376,6 +386,10 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 				AvoidWhen:    []string{"只要新建空白工作表用 sheet new；跨文档复制请走文档/知识库复制能力，不要用本命令"},
 				Examples:     []string{"dws sheet copy --node <NODE_ID> --sheet-id <SHEET_ID> --title \"销售副本\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "title"},
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	copySheetCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -417,6 +431,9 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 				UseWhen:      []string{"用户明确要求永久删除某个工作表页签，且已确认目标 sheetId 时"},
 				AvoidWhen:    []string{"只想清空单元格内容用 range clear；删行列用 delete-dimension；隐藏工作表用 update --hidden"},
 				Examples:     []string{"dws sheet delete-sheet --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -460,6 +477,9 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 				AvoidWhen:    []string{"要隐藏网格线用 sheet hide-gridline；改冻结或隐藏工作表用 sheet update"},
 				Examples:     []string{"dws sheet show-gridline --node <NODE_ID> --sheet-id <SHEET_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	showGridlineCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -501,6 +521,9 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 				UseWhen:      []string{"需要关闭指定工作表的网格线显示时"},
 				AvoidWhen:    []string{"要显示网格线用 sheet show-gridline"},
 				Examples:     []string{"dws sheet hide-gridline --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

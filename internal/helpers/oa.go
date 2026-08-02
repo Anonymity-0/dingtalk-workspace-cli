@@ -102,6 +102,12 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval list-pending --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --query 关键词",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "end", Property: "endTime"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "page", Property: "pageNum"},
+				{Name: "start", Property: "starTime"},
+			},
 		},
 	})
 
@@ -141,6 +147,9 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval detail --instance-id <processInstanceId>",
 					"dws oa approval detail --instance-id <processInstanceId> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
 			},
 		},
 	})
@@ -189,6 +198,9 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval approve --instance-id <id> --task-id <taskId> --remark \"同意\"",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
+			},
 		},
 	})
 
@@ -235,6 +247,9 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval reject --instance-id <id> --task-id <taskId> --remark \"不符合要求\" --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
+			},
 		},
 	})
 
@@ -278,6 +293,9 @@ func newOaCommand() *cobra.Command {
 				},
 				Examples: []string{"dws oa approval revoke --instance-id <instance-id>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
+			},
 		},
 	})
 
@@ -317,6 +335,9 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval records --instance-id <processInstanceId>",
 					"dws oa approval records --instance-id <processInstanceId> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
 			},
 		},
 	})
@@ -375,6 +396,12 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval list-initiated --process-code <code> --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --limit 20 --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "endTime"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "start", Property: "startTime"},
+			},
 		},
 	})
 
@@ -415,6 +442,9 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval tasks --instance-id <processInstanceId> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
+			},
 		},
 	})
 
@@ -451,6 +481,9 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval list-forms --cursor 0 --limit 100",
 					"dws oa approval list-forms --cursor 0 --limit 100 --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "pageSize"},
 			},
 		},
 	})
@@ -531,6 +564,10 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval list-executed --limit <pageSize> --page <pageNumber> --query 关键词 --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "pageSize"},
+				{Name: "page", Property: "pageNumber"},
+			},
 		},
 	})
 	// 已发起
@@ -575,6 +612,10 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval list-submitted --limit <pageSize> --page <pageNumber> --query 关键词 --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "pageSize"},
+				{Name: "page", Property: "pageNumber"},
+			},
 		},
 	})
 	// 抄送
@@ -618,6 +659,10 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval list-cc --limit <pageSize> --page <pageNumber> --query 关键词",
 					"dws oa approval list-cc --limit <pageSize> --page <pageNumber> --query 关键词 --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "pageSize"},
+				{Name: "page", Property: "pageNumber"},
 			},
 		},
 	})
@@ -712,6 +757,10 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval oa-comments --instance-id <processInstanceId> --content \"同意，请尽快处理\" --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "text"},
+				{Name: "instance-id", Property: "processInstanceId"},
+			},
 		},
 	})
 
@@ -760,6 +809,10 @@ func newOaCommand() *cobra.Command {
 					"dws oa approval oa-cc-noticer --instance-id <processInstanceId> --users \"68674200835816\"",
 					"dws oa approval oa-cc-noticer --instance-id <processInstanceId> --users \"userId1,userId2\" --operator-id \"123123\"",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "instance-id", Property: "processInstanceId"},
+				{Name: "users", Property: "userList"},
 			},
 		},
 	})

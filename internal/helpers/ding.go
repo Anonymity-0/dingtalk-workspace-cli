@@ -110,7 +110,8 @@ func newDingCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "content", Required: boolPtr(true)},
 				{Name: "robot-code", Required: boolPtr(true)},
-				{Name: "users", Required: boolPtr(true), InterfaceType: "array"},
+				{Name: "type", Property: "remindType"},
+				{Name: "users", Property: "receiverUserIdList", Required: boolPtr(true), InterfaceType: "array"},
 			},
 		},
 	})
@@ -153,6 +154,9 @@ func newDingCommand() *cobra.Command {
 				UseWhen:      []string{"已知 openDingId 与同一 robot-code，需要撤回机器人 DING"},
 				AvoidWhen:    []string{"需要以用户身份撤回 DING 时不要使用本命令"},
 				Examples:     []string{"dws ding message recall --robot-code <ROBOT_CODE> --id <OPEN_DING_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "openDingId"},
 			},
 		},
 	})

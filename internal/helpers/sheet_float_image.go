@@ -94,6 +94,9 @@ func newFloatImageCmds() []*cobra.Command {
 				AvoidWhen:    []string{"单元格内嵌图片用 write-image；更新/删除浮动图用 update/delete-float-image"},
 				Examples:     []string{"dws sheet create-float-image --node <NODE_ID> --sheet-id <SHEET_ID> --src \"/core/api/resources/img/...\" --range A1 --width 400 --height 300"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	createFloatImageCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -139,6 +142,9 @@ floatImageId 可通过 list-float-images 获取。`,
 				AvoidWhen:    []string{"列出全部浮动图用 list-float-images"},
 				Examples:     []string{"dws sheet get-float-image --node <NODE_ID> --sheet-id <SHEET_ID> --float-image-id <FI_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	getFloatImageCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -176,6 +182,9 @@ floatImageId 可通过 list-float-images 获取。`,
 				UseWhen:      []string{"需要枚举浮动图 ID 以便后续 get/update/delete 时"},
 				AvoidWhen:    []string{"查单张详情用 get-float-image"},
 				Examples:     []string{"dws sheet list-float-images --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -271,6 +280,9 @@ floatImageId 可通过 list-float-images 获取。`,
 				AvoidWhen:    []string{"创建用 create-float-image；删除用 delete-float-image"},
 				Examples:     []string{"dws sheet update-float-image --node <NODE_ID> --sheet-id <SHEET_ID> --float-image-id <FI_ID> --range C5"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	updateFloatImageCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -316,6 +328,9 @@ floatImageId 可通过 list-float-images 获取。`,
 				UseWhen:      []string{"用户明确要求删除某张浮动图片时"},
 				AvoidWhen:    []string{"删除单元格内嵌图需改写单元格；列目录用 list-float-images"},
 				Examples:     []string{"dws sheet delete-float-image --node <NODE_ID> --sheet-id <SHEET_ID> --float-image-id <FI_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

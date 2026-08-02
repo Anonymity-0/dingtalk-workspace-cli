@@ -134,7 +134,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -143,7 +143,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按关键词搜索 open.dingtalk.com 文档，支持分页。默认表格输出，可用 -f json 获取完整响应。"
@@ -308,7 +308,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -317,7 +317,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "搜索开放平台文档"
@@ -509,9 +509,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "keyword"
                 },
                 {
@@ -521,9 +521,9 @@
                   "value": "query"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "keyword"
             },
             "required": {

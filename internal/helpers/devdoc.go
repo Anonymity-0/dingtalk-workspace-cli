@@ -110,7 +110,7 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "query", Required: boolPtr(false)},
+				{Name: "query", Property: "keyword", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -179,6 +179,9 @@ func newDevDocSearchCommand() *cobra.Command {
 				UseWhen:      []string{"明确需要验证或使用 dev doc search 入口时"},
 				AvoidWhen:    []string{"常规开放平台文档检索优先使用可用的 devdoc article search"},
 				Examples:     []string{"dws dev doc search --query \"MCP\" --size 10"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "query", Property: "keyword"},
 			},
 		},
 	})

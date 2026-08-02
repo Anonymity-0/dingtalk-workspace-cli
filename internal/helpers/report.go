@@ -146,6 +146,9 @@ func newReportCommand() *cobra.Command {
 					"dws report template get --name \"日报\" --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "report_template_name"},
+			},
 		},
 	})
 	addReportTemplateDetailFlags(templateGetCmd)
@@ -194,6 +197,9 @@ func newReportCommand() *cobra.Command {
 					"dws report entry get --report-id <reportId>",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "report-id", Property: "report_id"},
+			},
 		},
 	})
 	addReportDetailFlags(entryGetCmd)
@@ -228,6 +234,9 @@ func newReportCommand() *cobra.Command {
 					"dws report entry stats --report-id <reportId>",
 					"dws report entry stats --report-id <reportId> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "report-id", Property: "report_id"},
 			},
 		},
 	})
@@ -321,6 +330,10 @@ func newReportCommand() *cobra.Command {
 				},
 				Examples: []string{"dws report inbox list --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-10T23:59:59+08:00\" --cursor 0 --size 20 --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "start", Property: "startTime"},
+				{Name: "end", Property: "endTime"},
+			},
 		},
 	})
 	addReportListFlags(inboxListCmd)
@@ -362,6 +375,13 @@ func newReportCommand() *cobra.Command {
 					"dws report outbox list --cursor 0 --size 20",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "start", Property: "startTime"},
+				{Name: "end", Property: "endTime"},
+				{Name: "modified-start", Property: "modifiedStartTime"},
+				{Name: "modified-end", Property: "modifiedEndTime"},
+				{Name: "template-name", Property: "report_template_name"},
+			},
 		},
 	})
 	addReportSentFlags(outboxListCmd)
@@ -380,11 +400,11 @@ func newReportCommand() *cobra.Command {
 	// create alias. Schema assembly still reads ContractFinal from the primary
 	// leaf; this keeps compatibility-equivalence NativeRequired annotations
 	// symmetric instead of relying only on one-sided tolerance.
-	if err := cli.ApplyParamDecls(createCmd, []contract.ParamDecl{
+	// addReportCreateFlags always registers --to-chat; ApplyParamDecls cannot
+	// fail for this reviewed alias mirror.
+	_ = cli.ApplyParamDecls(createCmd, []contract.ParamDecl{
 		{Name: "to-chat", Required: boolPtr(false)},
-	}); err != nil {
-		panic(err)
-	}
+	})
 
 	detailCmd := &cobra.Command{
 		Use:     "detail",

@@ -88,6 +88,10 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 				AvoidWhen:    []string{"搜索关键字用 sheet find；纯 CSV 文本导出区域用 sheet csv-get；本地 xlsx 用 doc download；AI 表格记录用 aitable record query"},
 				Examples:     []string{"dws sheet range read --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:D10\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "value-render-option", Property: "valueRenderOption"},
+			},
 		},
 	})
 	rangeReadCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -246,6 +250,10 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 				AvoidWhen:    []string{"大批量纯值写入优先 sheet csv-put；末尾追加行用 append；全局替换文本用 replace；只改样式用 range set-style；清整片区域用 range clear"},
 				Examples:     []string{"dws sheet range update --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1\" --values '[[{\"type\":\"text\",\"text\":\"张三\"}]]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "range", Property: "rangeAddress"},
+			},
 		},
 	})
 	rangeUpdateCmd.Flags().String("node", "", "表格文档 ID (必填)")
@@ -304,6 +312,9 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 				UseWhen:      []string{"需要清空一片区域且保留行列占位时"},
 				AvoidWhen:    []string{"要物理删除行列用 delete-dimension；删整张工作表用 delete-sheet；单格写空可用 range update 但整片清除应优先本命令"},
 				Examples:     []string{"dws sheet range clear --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:B3\" --type content"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -368,6 +379,9 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 				AvoidWhen:    []string{"已有全局筛选时按筛选范围排序用 filter sort；不要用读出再写回模拟排序"},
 				Examples:     []string{"dws sheet range sort --node NODE_ID --sheet-id SHEET_ID --range A1:D10 --sort-keys '[{\"column\":\"A\",\"ascending\":true}]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	rangeSortCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -425,6 +439,10 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 				UseWhen:      []string{"需要像拖拽填充一样把源范围扩展到目标范围时"},
 				AvoidWhen:    []string{"直接写死值用 range update/csv-put；区域复制到另一位置用 range copy-to"},
 				Examples:     []string{"dws sheet range fill --node <NODE_ID> --sheet-id <SHEET_ID> --source-range \"A1:A5\" --target-range \"A6:A20\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "target-range", Property: "destinationRange"},
 			},
 		},
 	})
@@ -488,6 +506,10 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 				AvoidWhen:    []string{"移动而不是复制用 range move-to；自动填充序列用 range fill"},
 				Examples:     []string{"dws sheet range copy-to --node NODE_ID --sheet-id SHEET_ID --source-range \"A1:C5\" --target-range \"E1\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "target-range", Property: "destinationRange"},
+			},
 		},
 	})
 	rangeCopyCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -547,6 +569,10 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 				UseWhen:      []string{"需要把区域从源位置挪到目标位置且源处应腾空时"},
 				AvoidWhen:    []string{"只需复制保留源用 range copy-to；移动整行/整列用 move-dimension"},
 				Examples:     []string{"dws sheet range move-to --node NODE_ID --sheet-id SHEET_ID --source-range \"A1:C5\" --target-range \"E1\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "target-range", Property: "destinationRange"},
 			},
 		},
 	})

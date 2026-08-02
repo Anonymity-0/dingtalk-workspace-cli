@@ -336,6 +336,10 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event list --calendar-id primary",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "end", Property: "endTime"},
+				{Name: "start", Property: "startTime"},
+			},
 		},
 	})
 
@@ -379,6 +383,9 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event get --id <EVENT_ID>",
 					"dws calendar event get --id <EVENT_ID> --calendar-id primary",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "eventId"},
 			},
 		},
 	})
@@ -487,9 +494,15 @@ func newCalendarCommand() *cobra.Command {
 				},
 			},
 			Parameters: append([]contract.ParamDecl{
-				{Name: "title", Required: boolPtr(true)},
-				{Name: "start", Required: boolPtr(true)},
-				{Name: "end", Required: boolPtr(true)},
+				{Name: "title", Property: "summary", Required: boolPtr(true)},
+				{Name: "start", Property: "startDateTime", Required: boolPtr(true)},
+				{Name: "end", Property: "endDateTime", Required: boolPtr(true)},
+				{Name: "desc", Property: "description"},
+				{Name: "open-dingtalk-ids", Property: "openDingTalkIds"},
+				{Name: "remind-minutes", Property: "reminders"},
+				{Name: "rich-text-desc", Property: "richTextDescription"},
+				{Name: "rooms", Property: "roomIds"},
+				{Name: "timezone", Property: "timeZone"},
 			}, calendarRecurrenceParamDecls()...),
 		},
 	})
@@ -572,7 +585,15 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event update --id <EVENT_ID> --desc \"新描述\" --timezone Asia/Tokyo",
 				},
 			},
-			Parameters: calendarRecurrenceParamDecls(),
+			Parameters: append([]contract.ParamDecl{
+				{Name: "desc", Property: "description"},
+				{Name: "end", Property: "endDateTime"},
+				{Name: "id", Property: "eventId"},
+				{Name: "rich-text-desc", Property: "richTextDescription"},
+				{Name: "start", Property: "startDateTime"},
+				{Name: "timezone", Property: "timeZone"},
+				{Name: "title", Property: "summary"},
+			}, calendarRecurrenceParamDecls()...),
 		},
 	})
 
@@ -612,6 +633,9 @@ func newCalendarCommand() *cobra.Command {
 					"目标 eventId 未确认或仍需保留日程时不要删除",
 				},
 				Examples: []string{"dws calendar event delete --id <id>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "eventId"},
 			},
 		},
 	})
@@ -666,6 +690,11 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event suggest --users userId1,userId2 --duration 60",
 					"dws calendar event suggest --start \"2026-03-10T09:00:00+08:00\" --end \"2026-03-10T18:00:00+08:00\" --users userId1",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "duration", Property: "durationMinutes"},
+				{Name: "timezone", Property: "timeZone"},
+				{Name: "users", Property: "attendeeUserIds"},
 			},
 		},
 	})
@@ -729,6 +758,10 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar event respond --id <EVENT_ID> --status declined",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "eventId"},
+				{Name: "status", Property: "responseStatus"},
+			},
 		},
 	})
 
@@ -778,6 +811,10 @@ func newCalendarCommand() *cobra.Command {
 				UseWhen:      []string{"已知 eventId，需要查看参会人列表及状态时（订阅日历日程无参会人）"},
 				AvoidWhen:    []string{"要添加/移除参会人时改用 attendee add/delete"},
 				Examples:     []string{"dws calendar attendee list --event <EVENT_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "calendar-id", Property: "calendarId"},
+				{Name: "event", Property: "eventId"},
 			},
 		},
 	})
@@ -836,6 +873,11 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar attendee add --event <EVENT_ID> --attendees <USER_ID> --optional",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "attendees", Property: "attendeesToAdd"},
+				{Name: "calendar-id", Property: "calendarId"},
+				{Name: "event", Property: "eventId"},
+			},
 		},
 	})
 
@@ -885,6 +927,11 @@ func newCalendarCommand() *cobra.Command {
 					"要查看参会人时改用 attendee list",
 				},
 				Examples: []string{"dws calendar attendee delete --attendees <attendees> --event <event>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "attendees", Property: "attendeesToRemove"},
+				{Name: "calendar-id", Property: "calendarId"},
+				{Name: "event", Property: "eventId"},
 			},
 		},
 	})
@@ -1039,6 +1086,12 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar room search --start \"2026-03-10T14:00:00+08:00\" --end \"2026-03-10T15:00:00+08:00\" --group-id <GROUP_ID>",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "end", Property: "endTime"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "page", Property: "pageIndex"},
+				{Name: "start", Property: "startTime"},
+			},
 		},
 	})
 
@@ -1092,6 +1145,10 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar room add --event <EVENT_ID> --rooms <ROOM_ID> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "event", Property: "eventId"},
+				{Name: "rooms", Property: "roomIds"},
+			},
 		},
 	})
 
@@ -1141,6 +1198,10 @@ func newCalendarCommand() *cobra.Command {
 				},
 				Examples: []string{"dws calendar room delete --event <event> --rooms <rooms>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "event", Property: "eventId"},
+				{Name: "rooms", Property: "roomIds"},
+			},
 		},
 	})
 
@@ -1183,6 +1244,10 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar room list-groups",
 					"dws calendar room list-groups --limit 20 --page 0",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "pageSize"},
+				{Name: "page", Property: "pageIndex"},
 			},
 		},
 	})
@@ -1263,6 +1328,12 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar busy search --rooms <ROOM_ID_1>,<ROOM_ID_2> --start \"2026-03-10T14:00:00+08:00\" --end \"2026-03-10T18:00:00+08:00\"",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "end", Property: "endTime"},
+				{Name: "rooms", Property: "roomIds"},
+				{Name: "start", Property: "startTime"},
+				{Name: "users", Property: "userIds"},
+			},
 		},
 	})
 
@@ -1336,6 +1407,10 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar attachment add --event <EVENT_ID> --files <FILE_ID>:report.pdf,<FILE_ID2>:slides.pptx",
 					"dws calendar attachment add --event <EVENT_ID> --files <FILE_ID>:report.pdf --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "event", Property: "eventId"},
+				{Name: "files", Property: "attachments"},
 			},
 		},
 	})
@@ -1500,6 +1575,9 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar book get --id CALENDAR_ID",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "calendarId"},
+			},
 		},
 	})
 
@@ -1540,6 +1618,9 @@ func newCalendarCommand() *cobra.Command {
 					"dws calendar book search --query \"项目\"",
 					"dws calendar book search --query \"团队周报\"",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "query", Property: "query"},
 			},
 		},
 	})
@@ -2549,14 +2630,15 @@ var recurrenceFlagNames = []string{
 // for create/update event leaves (native_annotation).
 func calendarRecurrenceParamDecls() []contract.ParamDecl {
 	return []contract.ParamDecl{
-		{Name: "recurrence-day-of-month", Required: boolPtr(false), RequiredWhen: "recurrence-type is absoluteMonthly or absoluteYearly"},
-		{Name: "recurrence-days-of-week", Required: boolPtr(false), RequiredWhen: "recurrence-type is weekly or relativeMonthly"},
-		{Name: "recurrence-index", Required: boolPtr(false), RequiredWhen: "recurrence-type is relativeMonthly"},
-		{Name: "recurrence-interval", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
-		{Name: "recurrence-type", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
-		{Name: "recurrence-end-date", Required: boolPtr(false), RequiredWhen: "recurrence-range-type is endDate"},
-		{Name: "recurrence-count", Required: boolPtr(false), RequiredWhen: "recurrence-range-type is numbered"},
-		{Name: "recurrence-range-type", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+		{Name: "recurrence-day-of-month", Property: "recurrence.pattern.dayOfMonth", Required: boolPtr(false), RequiredWhen: "recurrence-type is absoluteMonthly or absoluteYearly"},
+		{Name: "recurrence-days-of-week", Property: "recurrence.pattern.daysOfWeek", Required: boolPtr(false), RequiredWhen: "recurrence-type is weekly or relativeMonthly"},
+		{Name: "recurrence-index", Property: "recurrence.pattern.index", Required: boolPtr(false), RequiredWhen: "recurrence-type is relativeMonthly"},
+		{Name: "recurrence-interval", Property: "recurrence.pattern.interval", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+		{Name: "recurrence-type", Property: "recurrence.pattern.type", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+		{Name: "recurrence-end-date", Property: "recurrence.range.endDate", Required: boolPtr(false), RequiredWhen: "recurrence-range-type is endDate"},
+		{Name: "recurrence-count", Property: "recurrence.range.numberOfOccurrences", Required: boolPtr(false), RequiredWhen: "recurrence-range-type is numbered"},
+		{Name: "recurrence-range-type", Property: "recurrence.range.type", Required: boolPtr(false), RequiredWhen: "any recurrence-* flag is provided"},
+		{Name: "recurrence-first-day-of-week", Property: "recurrence.pattern.firstDayOfWeek"},
 	}
 }
 

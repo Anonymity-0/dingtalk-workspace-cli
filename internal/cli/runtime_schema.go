@@ -479,6 +479,12 @@ const (
 	runtimeSchemaRankTypedMetadata    = 630
 	runtimeSchemaRankConstraint       = 640
 	runtimeSchemaRankVersionedBinding = 650
+	// ParamDecl.Property (dws.schema.property) outranks residual versioned
+	// binding candidates (active bindings JSON is empty after Phase 2).
+	// Mapping exclusions stay highest so an explicit "no MCP property" review
+	// cannot be overridden by a leaf ParamDecl that still carries a Property.
+	runtimeSchemaRankParamDeclProperty = 655
+	runtimeSchemaRankMappingExclusion  = 660
 
 	runtimeSchemaPrecedenceDefault          = "default"
 	runtimeSchemaPrecedenceDerived          = "derived_resolution"
@@ -662,7 +668,7 @@ func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) contrac
 func runtimeSchemaSourcePriority(source string) (int, string) {
 	switch strings.TrimSpace(source) {
 	case "reviewed_mapping_exclusion":
-		return runtimeSchemaRankVersionedBinding, runtimeSchemaPrecedenceMappingExclusion
+		return runtimeSchemaRankMappingExclusion, runtimeSchemaPrecedenceMappingExclusion
 	case "require_one_of_constraint":
 		return runtimeSchemaRankConstraint, runtimeSchemaPrecedenceConstraint
 	case "versioned_parameter_binding":
@@ -770,7 +776,15 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, embe
 			excludedProperty,
 			bindingProperty,
 			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagBindingPropertyAnnotation), "versioned_parameter_binding"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagPropertyAnnotation), "native_annotation"),
+			// ParamDecl.Property is authored on the leaf and applied at assembly
+			// via ApplyParamDecls. It outranks any residual versioned binding
+			// candidate; active bindings JSON rows are empty after Phase 2.
+			runtimeSchemaStringCandidateAtRank(
+				firstFlagAnnotation(flag, runtimeSchemaFlagPropertyAnnotation),
+				"native_annotation",
+				runtimeSchemaRankParamDeclProperty,
+				runtimeSchemaPrecedenceNativeAnnotation,
+			),
 			runtimeSchemaStringCandidate(lowerCamelFlagName(flag.Name), "flag_name_inference"),
 		)
 		if err != nil {

@@ -14,6 +14,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func TestEmbeddedRuntimeSchemaExclusionsAreReviewedExact(t *testing.T) {
+	exclusions, err := EmbeddedRuntimeSchemaExclusions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(exclusions) == 0 {
+		t.Fatal("reviewed runtime schema exclusions must not be empty")
+	}
+	seen := map[string]bool{}
+	for _, exclusion := range exclusions {
+		if !exclusion.Reviewed || strings.TrimSpace(exclusion.Reason) == "" {
+			t.Fatalf("unreviewed exclusion: %#v", exclusion)
+		}
+		path := normalizeSchemaCLIPath(exclusion.CLIPath)
+		if path == "" || path != exclusion.CLIPath {
+			t.Fatalf("exclusion path must be normalized and non-empty: %#v", exclusion)
+		}
+		if seen[path] {
+			t.Fatalf("duplicate exclusion %q", path)
+		}
+		seen[path] = true
+	}
+	for _, group := range reviewedRuntimeSchemaExclusionGroups {
+		if strings.TrimSpace(group.ID) == "" || !group.Reviewed || strings.TrimSpace(group.Reason) == "" {
+			t.Fatalf("invalid exclusion group: %#v", group)
+		}
+		if len(group.Commands) == 0 {
+			t.Fatalf("exclusion group %q has no commands", group.ID)
+		}
+	}
+}
+
 func TestRuntimeSchemaCompletenessRequiresCoverageOrReviewedExclusion(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	covered := &cobra.Command{Use: "covered", Run: func(*cobra.Command, []string) {}}

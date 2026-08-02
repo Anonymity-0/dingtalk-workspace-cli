@@ -34,8 +34,8 @@ help:
 	@printf "  make cli-smoke     - Verify help for every public top-level command\n"
 	@printf "  make mock-mcp-smoke - Verify HTTP and stdio MCP request/response transport\n"
 	@printf "  make test-schema-agent-examples - Contract-check all Agent examples and dry-run the eligible subset\n"
-	@printf "  make generate-schema - Regenerate the embedded release Catalog (Agent metadata is in-memory only)\n"
-	@printf "  make generate-schema-catalog - Regenerate the embedded release Catalog\n"
+	@printf "  make generate-schema - Refresh param_aliases + verify Schema assembly determinism\n"
+	@printf "  make generate-schema-catalog - CI dump of assembled Catalog to a path (not a delivery step)\n"
 	@printf "  make package       - Build all release artifacts locally\n"
 	@printf "  make changelog-pre VERSION=vX.Y.Z-beta.N - Prepare prerelease notes\n"
 	@printf "  make changelog-stable VERSION=vX.Y.Z FROM_BETA=vX.Y.Z-beta.N - Prepare stable notes\n"
@@ -134,10 +134,10 @@ mock-mcp-smoke:
 test-schema-agent-examples:
 	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestManualAgentExamplesDryRun$$'
 
-# generate-schema rebuilds schema_catalog/, schema_meta_index.json (+ param
-# aliases). Agent metadata is injected in-memory during catalog generation;
-# schema_agent_metadata/ is retired and must not remain as a delivery artifact
-# (any temp write is removed below).
+# generate-schema refreshes param_aliases_generated.go and verifies that
+# ResolveSchemaBuild assembly is deterministic. Catalog is runtime-assembled
+# (声明即 Catalog); cmd_schema_catalog is not a committed delivery step.
+# schema_agent_metadata/ and schema_hints/ must stay absent.
 generate-schema:
 	@set -e; \
 	registry_guard=$$(mktemp -d); \
@@ -149,6 +149,7 @@ generate-schema:
 	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
 	$(GO) generate ./internal/cli; \
 	rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json; \
+	rm -f internal/cli/schema_meta_index.json; \
 	diff -qr internal/cli/schema_command_registry "$$registry_guard" >/dev/null || { \
 		printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry/' >&2; \
 		exit 1; \
@@ -164,16 +165,22 @@ generate-schema:
 	if [ -e internal/cli/schema_hints ]; then \
 		printf '%s\n' 'retired schema_hints/ must not reappear after generation' >&2; \
 		exit 1; \
-	fi
+	fi; \
+	if [ -e internal/cli/schema_meta_index.json ]; then \
+		printf '%s\n' 'retired schema_meta_index.json must not remain after generation' >&2; \
+		exit 1; \
+	fi; \
+	./scripts/policy/check-schema-assembly.sh
 
-# Catalog-only publication path (same as go:generate catalog step). Does not
-# write schema_agent_metadata/.
+# Optional local/CI dump of an assembled Catalog to a path. Not wired into
+# go:generate; production does not embed the result as delivery authority.
 generate-schema-catalog:
 	$(GO) run -a ./internal/generator/cmd_schema_catalog \
 		-root . \
 		-output internal/cli/schema_catalog \
-		-meta-index internal/cli/schema_meta_index.json
+		-meta-index internal/cli/schema_meta_index.gob
 	@rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json
+	@rm -f internal/cli/schema_meta_index.json
 
 fetch-mcp-metadata:
 	@printf '  %sRefreshing MCP metadata from live server%s\n' "$(COLOR_RUN)" "$(COLOR_RESET)"

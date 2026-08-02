@@ -306,7 +306,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -315,7 +315,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询员工公司内职业历程"
@@ -772,7 +772,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -781,7 +781,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询员工绩效记录"
@@ -1054,7 +1054,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1063,7 +1063,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "根据员工工号列表获取员工标签。"
@@ -1238,7 +1238,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1247,7 +1247,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取员工标签"
@@ -1616,7 +1616,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1625,7 +1625,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询指定员工档案的元数据结构，用于构造 query_profile_data 的 dataQueries 参数。"
@@ -1800,7 +1800,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1809,7 +1809,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询员工档案元数据结构"
@@ -2082,7 +2082,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2091,7 +2091,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取当前操作人有权限使用的高级搜索字段列表，用于构造 employees-structured 的参数。"
@@ -2266,7 +2266,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2275,7 +2275,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取高级搜索字段列表"
@@ -2445,7 +2445,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2454,7 +2454,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "根据人才池编码获取人才池详细信息。"
@@ -2629,7 +2629,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2638,7 +2638,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取人才池详情"
@@ -2914,7 +2914,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2923,7 +2923,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询指定人才池内的人员列表。"
@@ -3098,7 +3098,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3107,7 +3107,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "人才池人员列表"
@@ -3590,7 +3590,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3599,7 +3599,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询人才池列表，支持按名称关键词、类型、创建人、标签等条件筛选。"
@@ -3776,7 +3776,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3785,7 +3785,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "人才池列表"
@@ -4549,7 +4549,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4558,7 +4558,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按模块维度批量查询员工档案数据。\n--data-queries 为 JSON 数组，每个元素包含:\n  modelCode — 档案模块编码\n  fields    — 要查询的字段编码列表"
@@ -4733,7 +4733,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4742,7 +4742,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按模块批量查询员工档案数据"
@@ -5121,7 +5121,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5130,7 +5130,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按关键词、部门、职务、职级、人才池等条件搜索人员。"
@@ -5307,7 +5307,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5316,7 +5316,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "人才搜索"
@@ -6176,7 +6176,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6185,7 +6185,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "使用高级条件（originJson 表达式）搜索人员。\n建议先调用 \"dws hrbrain search fields\" 获取有权限的字段与操作符列表。\n--origin-json 为 JSON 字符串，例如:\n  {\"rules\":[{\"field\":\"name\",\"operator\":\"contains\",\"value\":\"张\"}],\"combinator\":\"and\"}\n--fields 为 JSON 数组，例如:\n  [{\"label\":\"姓名\",\"value\":\"name\"}]\n--order-by 为逗号分隔的排序字段列表 (可选)"
@@ -6360,7 +6360,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6369,7 +6369,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "使用高级条件搜索人员"

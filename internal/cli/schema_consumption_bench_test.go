@@ -32,14 +32,14 @@ import (
 //	BenchmarkCatalogStageDecodeTyped            ~160–173ms  ~117MB
 //	BenchmarkCatalogStageTypedRegistryFromWire  ~80–120ms    ~40MB
 //
-// CommandMeta summary index (ResolveMeta / leaf --help Safety):
+// CommandMeta summary index (ResolveMeta / leaf --help Safety; gob delivery):
 //
-//	BenchmarkResolveMetaFirstHit                ~5.8ms  ~3.5MB  ~18k allocs
-//	BenchmarkResolveMetaSteadyState             ~24–167ns    0B  0 allocs
+//	BenchmarkResolveMetaFirstHit                ~0.74–0.83ms ~1.7MB  ~19k allocs
+//	BenchmarkResolveMetaSteadyState             ~70–125ns      0B  0 allocs
 //
-// Historical (pre typed-wire / pre meta index): AssembleEmbedded ~1091ms/732MB;
-// first ResolveMeta paid that full Catalog cost. loadcost_bench_test.go's old
-// ~1.4s/740MB figure is obsolete.
+// Historical JSON meta-index first hit ~5.8ms/~3.5MB; pre typed-wire /
+// pre meta index AssembleEmbedded ~1091ms/732MB (first ResolveMeta paid that
+// full Catalog cost). loadcost_bench_test.go's old ~1.4s/740MB figure is obsolete.
 //
 // Package tests still enable validateSnapshotTypedRoundTrip via
 // schema_snapshot_roundtrip_test.go; benches force it off so they measure the
@@ -113,12 +113,12 @@ func BenchmarkBuildMetaByCLIPath(b *testing.B) {
 // summary index into the ResolveMeta lookup. This is the cold cost leaf
 // --help Safety / ResolveMeta pay; it must not assemble the full Catalog.
 func BenchmarkResolveMetaFirstHit(b *testing.B) {
-	if len(embeddedSchemaMetaIndexJSON) == 0 {
+	if len(embeddedSchemaMetaIndexGob) == 0 {
 		b.Skip("embedded meta index unavailable")
 	}
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexJSON)
+		lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexGob)
 		if err != nil {
 			b.Fatal(err)
 		}

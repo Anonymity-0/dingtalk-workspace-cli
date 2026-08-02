@@ -77,6 +77,9 @@ func newDimensionCmds() []*cobra.Command {
 				AvoidWhen:    []string{"末尾追加空行空列用 add-dimension；末尾追加数据用 append；删除行列用 delete-dimension"},
 				Examples:     []string{"dws sheet insert-dimension --node <NODE_ID> --sheet-id <SHEET_ID> --dimension ROWS --position \"3\" --length 2"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	insertDimensionCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -162,6 +165,9 @@ func newDimensionCmds() []*cobra.Command {
 				AvoidWhen:    []string{"不要用读出再写回模拟移动；移动矩形单元格区域用 range move-to"},
 				Examples:     []string{"dws sheet move-dimension --node <NODE_ID> --sheet-id <SHEET_ID> --dimension ROWS --start-index 1 --end-index 1 --destination-index 4"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	moveDimensionCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -224,6 +230,9 @@ func newDimensionCmds() []*cobra.Command {
 				UseWhen:      []string{"需要扩展表格维度（末尾加空行/空列）时"},
 				AvoidWhen:    []string{"追加带数据的行用 append；在中间插入用 insert-dimension"},
 				Examples:     []string{"dws sheet add-dimension --node <NODE_ID> --sheet-id <SHEET_ID> --dimension ROWS --length 5"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -291,6 +300,10 @@ rangeAddress 也支持带工作表前缀的写法，如 Sheet1!A1:B3，此时将
 				AvoidWhen:    []string{"取消合并用 unmerge-cells；合并会丢弃非左上角值"},
 				Examples:     []string{"dws sheet merge-cells --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:B3\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "range", Property: "rangeAddress"},
+			},
 		},
 	})
 	mergeCellsCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -338,6 +351,10 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"需要拆分已合并区域时"},
 				AvoidWhen:    []string{"创建合并用 merge-cells"},
 				Examples:     []string{"dws sheet unmerge-cells --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:D5\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "range", Property: "rangeAddress"},
 			},
 		},
 	})
@@ -409,6 +426,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"用户明确要物理删除若干行/列时"},
 				AvoidWhen:    []string{"只清空内容保留占位用 range clear；移动行列用 move-dimension"},
 				Examples:     []string{"dws sheet delete-dimension --node <NODE_ID> --sheet-id <SHEET_ID> --dimension ROWS --position \"3\" --length 2"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -505,6 +525,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"要隐藏/显示行或列，或设置行高/列宽时"},
 				AvoidWhen:    []string{"插入/删除行列用 insert/delete-dimension；移动行列用 move-dimension"},
 				Examples:     []string{"dws sheet update-dimension --node <NODE_ID> --sheet-id <SHEET_ID> --dimension ROWS --start-index \"1\" --length 5 --pixel-size 40"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -708,6 +731,10 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"查看已有下拉用 get-dropdown；移除下拉用 delete-dropdown"},
 				Examples:     []string{"dws sheet set-dropdown --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A2:A100\" --options '[{\"value\":\"选项1\"},{\"value\":\"选项2\"}]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "multi-select", Property: "enableMultiSelect"},
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	setDropdownCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -761,6 +788,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"设置下拉用 set-dropdown；删除下拉用 delete-dropdown；判空看 hasDropdown"},
 				Examples:     []string{"dws sheet get-dropdown --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A2:A100\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	getDropdownCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -807,6 +837,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"需要移除下拉约束但保留单元格已有值时"},
 				AvoidWhen:    []string{"只改选项用 set-dropdown 覆盖；清单元格内容用 range clear"},
 				Examples:     []string{"dws sheet delete-dropdown --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A2:A100\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

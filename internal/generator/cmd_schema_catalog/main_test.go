@@ -117,6 +117,15 @@ func TestCrossPlatformCoverageGenerateSchemaCatalogFailureEdges(t *testing.T) {
 	if err := generateSchemaCatalogWithResolver(".", root, "", output, "", resolver); err == nil || !strings.Contains(err.Error(), "write schema catalog") {
 		t.Fatalf("write error = %v", err)
 	}
+	writeCatalogFile = func(string, []byte, os.FileMode) error { return nil }
+	originalMetaIndex := writeCatalogMetaIndex
+	t.Cleanup(func() { writeCatalogMetaIndex = originalMetaIndex })
+	writeCatalogMetaIndex = func(cli.SchemaCatalogSnapshot, string) error {
+		return errors.New("meta-index")
+	}
+	if err := generateSchemaCatalogWithResolver(".", root, "", output, "", resolver); err == nil || !strings.Contains(err.Error(), "meta-index") {
+		t.Fatalf("meta-index write error = %v", err)
+	}
 
 	if got := resolveCatalogRootPath("root", "relative.json"); got != filepath.Join("root", "relative.json") {
 		t.Fatalf("resolved path = %q", got)
@@ -129,7 +138,7 @@ func TestCrossPlatformCoverageGenerateSchemaCatalogFailureEdges(t *testing.T) {
 	if err := os.WriteFile(surface, []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateCatalogOutputIsolation(repositoryRoot, filepath.Join(t.TempDir(), "catalog.json"), filepath.Join(t.TempDir(), "schema_meta_index.json"), surface); err != nil {
+	if err := validateCatalogOutputIsolation(repositoryRoot, filepath.Join(t.TempDir(), "catalog.json"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), surface); err != nil {
 		t.Fatalf("surface isolation input rejected safe output: %v", err)
 	}
 }
@@ -269,7 +278,7 @@ func TestValidateDeprecatedSurfaceAllowsOmittedCompatibilityFlag(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogOutputIsolationProtectsEveryInputLayer(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLayer(t *testing.T) {
 	root := t.TempDir()
 	files := []string{
 		"skills/mono/SKILL.md",
@@ -278,7 +287,7 @@ func TestValidateCatalogOutputIsolationProtectsEveryInputLayer(t *testing.T) {
 		"internal/cli/schema_mcp_metadata.json",
 		"internal/cli/schema_mcp_service_review.json",
 		"internal/cli/schema_parameter_bindings.json",
-		"internal/cli/schema_command_exclusions.json",
+		"internal/cli/schema_command_exclusions.go",
 	}
 	for _, relative := range files {
 		path := filepath.Join(root, relative)
@@ -305,19 +314,19 @@ func TestValidateCatalogOutputIsolationProtectsEveryInputLayer(t *testing.T) {
 		{name: "mcp metadata", output: metadataDir, want: "pinned MCP metadata"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			err := validateCatalogOutputIsolation(root, test.output, filepath.Join(t.TempDir(), "schema_meta_index.json"), "")
+			err := validateCatalogOutputIsolation(root, test.output, filepath.Join(t.TempDir(), "schema_meta_index.gob"), "")
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("validateCatalogOutputIsolation() error = %v, want %q", err, test.want)
 			}
 		})
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "internal/cli/schema_catalog"), filepath.Join(root, "internal/cli/schema_meta_index.json"), ""); err != nil {
+	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "internal/cli/schema_catalog"), filepath.Join(root, "internal/cli/schema_meta_index.gob"), ""); err != nil {
 		t.Fatalf("safe output rejected: %v", err)
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(t.TempDir(), "schema_catalog"), filepath.Join(t.TempDir(), "schema_meta_index.json"), ""); err != nil {
+	if err := validateCatalogOutputIsolation(root, filepath.Join(t.TempDir(), "schema_catalog"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), ""); err != nil {
 		t.Fatalf("external temporary output rejected: %v", err)
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "skills/mono/overwrite.json"), filepath.Join(t.TempDir(), "schema_meta_index.json"), ""); err == nil || !strings.Contains(err.Error(), "not a canonical generated delivery target") {
+	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "skills/mono/overwrite.json"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), ""); err == nil || !strings.Contains(err.Error(), "not a canonical generated delivery target") {
 		t.Fatalf("non-canonical repository output error = %v", err)
 	}
 }

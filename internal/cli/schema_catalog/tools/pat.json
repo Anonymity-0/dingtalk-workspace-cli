@@ -140,7 +140,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -149,7 +149,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "授予指定 scope 的操作权限。\n\nscope 格式: \u003cproduct\u003e.\u003centity\u003e:\u003cpermission\u003e\n  例: aitable.record:query  chat.message:list  calendar.event:get\n\ngrantType 规则:\n  once       一次性，执行一次后自动失效\n  session    当前会话有效，需要 --session-id\n  permanent  永久有效（默认）\n\n批量授权:\n  dws pat chmod 支持一次传多个 scope 直接批量授予。\n  也支持 --products / --product 按产品编码批量展开 scope 模板，\n  --domains / --domain 按产品域批量展开 scope 模板，\n  --recommend 使用服务端推荐 scope 集合。\n  使用产品 / 域 / 推荐集合时，CLI 会先生成 batch plan，确认\n  selected / skipped / pending，再对 selected scopes 执行 batch grant；\n  --dry-run 只返回授权计划，不写入授权。真正执行批量授权必须显式\n  添加 --yes；未加 --yes 时 CLI 会阻断并提示 agent 先确认。\n\nagentCode 配置:\n  可通过 --agentCode 或 DINGTALK_DWS_AGENTCODE\n  指定；未传 agentCode 时，CLI 会省略该字段并由服务端默认兜底。"
@@ -312,7 +312,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -321,7 +321,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "授予指定权限"
@@ -1500,7 +1500,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1509,7 +1509,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "配置 PAT 授权时是否打开浏览器"

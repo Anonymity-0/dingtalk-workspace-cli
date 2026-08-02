@@ -1145,6 +1145,9 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 				AvoidWhen:    []string{"创建在线电子表格用 sheet create；复制已有 Base 用 base copy"},
 				Examples:     []string{"dws aitable base create --name \"项目跟踪\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "baseName"},
+			},
 		},
 	})
 
@@ -1181,6 +1184,10 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 				UseWhen:      []string{"需要重命名 AI 表格 Base 时"},
 				AvoidWhen:    []string{"改数据表名用 table update；删 Base 用 base delete"},
 				Examples:     []string{"dws aitable base update --base-id <BASE_ID> --name \"新名称\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "desc", Property: "description"},
+				{Name: "name", Property: "newBaseName"},
 			},
 		},
 	})
@@ -1256,6 +1263,9 @@ MCP 层不会会自动解析 URL，必须直接传入 dentryUuid 以避免报错
 				UseWhen:      []string{"需要复制 AI 表格到另一文件夹，可选 --only-struct 时"},
 				AvoidWhen:    []string{"新建空白 Base 用 base create"},
 				Examples:     []string{"dws aitable base copy --base-id <BASE_ID> --target-folder-id <FOLDER_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "only-struct", Property: "onlyCopyMeta"},
 			},
 		},
 	})
@@ -1391,6 +1401,9 @@ config 结构参考：
 				AvoidWhen:    []string{"新建整个 Base 用 base create；只加字段用 field create"},
 				Examples:     []string{"dws aitable table create --base-id <BASE_ID> --name \"任务\" --fields '[]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "tableName"},
+			},
 		},
 	})
 
@@ -1450,6 +1463,9 @@ config 结构参考：
 				UseWhen:      []string{"需要修改数据表名称时"},
 				AvoidWhen:    []string{"改字段用 field update；删表用 table delete；调字段顺序用 view update visibleFieldIds"},
 				Examples:     []string{"dws aitable table update --base-id <BASE_ID> --table-id <TABLE_ID> --name \"新表名\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "newTableName"},
 			},
 		},
 	})
@@ -1722,6 +1738,9 @@ newFieldName、config、aiConfig 至少传入一项。
 				UseWhen:      []string{"需要重命名字段或改选项/公式等配置且类型不变时"},
 				AvoidWhen:    []string{"换类型需删重建；删除用 field delete；新增用 field create"},
 				Examples:     []string{"dws aitable field update --base-id <BASE_ID> --table-id <TABLE_ID> --field-id <FIELD_ID> --name \"新字段名\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "newFieldName"},
 			},
 		},
 	})
@@ -2698,6 +2717,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				AvoidWhen:    []string{"修改用 update card"},
 				Examples:     []string{"dws aitable view get card --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
+			},
 		},
 	})
 
@@ -2721,6 +2743,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				UseWhen:      []string{"查看甘特/时间条配置时"},
 				AvoidWhen:    []string{"修改用 update timebar"},
 				Examples:     []string{"dws aitable view get timebar --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
 			},
 		},
 	})
@@ -2746,6 +2771,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				AvoidWhen:    []string{"修改用 view update aggregate"},
 				Examples:     []string{"dws aitable view get aggregate --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
+			},
 		},
 	})
 
@@ -2769,6 +2797,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				UseWhen:      []string{"查看视图 filter 规则时"},
 				AvoidWhen:    []string{"修改用 update filter；记录级临时筛选用 record query --filters"},
 				Examples:     []string{"dws aitable view get filter --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
 			},
 		},
 	})
@@ -2794,6 +2825,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				AvoidWhen:    []string{"修改用 update sort；临时排序可用 record query --sort"},
 				Examples:     []string{"dws aitable view get sort --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
+			},
 		},
 	})
 
@@ -2817,6 +2851,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				UseWhen:      []string{"查看分组规则时"},
 				AvoidWhen:    []string{"修改用 update group"},
 				Examples:     []string{"dws aitable view get group --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
 			},
 		},
 	})
@@ -2842,6 +2879,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				AvoidWhen:    []string{"调整顺序/显隐用 update visible-fields（这是调字段顺序的入口）"},
 				Examples:     []string{"dws aitable view get visible-fields --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
+			},
 		},
 	})
 
@@ -2865,6 +2905,9 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				UseWhen:      []string{"查看字段列宽映射时"},
 				AvoidWhen:    []string{"修改用 update field-widths"},
 				Examples:     []string{"dws aitable view get field-widths --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
 			},
 		},
 	})
@@ -2930,6 +2973,10 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 				UseWhen:      []string{"需要新建某种类型的视图时；创建表单也可用 form create"},
 				AvoidWhen:    []string{"更新视图配置用对应 view update-*；删除用 view delete"},
 				Examples:     []string{"dws aitable view create --base-id <BASE_ID> --table-id <TABLE_ID> --view-type Grid --name \"默认表格\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "desc", Property: "viewDescription"},
+				{Name: "name", Property: "viewName"},
 			},
 		},
 	})
@@ -3090,7 +3137,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "json", Required: boolPtr(false)},
+				{Name: "json", Property: "config.ganttTimebar", Required: boolPtr(false)},
+				{Name: "color-configs", Property: "config.ganttTimebar.colorConfigs"},
+				{Name: "display-field-id", Property: "config.ganttTimebar.displayFieldId"},
+				{Name: "end-field", Property: "config.ganttTimebar.endField"},
+				{Name: "official-holiday", Property: "config.ganttTimebar.officialHoliday"},
+				{Name: "start-field", Property: "config.ganttTimebar.startField"},
+				{Name: "timeline-scale", Property: "config.ganttTimebar.timelineScale"},
 			},
 		},
 	})
@@ -3245,7 +3298,8 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				Examples:     []string{"dws aitable view update visible-fields --base-id BASE_ID --table-id TABLE_ID --view-id VIEW_ID --field-ids fld1,fld2,fld3"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "field-ids", Required: boolPtr(true)},
+				{Name: "field-ids", Property: "config.visibleFieldIds", Required: boolPtr(true)},
+				{Name: "json", Property: "config.visibleFieldIds"},
 			},
 		},
 	})
@@ -3273,6 +3327,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				AvoidWhen:    []string{"一次性查询过滤用 record query --filters"},
 				Examples:     []string{"dws aitable view update filter --view-id VIEW_ID --json '[{\"operator\":\"and\",\"operands\":[{\"operator\":\"eq\",\"operands\":[\"fldX\",\"value\"]}]}]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "json", Property: "config.filter"},
+			},
 		},
 	})
 
@@ -3298,6 +3355,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				AvoidWhen:    []string{"一次性查询排序用 record query --sort"},
 				Examples:     []string{"dws aitable view update sort --view-id VIEW_ID --json '[{\"fieldId\":\"fldX\",\"direction\":\"asc\"}]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "json", Property: "config.sort"},
+			},
 		},
 	})
 
@@ -3322,6 +3382,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				UseWhen:      []string{"设置分组字段时"},
 				AvoidWhen:    []string{"只读用 get group"},
 				Examples:     []string{"dws aitable view update group --view-id VIEW_ID --json '[{\"fieldId\":\"fldX\",\"direction\":\"asc\"}]'"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "json", Property: "config.group"},
 			},
 		},
 	})
@@ -3354,6 +3417,9 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 				UseWhen:      []string{"只需改视图名称时"},
 				AvoidWhen:    []string{"改筛选/排序等用对应 update-*"},
 				Examples:     []string{"dws aitable view update name --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID> --name \"新视图名\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "newViewName"},
 			},
 		},
 	})
@@ -3609,6 +3675,9 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 				AvoidWhen:    []string{"修改用 update fill-color-rule"},
 				Examples:     []string{"dws aitable view get fill-color-rule --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "view-id", Property: "viewIds"},
+			},
 		},
 	})
 
@@ -3660,6 +3729,9 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 				AvoidWhen:    []string{"只读用 get fill-color-rule"},
 				Examples:     []string{"dws aitable view update fill-color-rule --view-id GRID_ID --json '[]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "json", Property: "conditionalFormats"},
+			},
 		},
 	})
 
@@ -3700,6 +3772,10 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 				UseWhen:      []string{"需要基于现有视图复制一份时"},
 				AvoidWhen:    []string{"新建空白视图用 view create"},
 				Examples:     []string{"dws aitable view duplicate --base-id <BASE_ID> --table-id <TABLE_ID> --view-id <VIEW_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "new-name", Property: "newViewName"},
+				{Name: "view-id", Property: "sourceViewId"},
 			},
 		},
 	})
@@ -4609,7 +4685,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			},
 			// Agent prefers --name; runtime still accepts --config alone.
 			Parameters: []contract.ParamDecl{
-				{Name: "name", Required: boolPtr(true)},
+				{Name: "name", Property: "config.name", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -4667,7 +4743,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			},
 			// Agent prefers --name; runtime still accepts --config alone.
 			Parameters: []contract.ParamDecl{
-				{Name: "name", Required: boolPtr(true)},
+				{Name: "name", Property: "config.name", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -5225,6 +5301,9 @@ export-format 可选值：excel、attachment、excel_and_attachment、excel_with
 				UseWhen:      []string{"需要导出 Base/表/视图数据为文件时；scope=table 需 table-id，scope=view 需 table+view"},
 				AvoidWhen:    []string{"导入用 import；电子表格导出用 sheet export"},
 				Examples:     []string{"dws aitable export data --base-id <BASE_ID> --scope table --table-id <TABLE_ID> --export-format excel"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "export-format", Property: "format"},
 			},
 		},
 	})
@@ -6686,6 +6765,9 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				UseWhen:      []string{"走 aitable create 别名新建 Base 时"},
 				AvoidWhen:    []string{"推荐主路径 aitable base create；电子表格用 sheet create"},
 				Examples:     []string{"dws aitable create --name \"项目跟踪\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "baseName"},
 			},
 		},
 	})

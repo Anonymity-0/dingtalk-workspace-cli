@@ -147,6 +147,9 @@ func newSheetCommand() *cobra.Command {
 				AvoidWhen:    []string{"禁止用 range read 拼 xlsx；本地已有 xlsx 节点用 doc download；Agent 不要外层再轮询"},
 				Examples:     []string{"dws sheet export --node <NODE_ID> --output ./report.xlsx"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	importCmd := newSheetImportCmd()

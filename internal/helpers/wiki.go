@@ -213,6 +213,7 @@ func newWikiCommand() *cobra.Command {
 			},
 			// name is validated in RunE; publish required via ParamDecl
 			Parameters: []contract.ParamDecl{
+				{Name: "desc", Property: "description"},
 				{Name: "name", Required: boolPtr(true)},
 			},
 		},
@@ -257,7 +258,7 @@ func newWikiCommand() *cobra.Command {
 			},
 			// workspace is validated in RunE; publish required via ParamDecl
 			Parameters: []contract.ParamDecl{
-				{Name: "workspace", Required: boolPtr(true)},
+				{Name: "workspace", Property: "workspaceId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -388,6 +389,10 @@ func newWikiCommand() *cobra.Command {
 				AvoidWhen:    []string{"直接列全部知识库用 space list；我的文档用 list --type myWikiSpace"},
 				Examples:     []string{"dws wiki space search --query \"产品文档\" --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "pageSize"},
+				{Name: "query", Property: "keyword"},
+			},
 		},
 	})
 
@@ -461,6 +466,9 @@ func newWikiCommand() *cobra.Command {
 					"未确认或只要看详情用 space get",
 				},
 				Examples: []string{"dws wiki space delete --workspace <workspaceId> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -546,6 +554,11 @@ func newWikiCommand() *cobra.Command {
 					"dws wiki member add --workspace <WS_ID> --users uid1,uid2 --role EDITOR --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -610,6 +623,11 @@ func newWikiCommand() *cobra.Command {
 				UseWhen:      []string{"调整知识库成员角色（如升为 EDITOR/MANAGER）时"},
 				AvoidWhen:    []string{"新加成员用 add；移除用 remove；OWNER 不可经此变更"},
 				Examples:     []string{"dws wiki member update --workspace <WS_ID> --users uid1 --role EDITOR --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -676,6 +694,11 @@ ORG 类型授权不会出现在查询结果中。`,
 				},
 				Examples: []string{"dws wiki member list --workspace <WS_ID> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "filter-role", Property: "filterRoleIds"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -733,6 +756,10 @@ ORG 类型授权不会出现在查询结果中。`,
 					"OWNER 不可移除此接口",
 				},
 				Examples: []string{"dws wiki member remove --workspace <WS_ID> --users uid1 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -821,6 +848,12 @@ ORG 类型授权不会出现在查询结果中。`,
 					"dws wiki node list --workspace <workspaceId> --folder <parentNodeId> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "folder", Property: "folderId"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	nodeListCmd.Flags().String("workspace", "", "知识库 ID (必填)")
@@ -895,6 +928,10 @@ ORG 类型授权不会出现在查询结果中。`,
 					"dws wiki node create --workspace <workspaceId> --name \"方案目录\" --type folder --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	nodeCreateCmd.Flags().String("workspace", "", "知识库 ID (必填)")
@@ -954,6 +991,11 @@ ORG 类型授权不会出现在查询结果中。`,
 				},
 				Examples: []string{"dws wiki node copy --workspace <workspaceId> --node <nodeId> --folder <targetFolderId> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	nodeCopyCmd.Flags().String("workspace", "", "知识库 ID (必填)")
@@ -1011,6 +1053,11 @@ ORG 类型授权不会出现在查询结果中。`,
 				AvoidWhen:    []string{"要保留副本用 node copy / drive copy"},
 				Examples:     []string{"dws wiki node move --workspace <workspaceId> --node <nodeId> --folder <targetFolderId> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 	nodeMoveCmd.Flags().String("workspace", "", "知识库 ID (必填)")
@@ -1061,6 +1108,9 @@ ORG 类型授权不会出现在查询结果中。`,
 					"未确认或 node 不明时不要删",
 				},
 				Examples: []string{"dws wiki node delete --workspace <workspaceId> --node <nodeId> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1122,6 +1172,12 @@ ORG 类型授权不会出现在查询结果中。`,
 					"dws wiki node search --workspace <workspaceId> --query \"方案\" --format json",
 					"dws wiki node search --workspace <workspaceId> --query \"周报\" --extensions adoc --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "query", Property: "keyword"},
+				{Name: "workspace", Property: "workspaceIds"},
 			},
 		},
 	})

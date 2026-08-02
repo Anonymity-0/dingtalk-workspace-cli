@@ -45,7 +45,9 @@ func TestCrossPlatformCoverageSchemaParameterBindingSnapshotAuditEdges(t *testin
 		want   string
 	}{
 		{name: "manifest", mutate: func(s *schemaParameterBindingSnapshot) { s.Baseline.Manifest = " wrong " }, want: "must declare manifest"},
-		{name: "empty active", mutate: func(s *schemaParameterBindingSnapshot) { s.Bindings = nil }, want: "active manifest is empty"},
+		{name: "empty active canonical group", mutate: func(s *schemaParameterBindingSnapshot) {
+			s.Bindings = map[string]map[string]string{"sample.read": {}}
+		}, want: "contains no bindings"},
 		{name: "correction key", mutate: func(s *schemaParameterBindingSnapshot) {
 			s.Corrections = map[string]schemaParameterBindingCorrection{"bad": {}}
 		}, want: "correction: invalid exact"},
@@ -203,8 +205,14 @@ func TestCrossPlatformCoverageSchemaParameterBindingHelpersAndLoaderErrors(t *te
 		t.Fatal("candidate provenance lookup failed")
 	}
 
+	// nil/empty active manifests are valid after Phase 2 (hash of JSON []).
+	if _, err := schemaParameterBindingManifestHash(nil); err != nil {
+		t.Fatalf("empty/nil bindings rejected: %v", err)
+	}
+	if _, err := schemaParameterBindingManifestHash(map[string]map[string]string{}); err != nil {
+		t.Fatalf("empty bindings rejected: %v", err)
+	}
 	manifestCases := []map[string]map[string]string{
-		nil,
 		{" bad": {"id": "value"}},
 		{"sample.read": {}},
 		{"sample.read": {" bad": "value"}},

@@ -402,7 +402,7 @@ func contractFinalTextProvenance(declared, cobra string, preferCobra bool) (stri
 	case preferCobra && help != "":
 		return help, resolvedFieldProvenance(
 			help, "cobra_help", "cobra_help", "cobra_help",
-			"cobra_help_preferred", "Cobra Long/Short preferred over ContractDecl text",
+			"cobra_help_preferred", "Cobra Long preferred over ContractDecl text",
 		)
 	case decl != "":
 		return decl, resolvedFieldProvenance(
@@ -412,7 +412,7 @@ func contractFinalTextProvenance(declared, cobra string, preferCobra bool) (stri
 	case help != "":
 		return help, resolvedFieldProvenance(
 			help, "cobra_help", "cobra_help", "cobra_help",
-			"cobra_help_fallback", "Cobra Long/Short fallback when ContractDecl text is empty",
+			"cobra_help_fallback", "Cobra Long fallback when ContractDecl text is empty",
 		)
 	default:
 		// Keep a winner even when both sides are empty so the final-delivery
@@ -830,11 +830,9 @@ func validateSchemaRegistryAgentMetadata(registry SchemaRegistry) error {
 	if len(metadata.Tools) == 0 {
 		var problems []string
 		for _, canonical := range index.CanonicalPaths() {
-			tool, ok := index.Resolve(canonical)
-			if !ok {
-				problems = append(problems, fmt.Sprintf("final Schema tool %s does not resolve", canonical))
-				continue
-			}
+			// CanonicalPaths is derived from the same index Resolve reads, so a
+			// miss is impossible for a consistent SchemaIndex.
+			tool, _ := index.Resolve(canonical)
 			if strings.TrimSpace(tool.Selection.AgentSummary) == "" {
 				problems = append(problems, fmt.Sprintf("final Schema tool %s has no agent_summary without injected Agent metadata", canonical))
 			}

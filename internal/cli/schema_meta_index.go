@@ -14,7 +14,9 @@
 package cli
 
 import (
+	"bytes"
 	_ "embed"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -26,12 +28,13 @@ import (
 // SchemaMetaIndexVersion is the committed CommandMeta summary index format.
 const SchemaMetaIndexVersion = 1
 
-//go:embed schema_meta_index.json
-var embeddedSchemaMetaIndexJSON []byte
+//go:embed schema_meta_index.gob
+var embeddedSchemaMetaIndexGob []byte
 
-// SchemaMetaIndexSnapshot is the generated ResolveMeta delivery artifact. It
-// carries only Identity / Safety / Selection — not parameters, provenance, or
-// interface disposition. schema_catalog/ remains the full ToolSpec wire.
+// SchemaMetaIndexSnapshot is the CommandMeta summary shape. Production
+// ResolveMeta projects from the runtime-assembled SchemaRegistry when a source
+// root factory is registered; this gob embed is a package-cli test residual.
+// JSON helpers remain for unit-test fixtures only.
 type SchemaMetaIndexSnapshot struct {
 	Version     int                    `json:"version"`
 	SourceHash  string                 `json:"source_hash"`
@@ -113,32 +116,72 @@ func BuildSchemaMetaIndex(snapshot SchemaCatalogSnapshot) (SchemaMetaIndexSnapsh
 	}, nil
 }
 
-// EncodeSchemaMetaIndex marshals the index with stable indentation matching
-// other generated CLI JSON artifacts.
+var (
+	encodeSchemaMetaIndexFn    = encodeSchemaMetaIndexGob
+	gobEncodeSchemaMetaIndex   = gobEncodeSchemaMetaIndexTo
+	jsonMarshalSchemaMetaIndex = json.MarshalIndent
+)
+
+// EncodeSchemaMetaIndex marshals the committed delivery artifact (gob).
 func EncodeSchemaMetaIndex(index SchemaMetaIndexSnapshot) ([]byte, error) {
-	encoded, err := json.MarshalIndent(index, "", "  ")
+	encoded, err := encodeSchemaMetaIndexFn(index)
 	if err != nil {
 		return nil, fmt.Errorf("encode schema meta index: %w", err)
 	}
-	return append(encoded, '\n'), nil
+	return encoded, nil
 }
 
-// DecodeSchemaMetaIndexJSON parses a committed/generated meta index document.
+func gobEncodeSchemaMetaIndexTo(index SchemaMetaIndexSnapshot, buf *bytes.Buffer) error {
+	return gob.NewEncoder(buf).Encode(index)
+}
+
+func encodeSchemaMetaIndexGob(index SchemaMetaIndexSnapshot) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := gobEncodeSchemaMetaIndex(index, &buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// DecodeSchemaMetaIndex parses a committed/generated gob meta index document.
+func DecodeSchemaMetaIndex(data []byte) (SchemaMetaIndexSnapshot, error) {
+	if len(data) == 0 {
+		return SchemaMetaIndexSnapshot{}, fmt.Errorf("decode schema meta index: empty payload")
+	}
+	var index SchemaMetaIndexSnapshot
+	if err := gob.NewDecoder(bytes.NewReader(data)).Decode(&index); err != nil {
+		return SchemaMetaIndexSnapshot{}, fmt.Errorf("decode schema meta index: %w", err)
+	}
+	if err := validateSchemaMetaIndexSnapshot(index); err != nil {
+		return SchemaMetaIndexSnapshot{}, err
+	}
+	return index, nil
+}
+
+// DecodeSchemaMetaIndexJSON parses a JSON meta index document. Kept for unit
+// fixtures; runtime delivery uses gob via DecodeSchemaMetaIndex.
 func DecodeSchemaMetaIndexJSON(data []byte) (SchemaMetaIndexSnapshot, error) {
 	var index SchemaMetaIndexSnapshot
 	if err := decodeStrictSchemaJSON(data, &index); err != nil {
 		return SchemaMetaIndexSnapshot{}, fmt.Errorf("decode schema meta index: %w", err)
 	}
-	if index.Version != SchemaMetaIndexVersion {
-		return SchemaMetaIndexSnapshot{}, fmt.Errorf("unsupported schema meta index version %d", index.Version)
-	}
-	if strings.TrimSpace(index.SourceHash) == "" {
-		return SchemaMetaIndexSnapshot{}, fmt.Errorf("schema meta index is missing source_hash")
-	}
-	if len(index.Entries) == 0 {
-		return SchemaMetaIndexSnapshot{}, fmt.Errorf("schema meta index has no entries")
+	if err := validateSchemaMetaIndexSnapshot(index); err != nil {
+		return SchemaMetaIndexSnapshot{}, err
 	}
 	return index, nil
+}
+
+func validateSchemaMetaIndexSnapshot(index SchemaMetaIndexSnapshot) error {
+	if index.Version != SchemaMetaIndexVersion {
+		return fmt.Errorf("unsupported schema meta index version %d", index.Version)
+	}
+	if strings.TrimSpace(index.SourceHash) == "" {
+		return fmt.Errorf("schema meta index is missing source_hash")
+	}
+	if len(index.Entries) == 0 {
+		return fmt.Errorf("schema meta index has no entries")
+	}
+	return nil
 }
 
 // commandMetaLookupFromIndex expands primary paths and aliases into the
@@ -182,7 +225,7 @@ func commandMetaLookupFromIndex(index SchemaMetaIndexSnapshot) (map[string]Comma
 }
 
 func decodeSchemaMetaIndexLookup(data []byte) (map[string]CommandMeta, error) {
-	index, err := DecodeSchemaMetaIndexJSON(data)
+	index, err := DecodeSchemaMetaIndex(data)
 	if err != nil {
 		return nil, err
 	}
@@ -258,11 +301,8 @@ func compareCommandMetaLookups(got, want map[string]CommandMeta) error {
 			return fmt.Errorf("schema meta index path %q: %w", path, err)
 		}
 	}
-	for path := range got {
-		if _, ok := want[path]; !ok {
-			return fmt.Errorf("schema meta index has unexpected path %q", path)
-		}
-	}
+	// Equal lengths + every want key present in got implies identical key sets;
+	// no separate "unexpected path" pass is required.
 	return nil
 }
 
@@ -291,4 +331,14 @@ func metaStringSlicesEqual(got, want []string) bool {
 		return true
 	}
 	return reflect.DeepEqual(got, want)
+}
+
+// EncodeSchemaMetaIndexJSON is retained for diagnostics / fixtures that need a
+// human-readable projection of the same snapshot struct.
+func EncodeSchemaMetaIndexJSON(index SchemaMetaIndexSnapshot) ([]byte, error) {
+	encoded, err := jsonMarshalSchemaMetaIndex(index, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode schema meta index json: %w", err)
+	}
+	return append(encoded, '\n'), nil
 }

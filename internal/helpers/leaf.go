@@ -316,10 +316,9 @@ func installContractRunEPipeline(cmd *cobra.Command, rt *contractRuntime) {
 			// ConfirmSafety cannot undo local side effects, and --yes would
 			// falsely green-light them after the fact. Side-effect leaves must
 			// declare Validate (confirm-before-RunE) or dispatch through the
-			// gated CallTool path. Dry-run previews may finish without CallTool.
-			if corecmd.BoolFlag(c, "dry-run") {
-				return nil
-			}
+			// gated CallTool path. Dry-run already short-circuits above (before
+			// the deferred confirm wrapper is installed), so it cannot reach
+			// this fail-closed branch.
 			return fmt.Errorf("contract: user_required confirmation was never obtained via CallTool for %q; add Validate for local side effects or dispatch through deps.Caller.CallTool", c.Name())
 		}
 		return nil

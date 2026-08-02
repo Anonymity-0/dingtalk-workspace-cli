@@ -30,14 +30,13 @@ import (
 
 const SchemaCatalogSnapshotVersion = 1
 
-// The release Catalog is committed as a per-product split so concurrent
-// feature PRs only rewrite the shard for the product they touch:
+// Committed schema_catalog/ shards are a residual package-cli test fixture and
+// decode-path coverage target. Production delivery assembles via
+// RegisterSchemaSourceRoot → ResolveSchemaBuild (see schema_source_root.go) and
+// does not treat these files as the Agent contract authority.
 //
 //	schema_catalog/catalog.json        global envelope + Catalog map
 //	schema_catalog/tools/<product>.json   that product's leaf ToolSpecs
-//
-// The loader reassembles the exact same SchemaCatalogSnapshot, so the
-// source_hash integrity check is identical to the single-file layout.
 //
 //go:embed schema_catalog/catalog.json
 var embeddedSchemaCatalogEnvelopeJSON []byte
@@ -80,18 +79,39 @@ var (
 
 var runtimeEmbeddedSchemaCatalogLazyLoadCount atomic.Uint64
 
+var assembleEmbeddedSchemaCatalogHook = assembleEmbeddedSchemaCatalog
+
+func registryToSnapshotPayload(registry SchemaRegistry) (SchemaCatalogSnapshot, error) {
+	payload, err := registry.ToSnapshotPayload()
+	if err != nil {
+		return SchemaCatalogSnapshot{}, err
+	}
+	return SchemaCatalogSnapshot{Catalog: payload.Catalog, Tools: payload.Tools}, nil
+}
+
+var registryToSnapshotPayloadFn = registryToSnapshotPayload
+
+func resetEmbeddedSchemaCatalogStateForTest() {
+	runtimeEmbeddedSchemaCatalogOnce = sync.Once{}
+	runtimeEmbeddedSchemaCatalogMapsOnce = sync.Once{}
+	runtimeEmbeddedSchemaCatalog = loadedSchemaCatalog{}
+	runtimeEmbeddedSchemaCatalogErr = nil
+	runtimeEmbeddedSchemaCatalogMapsErr = nil
+	runtimeEmbeddedSchemaCatalogLazyLoadCount.Store(0)
+}
+
 func embeddedSchemaCatalog() loadedSchemaCatalog {
 	runtimeEmbeddedSchemaCatalogOnce.Do(func() {
 		runtimeEmbeddedSchemaCatalogLazyLoadCount.Add(1)
-		runtimeEmbeddedSchemaCatalog, runtimeEmbeddedSchemaCatalogErr = assembleEmbeddedSchemaCatalog()
+		runtimeEmbeddedSchemaCatalog, runtimeEmbeddedSchemaCatalogErr = assembleEmbeddedSchemaCatalogHook()
 	})
 	return runtimeEmbeddedSchemaCatalog
 }
 
 // materializeEmbeddedSchemaCatalogMaps fills Snapshot.Catalog/Tools from the
 // typed Registry for callers that still need the untyped delivery maps.
-// Production ResolveMeta does not call this (or embeddedSchemaCatalog); it
-// reads schema_meta_index.json instead.
+// Production ResolveMeta projects from deliverySchemaCatalog / registry and
+// does not call this helper.
 func materializeEmbeddedSchemaCatalogMaps() (loadedSchemaCatalog, error) {
 	_ = embeddedSchemaCatalog()
 	if runtimeEmbeddedSchemaCatalogErr != nil {
@@ -101,7 +121,7 @@ func materializeEmbeddedSchemaCatalogMaps() (loadedSchemaCatalog, error) {
 		if runtimeEmbeddedSchemaCatalog.Snapshot.Tools != nil {
 			return
 		}
-		payload, err := runtimeEmbeddedSchemaCatalog.Registry.ToSnapshotPayload()
+		payload, err := registryToSnapshotPayloadFn(runtimeEmbeddedSchemaCatalog.Registry)
 		if err != nil {
 			runtimeEmbeddedSchemaCatalogMapsErr = fmt.Errorf("materialize embedded Schema Catalog maps: %w", err)
 			return
@@ -414,7 +434,22 @@ func embeddedSchemaCatalogAvailable() bool {
 }
 
 func embeddedSchemaAllPayload() (map[string]any, error) {
-	loaded := embeddedSchemaCatalog()
+	return schemaAllPayloadFromLoaded(embeddedSchemaCatalog())
+}
+
+func embeddedSchemaOverviewPayload() (map[string]any, error) {
+	return schemaOverviewPayloadFromLoaded(embeddedSchemaCatalog())
+}
+
+func deliverySchemaAllPayload() (map[string]any, error) {
+	return schemaAllPayloadFromLoaded(deliverySchemaCatalog())
+}
+
+func deliverySchemaOverviewPayload() (map[string]any, error) {
+	return schemaOverviewPayloadFromLoaded(deliverySchemaCatalog())
+}
+
+func schemaAllPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any, error) {
 	payload, err := renderEmbeddedSchemaAll(loaded.Registry)
 	if err != nil {
 		return nil, err
@@ -426,8 +461,7 @@ func embeddedSchemaAllPayload() (map[string]any, error) {
 	return payload, nil
 }
 
-func embeddedSchemaOverviewPayload() (map[string]any, error) {
-	loaded := embeddedSchemaCatalog()
+func schemaOverviewPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any, error) {
 	payload, err := renderEmbeddedSchemaOverview(loaded.Registry)
 	if err != nil {
 		return nil, err
@@ -469,6 +503,15 @@ func exactSchemaCommand(root *cobra.Command, rawPath string) *cobra.Command {
 
 func embeddedSchemaPayload(args []string) (map[string]any, error) {
 	return schemaPayloadFromLoadedCatalog(embeddedSchemaCatalog(), args)
+}
+
+// queryDeliverySchemaPayload serves dws schema queries through the production
+// delivery loader. Completeness / invariant gates must call
+// schemaPayloadFromLoadedCatalog (or the deliverySchemaPayload var alias) with
+// an explicit loaded catalog — never this helper — to avoid an init cycle
+// through assembleSchemaCatalogFromRoot → BuildSchemaCatalogSnapshot.
+func queryDeliverySchemaPayload(args []string) (map[string]any, error) {
+	return schemaPayloadFromLoadedCatalog(deliverySchemaCatalog(), args)
 }
 
 // schemaPayloadFromLoadedCatalog is shared by the shipped schema command and

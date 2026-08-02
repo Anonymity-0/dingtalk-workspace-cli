@@ -23,19 +23,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	generateCatalogAgentMetadata = agentmetadata.GenerateFromCommandRoot
+	encodeCatalogAgentMetadata   = json.Marshal
+	injectCatalogAgentMetadata   = cli.InstallBuildTimeAgentMetadataJSON
+)
+
 // installBuildTimeAgentMetadata generates Agent metadata in-memory via the
 // shared agentmetadata pipeline and injects it into cli assembly. Nothing is
 // written under internal/cli/schema_agent_metadata/.
 func installBuildTimeAgentMetadata(rootPath string, commandRoot *cobra.Command) error {
-	metadata, _, projection, err := agentmetadata.GenerateFromCommandRoot(rootPath, commandRoot, agentmetadata.Options{})
+	metadata, _, projection, err := generateCatalogAgentMetadata(rootPath, commandRoot, agentmetadata.Options{})
 	if err != nil {
 		return err
 	}
-	encoded, err := json.Marshal(metadata)
+	encoded, err := encodeCatalogAgentMetadata(metadata)
 	if err != nil {
 		return fmt.Errorf("encode in-memory Agent metadata: %w", err)
 	}
-	if err := cli.InstallBuildTimeAgentMetadataJSON(encoded); err != nil {
+	if err := injectCatalogAgentMetadata(encoded); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "injected build-time Agent metadata: products=%d tools=%d surface_tools=%d\n",

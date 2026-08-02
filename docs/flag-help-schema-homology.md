@@ -185,7 +185,7 @@ NewLeafCommand(LeafSpec{
 | ConstParams、Bind、OmitEmpty、Transform | 同上（载荷声明，不上 flag 表） | toolArgs；Schema 不把 ConstParams 伪装成用户 flag |
 | canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
 | use_when / avoid_when / examples / agent_summary 文案 | `ContractDecl.Selection` / `ProductDecl` | Schema selection |
-| RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + `schema_parameter_bindings` | Schema `interface_*` 字段；**不得创建 flag** |
+| RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + leaf `ParamDecl.Property`（`schema_parameter_bindings` 仅剩 mapping_exclusions / removals 审计） | Schema `interface_*` 字段；**不得创建 flag** |
 | 参数描述 overlay（可选） | 生产 metadata 壳为空；参数事实走 ParamDecl / FlagSpec | **Contract/cobra 胜** |
 | 遗留 Safety 文案（迁移期） | 生产 metadata 壳为空；Safety 走 Contract | 以 Contract.Safety / runtime_gate 为准（见 §4） |
 | dry-run 正能力 | reviewed dry-run registry | Schema `dry_run` |

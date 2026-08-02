@@ -134,7 +134,7 @@ func TestAssembleSchemaRegistryFailClosedMissingContractFinal(t *testing.T) {
 	}
 }
 
-func TestAssembleSchemaRegistryFailClosedMissingProductDecl(t *testing.T) {
+func TestCrossPlatformCoverageAssembleSchemaRegistryFailClosedMissingProductDecl(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	leaf := &cobra.Command{Use: "run", Short: "Run", Run: func(*cobra.Command, []string) {}}
 	AttachRuntimeSchema(leaf, "orphan", "run", "test")

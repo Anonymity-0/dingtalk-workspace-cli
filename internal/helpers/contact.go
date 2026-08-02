@@ -525,6 +525,9 @@ func newContactCommand() *cobra.Command {
 				},
 				Examples: []string{"dws contact user search --query \"张三\" --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "query", Property: "keyword"},
+			},
 		},
 	})
 
@@ -618,6 +621,9 @@ func newContactCommand() *cobra.Command {
 					"查自己不要传 me/self，用 contact user get-self",
 				},
 				Examples: []string{"dws contact user get --ids userId1,userId2"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "user_id_list"},
 			},
 		},
 	})
@@ -785,6 +791,9 @@ func newContactCommand() *cobra.Command {
 				AvoidWhen:    []string{"需要父部门自身详情或递归组织树时不要使用；该命令只列直属子部门。"},
 				Examples:     []string{"dws contact dept list-children --dept 12345 --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "dept", Property: "deptId"},
+			},
 		},
 	})
 
@@ -820,6 +829,9 @@ func newContactCommand() *cobra.Command {
 				UseWhen:      []string{"已知 deptId，需要部门名称、人数等详情时"},
 				AvoidWhen:    []string{"只知道部门名称时应先搜索部门；需要列出直属子部门时改用子部门查询。"},
 				Examples:     []string{"dws contact dept get-info --dept 12345 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "dept", Property: "deptId"},
 			},
 		},
 	})
@@ -866,6 +878,9 @@ func newContactCommand() *cobra.Command {
 				UseWhen:      []string{"需要按一个或多个 deptId 查看部门成员名单时"},
 				AvoidWhen:    []string{"只需部门详情或人数时使用 contact dept get-info；需要直属子部门时使用 contact dept list-children"},
 				Examples:     []string{"dws contact dept list-members --depts 12345,67890 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "depts", Property: "deptIds"},
 			},
 		},
 	})
@@ -982,7 +997,7 @@ contact user profile fields 获取可用字段列表。
 				Examples: []string{"dws contact user profile get --staff-id STAFF_ID --fields fieldCode1,fieldCode2"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "fields", Required: boolPtr(false)},
+				{Name: "fields", Property: "fieldCodeList", Required: boolPtr(false)},
 				{Name: "staff-id", Required: boolPtr(false)},
 			},
 		},
@@ -1094,6 +1109,16 @@ contact user profile fields 获取可用字段列表。
 					"dws contact user dismission search --format json",
 					"dws contact user dismission search --name \"张三\" --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "depts", Property: "searchVO.depts"},
+				{Name: "end", Property: "searchVO.endDate"},
+				{Name: "hide-partner", Property: "searchVO.hidePartner"},
+				{Name: "hide-retirement", Property: "searchVO.hideRetirement"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "name", Property: "searchVO.empName"},
+				{Name: "page", Property: "pageNum"},
+				{Name: "start", Property: "searchVO.startDate"},
 			},
 		},
 	})

@@ -17,8 +17,12 @@ type SchemaMetadataLoadCounts struct {
 // RuntimeSchemaMetadataLoadCounts reads the concurrency-safe lazy loader
 // counters without triggering any loader.
 func RuntimeSchemaMetadataLoadCounts() SchemaMetadataLoadCounts {
+	catalogLoads := runtimeEmbeddedSchemaCatalogLazyLoadCount.Load()
+	if delivery := runtimeDeliverySchemaCatalogLazyCount.Load(); delivery > catalogLoads {
+		catalogLoads = delivery
+	}
 	return SchemaMetadataLoadCounts{
-		Catalog:          runtimeEmbeddedSchemaCatalogLazyLoadCount.Load(),
+		Catalog:          catalogLoads,
 		MetaIndex:        runtimeEmbeddedSchemaMetaIndexLazyCount.Load(),
 		AgentMetadata:    runtimeEmbeddedAgentMetadataLazyLoadCount.Load(),
 		MCPMetadata:      runtimeEmbeddedMCPMetadataLazyLoadCount.Load(),

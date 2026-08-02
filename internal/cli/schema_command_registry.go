@@ -94,7 +94,6 @@ var (
 	embeddedSchemaCommandRegistryData CommandRegistry
 	embeddedSchemaCommandRegistryErr  error
 	loadReviewedCommandRegistry       = loadEmbeddedCommandRegistry
-	validateReviewedParameterBindings = ValidateEmbeddedSchemaParameterBindings
 )
 
 func loadEmbeddedCommandRegistry() (CommandRegistry, error) {
@@ -498,12 +497,14 @@ func normalizeCommandAliases(aliases []string, primary string) []string {
 // BuildEffectiveCommandRegistry loads the reviewed CommandRegistry. Manual
 // Schema hint overlays are retired; every public Schema identity must already
 // exist in the reviewed registry.
+//
+// Parameter mapping audit (schema_parameter_bindings.json — mapping_exclusions /
+// removals; active bindings empty after Track 1 Phase 2) is validated at
+// BindEffectiveCommandRegistry and catalog assembly, not here. Identity
+// registry construction must not hard-depend on active binding rows.
 func BuildEffectiveCommandRegistry(root *cobra.Command) (EffectiveCommandRegistry, error) {
 	if root == nil {
 		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")
-	}
-	if err := validateReviewedParameterBindings(); err != nil {
-		return EffectiveCommandRegistry{}, fmt.Errorf("validate reviewed Schema parameter bindings: %w", err)
 	}
 	reviewed, err := loadReviewedCommandRegistry()
 	if err != nil {

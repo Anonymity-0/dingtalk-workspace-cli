@@ -11,30 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gen.go is the single entry point for reviewed CLI asset generation. It isolates
-// all //go:generate pragmas from business code so that:
-//   - schema_catalog.go contains only types + embed.
-//   - Generation is a standalone process (make generate-schema triggers this).
-//   - The authored-input → generated-output contract is documented in one place.
+// gen.go isolates //go:generate pragmas from business code.
 //
-// Generation inputs (authored, reviewed):
+// Schema Catalog delivery is NOT generated here. Production assembles Catalog
+// at runtime via ResolveSchemaBuild (声明即 Catalog); see schema_source_root.go
+// and internal/app/schema_source_register.go. cmd_schema_catalog remains a
+// CI/determinism tool (make generate-schema / check-generated-drift) and must
+// not be a committed delivery step.
+//
+// Reviewed inputs consumed by runtime assembly:
 //   1. schema_command_registry/             identity (canonical/aliases/navigation)
 //   2. contract.ProductDecl + leaf ContractFinal    Agent routing / selection prose
 //   3. schema_mcp_metadata.json            MCP server tool definitions
-//   4. schema_parameter_bindings.json      parameter type/property mappings
+//   4. schema_parameter_bindings.json      mapping exclusions / removals audit
+//                                         (active bindings empty; ParamDecl.Property owns delivery)
 //   5. param_concepts.json + schema       reviewed parameter synonym policy
 //   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //
-// schema_hints/ is retired entirely (must not reappear as a generation input).
-// schema_agent_metadata/ is retired: Catalog generation injects Agent metadata
-// in-memory and does not write or embed that intermediate JSON directory.
+// schema_hints/ and schema_agent_metadata/ are retired.
 //
-// Generation outputs (embedded at build):
-//   - schema_catalog/                      per-product catalog shards (ToolSpec wire)
-//   - schema_meta_index.json               CommandMeta summary for ResolveMeta
+// Remaining generated output from this file:
 //   - param_aliases_generated.go           per-command parameter normalization
 
 package cli
 
-//go:generate go run -a ../generator/cmd_schema_catalog -root ../.. -output schema_catalog -meta-index schema_meta_index.json
 //go:generate go run ../generator/cmd_param_aliases -root ../.. -output param_aliases_generated.go

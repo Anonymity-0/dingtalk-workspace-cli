@@ -177,6 +177,9 @@ func newPivotTableCmd() *cobra.Command {
 				AvoidWhen:    []string{"创建/更新/删除分别用 pivot-table create/update/delete"},
 				Examples:     []string{"dws sheet pivot-table list --node NODE_ID --sheet-id SHEET_ID"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	listCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -235,6 +238,7 @@ func newPivotTableCmd() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "properties", InterfaceType: "object"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -285,6 +289,7 @@ func newPivotTableCmd() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "properties", InterfaceType: "object"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -326,6 +331,9 @@ func newPivotTableCmd() *cobra.Command {
 				UseWhen:      []string{"用户明确要求永久删除指定透视表时"},
 				AvoidWhen:    []string{"只更新配置用 update"},
 				Examples:     []string{"dws sheet pivot-table delete --node NODE_ID --sheet-id SHEET_ID --pivot-table-id PT_ID"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

@@ -174,7 +174,18 @@ if ! jq -e '
 	exit 1
 fi
 
-binding_count="$(jq '[.bindings[] | length] | add' internal/cli/schema_parameter_bindings.json)"
+# Track 1 Phase 2: active bindings must stay empty (ParamDecl.Property owns
+# property delivery). The JSON remains the mapping_exclusions / removals audit.
+binding_count="$(jq '[.bindings[]? | length] | add // 0' internal/cli/schema_parameter_bindings.json)"
+exclusion_count="$(jq '(.mapping_exclusions // {}) | length' internal/cli/schema_parameter_bindings.json)"
+if [ "$binding_count" != "0" ]; then
+	printf 'schema parameter bindings active manifest must be empty after Phase 2, got count=%s\n' "$binding_count" >&2
+	exit 1
+fi
+if [ "$exclusion_count" -lt 1 ]; then
+	printf 'schema parameter mapping_exclusions ledger must remain non-empty, got count=%s\n' "$exclusion_count" >&2
+	exit 1
+fi
 if ! jq -e --slurpfile bindings internal/cli/schema_parameter_bindings.json '
   . as $catalog |
   ([$bindings[0].bindings | to_entries[] |
@@ -186,6 +197,9 @@ if ! jq -e --slurpfile bindings internal/cli/schema_parameter_bindings.json '
   ($bindings[0].baseline.sha256 | test("^sha256:[0-9a-f]{64}$")) and
   ($bindings[0].baseline.reason | length) > 0 and
   $bindings[0].baseline.reviewed == true and
+  ($bindings[0].bindings | type) == "object" and
+  ($bindings[0].bindings | length) == 0 and
+  (($bindings[0].mapping_exclusions // {}) | length) > 0 and
   all(($bindings[0].removals // {} | to_entries)[];
     (.key | length) > 0 and
     (.value.reason | length) > 0 and
@@ -208,7 +222,7 @@ if ! jq -e --slurpfile bindings internal/cli/schema_parameter_bindings.json '
     $catalog.tools[$binding.tool].parameters[$binding.flag].property == $binding.property
   )
 ' "$catalog" >/dev/null; then
-	printf 'schema parameter bindings are incomplete or differ from generated catalog: count=%s\n' "$binding_count" >&2
+	printf 'schema parameter binding audit is incomplete or differs from generated catalog: active=%s exclusions=%s\n' "$binding_count" "$exclusion_count" >&2
 	exit 1
 fi
 
@@ -256,7 +270,7 @@ fi
 # is in ./internal/app below; bindings/mapping subset remains in ./internal/cli.
 # Keep TestHomologyCIEntrypointsPinned in sync when adding gate IDs to policy.
 go test ./internal/cli \
-	-run '^(TestEmbeddedSchemaCatalog.*|TestEmbeddedSchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteEmbeddedLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesEmbeddedCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog|TestDecodeSchemaParameterBindingsFailsClosed|TestSchemaParameterBindingManifestHashIsExactContentNotCount|TestBuildEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestEmbeddedCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingCorrectionsAreReviewed|TestResolveMetaFailsClosedOnUnusableMetaIndex)$' \
+	-run '^(TestEmbeddedSchemaCatalog.*|TestEmbeddedSchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteEmbeddedLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesEmbeddedCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog|TestDecodeSchemaParameterBindingsFailsClosed|TestSchemaParameterBindingManifestHashIsExactContentNotCount|TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestEmbeddedCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingCorrectionsAreReviewed|TestResolveMetaFailsClosedOnUnusableMetaIndex|TestSchemaParameterBindingsPhase2.*)$' \
 	-count=1
 go test ./internal/cli/homology \
 	-run '^(TestUserRequiredSafetyHomologyWithRuntimeGate|TestHomologyDecisionDocPinsPathAAndGateIDs|TestMCPPassthroughAdmissionExcludesLeafAndShortcut|TestHomologyCIEntrypointsPinned)$' \

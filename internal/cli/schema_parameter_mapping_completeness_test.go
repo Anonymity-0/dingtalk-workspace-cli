@@ -351,15 +351,21 @@ func TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty(t *testing.T)
 		t.Fatalf("empty exclusion reason error = %v", err)
 	}
 	rank, precedence := runtimeSchemaSourcePriority("reviewed_mapping_exclusion")
-	if rank != runtimeSchemaRankVersionedBinding || precedence != runtimeSchemaPrecedenceMappingExclusion {
+	if rank != runtimeSchemaRankMappingExclusion || precedence != runtimeSchemaPrecedenceMappingExclusion {
 		t.Fatalf("mapping exclusion precedence = %d/%q", rank, precedence)
 	}
-	// Mapping exclusion (650) outranks native_annotation (620); retired
+	// Mapping exclusion (660) outranks ParamDecl.Property native rank (655)
+	// and the generic native_annotation rank (620); retired
 	// reviewed_manual_hint / tool_schema_hint ranks are gone.
-	native := runtimeSchemaCandidate("nativeProperty", true, "native_annotation")
+	native := runtimeSchemaStringCandidateAtRank("nativeProperty", "native_annotation", runtimeSchemaRankParamDeclProperty, runtimeSchemaPrecedenceNativeAnnotation)
 	exclusionWinner, err := resolveRuntimeSchemaCandidate("property", exclusion, native)
 	if err != nil || exclusionWinner.Source != "reviewed_mapping_exclusion" || exclusionWinner.Value != "" {
-		t.Fatalf("mapping exclusion must outrank native_annotation: winner=%#v err=%v", exclusionWinner, err)
+		t.Fatalf("mapping exclusion must outrank ParamDecl.Property: winner=%#v err=%v", exclusionWinner, err)
+	}
+	boundCandidate := runtimeSchemaStringCandidate("boundProperty", "versioned_parameter_binding")
+	paramDeclWinner, err := resolveRuntimeSchemaCandidate("property", boundCandidate, native)
+	if err != nil || paramDeclWinner.Source != "native_annotation" || paramDeclWinner.Value != "nativeProperty" {
+		t.Fatalf("ParamDecl.Property must outrank versioned binding: winner=%#v err=%v", paramDeclWinner, err)
 	}
 }
 
@@ -434,16 +440,9 @@ func TestSchemaParameterBindingCorrectionsAreReviewed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runtimeSchemaParameterBindingData() error = %v", err)
 	}
-	required := map[string]schemaParameterBindingCorrection{
-		"calendar.search_calendar --query": {
-			OldProperty: "calendarName",
-			NewProperty: "query",
-		},
-		"minutes.query_minutes_by_tag_id --limit": {
-			OldProperty: "size",
-			NewProperty: "maxResults",
-		},
-	}
+	// Phase 2 retired every active binding (and the corrections that pinned
+	// their historical remaps) to ParamDecl.Property. Remaining corrections,
+	// if any, must still match an exact active manifest row.
 	flags := finalSchemaCatalogFlagIndex(mustEmbeddedSchemaCatalogMaps(t).Snapshot.Tools)
 	for key, correction := range snapshot.Corrections {
 		flag, exists := flags[key]
@@ -461,16 +460,6 @@ func TestSchemaParameterBindingCorrectionsAreReviewed(t *testing.T) {
 		}
 		if got := snapshot.Bindings[flag.canonical][flag.flagName]; got != newProperty {
 			t.Errorf("correction %q active binding = %q, want new_property %q", key, got, newProperty)
-		}
-	}
-	for key, want := range required {
-		got, exists := snapshot.Corrections[key]
-		if !exists {
-			t.Errorf("required reviewed correction %q is missing", key)
-			continue
-		}
-		if got.OldProperty != want.OldProperty || got.NewProperty != want.NewProperty {
-			t.Errorf("correction %q = %q -> %q, want %q -> %q", key, got.OldProperty, got.NewProperty, want.OldProperty, want.NewProperty)
 		}
 	}
 }

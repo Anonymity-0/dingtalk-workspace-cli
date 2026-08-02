@@ -188,7 +188,7 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
 
 }
 
-func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
+func TestCrossPlatformCoverageAgentMetadataInterfaceProvenance(t *testing.T) {
 	selected := true
 	legacyRef := func(value string) contract.FieldProvenance {
 		raw, _ := json.Marshal(value)
@@ -277,7 +277,7 @@ func TestAgentMetadataTypedAdapterProjectsInterfaceProvenance(t *testing.T) {
 	}
 }
 
-func TestAgentMetadataTypedAdapterDoesNotLaunderInterfaceConflict(t *testing.T) {
+func TestCrossPlatformCoverageAgentMetadataInterfaceConflict(t *testing.T) {
 	selected := true
 	wrong, _ := json.Marshal("calendar.wrong_rpc")
 	provenance := contract.FieldProvenance{
@@ -298,7 +298,7 @@ func TestAgentMetadataTypedAdapterDoesNotLaunderInterfaceConflict(t *testing.T) 
 	}
 }
 
-func TestAgentProductSelectionUsesTypedAccessor(t *testing.T) {
+func TestCrossPlatformCoverageAgentProductSelectionAccessor(t *testing.T) {
 	provenance := resolvedFieldProvenance("Document operations", "manual", "manual.json", "reviewed_manual", "highest_precedence", "reviewed")
 	metadataFixture := embeddedAgentMetadata{
 		Products: map[string]agentProductMetadata{

@@ -124,6 +124,12 @@ func ValidateSelectionHints(_ string, _ string, projection RegistryProjection) e
 	return ValidateSelectionCoverage(projection)
 }
 
+var (
+	pipelineBuildEffectiveRegistry = cli.BuildEffectiveCommandRegistry
+	pipelineBindEffectiveRegistry  = cli.BindEffectiveCommandRegistry
+	pipelineGenerateMetadata       = Generate
+)
+
 func selectionHintCoverageRequired(expectedProducts, expectedTools map[string]bool) bool {
 	for _, include := range expectedProducts {
 		if include {
@@ -150,11 +156,11 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 	if rootPath == "" {
 		rootPath = "."
 	}
-	effective, err := cli.BuildEffectiveCommandRegistry(commandRoot)
+	effective, err := pipelineBuildEffectiveRegistry(commandRoot)
 	if err != nil {
 		return File{}, Stats{}, RegistryProjection{}, fmt.Errorf("build effective CommandRegistry for Agent metadata: %w", err)
 	}
-	bound, err := cli.BindEffectiveCommandRegistry(commandRoot, effective)
+	bound, err := pipelineBindEffectiveRegistry(commandRoot, effective)
 	if err != nil {
 		return File{}, Stats{}, RegistryProjection{}, fmt.Errorf("bind effective CommandRegistry for Agent metadata: %w", err)
 	}
@@ -191,7 +197,7 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 	if err := ValidateSelectionCoverage(projection); err != nil {
 		return File{}, Stats{}, RegistryProjection{}, err
 	}
-	metadata, stats, err := Generate(opts)
+	metadata, stats, err := pipelineGenerateMetadata(opts)
 	if err != nil {
 		return File{}, Stats{}, RegistryProjection{}, fmt.Errorf("generate in-memory Agent metadata: %w", err)
 	}

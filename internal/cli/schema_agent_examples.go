@@ -113,6 +113,11 @@ func ValidateEmbeddedManualAgentExampleDelivery(bound BoundCommandRegistry, regi
 	return ValidateAgentExampleDelivery(bound, registry)
 }
 
+// agentExampleSelectionHintFn is the selection source for example planning.
+// Tests may override it to inject ExampleDispositions without changing
+// ContractFinal production wiring.
+var agentExampleSelectionHintFn = contractFinalSelectionHint
+
 // BuildAgentExampleExecutionPlan validates every ContractFinal example against
 // its real BoundCommand/Cobra contract. Runtime dry-run execution is opt-in and
 // comes only from the final typed ToolSpec.
@@ -198,7 +203,7 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 		if !ok {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("example plan references unknown canonical tool %q", canonical)
 		}
-		selection := contractFinalSelectionHint(spec.PrimaryCommand)
+		selection := agentExampleSelectionHintFn(spec.PrimaryCommand)
 		var typedTool ToolSpec
 		if typedTools != nil {
 			var found bool

@@ -914,6 +914,18 @@ func newDocCommand() *cobra.Command {
 				AvoidWhen:    []string{"全局搜文件用 dws drive search；指定知识库内搜用 dws wiki node search"},
 				Examples:     []string{"dws doc search --query \"会议纪要\" --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "created-from", Property: "createdTimeFrom"},
+				{Name: "created-to", Property: "createdTimeTo"},
+				{Name: "creator-uids", Property: "creatorUserIds"},
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "editor-uids", Property: "editorUserIds"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "mentioned-uids", Property: "mentionedUserIds"},
+				{Name: "query", Property: "keyword"},
+				{Name: "visited-from", Property: "visitedTimeFrom"},
+				{Name: "visited-to", Property: "visitedTimeTo"},
+			},
 		},
 	})
 
@@ -971,6 +983,12 @@ func newDocCommand() *cobra.Command {
 					"dws doc list --folder <FOLDER_ID> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "folder", Property: "folderId"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -1015,6 +1033,9 @@ func newDocCommand() *cobra.Command {
 					"dws doc info --node <DOC_ID> --format json",
 					"dws doc info --node \"https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>\" --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1115,7 +1136,7 @@ func newDocCommand() *cobra.Command {
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "node", Required: boolPtr(true)},
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
 				{Name: "content-format", Property: "format", Required: boolPtr(false)},
 				{Name: "end-block-id", Required: boolPtr(false)},
 				{Name: "max-depth", Required: boolPtr(false), InterfaceType: "integer"},
@@ -1241,6 +1262,8 @@ func newDocCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Required: boolPtr(true)},
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -1369,7 +1392,8 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "node", Required: boolPtr(true)},
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "content-format", Property: "format"},
 			},
 		},
 	})
@@ -1438,6 +1462,10 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 				Examples: []string{"dws doc file create --name \"项目周报\" --type adoc --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -1486,6 +1514,10 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				UseWhen:      []string{"兼容入口：创建文件夹（已弃用）时"},
 				AvoidWhen:    []string{"个人空间/钉盘改用 dws drive mkdir；知识库改用 wiki node create --type folder"},
 				Examples:     []string{"dws doc folder create --name \"项目资料\" --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -1569,6 +1601,9 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 				Examples: []string{"dws doc download --node <NODE_ID> --output ./report.pdf --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 
@@ -1639,6 +1674,10 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"dws doc block list --node <DOC_ID> --format json",
 					"dws doc block list --node <DOC_ID> --start-index 0 --end-index 5 --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content-format", Property: "format"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1765,6 +1804,12 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"dws doc block insert --node <DOC_ID> --heading \"二级标题\" --level 2 --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content-format", Property: "format"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "parent-block", Property: "referenceBlockId"},
+				{Name: "ref-block", Property: "referenceBlockId"},
+			},
 		},
 	})
 
@@ -1840,6 +1885,10 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				},
 				Examples: []string{"dws doc block update --node <DOC_ID> --block-id <BLOCK_ID> --text \"新内容\" --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content-format", Property: "format"},
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 
@@ -1882,6 +1931,9 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"删整篇文档用 doc/drive delete",
 				},
 				Examples: []string{"dws doc block delete --node <DOC_ID> --block-id <BLOCK_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1927,6 +1979,11 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"dws doc copy --node <DOC_ID> --workspace <TARGET_WS_ID> --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -1967,6 +2024,11 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 					"dws doc move --node <DOC_ID> --folder <TARGET_FOLDER_ID> --format json",
 					"dws doc move --node <DOC_ID> --workspace <TARGET_WS_ID> --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})
@@ -2019,6 +2081,10 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			// No ParamDecl for --name here: the extension-stripping description
 			// belongs to drive rename (shared RPC rename_document). doc rename
 			// keeps the Cobra usage ("原样传给服务端").
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "newName"},
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 
@@ -2066,7 +2132,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				Examples: []string{"dws doc delete --node <DOC_ID> --format json"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "node", Required: boolPtr(true)},
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -2315,6 +2381,9 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 				AvoidWhen:    []string{"下载钉盘普通文件用 drive download；导出在线文档用 doc export"},
 				Examples:     []string{"dws doc media download --node <DOC_ID> --resource-id <RESOURCE_ID> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 
@@ -2464,6 +2533,12 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 					"dws doc comment list --node <DOC_ID> --type inline --resolve-status unresolved --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "type", Property: "commentType"},
+			},
 		},
 	})
 
@@ -2537,6 +2612,8 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "mention", Property: "mentionedUserIds"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -2620,6 +2697,9 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "comment-key", Property: "replyCommentKey"},
+				{Name: "mention", Property: "mentionedUserIds"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -2686,8 +2766,9 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "mention", InterfaceType: "array"},
+				{Name: "mention", Property: "mentionedUserIds", InterfaceType: "array"},
 				{Name: "mentioned-open-conversation-id", Property: "mentionedOpenConversationIds", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -2736,6 +2817,9 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				UseWhen:      []string{"用户明确要求永久删除指定文档中的某条评论（已有 commentKey）时"},
 				AvoidWhen:    []string{"只需改文案用 update；回复用 reply；目标评论不明或未确认时不要删"},
 				Examples:     []string{"dws doc comment delete --node <DOC_ID> --comment-key <COMMENT_KEY> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -2807,6 +2891,10 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 					"先 block list 取 blockId 与纯文本偏移再调用",
 				},
 				Examples: []string{"dws doc comment create-inline --node <DOC_ID> --block-id <BLOCK_ID> --start 0 --end 10 --content \"这里需要修改\" --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "mention", Property: "mentionedUserIds"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -2911,6 +2999,12 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				},
 				Examples: []string{"dws doc permission add --node <DOC_ID> --users uid1 --role READER --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -2981,6 +3075,12 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				AvoidWhen:    []string{"新授权用 add；移除用 remove"},
 				Examples:     []string{"dws doc permission update --node <DOC_ID> --users uid1 --role EDITOR --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -3046,6 +3146,12 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				AvoidWhen:    []string{"增删改权限用 add/update/remove；知识库成员用 wiki member list"},
 				Examples:     []string{"dws doc permission list --node <DOC_ID> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "filter-role", Property: "filterRoleIds"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
 		},
 	})
 
@@ -3110,6 +3216,11 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				UseWhen:      []string{"移除文档节点上指定用户权限时"},
 				AvoidWhen:    []string{"改角色用 update；知识库撤成员用 wiki member remove"},
 				Examples:     []string{"dws doc permission remove --node <DOC_ID> --users uid1 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
 			},
 		},
 	})

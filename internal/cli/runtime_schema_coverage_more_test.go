@@ -48,19 +48,19 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 }
 
 func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *testing.T) {
-	originalValidate := validateReviewedParameterBindings
+	originalValidate := bindValidateParameterBindings
 	originalRegistry := loadReviewedCommandRegistry
 	t.Cleanup(func() {
-		validateReviewedParameterBindings = originalValidate
+		bindValidateParameterBindings = originalValidate
 		loadReviewedCommandRegistry = originalRegistry
 	})
 
-	validateReviewedParameterBindings = func() error { return errors.New("bindings failed") }
+	bindValidateParameterBindings = func() error { return errors.New("bindings failed") }
 	if _, err := collectRuntimeSchemaEntries(&cobra.Command{Use: "dws"}); err == nil || !strings.Contains(err.Error(), "bindings failed") {
 		t.Fatalf("validation error = %v", err)
 	}
 
-	validateReviewedParameterBindings = func() error { return nil }
+	bindValidateParameterBindings = func() error { return nil }
 	loadReviewedCommandRegistry = func() (CommandRegistry, error) {
 		return CommandRegistry{Commands: []CommandSpec{{
 			CanonicalPath: "sample.run", PrimaryCLIPath: "sample run",

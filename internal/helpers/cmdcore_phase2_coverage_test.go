@@ -299,6 +299,18 @@ func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithout
 		t.Fatalf("CallTool calls = %d, want 0", caller.calls)
 	}
 
+	cmd.Flags().Set("dry-run", "true")
+	err = cmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() with --dry-run error = %v, want nil dry-run bypass", err)
+	}
+	if ran != 2 {
+		t.Fatalf("inner RunE ran %d times, want 2", ran)
+	}
+	if err := cmd.Flags().Set("dry-run", "false"); err != nil {
+		t.Fatal(err)
+	}
+
 	// --yes must not green-light a post-RunE confirmation: the contract error
 	// remains even when ConfirmSafety would have passed.
 	if err := cmd.Flags().Set("yes", "true"); err != nil {
@@ -308,8 +320,8 @@ func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithout
 	if err == nil || !strings.Contains(err.Error(), "never obtained via CallTool") {
 		t.Fatalf("Execute() with --yes but no CallTool error = %v, want fail-closed contract error", err)
 	}
-	if ran != 2 {
-		t.Fatalf("inner RunE ran %d times, want 2", ran)
+	if ran != 3 {
+		t.Fatalf("inner RunE ran %d times, want 3", ran)
 	}
 }
 

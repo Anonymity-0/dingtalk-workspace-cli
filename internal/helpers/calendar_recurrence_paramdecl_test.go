@@ -12,7 +12,7 @@ func TestCalendarRecurrenceParamDeclsCoverHintPins(t *testing.T) {
 	for _, d := range decls {
 		byName[d.Name] = d
 	}
-	want := map[string]string{
+	wantWhen := map[string]string{
 		"recurrence-day-of-month": "recurrence-type is absoluteMonthly or absoluteYearly",
 		"recurrence-days-of-week": "recurrence-type is weekly or relativeMonthly",
 		"recurrence-index":        "recurrence-type is relativeMonthly",
@@ -22,10 +22,21 @@ func TestCalendarRecurrenceParamDeclsCoverHintPins(t *testing.T) {
 		"recurrence-count":        "recurrence-range-type is numbered",
 		"recurrence-range-type":   "any recurrence-* flag is provided",
 	}
-	if len(decls) != len(want) {
-		t.Fatalf("calendarRecurrenceParamDecls len = %d, want %d: %#v", len(decls), len(want), decls)
+	wantProperty := map[string]string{
+		"recurrence-day-of-month":     "recurrence.pattern.dayOfMonth",
+		"recurrence-days-of-week":     "recurrence.pattern.daysOfWeek",
+		"recurrence-index":            "recurrence.pattern.index",
+		"recurrence-interval":         "recurrence.pattern.interval",
+		"recurrence-type":             "recurrence.pattern.type",
+		"recurrence-end-date":         "recurrence.range.endDate",
+		"recurrence-count":            "recurrence.range.numberOfOccurrences",
+		"recurrence-range-type":       "recurrence.range.type",
+		"recurrence-first-day-of-week": "recurrence.pattern.firstDayOfWeek",
 	}
-	for name, when := range want {
+	if len(decls) != len(wantProperty) {
+		t.Fatalf("calendarRecurrenceParamDecls len = %d, want %d: %#v", len(decls), len(wantProperty), decls)
+	}
+	for name, when := range wantWhen {
 		d, ok := byName[name]
 		if !ok {
 			t.Fatalf("missing ParamDecl %q", name)
@@ -35,6 +46,15 @@ func TestCalendarRecurrenceParamDeclsCoverHintPins(t *testing.T) {
 		}
 		if d.RequiredWhen != when {
 			t.Fatalf("%s RequiredWhen = %q, want %q", name, d.RequiredWhen, when)
+		}
+	}
+	for name, prop := range wantProperty {
+		d, ok := byName[name]
+		if !ok {
+			t.Fatalf("missing ParamDecl %q", name)
+		}
+		if d.Property != prop {
+			t.Fatalf("%s Property = %q, want %q", name, d.Property, prop)
 		}
 	}
 }

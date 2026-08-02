@@ -145,6 +145,13 @@ func newTodoCommand() *cobra.Command {
 					"dws todo task create --title \"每日站会\" --executors <USER_ID> --due \"2026-03-20T10:00:00+08:00\" --recurrence \"DTSTART:20260320T020000Z\\nRRULE:FREQ=DAILY;INTERVAL=1\"",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "due", Property: "PersonalTodoCreateVO.dueTime"},
+				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds"},
+				{Name: "priority", Property: "PersonalTodoCreateVO.priority"},
+				{Name: "recurrence", Property: "PersonalTodoCreateVO.recurrence"},
+				{Name: "title", Property: "PersonalTodoCreateVO.subject"},
+			},
 		},
 	})
 
@@ -226,6 +233,14 @@ func newTodoCommand() *cobra.Command {
 					"dws todo task create-sub --parent-id <PARENT_TASK_ID> --title \"子任务标题\" --executors <USER_ID> --due \"2026-03-20T10:00:00+08:00\"",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "due", Property: "PersonalTodoCreateVO.dueTime"},
+				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds"},
+				{Name: "parent-id", Property: "PersonalTodoCreateVO.parentId"},
+				{Name: "priority", Property: "PersonalTodoCreateVO.priority"},
+				{Name: "recurrence", Property: "PersonalTodoCreateVO.recurrence"},
+				{Name: "title", Property: "PersonalTodoCreateVO.subject"},
+			},
 		},
 	})
 
@@ -284,6 +299,10 @@ func newTodoCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "query-all", Required: boolPtr(false), InterfaceType: "boolean", Description: "为 true 时跨组织查询全部待办；默认仅查询当前组织待办"},
 				{Name: "role-types", Property: "roleTypes", Required: boolPtr(false), Description: "角色类型列表；省略时运行时默认使用 executor"},
+				{Name: "page", Property: "pageNum"},
+				{Name: "priority", Property: "priorityList"},
+				{Name: "size", Property: "pageSize"},
+				{Name: "status", Property: "todoStatus"},
 			},
 		},
 	})
@@ -372,6 +391,13 @@ func newTodoCommand() *cobra.Command {
 					"dws todo task update --task-id <taskId> --priority 40 --due \"2026-03-10T18:00:00+08:00\"",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "done", Property: "TodoUpdateRequest.isDone"},
+				{Name: "due", Property: "TodoUpdateRequest.dueTime"},
+				{Name: "priority", Property: "TodoUpdateRequest.priority"},
+				{Name: "task-id", Property: "TodoUpdateRequest.taskId"},
+				{Name: "title", Property: "TodoUpdateRequest.subject"},
+			},
 		},
 	})
 
@@ -421,6 +447,9 @@ func newTodoCommand() *cobra.Command {
 					"dws todo task done --task-id <taskId> --status true",
 					"dws todo task done --task-id <taskId> --status false",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "status", Property: "isDone"},
 			},
 		},
 	})
@@ -586,6 +615,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task add-executor --task-id <taskId> --executors userId1,userId2 --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "executors", Property: "todoExecutorsAddRequest.executorIds"},
+				{Name: "task-id", Property: "todoExecutorsAddRequest.taskId"},
+			},
 		},
 	})
 	todoTaskRemoveExecutorCmd := &cobra.Command{
@@ -631,6 +664,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task remove-executor --task-id <taskId> --executors <USER_ID_1>,<USER_ID_2>",
 					"dws todo task remove-executor --task-id <taskId> --executors userId1 --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "executors", Property: "todoExecutorsRemoveRequest.executorIds"},
+				{Name: "task-id", Property: "todoExecutorsRemoveRequest.taskId"},
 			},
 		},
 	})
@@ -679,6 +716,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task add-participant --task-id <taskId> --participants userId1,userId2 --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "participants", Property: "todoParticipantsAddRequest.participantIds"},
+				{Name: "task-id", Property: "todoParticipantsAddRequest.taskId"},
+			},
 		},
 	})
 	todoTaskRemoveParticipantCmd := &cobra.Command{
@@ -724,6 +765,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task remove-participant --task-id <taskId> --participants <USER_ID_1>,<USER_ID_2>",
 					"dws todo task remove-participant --task-id <taskId> --participants userId1 --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "participants", Property: "todoParticipantsRemoveRequest.participantIds"},
+				{Name: "task-id", Property: "todoParticipantsRemoveRequest.taskId"},
 			},
 		},
 	})
@@ -802,6 +847,12 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task add-reminder --task-id <taskId> --base-time customTime --reminder-time-stamp \"2026-03-10T18:00:00+08:00\"",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-time", Property: "todoReminderAddRequest.baseTime"},
+				{Name: "due-date-offset", Property: "todoReminderAddRequest.dueDateOffset"},
+				{Name: "reminder-time-stamp", Property: "todoReminderAddRequest.reminderTimeStamp"},
+				{Name: "task-id", Property: "todoReminderAddRequest.taskId"},
+			},
 		},
 	})
 
@@ -864,7 +915,8 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "reminder-rules", Description: "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"},
+				{Name: "reminder-rules", Property: "todoReminderUpdateRequest.reminderRules", Description: "提醒规则 JSON 数组；不传表示清除，显式传值必须为对象数组，且每条按 baseTime 提供整数 dueDateOffset 或 ISO8601 reminderTimeStamp"},
+				{Name: "task-id", Property: "todoReminderUpdateRequest.taskId"},
 			},
 		},
 	})
@@ -945,6 +997,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo task add-attachment --task-id <taskId> --file-path /path/to/file.pdf",
 					"dws todo task add-attachment --task-id <taskId> --file-path /path/to/file.pdf --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "task-id", Property: "todoAttachmentAddRequest.taskId"},
 			},
 		},
 	})
@@ -1201,6 +1256,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 					"dws todo comment list --task-id <taskId>",
 					"dws todo comment list --task-id <taskId> --page 1 --size 20",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "size", Property: "pageSize"},
 			},
 		},
 	})

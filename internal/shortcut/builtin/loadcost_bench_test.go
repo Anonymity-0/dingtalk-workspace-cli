@@ -13,7 +13,7 @@ import (
 // shortcut definitions are compiled-in struct literals registered from init(),
 // so there is no parse step at all — this times only turning them into the Cobra
 // tree. ResolveMeta no longer pays full Catalog decode (~294–360ms / ~175MB);
-// it reads schema_meta_index.json (BenchmarkResolveMetaFirstHit). Full Catalog
+// it reads schema_meta_index.gob (BenchmarkResolveMetaFirstHit). Full Catalog
 // assemble remains the dws schema / --all path.
 func BenchmarkShortcutCommands(b *testing.B) {
 	b.ReportAllocs()

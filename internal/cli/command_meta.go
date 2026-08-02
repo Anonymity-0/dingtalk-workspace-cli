@@ -14,13 +14,11 @@
 // command_meta.go provides the unified metadata consumption API. All runtime
 // consumers (help, schema, agent selection, skill generation) call ResolveMeta
 // to get a CommandMeta struct — one function, one struct, no need to know which
-// of the 6 generation layers a field comes from.
+// declaration layer a field comes from.
 //
-// This is the "simple consumption" half of the generation/consumption split:
-//   - Generation (gen.go + internal/generator/): 6 inputs → catalog snapshot
-//     + schema_meta_index.json (CommandMeta summary).
-//   - Consumption (this file): meta index → ResolveMeta → CommandMeta.
-//     Full embeddedSchemaCatalog() is reserved for dws schema / ToolSpec paths.
+// Production (app registers Schema source root): ResolveMeta projects
+// CommandMeta from the lazily assembled SchemaRegistry (声明即 Catalog).
+// Package-cli tests without a factory still decode schema_meta_index.gob.
 
 package cli
 
@@ -61,13 +59,32 @@ var (
 	metaByCLIPath     map[string]CommandMeta
 )
 
-// initMetaByCLIPath builds the cli_path → CommandMeta lookup from the embedded
-// CommandMeta summary index. It does not decode the full schema_catalog/.
-// Decode failure is fail-closed: the error is retained and ResolveMeta panics
-// rather than serving an empty map that would silently hide help Safety.
+// decodeEmbeddedSchemaMetaIndexLookupFn is the gob fallback used when no
+// Schema source root factory is registered (package-cli tests).
+var decodeEmbeddedSchemaMetaIndexLookupFn = func() (map[string]CommandMeta, error) {
+	return decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexGob)
+}
+
+func resetMetaByCLIPathStateForTest() {
+	metaByCLIPathOnce = sync.Once{}
+	metaByCLIPath = nil
+	runtimeEmbeddedSchemaMetaIndexErr = nil
+	resetDeliverySchemaCatalogStateForTest()
+}
+
 func initMetaByCLIPath() {
 	runtimeEmbeddedSchemaMetaIndexLazyCount.Add(1)
-	lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexJSON)
+	if schemaSourceRootFn != nil {
+		loaded := deliverySchemaCatalog()
+		if err := runtimeDeliverySchemaCatalogErr; err != nil {
+			runtimeEmbeddedSchemaMetaIndexErr = err
+			metaByCLIPath = nil
+			return
+		}
+		metaByCLIPath = buildMetaByCLIPath(loaded)
+		return
+	}
+	lookup, err := decodeEmbeddedSchemaMetaIndexLookupFn()
 	if err != nil {
 		runtimeEmbeddedSchemaMetaIndexErr = err
 		metaByCLIPath = nil
@@ -76,13 +93,13 @@ func initMetaByCLIPath() {
 	metaByCLIPath = lookup
 }
 
-// panicIfMetaIndexUnusable fails closed when the embedded CommandMeta summary
-// could not be decoded. Callers must not treat this as "command missing".
+// panicIfMetaIndexUnusable fails closed when CommandMeta lookup could not be
+// built. Callers must not treat this as "command missing".
 func panicIfMetaIndexUnusable(err error) {
 	if err == nil {
 		return
 	}
-	panic(fmt.Sprintf("embedded schema_meta_index.json is unusable: %v", err))
+	panic(fmt.Sprintf("schema CommandMeta index is unusable: %v", err))
 }
 
 // buildMetaByCLIPath constructs the lookup from a loaded catalog.
@@ -193,13 +210,12 @@ func registerCommandMetaAliases(lookup map[string]CommandMeta, metas []CommandMe
 
 // ResolveMeta returns the complete metadata for a command identified by its CLI
 // path (e.g. "dev app delete") or one of its compat aliases (e.g. "report list"
-// for "report inbox list"). Returns ok=false for commands not in the embedded
-// meta index (utility commands, hidden commands, shortcuts).
+// for "report inbox list"). Returns ok=false for commands not in the Schema
+// surface (utility commands, hidden commands, shortcuts).
 //
-// ResolveMeta reads schema_meta_index.json only; it never triggers the full
-// embeddedSchemaCatalog() decode used by dws schema / --all. A corrupt or
-// undecodable meta index panics (fail-closed) so help Safety cannot silently
-// disappear behind an empty lookup.
+// Production projects from the runtime-assembled SchemaRegistry. Without a
+// registered source root, it falls back to schema_meta_index.gob. Assembly or
+// decode failure panics (fail-closed) so help Safety cannot silently disappear.
 func ResolveMeta(cliPath string) (CommandMeta, bool) {
 	metaByCLIPathOnce.Do(initMetaByCLIPath)
 	panicIfMetaIndexUnusable(runtimeEmbeddedSchemaMetaIndexErr)

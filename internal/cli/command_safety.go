@@ -21,7 +21,7 @@ import (
 )
 
 // CommandSafety holds the safety metadata for a CLI command, resolved at
-// runtime via ResolveMeta (embedded schema_meta_index.json). This is a
+// runtime via ResolveMeta (embedded schema_meta_index.gob). This is a
 // read-only view — NOT a second safety source. The Catalog remains the
 // authoritative reviewed ToolSpec wire; the meta index is its Identity /
 // Safety / Selection projection for help and selection consumers.
@@ -42,8 +42,8 @@ func (s CommandSafety) ShouldRender() bool {
 
 // SafetyForCLIPath returns the safety metadata for a command identified by its
 // CLI path (e.g. "dev app delete"). Returns ok=false when the path is absent
-// from the embedded schema_meta_index.json (utility commands, hidden commands,
-// shortcuts). Delegates to ResolveMeta; it does not decode schema_catalog/.
+// from the embedded schema_meta_index.gob (utility commands, hidden commands,
+// shortcuts). Delegates to ResolveMeta (runtime registry projection or gob fallback).
 // A corrupt meta index panics via ResolveMeta (fail-closed).
 //
 // Deprecated: use ResolveMeta(cliPath).Safety for the complete metadata view.

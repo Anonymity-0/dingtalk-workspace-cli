@@ -43,9 +43,11 @@ func main() {
 	var metaIndexPath string
 	flag.StringVar(&rootPath, "root", ".", "Repository root used to protect Schema generator inputs")
 	flag.StringVar(&surfacePath, "surface", "", "Deprecated compatibility input relative to --root; when set it must equal the embedded reviewed CommandRegistry")
-	flag.StringVar(&outputPath, "output", "internal/cli/schema_catalog", "Output directory for the split embedded schema catalog (catalog.json + tools/<product>.json)")
-	flag.StringVar(&metaIndexPath, "meta-index", "", "Output path for CommandMeta summary index JSON (default: sibling schema_meta_index.json next to --output)")
+	flag.StringVar(&outputPath, "output", "internal/cli/schema_catalog", "Output directory for a CI/local Catalog dump (catalog.json + tools/<product>.json); not a go:generate delivery step")
+	flag.StringVar(&metaIndexPath, "meta-index", "", "Output path for CommandMeta summary index gob (default: sibling schema_meta_index.gob next to --output)")
 	flag.Parse()
+	// cmd_schema_catalog is a CI/determinism and policy dump tool. Production
+	// Catalog delivery assembles via cli.ResolveSchemaBuild at runtime.
 	resolvedSurfacePath := resolveCatalogRootPath(rootPath, surfacePath)
 	resolvedMetaIndexPath := resolveSchemaMetaIndexPath(outputPath, metaIndexPath)
 	if err := validateCatalogOutputIsolation(rootPath, outputPath, resolvedMetaIndexPath, resolvedSurfacePath); err != nil {
@@ -71,7 +73,7 @@ func resolveSchemaMetaIndexPath(outputPath, metaIndexPath string) string {
 	if metaIndexPath != "" {
 		return metaIndexPath
 	}
-	return filepath.Join(filepath.Dir(outputPath), "schema_meta_index.json")
+	return filepath.Join(filepath.Dir(outputPath), "schema_meta_index.gob")
 }
 
 func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surfacePath string) error {
@@ -82,8 +84,8 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surface
 		{Name: "reviewed CommandRegistry input", Path: "internal/cli/schema_command_registry"},
 		{Name: "pinned MCP metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "reviewed MCP service disposition input", Path: "internal/cli/schema_mcp_service_review.json"},
-		{Name: "reviewed parameter binding input", Path: "internal/cli/schema_parameter_bindings.json"},
-		{Name: "reviewed command exclusion input", Path: "internal/cli/schema_command_exclusions.json"},
+		{Name: "reviewed parameter mapping audit input", Path: "internal/cli/schema_parameter_bindings.json"},
+		{Name: "reviewed command exclusion input", Path: "internal/cli/schema_command_exclusions.go"},
 	}
 	if strings.TrimSpace(surfacePath) != "" {
 		inputs = append(inputs, outputguard.Input{Name: "deprecated Registry compatibility input", Path: surfacePath})
@@ -103,7 +105,7 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surface
 	}
 	return outputguard.ValidateRepoTargetAllowlist(rootPath,
 		outputguard.Target{Name: "--meta-index", Path: metaIndexPath},
-		"internal/cli/schema_meta_index.json",
+		"internal/cli/schema_meta_index.gob",
 	)
 }
 
@@ -154,7 +156,7 @@ func generateSchemaCatalogWithResolver(rootPath string, root *cobra.Command, sur
 	if err := writeSchemaCatalogShards(snapshot, outputPath); err != nil {
 		return err
 	}
-	if err := writeSchemaMetaIndex(snapshot, metaIndexPath); err != nil {
+	if err := writeCatalogMetaIndex(snapshot, metaIndexPath); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "generated schema catalog: output=%s meta_index=%s registry_commands=%d tools=%d products=%d registry_hash=%s source_hash=%s\n",
@@ -162,15 +164,22 @@ func generateSchemaCatalogWithResolver(rootPath string, root *cobra.Command, sur
 	return nil
 }
 
+var (
+	buildCatalogMetaIndex    = cli.BuildSchemaMetaIndex
+	validateCatalogMetaIndex = cli.ValidateSchemaMetaIndexAgainstSnapshot
+	encodeCatalogMetaIndex   = cli.EncodeSchemaMetaIndex
+	writeCatalogMetaIndex    = writeSchemaMetaIndex
+)
+
 func writeSchemaMetaIndex(snapshot cli.SchemaCatalogSnapshot, outputPath string) error {
-	index, err := cli.BuildSchemaMetaIndex(snapshot)
+	index, err := buildCatalogMetaIndex(snapshot)
 	if err != nil {
 		return fmt.Errorf("build schema meta index: %w", err)
 	}
-	if err := cli.ValidateSchemaMetaIndexAgainstSnapshot(index, snapshot); err != nil {
+	if err := validateCatalogMetaIndex(index, snapshot); err != nil {
 		return fmt.Errorf("validate schema meta index against catalog: %w", err)
 	}
-	encoded, err := cli.EncodeSchemaMetaIndex(index)
+	encoded, err := encodeCatalogMetaIndex(index)
 	if err != nil {
 		return err
 	}

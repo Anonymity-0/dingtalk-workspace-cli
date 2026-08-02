@@ -7,15 +7,17 @@ unrelated work, and use `gofmt` for every modified Go file.
 
 - Build: `go build ./cmd`
 - Full test suite: `DWS_PACKAGE_VERSION=0.0.0-test go test ./...`
-- Generate Schema assets: `go generate ./internal/cli` (entry point: `internal/cli/gen.go`)
+- Param aliases generate: `go generate ./internal/cli` (entry point: `internal/cli/gen.go`; Catalog is not generated)
 - Refresh pinned MCP metadata: `make fetch-mcp-metadata` (requires `dws auth login`)
-- Check generated drift: `./scripts/policy/check-generated-drift.sh`
+- Check generated drift + assembly determinism: `./scripts/policy/check-generated-drift.sh`
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
 
-Generated Schema JSON is committed under `schema_catalog/` (ToolSpec wire) and
-`schema_meta_index.json` (CommandMeta summary for ResolveMeta), both
-`go:embed`. Change source inputs and generators, then regenerate; do not
-hand-edit generated Catalog or meta-index files. `schema_agent_metadata/` is retired: if that directory
+Schema Catalog delivery is **声明即 Catalog**: production assembles via
+`ResolveSchemaBuild` (factory registered in `internal/app`). There is no
+`cmd_schema_catalog` `//go:generate` delivery step. `dws schema -f json` remains
+the wire projection. Committed `schema_catalog/` + `schema_meta_index.gob` are
+residual package-cli decode fixtures only — not runtime authority; do not
+hand-edit them. `schema_agent_metadata/` is retired: if that directory
 (or `schema_agent_metadata_audit.json`) is present, policy fails.
 `internal/cli/schema_command_registry.json` is different: it is a reviewed
 `CommandRegistry` source, not a generated snapshot. It is the single reviewed
@@ -70,8 +72,9 @@ The Schema data flow is one way:
 
 3. Parameter resolution
    Cobra flags
-   + schema_parameter_bindings.json
-   + contract.ParamDecl / native annotations from leaf declarations
+   + contract.ParamDecl.Property / native annotations (primary property authority)
+   + schema_parameter_bindings.json (mapping_exclusions / removals audit only;
+     active bindings empty after Track 1 Phase 2)
    └─ produces ParameterSpec and constraints
 
 4. Agent and interface semantics
@@ -81,29 +84,20 @@ The Schema data flow is one way:
       Markdown is evidence only; it is not concatenated into final prose
    └─ schema_hints/ is fully retired (must not reappear); not a leaf-fact source
 
-5. One typed hub
+  5. One typed hub
    BoundCommandRegistry
    + ParameterSpec
    + Agent metadata
    + Interface metadata
    └─ resolves every command exactly once into ToolSpec
-      └─ aggregates SchemaRegistry + SchemaIndex
+   └─ aggregates SchemaRegistry + SchemaIndex
+   └─ ResolveSchemaBuild (lazy, sync.Once) at runtime
 
-6. One-way publication
+  6. Runtime delivery (no generate-written Catalog authority)
    SchemaRegistry
-   └─ internal/cli/schema_catalog/
-      (catalog.json + tools/<product>.json; split per product so
-       concurrent feature PRs only rewrite their own shard)
-   └─ internal/cli/schema_meta_index.json
-      (CommandMeta summary for ResolveMeta / leaf --help Safety)
-   └─ dws schema list/product/group/leaf/--all
-
-7. Runtime consumption (unified API)
-   ResolveMeta(cliPath) → CommandMeta{Identity, Safety, Selection}
-   └─ internal/cli/command_meta.go
-   └─ help / agent / skill-gen call this one function
-   └─ backed by embedded schema_meta_index.json (sync.Once, O(1))
-   └─ full ToolSpec / dws schema still use embedded schema_catalog/
+   └─ dws schema list/product/group/leaf/--all (-f json wire)
+   └─ ResolveMeta projects Identity/Safety/Selection from the same registry
+   └─ CI may dump Catalog via cmd_schema_catalog for jq gates / determinism
 ```
 
 After binding there is no second identity source and no identity precedence
@@ -113,46 +107,34 @@ registry. A missing native identity annotation is allowed because annotations
 are implementation-side assertions, not identity fallbacks.
 
 The assembler resolves every bound command exactly once into one `ToolSpec`.
-Build-time gates and the snapshot serializer consume that source-resolved typed
-registry/index. Runtime projections and delivery gates consume the typed
-registry/index returned by the production snapshot loader. Neither path may
-reopen annotations, merge source records, or use a previous Catalog or other
-generated JSON as a source. `schema_catalog/` (catalog.json + per-product
-tools/<product>.json shards) is output-only in the
-generation graph. The production loader decoding the embedded published
-snapshot is a delivery boundary, not source resolution; it must never create or
-repair a Cobra command, flag, registry entry, or later Catalog generation.
+CI determinism (`check-schema-assembly.sh`) and policy jq gates consume a
+fresh assembly dump; runtime consumes the same `ResolveSchemaBuild` path via
+`RegisterSchemaSourceRoot`. Neither path may reopen annotations, merge source
+records, or use a previous Catalog JSON as a source.
 
-### Generation vs consumption separation
+### Assembly vs consumption
 
-The Schema system has two physically separated processes:
-
-**Generation** (build-time, slow, reviewed, one-way):
-- Entry point: `internal/cli/gen.go` (all `//go:generate` pragmas isolated here,
-  not in business code).
-- Tools: `cmd_schema_catalog` + `cmd_param_aliases` (standalone Go mains via
-  `//go:generate`). Catalog generation injects Agent metadata in-memory
-  (`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON`); it does
-  not write `schema_agent_metadata/`. `cmd_schema_agent_metadata` may remain as
-  a non-delivery helper/test binary and is not a `go:generate` entry.
+**Assembly** (declare → typed registry; CI + runtime):
+- Runtime entry: `RegisterSchemaSourceRoot` (`internal/app`) →
+  `ResolveSchemaBuild` / `deliverySchemaCatalog` (lazy, sync.Once).
+- CI tool: `cmd_schema_catalog` dumps an assembled Catalog for jq/determinism;
+  it is **not** a `//go:generate` committed delivery step.
+- `gen.go` only generates `param_aliases_generated.go`.
 - Inputs: authored source groups (registry + ProductDecl/ContractFinal + MCP
-  metadata + parameter bindings + reviewed parameter concepts + cobra tree).
-  `schema_hints/` is fully retired and must not reappear.
-- Output (delivery): `schema_catalog/` (per-product shards, `go:embed`) +
-  `schema_meta_index.json` (CommandMeta summary) +
-  `param_aliases_generated.go`. `schema_agent_metadata/` must not reappear.
-- Refresh MCP metadata: `make fetch-mcp-metadata` (iterates 26 MCP server
-  endpoints, merges with previous data for cross-server interface_ref).
-- Gates: `make generate-schema` (byte guards on inputs), `check-generated-drift.sh`,
-  `check-command-surface.sh` (catalog structure).
+  metadata + parameter mapping audit (`schema_parameter_bindings.json`:
+  mapping_exclusions / removals; active bindings empty) + reviewed parameter
+  concepts + cobra tree). `schema_hints/` / `schema_agent_metadata/` must not
+  reappear.
+- Gates: `make generate-schema` (param aliases + assembly determinism),
+  `check-generated-drift.sh`, `check-schema-catalog.sh`.
 
-**Consumption** (runtime, fast, read-only, unified API):
+**Consumption** (runtime, unified API):
 - Entry point: `ResolveMeta(cliPath) → CommandMeta{Identity, Safety, Selection}`
-  in `internal/cli/command_meta.go`.
-- Backed by embedded `schema_meta_index.json` (sync.Once, O(1) map). Full
-  `embeddedSchemaCatalog()` loads only for `dws schema` / `--all` / ToolSpec.
+  in `internal/cli/command_meta.go` — projected from the assembled registry
+  when the app factory is registered.
 - Consumers: `--help` (Safety annotation via `RenderSafetyAnnotation`),
-  agent selection, future skill generation; `dws schema` uses the Catalog.
+  agent selection, future skill generation; `dws schema` uses the same
+  assembled Catalog (`-f json` wire unchanged).
 - `SafetyForCLIPath` delegates to `ResolveMeta` (backward compatible).
 
 This split is architecturally isomorphic to Lark's typed metadata registry,
@@ -169,7 +151,7 @@ coverage is bidirectional:
    projection, must resolve to an executable Cobra command.
 2. Every public runnable Cobra leaf must either resolve to Schema or appear as
    an exact, reviewed exclusion with a non-empty reason in
-   `internal/cli/schema_command_exclusions.json`.
+   `internal/cli/schema_command_exclusions.go` (central Go groups; not JSON).
 
 Do not use prefix or wildcard exclusions: they can silently hide future
 commands. Remove an exclusion when its command enters Schema; stale, invalid,
@@ -197,9 +179,9 @@ When adding or changing an Agent-visible command, review all relevant inputs:
   assertions against `EffectiveCommandRegistry`. They must agree exactly and
   must never materialize, infer, or override registry identity.
 - Flag-to-interface property mappings and required/default semantics.
-- Generated delivery under `internal/cli/schema_catalog/` (catalog.json +
-  tools/<product>.json) after running generation. Do not expect or commit
-  `schema_agent_metadata/`.
+- Do not expect generate-written Catalog delivery. Run
+  `make generate-schema` only to refresh param aliases and prove assembly
+  determinism. Do not expect or commit `schema_agent_metadata/`.
 
 Run the reverse-completeness tests whenever the Cobra tree changes. A command
 that works through `dws <path>` but cannot be found through the matching
@@ -254,7 +236,8 @@ For every curated tool:
 1. Declare safety/interface/parameters/selection on the owning leaf
    (`DeclareLeafMetadata` / `Shortcut.Contract` / `contract.ParamDecl`) and product routing
    via `ProductDecl` when needed.
-2. Run `make generate-schema`. Do not hand-edit generated `schema_catalog/`.
+2. Run `make generate-schema` (param aliases + assembly determinism). Do not
+   hand-edit residual `schema_catalog/` fixtures.
 
 ### Pull live MCP descriptions (personal token)
 
@@ -309,14 +292,11 @@ After generation, spot-check Catalog: selection and safety/interface
 provenance are `contract_final` from ProductDecl / leaf declarations
 (`user_required` must match Runtime confirmation gates).
 
-`make generate-schema` is a full deterministic snapshot rebuild, not an
-incremental patch over the previous Catalog. It rereads every reviewed input,
-removes stale generated product metadata, and rewrites the exact metadata and
-Catalog projections. Incremental work happens only when an Agent or human
-edits selected leaf / ProductDecl declarations; the next publication
-still recomputes all outputs. Generated files must never be read back as merge
-input, and byte guards fail generation if it changes the hint inputs or
-CommandRegistry.
+`make generate-schema` refreshes `param_aliases_generated.go` and runs
+assembly determinism (`check-schema-assembly.sh`). It does not rewrite a
+committed Catalog as delivery authority — runtime reassembles from
+declarations. Byte guards fail if generation mutates reviewed CommandRegistry
+or parameter-concept inputs.
 
 Selection prose may choose a more or less restrictive recommendation. It cannot
 create a Cobra command or flag, change parameter facts, invent an

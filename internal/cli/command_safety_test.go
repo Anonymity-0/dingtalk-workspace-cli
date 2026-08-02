@@ -84,8 +84,8 @@ func TestResolveMetaFailsClosedOnUnusableMetaIndex(t *testing.T) {
 			t.Fatal("panicIfMetaIndexUnusable(err) did not panic")
 		}
 		msg, _ := r.(string)
-		if msg == "" || !strings.Contains(msg, "schema_meta_index.json is unusable") {
-			t.Fatalf("panic = %#v, want unusable meta-index message", r)
+		if msg == "" || !strings.Contains(msg, "schema CommandMeta index is unusable") {
+			t.Fatalf("panic = %#v, want unusable CommandMeta index message", r)
 		}
 	}()
 	panicIfMetaIndexUnusable(fmt.Errorf("decode schema meta index: unexpected EOF"))

@@ -358,6 +358,10 @@ func newMediaCmds() []*cobra.Command {
 				AvoidWhen:    []string{"悬浮在单元格上的浮动图用 create-float-image；禁止用 range update 写图片"},
 				Examples:     []string{"dws sheet write-image --node <NODE_ID> --sheet-id <SHEET_ID> --range A1:A1 --file ./chart.png"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "range", Property: "rangeAddress"},
+			},
 		},
 	})
 	writeImageCmd.Flags().String("node", "", "目标表格文档的标识，支持传入 URL 或 ID (必填)")

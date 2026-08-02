@@ -24,9 +24,9 @@ import (
 const schemaLazyMetaIndexChildEnv = "DWS_SCHEMA_LAZY_META_INDEX_CHILD"
 
 func TestEmbeddedSchemaMetaIndexMatchesCatalog(t *testing.T) {
-	index, err := DecodeSchemaMetaIndexJSON(embeddedSchemaMetaIndexJSON)
+	index, err := DecodeSchemaMetaIndex(embeddedSchemaMetaIndexGob)
 	if err != nil {
-		t.Fatalf("DecodeSchemaMetaIndexJSON() error = %v", err)
+		t.Fatalf("DecodeSchemaMetaIndex() error = %v", err)
 	}
 	loaded := embeddedSchemaCatalog()
 	if len(loaded.Registry.Products) == 0 {

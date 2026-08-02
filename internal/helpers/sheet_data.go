@@ -93,6 +93,12 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"不要用 range read 全量下载后客户端过滤；要替换文本用 replace"},
 				Examples:     []string{"dws sheet find --node <NODE_ID> --sheet-id <SHEET_ID> --find \"销售额\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "match-formula", Property: "matchFormulaText"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "query", Property: "text"},
+				{Name: "use-regexp", Property: "useRegExp"},
+			},
 		},
 	})
 	findCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -176,6 +182,12 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				AvoidWhen:    []string{"不要用 find + range update 组合模拟；只查找不替换用 find"},
 				Examples:     []string{"dws sheet replace --node <NODE_ID> --sheet-id <SHEET_ID> --find \"旧文本\" --replacement \"新文本\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "find", Property: "text"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "replacement", Property: "replaceText"},
+				{Name: "use-regexp", Property: "useRegExp"},
+			},
 		},
 	})
 	replaceCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -236,6 +248,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"要在已有数据下方追加记录行（带 values）时"},
 				AvoidWhen:    []string{"末尾追加空行/空列用 add-dimension；中间插入空行用 insert-dimension；覆盖已有区域用 range update/csv-put"},
 				Examples:     []string{"dws sheet append --node <NODE_ID> --sheet-id <SHEET_ID> --values '[[\"张三\",\"销售部\",50000]]'"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -316,6 +331,9 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 				AvoidWhen:    []string{"需要公式/超链接/富文本用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite"},
 				Examples:     []string{"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv @data.csv --allow-overwrite"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	csvPutCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -389,6 +407,9 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 				UseWhen:      []string{"需要把区域导出为 CSV 文本便于管道处理时"},
 				AvoidWhen:    []string{"需要结构化 per-cell（样式/超链接/公式）用 range read；导出整份 xlsx 用 sheet export"},
 				Examples:     []string{"dws sheet csv-get --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:D20\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

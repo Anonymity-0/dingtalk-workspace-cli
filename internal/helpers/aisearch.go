@@ -326,6 +326,7 @@ func newAisearchCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "queries", Required: boolPtr(false)},
 				{Name: "time-range", Required: boolPtr(false)},
+				{Name: "types", Property: "searchTypes"},
 			},
 		},
 	})
@@ -374,6 +375,9 @@ func newAisearchCommand() *cobra.Command {
 					"dws aisearch behavior --types mail --behavior-type send --direction \"我->汐峰\" --format json",
 					"dws aisearch behavior --queries \"智能化方案\" --types document --behavior-type create --format json",
 				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "types", Property: "searchTypes"},
 			},
 		},
 	})

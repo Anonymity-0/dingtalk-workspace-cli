@@ -75,6 +75,9 @@ func newTableCmds() []*cobra.Command {
 				AvoidWhen:    []string{"普通单元格区域用 range read；AI 表格记录用 aitable record query"},
 				Examples:     []string{"dws sheet table-get --node <NODE_ID> --sheet-id <SHEET_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	tableGetCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -143,6 +146,7 @@ func newTableCmds() []*cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "sheets", InterfaceType: "array"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

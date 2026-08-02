@@ -37,6 +37,21 @@ const (
 
 const runtimeSchemaFlagBindingPropertyAnnotation = "dws.schema.binding.property"
 
+// Track 1 Phase 2 complete (active bindings → ParamDecl.Property):
+//
+//   - Property delivery is owned by leaf Contract.Parameters (ParamDecl.Property
+//     → dws.schema.property / native_annotation). The dual-read still prefers
+//     ParamDecl over any versioned_parameter_binding candidate.
+//   - schema_parameter_bindings.json is retained as the reviewed mapping audit
+//     ledger: empty Bindings {}, MappingExclusions (CLI-only / composite flags),
+//     Removals, and optional Corrections. ValidateSchemaParameterBindingDelivery
+//     still joins exclusions/removals to the final bound SchemaRegistry.
+//   - Do not record ParamDecl migrations under Removals: that ledger means
+//     "must not deliver a property anymore". Migration keeps delivery via
+//     ParamDecl and leaves Bindings empty with a reviewed empty-manifest hash.
+//   - BuildEffectiveCommandRegistry does not load this embed; binding/exclusion
+//     validation runs at BindEffectiveCommandRegistry and catalog assembly.
+
 //go:embed schema_parameter_bindings.json
 var embeddedSchemaParameterBindingsJSON []byte
 
@@ -50,9 +65,10 @@ type schemaParameterBindingSnapshot struct {
 }
 
 // schemaParameterBindingBaseline reviews the complete active binding set as
-// one deterministic manifest. The hash is content-addressed: adding, removing,
-// renaming, or remapping any active canonical/flag/property tuple requires an
-// explicit baseline review instead of hundreds of low-value per-row records.
+// one deterministic manifest. After Phase 2 the active set is empty (hash of
+// JSON []); MappingExclusions / Removals are separate reviewed ledgers.
+// Reintroducing any active canonical/flag/property tuple requires an explicit
+// baseline review — prefer ParamDecl.Property instead.
 type schemaParameterBindingBaseline struct {
 	Manifest string `json:"manifest"`
 	SHA256   string `json:"sha256"`
@@ -72,7 +88,7 @@ type schemaParameterBindingCorrection struct {
 
 // schemaParameterBindingRemoval records a semantically meaningful deletion
 // from a previous reviewed baseline. ReplacedBy, when present, must name an
-// exact active binding key in the v3 manifest.
+// exact active binding key in the v3 manifest (none remain after Phase 2).
 type schemaParameterBindingRemoval struct {
 	Reason     string `json:"reason"`
 	ReplacedBy string `json:"replaced_by,omitempty"`
@@ -394,14 +410,13 @@ func sortedSchemaParameterBindingKeys(bindings map[string]string) []string {
 }
 
 func schemaParameterBindingManifestHash(bindings map[string]map[string]string) (string, error) {
-	if len(bindings) == 0 {
-		return "", fmt.Errorf("schema parameter bindings active manifest is empty")
-	}
 	type bindingRow struct {
 		CanonicalPath string `json:"canonical_path"`
 		FlagName      string `json:"flag_name"`
 		Property      string `json:"property"`
 	}
+	// Empty active manifest is the Phase 2 end state (hash of JSON []); the
+	// embed remains for mapping_exclusions / removals audit only.
 	rows := make([]bindingRow, 0)
 	for canonical, parameters := range bindings {
 		if canonical == "" || canonical != strings.TrimSpace(canonical) || !commandRegistryCanonicalPattern.MatchString(canonical) {
@@ -449,8 +464,10 @@ func applyRuntimeSchemaParameterBindingsFrom(cmd *cobra.Command, canonical strin
 	}
 }
 
-// EmbeddedSchemaParameterBindings returns a defensive copy of the reviewed,
-// active public flag-to-interface bindings used by Catalog generation.
+// EmbeddedSchemaParameterBindings returns a defensive copy of the reviewed
+// active public flag-to-interface bindings. After Track 1 Phase 2 this map is
+// empty; property delivery comes from ParamDecl.Property. Mapping exclusions
+// and removals remain on the embedded audit snapshot (not returned here).
 func EmbeddedSchemaParameterBindings() (map[string]map[string]string, error) {
 	snapshot, err := schemaParameterBindingData()
 	if err != nil {

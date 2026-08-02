@@ -27,7 +27,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var schemaCommandCatalogError = embeddedSchemaCatalogError
+// schemaCommandCatalogError / payloads use deliverySchemaCatalog: ResolveSchemaBuild
+// when the app registers a source root, else the committed embed fallback.
+var schemaCommandCatalogError = deliverySchemaCatalogError
 
 type FlagKind string
 
@@ -84,16 +86,16 @@ func NewMCPCommand(_ context.Context, _ CatalogLoader, _ executor.Runner, _ *pip
 	return cmd
 }
 
-// NewSchemaCommand serves the versioned embedded typed contract. A malformed
-// release snapshot fails closed; falling back to the live Cobra tree would
-// hide a broken delivery artifact and reintroduce a second Schema data path.
+// NewSchemaCommand serves the typed Schema contract. Production assembles from
+// declarations via ResolveSchemaBuild (factory registered by internal/app).
+// A malformed assembly fails closed; the MCP CatalogLoader is unused.
 func NewSchemaCommand(_ CatalogLoader) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schema [path]",
 		Short: "渐进查看命令 Schema (产品 / 分组 / 工具参数)",
 		Long: `查看当前可运行命令的 Schema 元数据。
 
-不带参数时列出产品和工具数量；传产品或分组路径逐层展开；传具体工具路径输出扁平参数 Schema（对齐 GWS：parameters 内联 required，键为 CLI flag）。--all 输出全部工具的完整 leaf Schema（包括参数和约束，用于审计/CI）。--compact 去除 provenance / debug 字段，仅保留 Agent 选参所需信息（适合 Agent 上下文）。helper、MCP 与本地 Cobra 命令均须先进入 reviewed Registry，并从同一内嵌 ToolSpec 投影；查询不执行服务发现或临时合成第二份 Schema。`,
+不带参数时列出产品和工具数量；传产品或分组路径逐层展开；传具体工具路径输出扁平参数 Schema（对齐 GWS：parameters 内联 required，键为 CLI flag）。--all 输出全部工具的完整 leaf Schema（包括参数和约束，用于审计/CI）。--compact 去除 provenance / debug 字段，仅保留 Agent 选参所需信息（适合 Agent 上下文）。helper、MCP 与本地 Cobra 命令均须先进入 reviewed Registry，并从同一声明装配的 ToolSpec 投影；查询不执行服务发现或临时合成第二份 Schema。`,
 		Args:              cobra.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -114,16 +116,16 @@ func NewSchemaCommand(_ CatalogLoader) *cobra.Command {
 				args = []string{cliPath}
 			}
 			if err := schemaCommandCatalogError(); err != nil {
-				return fmt.Errorf("load embedded typed Schema registry: %w", err)
+				return fmt.Errorf("load typed Schema registry: %w", err)
 			}
 			var payload map[string]any
 			var err error
 			if all {
-				payload, err = embeddedSchemaAllPayload()
+				payload, err = deliverySchemaAllPayload()
 			} else if len(args) == 0 {
-				payload, err = embeddedSchemaOverviewPayload()
+				payload, err = deliverySchemaOverviewPayload()
 			} else {
-				payload, err = embeddedSchemaPayload(args)
+				payload, err = queryDeliverySchemaPayload(args)
 			}
 			if err != nil {
 				return err

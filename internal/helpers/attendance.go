@@ -597,8 +597,8 @@ func newAttendanceCommand() *cobra.Command {
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "user", Required: boolPtr(true)},
-				{Name: "date", Required: boolPtr(true)},
+				{Name: "user", Property: "userId", Required: boolPtr(true)},
+				{Name: "date", Property: "workDate", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -1017,9 +1017,9 @@ func newAttendanceCommand() *cobra.Command {
 				Examples: []string{"dws attendance shift list --users userId1,userId2 --start 2026-03-03 --end 2026-03-07"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "users", Required: boolPtr(true), InterfaceType: "array"},
-				{Name: "start", Required: boolPtr(true)},
-				{Name: "end", Required: boolPtr(true)},
+				{Name: "users", Property: "userIds", Required: boolPtr(true), InterfaceType: "array"},
+				{Name: "start", Property: "fromDateTime", Required: boolPtr(true)},
+				{Name: "end", Property: "toDateTime", Required: boolPtr(true)},
 			},
 		},
 	})

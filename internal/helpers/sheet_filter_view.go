@@ -200,6 +200,9 @@ func newFilterCmd() *cobra.Command {
 				AvoidWhen:    []string{"个人筛选视图用 filter-view list/info；不要与 filter-view 混淆"},
 				Examples:     []string{"dws sheet filter get --node <NODE_ID> --sheet-id <SHEET_ID>"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	filterGetCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -257,6 +260,9 @@ func newFilterCmd() *cobra.Command {
 				AvoidWhen:    []string{"个人化筛选视图用 filter-view create；已存在全局筛选时先 get 再 update；禁止删行来代替筛选"},
 				Examples:     []string{"dws sheet filter create --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:E100\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	filterCreateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -296,6 +302,9 @@ func newFilterCmd() *cobra.Command {
 				UseWhen:      []string{"需要移除整张表的全局筛选及全部条件时"},
 				AvoidWhen:    []string{"只清某列条件用 filter clear-criteria；删筛选视图用 filter-view delete"},
 				Examples:     []string{"dws sheet filter delete --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -353,6 +362,9 @@ func newFilterCmd() *cobra.Command {
 				AvoidWhen:    []string{"尚无筛选时先 create；只清一列用 clear-criteria；筛选视图条件用 filter-view update-criteria"},
 				Examples:     []string{"dws sheet filter update --node <NODE_ID> --sheet-id <SHEET_ID> --criteria '[{\"column\":0,\"filterType\":\"values\",\"visibleValues\":[\"已完成\"]}]'"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	filterUpdateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -398,6 +410,9 @@ func newFilterCmd() *cobra.Command {
 				UseWhen:      []string{"只需取消某列过滤、保留全局筛选框架时"},
 				AvoidWhen:    []string{"删除整个全局筛选用 filter delete；筛选视图列条件用 filter-view delete-criteria"},
 				Examples:     []string{"dws sheet filter clear-criteria --node <NODE_ID> --sheet-id <SHEET_ID> --column 1"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -447,6 +462,11 @@ func newFilterCmd() *cobra.Command {
 				UseWhen:      []string{"已有全局筛选，需要按某列升/降序排列筛选范围内数据时"},
 				AvoidWhen:    []string{"无筛选取区域排序用 range sort；排序不可撤销"},
 				Examples:     []string{"dws sheet filter sort --node <NODE_ID> --sheet-id <SHEET_ID> --column 0 --ascending"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ascending", Property: "field.ascending"},
+				{Name: "column", Property: "field.column"},
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -506,6 +526,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"用户明确说筛选视图，需要枚举 filterViewId/名称/范围时"},
 				AvoidWhen:    []string{"全局筛选用 filter get；单视图详情用 filter-view info"},
 				Examples:     []string{"dws sheet filter-view list --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -578,6 +601,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				UseWhen:      []string{"需要命名的个人化筛选视角且不影响其他协作者时"},
 				AvoidWhen:    []string{"影响全员的全局筛选用 filter create；只改已有视图属性用 filter-view update"},
 				Examples:     []string{"dws sheet filter-view create --node <NODE_ID> --sheet-id <SHEET_ID> --name \"销售筛选\" --range \"A1:E10\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -664,6 +690,9 @@ filterViewId 可通过 filter-view list 获取。
 				AvoidWhen:    []string{"只改单列条件用 update-criteria；删整个视图用 delete"},
 				Examples:     []string{"dws sheet filter-view update --node <NODE_ID> --sheet-id <SHEET_ID> --filter-view-id <FV_ID> --name \"新名称\""},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	filterViewUpdateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -716,6 +745,9 @@ filterViewId 可通过 filter-view list 获取。`,
 				UseWhen:      []string{"用户明确要删除某个筛选视图及其全部条件时"},
 				AvoidWhen:    []string{"只清某列条件用 delete-criteria；删全局筛选用 filter delete"},
 				Examples:     []string{"dws sheet filter-view delete --node <NODE_ID> --sheet-id <SHEET_ID> --filter-view-id <FV_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -887,6 +919,9 @@ filterViewId 可通过 filter-view list 获取。
 				AvoidWhen:    []string{"删除整个筛选视图用 filter-view delete"},
 				Examples:     []string{"dws sheet filter-view delete-criteria --node <NODE_ID> --sheet-id <SHEET_ID> --filter-view-id <FV_ID> --column 0"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
 		},
 	})
 	filterViewClearCriteriaCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
@@ -929,6 +964,9 @@ filterViewId 可通过 filter-view list 获取。`,
 				UseWhen:      []string{"已知 filterViewId，需要查看名称/范围/全部条件时"},
 				AvoidWhen:    []string{"列目录用 list；列条件清单用 list-criteria；全局筛选用 filter get"},
 				Examples:     []string{"dws sheet filter-view info --node <NODE_ID> --sheet-id <SHEET_ID> --filter-view-id <FV_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -973,6 +1011,9 @@ filterViewId 可通过 filter-view list 获取。`,
 				UseWhen:      []string{"管理条件前需要看当前视图有哪些列条件时"},
 				AvoidWhen:    []string{"单列详情用 get-criteria；视图属性用 info"},
 				Examples:     []string{"dws sheet filter-view list-criteria --node <NODE_ID> --sheet-id <SHEET_ID> --filter-view-id <FV_ID>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})
@@ -1023,6 +1064,9 @@ filterViewId 可通过 filter-view list 获取。`,
 				UseWhen:      []string{"修改某列条件前先查看该列当前 filterType/operators 时"},
 				AvoidWhen:    []string{"全部列条件用 list-criteria"},
 				Examples:     []string{"dws sheet filter-view get-criteria --node <NODE_ID> --sheet-id <SHEET_ID> --filter-view-id <FV_ID> --column 0"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
 			},
 		},
 	})

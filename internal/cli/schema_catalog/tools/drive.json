@@ -128,7 +128,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -137,7 +137,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "为文档空间节点添加协作成员并授予指定角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER"
@@ -300,7 +300,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -309,7 +309,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "添加协作者"
@@ -384,9 +384,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -396,9 +396,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -493,9 +493,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "roleId"
                 },
                 {
@@ -505,9 +505,9 @@
                   "value": "role"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "roleId"
             },
             "required": {
@@ -622,9 +622,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "userIds"
                 },
                 {
@@ -634,9 +634,9 @@
                   "value": "users"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "userIds"
             },
             "required": {
@@ -732,9 +732,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -744,9 +744,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -931,7 +931,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -940,7 +940,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。\n\n注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。"
@@ -1115,7 +1115,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1124,7 +1124,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "发起权限申请"
@@ -1949,7 +1949,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -1958,7 +1958,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "提交文件上传"
@@ -2272,9 +2272,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "parentId"
                 },
                 {
@@ -2284,9 +2284,9 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "parentId"
             },
             "required": {
@@ -2674,7 +2674,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2683,7 +2683,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "将文档空间中的文档或文件复制到指定文件夹或知识库。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n不传 --folder 时复制到 --workspace 根目录；都不传则默认到\"我的文档\"。\n\n权限要求: 对源文档有\"阅读\"权限，且对目标文件夹有\"编辑\"权限。"
@@ -2848,7 +2848,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -2857,7 +2857,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "复制文件/文档到指定位置"
@@ -2937,9 +2937,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "targetFolderId"
                 },
                 {
@@ -2949,9 +2949,9 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "targetFolderId"
             },
             "required": {
@@ -3034,9 +3034,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -3046,9 +3046,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -3143,9 +3143,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -3155,9 +3155,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -3523,7 +3523,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -3532,7 +3532,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "创建文件夹"
@@ -3606,9 +3606,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "parentId"
                 },
                 {
@@ -3618,9 +3618,9 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "parentId"
             },
             "required": {
@@ -4003,7 +4003,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4012,7 +4012,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "为指定源节点创建快捷方式，并放置到目标文件夹或知识库。\n\n通过 --node 指定源节点。--folder 和 --workspace 均为可选；都不传时由服务端选择默认位置。\n若同时指定，--folder 是目标文件夹，--workspace 用于指定其所属知识库。"
@@ -4189,7 +4189,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4198,7 +4198,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "为节点创建快捷方式"
@@ -4261,9 +4261,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "targetFolderId"
                 },
                 {
@@ -4273,9 +4273,9 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "targetFolderId"
             },
             "required": {
@@ -4351,9 +4351,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -4363,9 +4363,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -4447,9 +4447,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -4459,9 +4459,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -4650,7 +4650,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4659,7 +4659,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "将钉盘中的文件或文件夹移入回收站。\n\n注意: 这是一个危险操作，文件将被移入回收站。执行前需要确认，或传入 --yes 跳过确认。\n--node 对应 drive list 返回的 fileId 字段（即 dentryUuid）。\n\n权限要求: 对文档有\"管理\"权限。"
@@ -4822,7 +4822,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -4831,7 +4831,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "删除文件/文件夹到回收站"
@@ -4903,9 +4903,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -4915,9 +4915,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -5123,7 +5123,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5132,7 +5132,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "下载钉盘中的文件到本地（两步下载流程）。\n\n流程:\n  1. 获取下载 URL 和签名请求头 (download_file)\n  2. HTTP GET 下载文件二进制内容到本地\n\n--output 指定本地保存路径，可以是文件路径或目录。\n如果指定目录，文件名从下载 URL 中自动推断。"
@@ -5319,7 +5319,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5328,7 +5328,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "下载钉盘文件到本地"
@@ -5402,9 +5402,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "fileId"
                 },
                 {
@@ -5414,9 +5414,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "fileId"
             },
             "required": {
@@ -5807,7 +5807,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -5816,7 +5816,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "下载钉盘文件的指定历史版本到本地（两步下载流程）。\n\n仅适用于普通文件（如 pdf、docx、xlsx、png 等）：\n  钉钉在线文档（adoc）请使用 dws doc version 系列命令\n  钉钉在线表格（axls）请使用 dws sheet version 系列命令\n\n流程:\n  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)\n  2. HTTP GET 下载文件二进制内容到本地\n\n版本号从 dws drive list --node \u003cdentryUuid\u003e --versions 获取。"
@@ -5991,7 +5991,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6000,7 +6000,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "下载文件历史版本到本地"
@@ -6648,7 +6648,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6657,7 +6657,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取节点封面地址"
@@ -6930,7 +6930,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -6939,7 +6939,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取钉盘文件/文件夹的元数据信息。\n\n如果目标文件属于钉钉文档（在线文档/表格/脑图等），会自动跟进调用\n钉钉文档接口获取更准确的文档信息（如真实文档名称），并合并输出。"
@@ -7102,7 +7102,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7111,7 +7111,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取文件元数据信息"
@@ -7185,9 +7185,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "fileId"
                 },
                 {
@@ -7197,9 +7197,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "fileId"
             },
             "required": {
@@ -7490,7 +7490,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7499,7 +7499,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取指定节点的统计数据，包括阅读人数、阅读次数、编辑次数、评论数、点赞数、预览次数和下载次数等。\n\n不同文件类型返回的统计维度可能不同。--node 支持节点 ID 或文档 URL。"
@@ -7674,7 +7674,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -7683,7 +7683,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取节点统计信息"
@@ -7746,9 +7746,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -7758,9 +7758,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -8136,7 +8136,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -8145,7 +8145,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取收藏列表"
@@ -9043,7 +9043,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -9052,7 +9052,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取文件上传信息"
@@ -9372,9 +9372,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "parentId"
                 },
                 {
@@ -9384,9 +9384,9 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "parentId"
             },
             "required": {
@@ -9759,7 +9759,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -9768,7 +9768,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "列出文件和文件夹。根据参数自动路由到钉盘或文档空间。\n\n路由规则:\n  默认（无 --workspace）       → 列出钉盘「我的文件」\n  --space-id \u003c纯数字\u003e          → 列出钉盘指定空间\n  --workspace \u003c加密string/URL\u003e → 列出文档空间/知识库文件（等同于原 list-docs）\n  --folder \u003cnodeId\u003e            → 列出指定文件夹下的子节点"
@@ -9945,7 +9945,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -9954,7 +9954,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取文件/文件夹列表（统一入口）"
@@ -11301,7 +11301,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -11310,7 +11310,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询文档空间节点的协作者列表。"
@@ -11473,7 +11473,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -11482,7 +11482,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询协作者列表"
@@ -11575,9 +11575,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "filterRoleIds"
                 },
                 {
@@ -11587,9 +11587,9 @@
                   "value": "filterRole"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "filterRoleIds"
             },
             "required": {
@@ -11694,9 +11694,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "maxResults"
                 },
                 {
@@ -11706,9 +11706,9 @@
                   "value": "limit"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "maxResults"
             },
             "required": {
@@ -11798,9 +11798,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -11810,9 +11810,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -11907,9 +11907,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -11919,9 +11919,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -12109,7 +12109,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12118,7 +12118,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "⚠️  此命令已迁移到 wiki space list，请使用:\n  dws wiki space list --type orgSpace    # 企业空间\n  dws wiki space list --type mySpace     # 我的文件\n\n列出当前用户可访问的钉盘空间，返回 spaceId、spaceName、rootFolderId 等信息。"
@@ -12283,7 +12283,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12292,7 +12292,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取钉盘空间列表 (deprecated → dws wiki space list --type orgSpace/mySpace)"
@@ -12364,9 +12364,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nextToken"
                 },
                 {
@@ -12376,9 +12376,9 @@
                   "value": "cursor"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nextToken"
             },
             "required": {
@@ -12462,9 +12462,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "maxResults"
                 },
                 {
@@ -12474,9 +12474,9 @@
                   "value": "limit"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "maxResults"
             },
             "required": {
@@ -12947,7 +12947,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -12956,7 +12956,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "收藏文档"
@@ -13231,7 +13231,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13240,7 +13240,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "将文档空间中的文档或文件移动到指定文件夹或知识库。移动后原位置不再存在。\n--folder 指定目标文件夹 nodeId，--workspace 指定目标知识库 ID。\n\n权限要求: 对源文档有\"管理\"权限，且对目标文件夹有\"编辑\"权限。"
@@ -13405,7 +13405,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13414,7 +13414,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "移动文件/文档到指定位置"
@@ -13490,9 +13490,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "targetFolderId"
                 },
                 {
@@ -13502,9 +13502,9 @@
                   "value": "folder"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "targetFolderId"
             },
             "required": {
@@ -13587,9 +13587,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -13599,9 +13599,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -13696,9 +13696,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -13708,9 +13708,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -13899,7 +13899,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -13908,7 +13908,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "从文档空间节点移除协作成员的权限。"
@@ -14071,7 +14071,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14080,7 +14080,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "移除协作者权限"
@@ -14153,9 +14153,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -14165,9 +14165,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -14282,9 +14282,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "userIds"
                 },
                 {
@@ -14294,9 +14294,9 @@
                   "value": "users"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "userIds"
             },
             "required": {
@@ -14392,9 +14392,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -14404,9 +14404,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -14593,7 +14593,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14602,7 +14602,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新文档空间节点已有协作者的权限角色。\n\n支持的角色 (--role): MANAGER / EDITOR / DOWNLOADER / READER"
@@ -14765,7 +14765,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -14774,7 +14774,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "更新协作者权限"
@@ -14847,9 +14847,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -14859,9 +14859,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -14956,9 +14956,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "roleId"
                 },
                 {
@@ -14968,9 +14968,9 @@
                   "value": "role"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "roleId"
             },
             "required": {
@@ -15085,9 +15085,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "userIds"
                 },
                 {
@@ -15097,9 +15097,9 @@
                   "value": "users"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "userIds"
             },
             "required": {
@@ -15195,9 +15195,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "workspaceId"
                 },
                 {
@@ -15207,9 +15207,9 @@
                   "value": "workspace"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "workspaceId"
             },
             "required": {
@@ -15396,7 +15396,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15405,7 +15405,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询文件当前是否处于互联网公开发布状态，以及公开发布的权限设置。"
@@ -15580,7 +15580,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15589,7 +15589,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询文件公开发布状态"
@@ -15864,7 +15864,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -15873,7 +15873,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "[危险] 将文件设置为互联网公开发布。公开后任何人通过链接即可访问，无需登录钉钉。\n操作者需要是该文件的管理员或拥有者。执行前需要确认，或传入 --yes 跳过确认。\n\n公开权限 (--permission): READER(仅可查看) / DOWNLOADER(可查看和下载，默认) / EDITOR(可编辑)"
@@ -16050,7 +16050,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16059,7 +16059,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "[危险] 设置文件为互联网公开"
@@ -16427,7 +16427,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16436,7 +16436,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "[危险] 关闭文件的互联网公开发布。关闭后外部用户将无法再通过链接访问。执行前需要确认，或传入 --yes 跳过确认。"
@@ -16611,7 +16611,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -16620,7 +16620,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "[危险] 关闭文件互联网公开"
@@ -17072,7 +17072,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17081,7 +17081,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查询节点可申请的角色与审批人"
@@ -17353,7 +17353,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17362,7 +17362,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取当前用户最近访问或编辑过的文档列表。\n\n支持按文档类型、操作类型、创建人、所属组织过滤。所有过滤条件均为可选，不传则不过滤。\n\n操作类型 (--operate-type):\n  0   最近访问（含打开+编辑）（默认）\n  1   最近编辑\n  不传默认仅返回最近访问(0)\n\n创建人类型 (--creator-type):\n  0   全部 (默认)\n  1   我创建的\n  2   他人创建的"
@@ -17539,7 +17539,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -17548,7 +17548,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取最近访问/编辑的文档列表"
@@ -18469,7 +18469,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -18478,7 +18478,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "查看回收站文件列表"
@@ -19115,7 +19115,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -19124,7 +19124,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "还原回收站中的文件"
@@ -19398,7 +19398,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -19407,7 +19407,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "修改文档空间中文档、文件或文件夹的名称。\n实际执行前会读取节点类型和当前扩展名：文件的新名称仅在末尾扩展名与当前扩展名一致时去掉一层，\n避免 report.txt.txt；文件夹和扩展名不匹配的名称保持不变。dry-run 不读取远端元数据，因此保留输入名称。\n\n权限要求: 对文档有\"编辑\"权限。"
@@ -19570,7 +19570,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -19579,7 +19579,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "重命名文件/文档"
@@ -19657,9 +19657,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "newName"
                 },
                 {
@@ -19669,9 +19669,9 @@
                   "value": "name"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "newName"
             },
             "required": {
@@ -19766,9 +19766,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "nodeId"
                 },
                 {
@@ -19778,9 +19778,9 @@
                   "value": "node"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "nodeId"
             },
             "required": {
@@ -19976,7 +19976,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -19985,7 +19985,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "将指定文件回滚到某个历史版本。仅支持普通文件（Word、Excel、PDF、图片等）。\n在线文档请用 dws doc version revert，在线表格请用 dws sheet version revert。"
@@ -20160,7 +20160,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -20169,7 +20169,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "[危险] 回滚文件到指定历史版本"
@@ -20540,7 +20540,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -20549,7 +20549,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果。\n\n搜索范围 (--target):\n  all   （默认）同时搜钉盘文件与文档空间，聚合返回\n  file  只搜钉盘文件/文件夹，支持 --file-types / --extensions\n  space 只搜钉盘团队空间\n\n如果需要在某个知识库内搜索，请使用 dws wiki node search --workspace \u003cworkspaceId\u003e。\n\n结果中 source 字段区分来源：drive / doc。\n提示：结果按相关性排序，首页未命中时优先调整关键词 / 过滤条件，而非反复翻页。"
@@ -20714,7 +20714,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -20723,7 +20723,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "搜索文件（聚合钉盘+文档空间）"
@@ -20819,9 +20819,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "createdTimeFrom"
                 },
                 {
@@ -20831,9 +20831,9 @@
                   "value": "createdFrom"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "createdTimeFrom"
             },
             "required": {
@@ -20937,9 +20937,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "createdTimeTo"
                 },
                 {
@@ -20949,9 +20949,9 @@
                   "value": "createdTo"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "createdTimeTo"
             },
             "required": {
@@ -21035,9 +21035,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "creatorUserIds"
                 },
                 {
@@ -21047,9 +21047,9 @@
                   "value": "creatorUids"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "creatorUserIds"
             },
             "required": {
@@ -21132,9 +21132,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "pageToken"
                 },
                 {
@@ -21144,9 +21144,9 @@
                   "value": "cursor"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "pageToken"
             },
             "required": {
@@ -21431,9 +21431,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "pageSize"
                 },
                 {
@@ -21443,9 +21443,9 @@
                   "value": "limit"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "pageSize"
             },
             "required": {
@@ -21555,9 +21555,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "modifiedTimeFrom"
                 },
                 {
@@ -21567,9 +21567,9 @@
                   "value": "modifiedFrom"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "modifiedTimeFrom"
             },
             "required": {
@@ -21673,9 +21673,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "modifiedTimeTo"
                 },
                 {
@@ -21685,9 +21685,9 @@
                   "value": "modifiedTo"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "modifiedTimeTo"
             },
             "required": {
@@ -21771,9 +21771,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "keyword"
                 },
                 {
@@ -21783,9 +21783,9 @@
                   "value": "query"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "keyword"
             },
             "required": {
@@ -21880,9 +21880,9 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "versioned_binding",
+                  "precedence": "native_annotation",
                   "selected": true,
-                  "source": "versioned_parameter_binding",
+                  "source": "native_annotation",
                   "value": "searchTarget"
                 },
                 {
@@ -21892,9 +21892,9 @@
                   "value": "target"
                 }
               ],
-              "precedence": "versioned_binding",
+              "precedence": "native_annotation",
               "resolution": "highest_precedence",
-              "source": "versioned_parameter_binding",
+              "source": "native_annotation",
               "value": "searchTarget"
             },
             "required": {
@@ -22086,7 +22086,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -22095,7 +22095,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想保留原件、把某个文件/文档拷贝一份到指定文件夹或知识库时使用；输入源节点 node 及目标 folder/workspace，会实际生成一个副本，原文件位置不变。"
@@ -22270,7 +22270,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -22279,7 +22279,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "复制文件/文档到指定位置"
@@ -22714,7 +22714,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -22723,7 +22723,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只记得钉盘文件的名字（或其中一部分），想快速按文件名关键词找到它、拿到它的 dentryId 以便后续下载/查看，却不想手动翻目录或写复杂过滤条件时使用；内部调用钉盘的 search_files 工具，把 --query 作为文件名关键词(keyword) 并限定搜索范围为钉盘文件(searchTarget=file)，再在本地把每条命中结果精简为「文件名、类型、dentryId、大小」四个字段后打印。这是纯只读操作，只做搜索与本地投影，不会创建、移动或删除任何文件；未命中时返回空列表。"
@@ -22900,7 +22900,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -22909,7 +22909,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "按名称关键词搜索钉盘文件并投影关键字段（只读）"
@@ -23175,7 +23175,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -23184,7 +23184,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你已经知道某个节点的 dentryUuid、想查看它的详细信息（名称、大小、类型、创建/修改时间、所属空间等）而不是仅列表概览时使用；输入 node（节点 ID），返回该单个文件或文件夹的完整元数据。"
@@ -23359,7 +23359,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -23368,7 +23368,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取钉盘文件/文件夹元数据"
@@ -23718,7 +23718,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -23727,7 +23727,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你要把某个文件/文档从当前位置转移到另一个文件夹或知识库（整理归档、调整目录结构）时使用；输入源节点 node 及目标 folder/workspace，会实际改变文件所在位置，原位置不再保留该文件。"
@@ -23902,7 +23902,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -23911,7 +23911,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "移动文件/文档到指定位置"
@@ -24346,7 +24346,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -24355,7 +24355,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你想快速找回「我最近看过/改过的那个文档」而不记得它放在哪时使用；可按操作类型（最近访问/最近编辑）和创建人（全部/我创建/他人创建）过滤，返回近期文档列表及其节点信息。"
@@ -24532,7 +24532,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -24541,7 +24541,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "获取最近访问/编辑的文档列表"
@@ -25060,7 +25060,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -25069,7 +25069,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只记得文件名或内容关键词、不知道它在哪个目录时用它全局检索钉盘文件；输入 query，可按文件类型、扩展名、创建者、创建/修改时间范围过滤，返回匹配文件及其 ID，便于再做下载或整理。"
@@ -25246,7 +25246,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -25255,7 +25255,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "搜索钉盘文件"
@@ -26397,7 +26397,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -26406,7 +26406,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "当你只记得文档标题或关键词、想在文档空间/知识库中检索在线文档（区别于 +search 检索钉盘文件）时使用；输入 query 关键词，返回匹配的文档及其节点信息。"
@@ -26581,7 +26581,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -26590,7 +26590,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "搜索文档空间文档"
@@ -26940,7 +26940,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -26949,7 +26949,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "转交文档或知识库的所有者给指定用户。此操作不可逆，执行前需要确认。\n\n--node 和 --workspace 二选一。转交后原所有者保留角色由 --reserve-role 指定。\n使用 --yes 跳过确认时，--reserve-role 和 --recursive 必须显式指定。"
@@ -27124,7 +27124,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -27133,7 +27133,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "[危险] 转交所有者"
@@ -27949,7 +27949,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -27958,7 +27958,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "取消收藏文档"
@@ -28239,7 +28239,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+              "review_reason": "Cobra Long preferred over ContractDecl text",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -28248,7 +28248,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_preferred",
-          "review_reason": "Cobra Long/Short preferred over ContractDecl text",
+          "review_reason": "Cobra Long preferred over ContractDecl text",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "将本地文件上传（三步自动完成）。\n\n路由规则:\n  默认（无 --workspace）  → 上传到钉盘（我的文件或指定空间）\n  --workspace \u003cid\u003e        → 上传到文档空间/知识库\n\n流程:\n  1. 获取 OSS 上传凭证\n  2. HTTP PUT 上传文件二进制到 OSS\n  3. 提交文件入库\n\n上传位置: --folder 指定父目录，不传则上传到空间根目录。"
@@ -28447,7 +28447,7 @@
           "candidates": [
             {
               "precedence": "cobra_help",
-              "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+              "review_reason": "Cobra Long fallback when ContractDecl text is empty",
               "selected": true,
               "source": "cobra_help",
               "source_ref": "cobra_help",
@@ -28456,7 +28456,7 @@
           ],
           "precedence": "cobra_help",
           "resolution": "cobra_help_fallback",
-          "review_reason": "Cobra Long/Short fallback when ContractDecl text is empty",
+          "review_reason": "Cobra Long fallback when ContractDecl text is empty",
           "source": "cobra_help",
           "source_ref": "cobra_help",
           "value": "上传本地文件到钉盘或文档空间"

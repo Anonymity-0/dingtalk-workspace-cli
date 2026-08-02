@@ -72,11 +72,10 @@ func TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog(t *testi
 		}
 	}
 
-	if got := snapshot.Bindings["calendar.get_calendar"]["id"]; got != "calendarId" {
-		t.Fatalf("calendar.get_calendar --id property = %q, want calendarId", got)
-	}
-	if got := snapshot.Bindings["aitable.field_update"]["name"]; got != "newFieldName" {
-		t.Fatalf("aitable.field_update --name property = %q, want newFieldName", got)
+	// Track 1 Phase 2: active bindings manifest is empty; property delivery is
+	// owned by leaf ParamDecl.Property (native annotations), not this JSON.
+	if len(snapshot.Bindings) != 0 {
+		t.Fatalf("active bindings = %d groups, want empty after Phase 2 retirement", len(snapshot.Bindings))
 	}
 }
 
@@ -122,7 +121,10 @@ func TestDecodeSchemaParameterBindingsFailsClosed(t *testing.T) {
 		},
 		{
 			name: "active binding drift",
-			data: replaceOnce(`"types": "searchTypes"`, `"types": "changedSearchTypes"`),
+			data: replaceOnce(
+				`"sha256": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"`,
+				`"sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000"`,
+			),
 			want: "want exact active manifest",
 		},
 		{
@@ -174,24 +176,28 @@ func TestSchemaParameterBindingManifestHashIsExactContentNotCount(t *testing.T) 
 	}
 }
 
-func TestBuildEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource(t *testing.T) {
+func TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource(t *testing.T) {
 	if os.Getenv(schemaParameterBindingInvalidBuildChildEnv) == "1" {
 		if got := runtimeSchemaParameterBindingsLazyLoadCount.Load(); got != 0 {
 			t.Fatalf("parameter bindings loaded before child test: %d", got)
 		}
 		embeddedSchemaParameterBindingsJSON = []byte(`{"version":3,"unexpected":true}`)
-		_, err := BuildEffectiveCommandRegistry(&cobra.Command{Use: "dws"})
+		effective, err := BuildEffectiveCommandRegistry(&cobra.Command{Use: "dws"})
+		if err != nil {
+			t.Fatalf("BuildEffectiveCommandRegistry() error = %v, want identity build without binding audit", err)
+		}
+		_, err = BindEffectiveCommandRegistry(&cobra.Command{Use: "dws"}, effective)
 		if err == nil || !strings.Contains(err.Error(), "validate reviewed Schema parameter bindings") || !strings.Contains(err.Error(), "unknown field") {
-			t.Fatalf("BuildEffectiveCommandRegistry() error = %v, want strict binding validation", err)
+			t.Fatalf("BindEffectiveCommandRegistry() error = %v, want strict binding/exclusion validation", err)
 		}
 		return
 	}
 
-	command := exec.Command(os.Args[0], "-test.run=^TestBuildEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource$", "-test.count=1")
+	command := exec.Command(os.Args[0], "-test.run=^TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource$", "-test.count=1")
 	command.Env = append(os.Environ(), schemaParameterBindingInvalidBuildChildEnv+"=1")
 	output, err := command.CombinedOutput()
 	if err != nil {
-		t.Fatalf("invalid binding Build child failed: %v\n%s", err, strings.TrimSpace(string(output)))
+		t.Fatalf("invalid binding Bind child failed: %v\n%s", err, strings.TrimSpace(string(output)))
 	}
 }
 

@@ -65,6 +65,24 @@ func clearDeclaredDryRunCapabilitiesForTest() {
 	})
 }
 
+func resetReviewedDryRunCapabilitiesLazyForTest() {
+	reviewedDryRunCapabilitiesLazy = struct {
+		once        sync.Once
+		byCanonical map[string]contract.DryRunSpec
+		err         error
+	}{}
+}
+
+func setReviewedDryRunCapabilityGroupsForTest(groups []dryRunCapabilityGroup) func() {
+	previous := reviewedDryRunCapabilityGroups
+	reviewedDryRunCapabilityGroups = groups
+	resetReviewedDryRunCapabilitiesLazyForTest()
+	return func() {
+		reviewedDryRunCapabilityGroups = previous
+		resetReviewedDryRunCapabilitiesLazyForTest()
+	}
+}
+
 func loadManualDryRunCapabilities() (map[string]contract.DryRunSpec, error) {
 	reviewedDryRunCapabilitiesLazy.once.Do(func() {
 		byCanonical := make(map[string]contract.DryRunSpec)
