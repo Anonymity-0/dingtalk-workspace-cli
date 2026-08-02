@@ -65,12 +65,12 @@ if ! jq -e -n \
 	      ($command.alias_cli_paths | sort))] | all) and
   all($all.products[].tools[]; . == $catalog.tools[.canonical_path])
 ' >/dev/null; then
-	printf '%s\n' 'built dws Schema navigation/hash/--all content differs from EffectiveCommandRegistry or embedded Catalog' >&2
+	printf '%s\n' 'built dws Schema navigation/hash/--all content differs from EffectiveCommandRegistry or assembled Catalog dump' >&2
 	exit 1
 fi
 
 # schema list is an intentionally compact product overview, but every field
-# still has to be the exact typed projection of the same embedded Catalog.
+# still has to be the exact typed projection of the same assembled Catalog dump.
 # Derive the expected overview without invoking another Schema code path so a
 # release binary cannot hide loader/query drift behind two identical helpers.
 jq -S '

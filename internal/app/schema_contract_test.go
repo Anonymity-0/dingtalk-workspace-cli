@@ -108,7 +108,7 @@ func TestEmbeddedSchemaContractMapsToExecutableTree(t *testing.T) {
 	if len(missing) > 0 || len(extra) > 0 {
 		sort.Strings(missing)
 		sort.Strings(extra)
-		t.Fatalf("embedded Schema canonical set differs from EffectiveCommandRegistry: missing=%v extra=%v", missing, extra)
+		t.Fatalf("runtime-assembled Schema canonical set differs from EffectiveCommandRegistry: missing=%v extra=%v", missing, extra)
 	}
 }
 

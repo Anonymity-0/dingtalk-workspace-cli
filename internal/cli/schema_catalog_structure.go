@@ -26,8 +26,9 @@ import (
 // Agents must follow one unified closed structure: a fixed required core plus
 // a whitelisted optional set. Any new field must be registered here first,
 // which keeps the delivered command data structure uniform across products.
-// Command identity (names/paths) is owned by schema_command_registry.json and
-// is deliberately out of scope for this validator.
+// Command identity (names/paths) is owned by schema_command_registry/
+// (registry.json + products/*.json) and is deliberately out of scope for this
+// validator.
 
 const schemaCatalogStructureMaxViolations = 25
 

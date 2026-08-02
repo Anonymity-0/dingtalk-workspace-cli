@@ -111,9 +111,11 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surface
 
 // generateSchemaCatalog consumes the cli package's reviewed registry API. It
 // deliberately does not decode command identity itself: the compatibility
-// --surface flag is validated against the embedded registry and can never
-// replace it as an input source. Agent metadata is generated in-memory and
-// injected for assembly; schema_agent_metadata/ is not a delivery artifact.
+// --surface flag is validated against the embedded reviewed registry and can
+// never replace it as an input source. Agent metadata may be generated
+// in-memory and injected for this CI/local dump only; production Agent
+// authority remains ContractFinal / ProductDecl. schema_agent_metadata/ is
+// not a delivery artifact.
 func generateSchemaCatalog(rootPath string, root *cobra.Command, surfacePath, outputPath, metaIndexPath string) error {
 	return generateSchemaCatalogWithResolver(rootPath, root, surfacePath, outputPath, metaIndexPath, cli.ResolveSchemaBuild)
 }

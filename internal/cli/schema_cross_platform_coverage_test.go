@@ -695,8 +695,8 @@ func TestCrossPlatformCoverageEmbeddedSchemaCatalogDelivery(t *testing.T) {
 		t.Fatalf("embedded catalog unavailable: %v", embeddedSchemaCatalogError())
 	}
 	loaded := embeddedSchemaCatalog()
-	if loaded.Registry.Source != SchemaSourceRuntimeAssembled && loaded.Registry.Source != "embedded-command-catalog" {
-		t.Fatalf("source = %q", loaded.Registry.Source)
+	if loaded.Registry.Source != SchemaSourceRuntimeAssembled {
+		t.Fatalf("source = %q, want %q", loaded.Registry.Source, SchemaSourceRuntimeAssembled)
 	}
 	overview, err := embeddedSchemaOverviewPayload()
 	if err != nil {

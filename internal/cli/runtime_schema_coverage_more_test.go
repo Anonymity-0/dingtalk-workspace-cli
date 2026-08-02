@@ -91,6 +91,30 @@ func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
 		t.Fatal("empty lookup unexpectedly matched")
 	}
 
+	leaf := &cobra.Command{Use: "reply"}
+	RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+		Interface: &contract.InterfaceSpec{
+			Mode:         contract.InterfaceModeMCP,
+			Availability: contract.InterfaceAvailable,
+			Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "send_personal_message"},
+		},
+	})
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(leaf) })
+	mcp := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
+		"chat.send_personal_message": {
+			Parameters: map[string]embeddedMCPParamMeta{
+				"clawType": {Type: "string"},
+			},
+		},
+	}}
+	got, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{Command: leaf, ProductID: "chat", ToolName: "reply_personal_message"}, embeddedAgentMetadata{}, mcp)
+	if !ok || got.Parameters["clawType"].Type != "string" {
+		t.Fatalf("ContractFinal Interface.Ref MCP remap = %#v ok=%v", got, ok)
+	}
+	if got.InterfaceRef == nil || got.InterfaceRef.RPCName != "send_personal_message" {
+		t.Fatalf("InterfaceRef = %#v", got.InterfaceRef)
+	}
+
 	for _, test := range []struct {
 		value any
 		want  int

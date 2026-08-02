@@ -30,8 +30,10 @@ var (
 )
 
 // installBuildTimeAgentMetadata generates Agent metadata in-memory via the
-// shared agentmetadata pipeline and injects it into cli assembly. Nothing is
-// written under internal/cli/schema_agent_metadata/.
+// shared agentmetadata pipeline and injects it into cli assembly for this
+// CI/local Catalog dump only. Production Agent authority is leaf
+// ContractFinal / ProductDecl; nothing is written under
+// internal/cli/schema_agent_metadata/.
 func installBuildTimeAgentMetadata(rootPath string, commandRoot *cobra.Command) error {
 	metadata, _, projection, err := generateCatalogAgentMetadata(rootPath, commandRoot, agentmetadata.Options{})
 	if err != nil {

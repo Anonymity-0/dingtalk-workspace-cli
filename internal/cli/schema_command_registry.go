@@ -22,9 +22,10 @@ import (
 
 const commandRegistrySchemaRef = "./schema_command_registry.schema.json"
 
-// schema_command_registry.json is the reviewed, typed command registry and the
-// sole source of stable command identity and navigation. Catalog and generated
-// metadata are downstream views and must never be read back here.
+// schema_command_registry/ (registry.json + products/*.json) is the reviewed,
+// typed command registry and the sole source of stable command identity and
+// navigation. Catalog and generated metadata are downstream views and must
+// never be read back here.
 
 //go:embed schema_command_registry/registry.json
 var embeddedSchemaCommandRegistryEnvelopeJSON []byte

@@ -8,6 +8,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/spf13/cobra"
 )
 
 // Exercise the complete production source-to-snapshot path from an external
@@ -81,4 +82,112 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if counts := cli.RuntimeSchemaMetadataLoadCounts(); counts.AgentMetadata == 0 || counts.MCPMetadata == 0 {
 		t.Fatalf("RuntimeSchemaMetadataLoadCounts() = %#v", counts)
 	}
+}
+
+// TestCrossPlatformCoverageAssembleSchemaCatalogFromRootAndMaterialize covers
+// the production RegisterSchemaSourceRoot → assembleSchemaCatalogFromRoot
+// success path, content source_hash / catalog_hash, lazy materialize, and the
+// seven MCP-remapped interface_type fields that Policy / Interface Integrity
+// require.
+func TestCrossPlatformCoverageAssembleSchemaCatalogFromRootAndMaterialize(t *testing.T) {
+	cli.InstallProductionSchemaAssemblyForTest(func() *cobra.Command {
+		return app.NewSchemaSourceRootCommand()
+	})
+	t.Cleanup(cli.RestorePackageCLISchemaDeliveryForTest)
+
+	all, err := cli.DeliverySchemaAllPayloadForTest()
+	if err != nil {
+		t.Fatalf("DeliverySchemaAllPayloadForTest() error = %v", err)
+	}
+	catalogHash, _ := all["catalog_hash"].(string)
+	surfaceHash, _ := all["surface_hash"].(string)
+	if catalogHash == "" || surfaceHash == "" {
+		t.Fatalf("missing hashes: catalog_hash=%q surface_hash=%q", catalogHash, surfaceHash)
+	}
+	if catalogHash == surfaceHash {
+		t.Fatalf("catalog_hash must be content hash, not registry/surface hash (%s)", catalogHash)
+	}
+	resolved, err := cli.ResolveSchemaBuild(app.NewSchemaSourceRootCommand())
+	if err != nil {
+		t.Fatalf("ResolveSchemaBuild() error = %v", err)
+	}
+	if surfaceHash != resolved.RegistryHash() {
+		t.Fatalf("surface_hash=%q, want EffectiveCommandRegistry hash %q", surfaceHash, resolved.RegistryHash())
+	}
+
+	sourceHash, err := cli.MaterializeDeliverySchemaCatalogMapsForTest()
+	if err != nil {
+		t.Fatalf("MaterializeDeliverySchemaCatalogMapsForTest() error = %v", err)
+	}
+	if sourceHash != catalogHash {
+		t.Fatalf("materialize source_hash=%q, want catalog_hash=%q", sourceHash, catalogHash)
+	}
+
+	wantTypes := map[string]map[string]string{
+		"chat.reply_personal_message": {
+			"ai-tag": "string",
+		},
+		"dev.search_open_platform_docs_rag": {
+			"page": "number",
+			"size": "number",
+		},
+		"minutes.list_accessible_minutes": {
+			"start": "number",
+			"end":   "number",
+		},
+		"minutes.list_shared_minutes": {
+			"start": "number",
+			"end":   "number",
+		},
+	}
+	tools := map[string]map[string]any{}
+	for _, tool := range schemaAnyMaps(all["products"]) {
+		for _, leaf := range schemaAnyMaps(tool["tools"]) {
+			canonical, _ := leaf["canonical_path"].(string)
+			if canonical != "" {
+				tools[canonical] = leaf
+			}
+		}
+	}
+	if len(tools) == 0 {
+		t.Fatalf("schema --all contained no tools; top-level keys=%v", mapKeys(all))
+	}
+	for canonical, flags := range wantTypes {
+		tool := tools[canonical]
+		if tool == nil {
+			t.Fatalf("missing tool %s in schema --all", canonical)
+		}
+		params, _ := tool["parameters"].(map[string]any)
+		for flag, want := range flags {
+			param, _ := params[flag].(map[string]any)
+			if got, _ := param["interface_type"].(string); got != want {
+				t.Fatalf("%s --%s interface_type = %#v, want %q", canonical, flag, param["interface_type"], want)
+			}
+		}
+	}
+}
+
+func schemaAnyMaps(value any) []map[string]any {
+	switch items := value.(type) {
+	case []map[string]any:
+		return items
+	case []any:
+		out := make([]map[string]any, 0, len(items))
+		for _, item := range items {
+			if m, ok := item.(map[string]any); ok {
+				out = append(out, m)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func mapKeys(value map[string]any) []string {
+	keys := make([]string, 0, len(value))
+	for key := range value {
+		keys = append(keys, key)
+	}
+	return keys
 }

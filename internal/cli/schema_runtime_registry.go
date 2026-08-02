@@ -200,7 +200,10 @@ func assembleSchemaRegistryFromBoundWithOptions(bound BoundCommandRegistry, meta
 	if err != nil {
 		return SchemaRegistry{}, fmt.Errorf("encode interface metadata summary: %w", err)
 	}
-	registry.AgentMetadata, err = assembleMarshalRaw(agentMetadataSummaryFrom(metadata.Agent))
+	// Derive Agent metadata summary from the assembled ContractFinal /
+	// ProductDecl surface so runtime delivery and cmd_schema_catalog dumps
+	// share one Catalog blob (inject remains validation-only for the dump).
+	registry.AgentMetadata, err = assembleMarshalRaw(agentMetadataSummaryFromProducts(products))
 	if err != nil {
 		return SchemaRegistry{}, fmt.Errorf("encode Agent metadata summary: %w", err)
 	}

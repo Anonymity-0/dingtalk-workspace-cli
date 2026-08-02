@@ -386,8 +386,13 @@ func TestRuntimeSchemaIncludesEmbeddedAgentMetadata(t *testing.T) {
 		t.Fatalf("runtimeSchemaPayloadForTest(catalog): %v", err)
 	}
 	summary, _ := catalog["agent_metadata"].(map[string]any)
-	if summary["source_hash"] != "sha256:test" {
+	// Catalog-level Agent summary is derived from assembled products/tools
+	// (ContractFinal / ProductDecl), not from the inject fixture source_hash.
+	if summary["source"] != embeddedAgentMetadataSource {
 		t.Fatalf("catalog Agent metadata summary = %#v", summary)
+	}
+	if summary["tools_with_metadata"] == nil || summary["products_with_metadata"] == nil {
+		t.Fatalf("catalog Agent metadata summary missing coverage fields: %#v", summary)
 	}
 	products, _ := catalog["products"].([]map[string]any)
 	doc := findSchemaProduct(products, "doc")

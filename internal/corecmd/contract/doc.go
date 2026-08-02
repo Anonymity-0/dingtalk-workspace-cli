@@ -13,7 +13,7 @@
 
 // Package contract owns command-framework declaration DTOs and the
 // ProductDecl registry. It is intentionally free of Cobra-keyed runtime
-// stores and Catalog / go:embed delivery code.
+// stores and Catalog delivery code.
 //
 // This package is the sole definition point for:
 //   - ContractFinalPayload (DTO only — store lives in corecmd/contractfinal)
@@ -33,7 +33,9 @@
 //   - ContractFinal cobra store + Register seam → internal/corecmd/contractfinal
 //     (framework calls RegisterRuntimeContractFinal here; product code uses
 //     cli.RegisterRuntimeContractFinal re-export).
-//   - Catalog assembly / ResolveMeta / go:embed → internal/cli (delivery root).
+//   - Catalog assembly / ResolveMeta (`RegisterSchemaSourceRoot` →
+//     `ResolveSchemaBuild`); go:embed only for reviewed inputs → internal/cli
+//     (delivery root).
 //
 // Description declare vs delivery (not dual authority):
 //

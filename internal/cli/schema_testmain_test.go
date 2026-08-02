@@ -94,6 +94,7 @@ func installAssembledSchemaDeliveryForPackageCLITests() (func(), error) {
 		loaded.Snapshot.Tools = payload.Tools
 	}
 	packageCLIAssembledDelivery = &loaded
+	restorePackageCLISchemaDeliveryHook = restorePackageCLISchemaDeliveryForTest
 	restorePackageCLISchemaDeliveryForTest()
 	return cleanup, nil
 }

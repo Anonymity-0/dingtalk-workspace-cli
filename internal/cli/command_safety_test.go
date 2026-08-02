@@ -39,6 +39,19 @@ func TestSafetyForCLIPathKnownCommand(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageSafetyForCLIPathRegisteredFactory(t *testing.T) {
+	if !SchemaSourceRootRegistered() {
+		t.Fatal("package-cli TestMain must register a Schema source root")
+	}
+	s, ok := SafetyForCLIPath("dev app delete")
+	if !ok || s.Effect != "destructive" {
+		t.Fatalf("SafetyForCLIPath = %#v ok=%v", s, ok)
+	}
+	if _, ok := SafetyForCLIPath("nonexistent fake command"); ok {
+		t.Fatal("unknown path must return ok=false")
+	}
+}
+
 func TestSafetyForCLIPathUnknownSkips(t *testing.T) {
 	// 不存在的命令 → ok=false。
 	_, ok := SafetyForCLIPath("nonexistent fake command")

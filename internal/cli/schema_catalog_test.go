@@ -25,7 +25,7 @@ func TestEmbeddedSchemaCatalogIntegrity(t *testing.T) {
 	if !embeddedSchemaCatalogAvailable() {
 		t.Fatal("delivery schema catalog is unavailable or failed integrity validation")
 	}
-	if got := loaded.Registry.Source; got != SchemaSourceRuntimeAssembled && got != "embedded-command-catalog" {
+	if got := loaded.Registry.Source; got != SchemaSourceRuntimeAssembled {
 		t.Fatalf("catalog source = %q, want %q", got, SchemaSourceRuntimeAssembled)
 	}
 }

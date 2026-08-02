@@ -378,8 +378,9 @@ func NewRootCommand(ctx ...context.Context) *cobra.Command {
 }
 
 // NewSchemaSourceRootCommand constructs the distribution-owned command tree
-// used by Schema generation and command-surface policy. Installed plugins and
-// user-defined shortcuts must not change the reviewed embedded Schema.
+// used as the Schema assembly source root (RegisterSchemaSourceRoot →
+// ResolveSchemaBuild) and by command-surface policy. Installed plugins and
+// user-defined shortcuts must not change the reviewed Schema surface.
 func NewSchemaSourceRootCommand(ctx ...context.Context) *cobra.Command {
 	var rootCtx context.Context
 	if len(ctx) > 0 && ctx[0] != nil {

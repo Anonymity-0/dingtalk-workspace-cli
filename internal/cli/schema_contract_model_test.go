@@ -584,7 +584,7 @@ func TestSchemaRegistrySnapshotUsesSameToolForSummaryAndFullExport(t *testing.T)
 	if err != nil {
 		t.Fatalf("ToolSpecFromRuntime() error = %v", err)
 	}
-	registry, err := SchemaRegistryFromRuntime("embedded-command-catalog", []ProductSpec{{
+	registry, err := SchemaRegistryFromRuntime(SchemaSourceRuntimeAssembled, []ProductSpec{{
 		ID:    "agoal",
 		Name:  "AGoal",
 		Tools: []ToolSpec{spec},

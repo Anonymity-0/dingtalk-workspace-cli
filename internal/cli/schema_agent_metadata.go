@@ -24,9 +24,11 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
-// schema_agent_metadata/*.json is retired as a shipped artifact. Catalog
-// generation injects Agent metadata in-memory via InstallBuildTimeAgentMetadataJSON;
-// runtime consumption uses schema_catalog only.
+// schema_agent_metadata/*.json is retired as a shipped artifact. Production
+// Agent selection / safety / interface authority is leaf ContractFinal and
+// ProductDecl via RegisterSchemaSourceRoot → ResolveSchemaBuild.
+// InstallBuildTimeAgentMetadataJSON is a CI/local dump helper for
+// cmd_schema_catalog only; it is not a production source.
 
 const embeddedAgentMetadataSource = "embedded-skill-metadata"
 
@@ -104,9 +106,10 @@ var (
 )
 
 // InstallBuildTimeAgentMetadataJSON installs generator-produced Agent metadata
-// for Catalog assembly only. Production binaries never call this; the Catalog
-// generator injects an in-memory snapshot so schema_agent_metadata/ is neither
-// committed nor embedded.
+// for cmd_schema_catalog CI/local dump assembly only. Production binaries never
+// call this; production authority remains leaf ContractFinal / ProductDecl.
+// The dump helper injects an in-memory snapshot so schema_agent_metadata/ is
+// neither committed nor embedded.
 func InstallBuildTimeAgentMetadataJSON(data []byte) error {
 	var metadata embeddedAgentMetadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
@@ -125,7 +128,7 @@ func InstallBuildTimeAgentMetadataJSON(data []byte) error {
 	return nil
 }
 
-// ClearBuildTimeAgentMetadata removes a Catalog-generator injection.
+// ClearBuildTimeAgentMetadata removes a cmd_schema_catalog dump-helper injection.
 func ClearBuildTimeAgentMetadata() {
 	buildTimeAgentMetadataMu.Lock()
 	defer buildTimeAgentMetadataMu.Unlock()
@@ -133,8 +136,9 @@ func ClearBuildTimeAgentMetadata() {
 }
 
 // runtimeAgentMetadata returns build-time injected Agent metadata when the
-// Catalog generator installed one; otherwise an empty snapshot. Shipped
-// binaries no longer embed schema_agent_metadata/*.json.
+// CI dump helper installed one; otherwise an empty snapshot. Shipped
+// binaries no longer embed schema_agent_metadata/*.json; production Agent
+// facts come from ContractFinal / ProductDecl.
 func runtimeAgentMetadata() embeddedAgentMetadata {
 	buildTimeAgentMetadataMu.Lock()
 	override := buildTimeAgentMetadataOverride
@@ -381,4 +385,59 @@ func agentMetadataSummaryFrom(metadata embeddedAgentMetadata) map[string]any {
 		summary["unmatched_skill_tools"] = coverage.UnmatchedSkillTools
 	}
 	return summary
+}
+
+// agentMetadataSummaryFromProducts publishes Catalog-level Agent coverage from
+// the assembled Schema surface (ContractFinal / ProductDecl). This keeps
+// runtime delivery and CI dumps hash-aligned without requiring build-time
+// Agent metadata inject as a published summary source.
+func agentMetadataSummaryFromProducts(products []ProductSpec) map[string]any {
+	productsWith := 0
+	toolsWith := 0
+	toolsWithSummary := 0
+	surfaceTools := 0
+	for _, product := range products {
+		if productHasPublishedAgentMetadata(product) {
+			productsWith++
+		}
+		for _, tool := range product.Tools {
+			surfaceTools++
+			if toolHasPublishedAgentMetadata(tool) {
+				toolsWith++
+			}
+			if strings.TrimSpace(tool.Selection.AgentSummary) != "" {
+				toolsWithSummary++
+			}
+		}
+	}
+	summary := map[string]any{
+		"source":                 embeddedAgentMetadataSource,
+		"version":                1,
+		"source_hash":            "",
+		"products_with_metadata": productsWith,
+		"tools_with_metadata":    toolsWith,
+	}
+	if len(products) > 0 {
+		summary["surface_products"] = len(products)
+	}
+	if surfaceTools > 0 {
+		summary["surface_tools"] = surfaceTools
+	}
+	if toolsWithSummary > 0 {
+		summary["tools_with_agent_summary"] = toolsWithSummary
+	}
+	return summary
+}
+
+func productHasPublishedAgentMetadata(product ProductSpec) bool {
+	return strings.TrimSpace(product.Selection.AgentSummary) != "" ||
+		len(product.Selection.UseWhen) > 0 ||
+		len(product.Selection.AvoidWhen) > 0
+}
+
+func toolHasPublishedAgentMetadata(tool ToolSpec) bool {
+	return strings.TrimSpace(tool.Selection.AgentSummary) != "" ||
+		len(tool.Selection.UseWhen) > 0 ||
+		len(tool.Selection.AvoidWhen) > 0 ||
+		len(tool.Selection.Examples) > 0
 }

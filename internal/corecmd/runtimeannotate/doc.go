@@ -17,9 +17,11 @@
 // Package boundary:
 //
 //   - Types / DTO / ProductDecl → internal/corecmd/contract
-//   - AnnotateRuntime* writers (this package) — no Catalog / go:embed
+//   - AnnotateRuntime* writers (this package) — no Catalog delivery
 //   - ContractFinal cobra store + Register seam → internal/corecmd/contractfinal
-//   - Catalog assembly / ResolveMeta / go:embed → internal/cli (root)
+//   - Catalog assembly / ResolveMeta (`RegisterSchemaSourceRoot` →
+//     `ResolveSchemaBuild`); go:embed only for reviewed inputs → internal/cli
+//     (root)
 //
 // Dependency direction: corecmd and corecmd/contractfinal import this package.
 // This package must never import internal/cli (root or subpackages).

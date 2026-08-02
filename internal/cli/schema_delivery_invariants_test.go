@@ -198,7 +198,7 @@ func TestValidateSchemaDeliveryInvariantsAllowsOnlyEnvelopeHashes(t *testing.T) 
 func TestSchemaOverviewPayloadFromCatalogPreservesListSelectionPriority(t *testing.T) {
 	catalog := map[string]any{
 		"kind":   "schema",
-		"source": "embedded-command-catalog",
+		"source": "runtime-assembled",
 		"products": []map[string]any{
 			{
 				"id":            "agent-summary",
@@ -232,7 +232,7 @@ func TestSchemaOverviewPayloadFromCatalogPreservesListSelectionPriority(t *testi
 	if !schemaJSONEqual(got["products"], wantProducts) {
 		t.Fatalf("overview products = %#v, want %#v", got["products"], wantProducts)
 	}
-	if got["count"] != 3 || got["tool_count"] != 3 || got["source"] != "embedded-command-catalog" {
+	if got["count"] != 3 || got["tool_count"] != 3 || got["source"] != "runtime-assembled" {
 		t.Fatalf("overview envelope = %#v", got)
 	}
 	if !schemaJSONEqual(got["interface_metadata"], catalog["interface_metadata"]) || !schemaJSONEqual(got["agent_metadata"], catalog["agent_metadata"]) {

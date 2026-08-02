@@ -20,9 +20,9 @@ the wire projection. `cmd_schema_catalog` produces CI/local dumps only;
 `internal/cli/schema_catalog/`, `internal/cli/schema_meta_index.gob`, and
 `internal/cli/schema_meta_index.json` must not be committed. `schema_agent_metadata/` is retired: if that directory
 (or `schema_agent_metadata_audit.json`) is present, policy fails.
-`internal/cli/schema_command_registry.json` is different: it is a reviewed
-`CommandRegistry` source, not a generated snapshot. It is the single reviewed
-source of stable canonical identity,
+`internal/cli/schema_command_registry/` (`registry.json` + `products/*.json`)
+is different: it is a reviewed `CommandRegistry` source, not a generated
+snapshot. It is the single reviewed source of stable canonical identity,
 primary paths, aliases, and navigation. Edit it only when reviewed exposure,
 identity, primary path, or aliases change; parameter, Skill, and metadata-only
 changes must not rewrite it mechanically.
@@ -39,7 +39,7 @@ changes must not rewrite it mechanically.
   - AnnotateRuntime* writers → `internal/corecmd/runtimeannotate` (framework-owned)
   - ContractFinal cobra store + Register → `internal/corecmd/contractfinal` (framework-owned)
   - homology gates → `internal/cli/homology`
-  - Catalog / `ResolveMeta` / go:embed → `internal/cli` root (thin re-exports of annotate/store APIs; `cli/runtimeannotate` + `cli/contractfinal` are thin re-exports only)
+  - Catalog assembly / `ResolveMeta` (`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`); go:embed only for reviewed inputs → `internal/cli` root (thin re-exports of annotate/store APIs; `cli/runtimeannotate` + `cli/contractfinal` are thin re-exports only)
   - **Hard rule**: `internal/corecmd` (and its subpackages) must **not** import any `internal/cli` package
 - Authoring tiers (current, not aspirational):
   - **Tier1** — `corecmd.New` / `NewLeafCommand` (fully managed declare + execute)
@@ -67,7 +67,7 @@ The Schema data flow is one way:
    └─ builds the real Cobra command tree and flags
    └─ leaf Safety / Contract / contract.ParamDecl declare ContractFinal (declare-or-annotate)
 
-2. schema_command_registry.json
+2. schema_command_registry/ (registry.json + products/*.json)
    └─ forms EffectiveCommandRegistry
       └─ binds exactly to real Cobra leaves and aliases
 
@@ -160,9 +160,10 @@ or duplicate exclusions must fail generation and CI.
 
 When adding or changing an Agent-visible command, review all relevant inputs:
 
-- `internal/cli/schema_command_registry.json` for the reviewed
-  `CommandRegistry`: canonical identity, primary CLI path, aliases, and stable
-  navigation. It is the identity source and is not a generated artifact.
+- `internal/cli/schema_command_registry/` (`registry.json` +
+  `products/*.json`) for the reviewed `CommandRegistry`: canonical identity,
+  primary CLI path, aliases, and stable navigation. It is the identity source
+  and is not a generated artifact.
 - `internal/cli/schema_command_registry.schema.json` is its closed,
   machine-readable editing contract. Preserve the local `$schema` reference;
   unknown fields, invalid visibility values, stale paths, and collisions fail

@@ -289,6 +289,16 @@ func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtime
 }
 
 func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata embeddedAgentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
+	// Production authority: ContractFinal Interface.Ref remaps CLI canonical
+	// names onto pinned MCP tool keys (e.g. reply_personal_message →
+	// chat.send_personal_message). Agent-metadata inject is CI-dump only.
+	if entry.Command != nil {
+		if final, ok := RuntimeContractFinal(entry.Command); ok && final.Interface != nil && final.Interface.Ref != nil {
+			if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, final.Interface.Ref.ProductID, final.Interface.Ref.RPCName); found {
+				return metadata, true
+			}
+		}
+	}
 	paths := []string{
 		entry.PrimaryCLIPath,
 		entry.CLIPath,
@@ -296,11 +306,7 @@ func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata emb
 	}
 	paths = append(paths, entry.Aliases...)
 	if toolMetadata, ok := lookupAgentToolMetadataFrom(agentMetadata, paths...); ok && toolMetadata.InterfaceRef != nil {
-		productID := strings.TrimSpace(toolMetadata.InterfaceRef.ProductID)
-		rpcName := strings.TrimSpace(toolMetadata.InterfaceRef.RPCName)
-		key := strings.Trim(productID+"."+rpcName, ".")
-		if metadata, exists := mcpMetadata.Tools[key]; exists {
-			metadata.InterfaceRef = &embeddedMCPInterfaceRef{ProductID: productID, RPCName: rpcName}
+		if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, toolMetadata.InterfaceRef.ProductID, toolMetadata.InterfaceRef.RPCName); found {
 			return metadata, true
 		}
 	}
@@ -317,6 +323,21 @@ func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata emb
 		}
 	}
 	return embeddedMCPToolMetadata{}, false
+}
+
+func mcpMetadataForInterfaceRef(mcpMetadata embeddedMCPMetadata, productID, rpcName string) (embeddedMCPToolMetadata, bool) {
+	productID = strings.TrimSpace(productID)
+	rpcName = strings.TrimSpace(rpcName)
+	key := strings.Trim(productID+"."+rpcName, ".")
+	if key == "" {
+		return embeddedMCPToolMetadata{}, false
+	}
+	metadata, exists := mcpMetadata.Tools[key]
+	if !exists {
+		return embeddedMCPToolMetadata{}, false
+	}
+	metadata.InterfaceRef = &embeddedMCPInterfaceRef{ProductID: productID, RPCName: rpcName}
+	return metadata, true
 }
 
 func runtimeSchemaAnnotations(cmd *cobra.Command) (productID, toolName, source string) {

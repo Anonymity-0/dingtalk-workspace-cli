@@ -67,12 +67,17 @@ func resetDeliverySchemaCatalogStateForTest() {
 	runtimeDeliverySchemaCatalogMapsErr = nil
 }
 
+var (
+	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+	resolveSchemaBuildForDelivery   = ResolveSchemaBuild
+)
+
 // assembleSchemaCatalogFromRoot is the declare→Catalog runtime path.
 func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, error) {
 	if root == nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("schema source root is nil")
 	}
-	resolved, err := ResolveSchemaBuild(root)
+	resolved, err := resolveSchemaBuildForDelivery(root)
 	if err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("resolve Schema build: %w", err)
 	}
@@ -92,18 +97,72 @@ func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, er
 		return loadedSchemaCatalog{}, fmt.Errorf("build Schema index: %w", err)
 	}
 	surfaceHash := resolved.RegistryHash()
+	// Content source_hash must match BuildSchemaCatalogSnapshot / CI dump.
+	// Catalog/Tools maps stay lazy (materializeDeliverySchemaCatalogMaps).
+	payload, err := registryToSnapshotPayloadFn(registry)
+	if err != nil {
+		return loadedSchemaCatalog{}, fmt.Errorf("serialize Schema Catalog snapshot: %w", err)
+	}
+	sourceHash := schemaCatalogSnapshotHash(SchemaCatalogSnapshot{
+		Version:     SchemaCatalogSnapshotVersion,
+		SurfaceHash: surfaceHash,
+		Catalog:     payload.Catalog,
+		Tools:       payload.Tools,
+	})
 	return loadedSchemaCatalog{
 		Snapshot: SchemaCatalogSnapshot{
 			Version:     SchemaCatalogSnapshotVersion,
 			SurfaceHash: surfaceHash,
-			SourceHash:  surfaceHash,
+			SourceHash:  sourceHash,
 		},
 		Registry: registry,
 		Index:    index,
 	}, nil
 }
 
-var assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+// InstallProductionSchemaAssemblyForTest installs the production
+// assembleSchemaCatalogFromRoot delivery path with factory and clears lazy
+// caches. Tests must Cleanup via RegisterSchemaSourceRoot(nil) or a restore
+// helper that reinstalls their prior delivery stub.
+func InstallProductionSchemaAssemblyForTest(factory func() *cobra.Command) {
+	RegisterSchemaSourceRoot(factory)
+	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+	resetDeliverySchemaCatalogStateForTest()
+}
+
+// MaterializeDeliverySchemaCatalogMapsForTest exercises the lazy Catalog/Tools
+// materialize path used by map-based consumers.
+func MaterializeDeliverySchemaCatalogMapsForTest() (sourceHash string, err error) {
+	loaded, err := materializeDeliverySchemaCatalogMaps()
+	if err != nil {
+		return "", err
+	}
+	return loaded.Snapshot.SourceHash, nil
+}
+
+// DeliverySchemaAllPayloadForTest returns schema --all through the installed
+// delivery loader (catalog_hash comes from Snapshot.SourceHash).
+func DeliverySchemaAllPayloadForTest() (map[string]any, error) {
+	return deliverySchemaAllPayload()
+}
+
+// RestorePackageCLISchemaDeliveryForTest reinstalls the package-cli TestMain
+// assembled-delivery stub after a production-assembly exercise. Outside package
+// cli TestMain it clears the factory and resets lazy delivery state.
+func RestorePackageCLISchemaDeliveryForTest() {
+	if restorePackageCLISchemaDeliveryHook != nil {
+		restorePackageCLISchemaDeliveryHook()
+		return
+	}
+	schemaSourceRootFn = nil
+	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+	resetDeliverySchemaCatalogStateForTest()
+	resetMetaByCLIPathStateForTest()
+}
+
+// restorePackageCLISchemaDeliveryHook is installed by package-cli TestMain so
+// external cli_test helpers can restore the assembled-delivery stub.
+var restorePackageCLISchemaDeliveryHook func()
 
 // deliverySchemaCatalog is the sole production Catalog loader. It lazily
 // assembles via ResolveSchemaBuild and caches the ResolveMeta map. Without a

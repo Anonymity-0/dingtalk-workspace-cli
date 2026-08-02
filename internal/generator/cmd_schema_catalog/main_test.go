@@ -56,7 +56,7 @@ func TestCrossPlatformCoverageCatalogMainReportsIsolationAndGenerationFailures(t
 		}()
 		main()
 	}
-	invoke("-root", repositoryRoot, "-output", filepath.Join(repositoryRoot, "internal/cli/schema_command_registry.json"))
+	invoke("-root", repositoryRoot, "-output", filepath.Join(repositoryRoot, "internal/cli/schema_command_registry"))
 	validateCatalogParameterBindings = func() error { return errors.New("bindings") }
 	invoke("-root", repositoryRoot, "-output", filepath.Join(t.TempDir(), "catalog.json"))
 }
