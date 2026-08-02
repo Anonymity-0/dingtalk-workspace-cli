@@ -421,12 +421,23 @@ func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
 	assembleCollectEntries = func(BoundCommandRegistry) ([]runtimeSchemaEntry, error) {
 		return []runtimeSchemaEntry{{ProductID: "p", ToolName: "t", ProductName: "P", CLIPath: "p t", PrimaryCLIPath: "p t"}}, nil
 	}
+	// assembleRuntimeToolSpec is only consulted on the production (non-legacy)
+	// path; AllowingLegacy calls runtimeToolSpecAllowingLegacy directly.
 	assembleRuntimeToolSpec = func(runtimeSchemaEntry, runtimeSchemaMetadataSources) (ToolSpec, error) {
 		return ToolSpec{}, fmt.Errorf("tool boom")
 	}
-	if _, err := assembleSchemaRegistryFromBoundAllowingLegacy(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "tool boom") {
+	if _, err := assembleSchemaRegistryFromBound(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "tool boom") {
 		t.Fatalf("tool error = %v", err)
 	}
+	t.Cleanup(func() { contract.ClearProductDeclForTest("p") })
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "p",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "P product",
+			UseWhen:      []string{"p routing"},
+			AvoidWhen:    []string{"not p"},
+		},
+	})
 	assembleRuntimeToolSpec = func(runtimeSchemaEntry, runtimeSchemaMetadataSources) (ToolSpec, error) {
 		return ToolSpec{
 			Identity: contract.ToolIdentitySpec{
@@ -439,7 +450,7 @@ func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
 	assembleTypedRegistry = func(string, []ProductSpec) (SchemaRegistry, error) {
 		return SchemaRegistry{}, fmt.Errorf("typed boom")
 	}
-	if _, err := assembleSchemaRegistryFromBoundAllowingLegacy(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "typed boom") {
+	if _, err := assembleSchemaRegistryFromBound(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "typed boom") {
 		t.Fatalf("typed error = %v", err)
 	}
 	assembleTypedRegistry = func(string, []ProductSpec) (SchemaRegistry, error) {
@@ -453,7 +464,7 @@ func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
 		}
 		return json.RawMessage(`{}`), nil
 	}
-	if _, err := assembleSchemaRegistryFromBoundAllowingLegacy(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "iface boom") {
+	if _, err := assembleSchemaRegistryFromBound(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "iface boom") {
 		t.Fatalf("iface marshal error = %v", err)
 	}
 	calls = 0
@@ -464,7 +475,7 @@ func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
 		}
 		return json.RawMessage(`{}`), nil
 	}
-	if _, err := assembleSchemaRegistryFromBoundAllowingLegacy(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "agent boom") {
+	if _, err := assembleSchemaRegistryFromBound(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "agent boom") {
 		t.Fatalf("agent marshal error = %v", err)
 	}
 }
