@@ -19,7 +19,7 @@ type SchemaMetadataLoadCounts struct {
 func RuntimeSchemaMetadataLoadCounts() SchemaMetadataLoadCounts {
 	return SchemaMetadataLoadCounts{
 		Catalog:          runtimeDeliverySchemaCatalogLazyCount.Load(),
-		MetaIndex:        runtimeEmbeddedSchemaMetaIndexLazyCount.Load(),
+		MetaIndex:        runtimeDeliverySchemaMetaIndexLazyCount.Load(),
 		AgentMetadata:    runtimeEmbeddedAgentMetadataLazyLoadCount.Load(),
 		MCPMetadata:      runtimeEmbeddedMCPMetadataLazyLoadCount.Load(),
 		ParameterBinding: runtimeSchemaParameterBindingsLazyLoadCount.Load(),

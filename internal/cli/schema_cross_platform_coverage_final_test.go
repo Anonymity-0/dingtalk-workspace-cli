@@ -393,7 +393,7 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 
 	t.Run("RuntimeSchemaMetadataLoadCounts prefers delivery counter", func(t *testing.T) {
 		restorePackageCLISchemaDeliveryForTest()
-		resetEmbeddedSchemaCatalogStateForTest()
+		resetDeliverySchemaCatalogStateForTest()
 		RegisterSchemaSourceRoot(func() *cobra.Command { return nil })
 		t.Cleanup(func() {
 			restorePackageCLISchemaDeliveryForTest()

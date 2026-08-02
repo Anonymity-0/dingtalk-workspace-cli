@@ -221,9 +221,9 @@ func TestRenderSafetyAnnotation(t *testing.T) {
 	}
 }
 
-// TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalogPropagatesAssemblyError
+// TestCrossPlatformCoverageAssembleDeliverySchemaCatalogPropagatesAssemblyError
 // 覆盖 assembleTypedSchemaCatalog / assembleSchemaCatalogSnapshot 的错误透传分支。
-func TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalogPropagatesAssemblyError(t *testing.T) {
+func TestCrossPlatformCoverageAssembleDeliverySchemaCatalogPropagatesAssemblyError(t *testing.T) {
 	if _, _, err := assembleTypedSchemaCatalog([]byte("{bad"), nil, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog.json") {
 		t.Fatalf("error = %v", err)
 	}

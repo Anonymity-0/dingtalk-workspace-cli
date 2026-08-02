@@ -205,7 +205,7 @@ func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string
 var (
 	buildCatalogValidateParameterBindings = ValidateSchemaParameterBindingDelivery
 	buildCatalogValidateDryRun            = ValidateReviewedDryRunCapabilityDelivery
-	buildCatalogValidateExamples          = ValidateEmbeddedManualAgentExampleDelivery
+	buildCatalogValidateExamples          = ValidateAgentExampleDelivery
 	buildCatalogValidateCompleteness      = validateResolvedRuntimeSchemaCompleteness
 	buildCatalogValidateRegistry          = validateSchemaRegistryAgainstCommandRegistry
 	buildCatalogValidateInterfaces        = validateSchemaRegistryInterfaces

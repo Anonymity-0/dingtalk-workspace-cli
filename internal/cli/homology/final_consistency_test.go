@@ -120,8 +120,8 @@ func TestAllCommandsContractFinalConsistentWithLiveCatalog(t *testing.T) {
 	if checked != 845 {
 		t.Fatalf("checked = %d, want 845 reviewed tools", checked)
 	}
-	if err := cli.ValidateEmbeddedRuntimeSchemaCompleteness(app.NewSchemaSourceRootCommand()); err != nil {
-		t.Fatalf("ValidateEmbeddedRuntimeSchemaCompleteness() error = %v", err)
+	if err := cli.ValidateRuntimeSchemaCompleteness(app.NewSchemaSourceRootCommand()); err != nil {
+		t.Fatalf("ValidateRuntimeSchemaCompleteness() error = %v", err)
 	}
 }
 

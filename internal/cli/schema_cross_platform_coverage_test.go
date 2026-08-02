@@ -153,16 +153,16 @@ func TestCrossPlatformCoverageAgentExampleExecutionPlanErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("ValidateEmbeddedManualAgentExampleDelivery alias", func(t *testing.T) {
+	t.Run("ValidateAgentExampleDelivery", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
-		if _, err := ValidateEmbeddedManualAgentExampleDelivery(bound, registry); err != nil {
-			t.Fatalf("ValidateEmbeddedManualAgentExampleDelivery() error = %v", err)
+		if _, err := ValidateAgentExampleDelivery(bound, registry); err != nil {
+			t.Fatalf("ValidateAgentExampleDelivery() error = %v", err)
 		}
 	})
 
 	t.Run("BuildManualAgentExampleExecutionPlan wrapper", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
-		if _, err := BuildManualAgentExampleExecutionPlan(bound, registry, ManualAgentHintSet{}); err != nil {
+		if _, err := BuildManualAgentExampleExecutionPlan(bound, registry, ManualAgentSelectionSet{}); err != nil {
 			t.Fatalf("BuildManualAgentExampleExecutionPlan() error = %v", err)
 		}
 	})
@@ -345,7 +345,7 @@ func crossPlatformAgentExampleFixture(t *testing.T, mutate func(*cobra.Command, 
 
 func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 	t.Run("materialize embedded maps", func(t *testing.T) {
-		loaded := mustEmbeddedSchemaCatalogMaps(t)
+		loaded := mustDeliverySchemaCatalogMaps(t)
 		if len(loaded.Snapshot.Catalog) == 0 || len(loaded.Snapshot.Tools) == 0 {
 			t.Fatal("materialized catalog maps are empty")
 		}
@@ -392,8 +392,8 @@ func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 		if firstNonEmptySchemaString("", " trimmed ", nil) != "trimmed" {
 			t.Fatal("firstNonEmptySchemaString failed")
 		}
-		if err := embeddedSchemaCatalogError(); err != nil {
-			t.Fatalf("embeddedSchemaCatalogError() = %v", err)
+		if err := deliverySchemaCatalogError(); err != nil {
+			t.Fatalf("deliverySchemaCatalogError() = %v", err)
 		}
 	})
 
@@ -405,7 +405,7 @@ func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageSchemaMetaIndexAndCommandMeta(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	index, err := BuildSchemaMetaIndex(loaded.Snapshot)
 	if err != nil {
 		t.Fatalf("BuildSchemaMetaIndex() error = %v", err)
@@ -632,9 +632,9 @@ func TestCrossPlatformCoverageSchemaAgentSelectionBinding(t *testing.T) {
 	if _, err := ValidateAgentSelectionContract(bound); err != nil {
 		t.Fatalf("ValidateAgentSelectionContract() error = %v", err)
 	}
-	hint := contractFinalSelectionHint(bound.Commands[0].PrimaryCommand)
-	if hint.AgentSummary == "" || len(hint.Examples) == 0 {
-		t.Fatalf("contractFinalSelectionHint = %#v", hint)
+	selection := contractFinalToolSelection(bound.Commands[0].PrimaryCommand)
+	if selection.AgentSummary == "" || len(selection.Examples) == 0 {
+		t.Fatalf("contractFinalToolSelection = %#v", selection)
 	}
 	if err := validateAgentSelectionBinding(bound, "sample.run", bound.Commands[0]); err != nil {
 		t.Fatalf("validateAgentSelectionBinding() error = %v", err)
@@ -659,7 +659,7 @@ func TestCrossPlatformCoverageSchemaDryRunCapabilities(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageSchemaSnapshotAdapterEdges(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	toolPayload := loaded.Snapshot.Tools["calendar.create_calendar_event"]
 	if _, err := schemaToolSpecFromPayload(toolPayload); err != nil {
 		t.Fatalf("schemaToolSpecFromPayload() error = %v", err)
@@ -690,33 +690,33 @@ func TestCrossPlatformCoverageSchemaCanonicalPathAndParamAliases(t *testing.T) {
 	walkRunnableParamCommands(nil, func(*cobra.Command) { t.Fatal("must not invoke fn") })
 }
 
-func TestCrossPlatformCoverageEmbeddedSchemaCatalogDelivery(t *testing.T) {
-	if !embeddedSchemaCatalogAvailable() {
-		t.Fatalf("embedded catalog unavailable: %v", embeddedSchemaCatalogError())
+func TestCrossPlatformCoverageDeliverySchemaCatalogDelivery(t *testing.T) {
+	if !deliverySchemaCatalogAvailable() {
+		t.Fatalf("embedded catalog unavailable: %v", deliverySchemaCatalogError())
 	}
-	loaded := embeddedSchemaCatalog()
+	loaded := deliverySchemaCatalog()
 	if loaded.Registry.Source != SchemaSourceRuntimeAssembled {
 		t.Fatalf("source = %q, want %q", loaded.Registry.Source, SchemaSourceRuntimeAssembled)
 	}
-	overview, err := embeddedSchemaOverviewPayload()
+	overview, err := deliverySchemaOverviewPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if schemaProductToolCount(map[string]any{"tools": overview["products"]}) == 0 {
 		t.Fatal("overview is empty")
 	}
-	payload, err := embeddedSchemaAllPayload()
+	payload, err := deliverySchemaAllPayload()
 	if err != nil || len(schemaMapSlice(payload["products"])) == 0 {
-		t.Fatalf("embeddedSchemaAllPayload() = %#v, %v", payload, err)
+		t.Fatalf("deliverySchemaAllPayload() = %#v, %v", payload, err)
 	}
-	leaf, err := embeddedSchemaPayload([]string{"calendar event create"})
+	leaf, err := queryDeliverySchemaPayload([]string{"calendar event create"})
 	if err != nil || schemaString(leaf["canonical_path"]) == "" {
-		t.Fatalf("embeddedSchemaPayload() = %#v, %v", leaf, err)
+		t.Fatalf("queryDeliverySchemaPayload() = %#v, %v", leaf, err)
 	}
 }
 
 func TestCrossPlatformCoverageValidateCatalogStructure(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	data, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -735,7 +735,7 @@ func TestCrossPlatformCoverageValidateCatalogStructure(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageCommandMetaFromSnapshotTools(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	lookup := buildMetaByCLIPath(loaded)
 	if len(lookup) == 0 {
 		t.Fatal("buildMetaByCLIPath returned empty lookup")
@@ -785,7 +785,7 @@ func TestCrossPlatformCoverageParamAliasRealFlagsByMorph(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageSchemaCatalogSnapshotLoadRoundTrip(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	data, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -824,7 +824,7 @@ func TestCrossPlatformCoverageRuntimeSchemaPayloadGroupAndProduct(t *testing.T) 
 	if _, err := runtimeSchemaPayloadFromRegistry(registry, []string{"doc create"}); err != nil {
 		t.Fatalf("leaf payload error = %v", err)
 	}
-	loaded := embeddedSchemaCatalog()
+	loaded := deliverySchemaCatalog()
 	if groupPayload, err := runtimeSchemaPayloadFromRegistry(loaded.Registry, []string{"calendar.event"}); err != nil || groupPayload["level"] != "group" {
 		t.Fatalf("embedded group payload = %#v, %v", groupPayload, err)
 	}
@@ -859,7 +859,7 @@ func TestCrossPlatformCoverageAgentExampleUnknownBoundCanonical(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageMetaIndexHashMismatch(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	index, err := BuildSchemaMetaIndex(loaded.Snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -913,7 +913,7 @@ func TestCrossPlatformCoverageLoadTypedSchemaCatalogSuccess(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalog(t *testing.T) {
+func TestCrossPlatformCoverageAssembleDeliverySchemaCatalog(t *testing.T) {
 	loaded := mustDeliverySchemaCatalogMaps(t)
 	err := error(nil)
 	_ = err

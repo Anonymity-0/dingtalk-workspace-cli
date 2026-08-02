@@ -20,15 +20,15 @@ import (
 	"testing"
 )
 
-// TestEmbeddedSchemaCatalogStructure gates the delivered catalog: every tool
+// TestDeliverySchemaCatalogStructure gates the delivered catalog: every tool
 // entry must conform to the unified closed structure. If this fails after
 // regeneration, either fix the generator inputs or deliberately extend the
 // whitelist in schema_catalog_structure.go.
-func TestEmbeddedSchemaCatalogStructure(t *testing.T) {
+func TestDeliverySchemaCatalogStructure(t *testing.T) {
 	// After PR #656 the catalog is embedded as per-product shards, not a single
 	// JSON file. The loaded snapshot is the reassembled result — serialize it
 	// back to JSON and validate the same closed structure.
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	data, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
 		t.Fatalf("marshal embedded catalog snapshot: %v", err)

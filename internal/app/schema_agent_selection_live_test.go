@@ -86,19 +86,19 @@ func TestManualAgentSelectionArkLive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fixture, hints := manualAgentSelectionLiveFixture(t)
+	fixture, selectionSet := manualAgentSelectionLiveFixture(t)
 	cases := selectManualAgentSelectionLiveCases(t, fixture.Cases)
 	for _, batch := range batchManualAgentSelectionLiveCases(cases, manualAgentSelectionLiveBatchSize) {
 		productID := batch[0].ProductID
 		t.Run(productID+"/"+sanitizeManualAgentSelectionLiveTestID(batch[0].ID), func(t *testing.T) {
-			input := buildManualAgentSelectionLiveInput(batch, hints)
+			input := buildManualAgentSelectionLiveInput(batch, selectionSet)
 			results := callManualAgentSelectionLiveModel(t, baseURL, apiKey, model, input)
 			assertManualAgentSelectionLiveResults(t, batch, results)
 		})
 	}
 }
 
-func buildManualAgentSelectionLiveInput(batch []cli.AgentSelectionCase, hints cli.ManualAgentHintSet) manualAgentSelectionLiveInput {
+func buildManualAgentSelectionLiveInput(batch []cli.AgentSelectionCase, selectionSet cli.ManualAgentSelectionSet) manualAgentSelectionLiveInput {
 	input := manualAgentSelectionLiveInput{Cases: make([]manualAgentSelectionLiveCase, 0, len(batch))}
 	if len(batch) == 0 {
 		return input
@@ -111,18 +111,18 @@ func buildManualAgentSelectionLiveInput(batch []cli.AgentSelectionCase, hints cl
 	}
 	input.Candidates = make([]manualAgentSelectionLiveCandidate, 0, len(batch[0].CandidateCanonicals))
 	for _, canonical := range batch[0].CandidateCanonicals {
-		hint := hints.Tools[canonical]
+		tool := selectionSet.Tools[canonical]
 		input.Candidates = append(input.Candidates, manualAgentSelectionLiveCandidate{
 			CanonicalPath: canonical,
-			AgentSummary:  hint.AgentSummary,
-			UseWhen:       hint.UseWhen,
-			AvoidWhen:     hint.AvoidWhen,
+			AgentSummary:  tool.AgentSummary,
+			UseWhen:       tool.UseWhen,
+			AvoidWhen:     tool.AvoidWhen,
 		})
 	}
 	return input
 }
 
-func manualAgentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, cli.ManualAgentHintSet) {
+func manualAgentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, cli.ManualAgentSelectionSet) {
 	t.Helper()
 	root := NewRootCommand()
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
@@ -137,7 +137,7 @@ func manualAgentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, c
 	if err != nil {
 		t.Fatalf("BuildAgentSelectionEvalFixture() error = %v", err)
 	}
-	return fixture, cli.ManualAgentHintSet{}
+	return fixture, cli.ManualAgentSelectionSet{}
 }
 
 func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.AgentSelectionCase) []cli.AgentSelectionCase {
@@ -404,11 +404,11 @@ func TestManualAgentSelectionLiveInputDoesNotLeakAssertionsOrRepeatCandidates(t 
 		{ID: "sample.search/use_when/0", Scenario: "find an item", ExpectedCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 		{ID: "sample.search/avoid_when/0", Scenario: "create an item", ForbiddenCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 	}
-	hints := cli.ManualAgentHintSet{Tools: map[string]cli.ManualAgentToolHint{
+	selectionSet := cli.ManualAgentSelectionSet{Tools: map[string]cli.ManualAgentToolSelection{
 		"sample.create": {AgentSummary: "Create an item", UseWhen: []string{"create"}, AvoidWhen: []string{"find"}},
 		"sample.search": {AgentSummary: "Search items", UseWhen: []string{"find"}, AvoidWhen: []string{"create"}},
 	}}
-	input := buildManualAgentSelectionLiveInput(batch, hints)
+	input := buildManualAgentSelectionLiveInput(batch, selectionSet)
 	data, err := marshalManualAgentSelectionLiveRequest("https://ark.cn-beijing.volces.com/api/plan/v3", "fixed-model", input)
 	if err != nil {
 		t.Fatal(err)

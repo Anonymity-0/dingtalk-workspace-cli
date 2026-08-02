@@ -63,15 +63,15 @@ var (
 // Counter names retain "MetaIndex" for RuntimeSchemaMetadataLoadCounts
 // compatibility; they now count ResolveMeta lookup init from assembled Catalog.
 var (
-	runtimeEmbeddedSchemaMetaIndexErr       error
-	runtimeEmbeddedSchemaMetaIndexLazyCount atomic.Uint64
+	runtimeDeliverySchemaMetaIndexErr       error
+	runtimeDeliverySchemaMetaIndexLazyCount atomic.Uint64
 )
 
 func resetMetaByCLIPathStateForTest() {
 	metaByCLIPathOnce = sync.Once{}
 	metaByCLIPath = nil
-	runtimeEmbeddedSchemaMetaIndexErr = nil
-	runtimeEmbeddedSchemaMetaIndexLazyCount.Store(0)
+	runtimeDeliverySchemaMetaIndexErr = nil
+	runtimeDeliverySchemaMetaIndexLazyCount.Store(0)
 	resetDeliverySchemaCatalogStateForTest()
 }
 
@@ -79,15 +79,15 @@ func resetMetaByCLIPathStateForTest() {
 // assembled Catalog. Called from deliverySchemaCatalog's sync.Once so Meta
 // shares assembly and subsequent ResolveMeta is a plain map read.
 func installDeliveryCommandMeta(loaded loadedSchemaCatalog, err error) {
-	runtimeEmbeddedSchemaMetaIndexLazyCount.Add(1)
+	runtimeDeliverySchemaMetaIndexLazyCount.Add(1)
 	if err != nil {
-		runtimeEmbeddedSchemaMetaIndexErr = err
+		runtimeDeliverySchemaMetaIndexErr = err
 		metaByCLIPath = nil
 		metaByCLIPathOnce.Do(func() {})
 		return
 	}
 	metaByCLIPath = buildMetaByCLIPath(loaded)
-	runtimeEmbeddedSchemaMetaIndexErr = nil
+	runtimeDeliverySchemaMetaIndexErr = nil
 	metaByCLIPathOnce.Do(func() {})
 }
 
@@ -216,7 +216,7 @@ func registerCommandMetaAliases(lookup map[string]CommandMeta, metas []CommandMe
 func ResolveMeta(cliPath string) (CommandMeta, bool) {
 	cliPath = strings.TrimSpace(cliPath)
 	_ = deliverySchemaCatalog()
-	panicIfMetaIndexUnusable(runtimeEmbeddedSchemaMetaIndexErr)
+	panicIfMetaIndexUnusable(runtimeDeliverySchemaMetaIndexErr)
 	m, ok := metaByCLIPath[cliPath]
 	return m, ok
 }

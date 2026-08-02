@@ -45,7 +45,7 @@ func fullSchemaSnapshotForTest(t testing.TB) cli.SchemaCatalogSnapshot {
 	return fullSchemaSnapshot
 }
 
-func TestEmbeddedSchemaContractMapsToExecutableTree(t *testing.T) {
+func TestDeliverySchemaContractMapsToExecutableTree(t *testing.T) {
 	root := NewRootCommand()
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
 	if err != nil {
@@ -63,7 +63,7 @@ func TestEmbeddedSchemaContractMapsToExecutableTree(t *testing.T) {
 	root.SetErr(&stderr)
 	root.SetArgs([]string{"schema", "--all", "--format", "json"})
 	if err := root.Execute(); err != nil {
-		t.Fatalf("execute embedded schema --all: %v; stderr=%s", err, stderr.String())
+		t.Fatalf("execute delivery schema --all: %v; stderr=%s", err, stderr.String())
 	}
 	var payload struct {
 		Products []struct {
@@ -73,7 +73,7 @@ func TestEmbeddedSchemaContractMapsToExecutableTree(t *testing.T) {
 		} `json:"products"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
-		t.Fatalf("decode embedded schema --all: %v", err)
+		t.Fatalf("decode delivery schema --all: %v", err)
 	}
 	actual := make(map[string]bool)
 	var duplicates []string

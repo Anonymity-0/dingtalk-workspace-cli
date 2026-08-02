@@ -107,16 +107,10 @@ func ValidateAgentExampleDelivery(bound BoundCommandRegistry, registry SchemaReg
 	return BuildAgentExampleExecutionPlan(bound, registry)
 }
 
-// ValidateEmbeddedManualAgentExampleDelivery is a compatibility alias for
-// ValidateAgentExampleDelivery.
-func ValidateEmbeddedManualAgentExampleDelivery(bound BoundCommandRegistry, registry SchemaRegistry) (ManualAgentExampleExecutionPlan, error) {
-	return ValidateAgentExampleDelivery(bound, registry)
-}
-
-// agentExampleSelectionHintFn is the selection source for example planning.
+// agentExampleSelectionFn is the selection source for example planning.
 // Tests may override it to inject ExampleDispositions without changing
 // ContractFinal production wiring.
-var agentExampleSelectionHintFn = contractFinalSelectionHint
+var agentExampleSelectionFn = contractFinalToolSelection
 
 // BuildAgentExampleExecutionPlan validates every ContractFinal example against
 // its real BoundCommand/Cobra contract. Runtime dry-run execution is opt-in and
@@ -139,30 +133,30 @@ func BuildAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaR
 }
 
 // BuildManualAgentExampleExecutionPlan is a compatibility wrapper that ignores
-// residual ManualAgentHintSet input and builds the plan from ContractFinal only.
-func BuildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaRegistry, _ ManualAgentHintSet) (ManualAgentExampleExecutionPlan, error) {
+// residual ManualAgentSelectionSet input and builds the plan from ContractFinal only.
+func BuildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaRegistry, _ ManualAgentSelectionSet) (ManualAgentExampleExecutionPlan, error) {
 	return BuildAgentExampleExecutionPlan(bound, registry)
 }
 
-// ManualAgentHintSet is a retired HintFile projection type retained only so
-// transitional call sites compile while they migrate to ContractFinal. It must
-// stay empty in production.
-type ManualAgentHintSet struct {
-	Revisions map[string]ManualAgentHintRevision `json:"revisions,omitempty"`
-	Products  map[string]ManualAgentProductHint  `json:"products,omitempty"`
-	Tools     map[string]ManualAgentToolHint     `json:"tools,omitempty"`
+// ManualAgentSelectionSet is a transitional Agent selection fixture type
+// retained only so live-selection / example-plan call sites compile while they
+// migrate fully onto ContractFinal. Production paths must keep it empty.
+type ManualAgentSelectionSet struct {
+	Revisions map[string]ManualAgentSelectionRevision `json:"revisions,omitempty"`
+	Products  map[string]ManualAgentProductSelection  `json:"products,omitempty"`
+	Tools     map[string]ManualAgentToolSelection     `json:"tools,omitempty"`
 }
 
-// ManualAgentHintRevision is retained for transitional fixtures only.
-type ManualAgentHintRevision struct {
+// ManualAgentSelectionRevision is retained for transitional fixtures only.
+type ManualAgentSelectionRevision struct {
 	GeneratedBy   string `json:"generated_by"`
 	Model         string `json:"model,omitempty"`
 	PromptVersion string `json:"prompt_version,omitempty"`
 	Reason        string `json:"reason"`
 }
 
-// ManualAgentProductHint is retained for transitional fixtures only.
-type ManualAgentProductHint struct {
+// ManualAgentProductSelection is retained for transitional fixtures only.
+type ManualAgentProductSelection struct {
 	AgentSummary string   `json:"agent_summary"`
 	UseWhen      []string `json:"use_when"`
 	AvoidWhen    []string `json:"avoid_when"`
@@ -172,8 +166,8 @@ type ManualAgentProductHint struct {
 	Evidence     []string `json:"evidence"`
 }
 
-// ManualAgentToolHint is retained for transitional fixtures only.
-type ManualAgentToolHint struct {
+// ManualAgentToolSelection is retained for transitional fixtures only.
+type ManualAgentToolSelection struct {
 	AgentSummary        string                          `json:"agent_summary"`
 	UseWhen             []string                        `json:"use_when"`
 	AvoidWhen           []string                        `json:"avoid_when"`
@@ -203,7 +197,7 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 		if !ok {
 			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("example plan references unknown canonical tool %q", canonical)
 		}
-		selection := agentExampleSelectionHintFn(spec.PrimaryCommand)
+		selection := agentExampleSelectionFn(spec.PrimaryCommand)
 		var typedTool ToolSpec
 		if typedTools != nil {
 			var found bool

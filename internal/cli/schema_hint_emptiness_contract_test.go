@@ -57,14 +57,14 @@ func TestSchemaHintsDirectoryRetired(t *testing.T) {
 	}
 }
 
-// TestEmbeddedCatalogHasNoToolSchemaHintProvenance asserts the published
+// TestDeliveryCatalogHasNoToolSchemaHintProvenance asserts the published
 // Catalog no longer selects tool_schema_hint as a provenance winner or
 // retained candidate after RegisterSchemaHints → contract.ParamDecl migration.
-func TestEmbeddedCatalogHasNoToolSchemaHintProvenance(t *testing.T) {
-	if !embeddedSchemaCatalogAvailable() {
+func TestDeliveryCatalogHasNoToolSchemaHintProvenance(t *testing.T) {
+	if !deliverySchemaCatalogAvailable() {
 		t.Fatal("embedded schema catalog unavailable")
 	}
-	loaded := embeddedSchemaCatalog()
+	loaded := deliverySchemaCatalog()
 	hits := make([]string, 0)
 	for _, product := range loaded.Registry.Products {
 		for _, tool := range product.Tools {

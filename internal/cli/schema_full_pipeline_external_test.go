@@ -40,8 +40,8 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if len(registry.Products) == 0 {
 		t.Fatal("assembled production Schema registry contains no products")
 	}
-	if err := cli.ValidateEmbeddedRuntimeSchemaCompleteness(app.NewSchemaSourceRootCommand()); err != nil {
-		t.Fatalf("ValidateEmbeddedRuntimeSchemaCompleteness() error = %v", err)
+	if err := cli.ValidateRuntimeSchemaCompleteness(app.NewSchemaSourceRootCommand()); err != nil {
+		t.Fatalf("ValidateRuntimeSchemaCompleteness() error = %v", err)
 	}
 	root = app.NewSchemaSourceRootCommand()
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
@@ -58,8 +58,8 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if _, _, err := cli.BuildAgentSelectionEvalFixture(bound); err != nil {
 		t.Fatalf("BuildAgentSelectionEvalFixture() error = %v", err)
 	}
-	if _, err := cli.ValidateEmbeddedManualAgentExampleDelivery(bound, registry); err != nil {
-		t.Fatalf("ValidateEmbeddedManualAgentExampleDelivery() error = %v", err)
+	if _, err := cli.ValidateAgentExampleDelivery(bound, registry); err != nil {
+		t.Fatalf("ValidateAgentExampleDelivery() error = %v", err)
 	}
 	if err := cli.ValidateSchemaParameterBindingDelivery(bound, registry); err != nil {
 		t.Fatalf("ValidateSchemaParameterBindingDelivery() error = %v", err)

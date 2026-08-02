@@ -5,7 +5,7 @@ set -eu
 #
 # 硬门禁：校验运行时组装 Catalog 的封闭结构（字段白名单 + 枚举值 +
 # 交叉一致性），由 internal/cli/schema_catalog_structure.go 的
-# TestEmbeddedSchemaCatalogStructure 实现。该门禁确保任何组装 Catalog 的代码
+# TestDeliverySchemaCatalogStructure 实现。该门禁确保任何组装 Catalog 的代码
 # 路径都不会产出结构非法的工具条目。
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
@@ -24,7 +24,7 @@ if [ ! -x "$BIN" ]; then
 fi
 
 # 硬门禁：运行时组装 Catalog 的封闭结构校验。
-if ! go test ./internal/cli -run '^TestEmbeddedSchemaCatalogStructure$' -count=1; then
+if ! go test ./internal/cli -run '^TestDeliverySchemaCatalogStructure$' -count=1; then
   printf 'assembled schema catalog structure check: FAILED\n' >&2
   exit 1
 fi

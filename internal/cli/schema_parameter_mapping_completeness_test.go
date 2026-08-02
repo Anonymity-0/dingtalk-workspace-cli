@@ -25,10 +25,10 @@ type schemaParameterMappingFlagAudit struct {
 	parameter      map[string]any
 }
 
-func TestEmbeddedCatalogMCPParameterMappingsAreComplete(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
-	if !embeddedSchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
+func TestDeliveryCatalogMCPParameterMappingsAreComplete(t *testing.T) {
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	if !deliverySchemaCatalogAvailable() {
+		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	bindings, err := runtimeSchemaParameterBindingData()
 	if err != nil {
@@ -44,10 +44,10 @@ func TestEmbeddedCatalogMCPParameterMappingsAreComplete(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogDoesNotProjectHardRequiredFlagsAsOptional(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
-	if !embeddedSchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
+func TestDeliveryCatalogDoesNotProjectHardRequiredFlagsAsOptional(t *testing.T) {
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	if !deliverySchemaCatalogAvailable() {
+		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	var problems []string
 	for canonical, tool := range loaded.Snapshot.Tools {
@@ -65,7 +65,7 @@ func TestEmbeddedCatalogDoesNotProjectHardRequiredFlagsAsOptional(t *testing.T) 
 	}
 }
 
-func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
+func TestDeliveryCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 	wantReasons := map[string]string{
 		"audit.export":       "命令读取并导出本地审计日志文件，不绑定 pinned MCP RPC",
 		"audit.tail":         "命令读取本地审计日志尾部，不绑定 pinned MCP RPC",
@@ -76,9 +76,9 @@ func TestEmbeddedCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 		"event.schema":       "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
 		"pat.browser_policy": "命令仅操作本地进程或策略文件，不调用 MCP 接口",
 	}
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
-	if !embeddedSchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	if !deliverySchemaCatalogAvailable() {
+		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	gotLocal := make(map[string]bool)
 	for canonical, tool := range loaded.Snapshot.Tools {
@@ -443,7 +443,7 @@ func TestSchemaParameterBindingCorrectionsAreReviewed(t *testing.T) {
 	// Phase 2 retired every active binding (and the corrections that pinned
 	// their historical remaps) to ParamDecl.Property. Remaining corrections,
 	// if any, must still match an exact active manifest row.
-	flags := finalSchemaCatalogFlagIndex(mustEmbeddedSchemaCatalogMaps(t).Snapshot.Tools)
+	flags := finalSchemaCatalogFlagIndex(mustDeliverySchemaCatalogMaps(t).Snapshot.Tools)
 	for key, correction := range snapshot.Corrections {
 		flag, exists := flags[key]
 		if !exists {

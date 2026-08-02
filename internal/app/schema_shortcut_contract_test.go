@@ -20,8 +20,8 @@ const (
 	schemaPublishedShortcutCount = 215
 )
 
-func TestEmbeddedSchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
-	tools := embeddedSchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
 	public := make([]shortcut.Shortcut, 0, publicShortcutCount)
 	for _, candidate := range shortcut.All() {
 		if candidate.UserDefined || !shortcut.InPublicCatalog(candidate.Service, candidate.Command) {
@@ -80,7 +80,7 @@ func TestEmbeddedSchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *tes
 	}
 }
 
-func TestEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T) {
+func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T) {
 	leaf := executeShortcutSchemaQuery(t, "--cli-path", "chat +messages-read-status")
 	if got, want := schemaContractString(leaf["canonical_path"]), "chat.shortcut_messages_read_status"; got != want {
 		t.Fatalf("shortcut leaf canonical_path = %q, want %q", got, want)

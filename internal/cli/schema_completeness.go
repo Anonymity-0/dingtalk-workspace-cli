@@ -74,9 +74,9 @@ func EmbeddedRuntimeSchemaExclusions() ([]RuntimeSchemaExclusion, error) {
 	return exclusions, nil
 }
 
-// ValidateEmbeddedRuntimeSchemaCompleteness enforces the reviewed reverse
+// ValidateRuntimeSchemaCompleteness enforces the reviewed reverse
 // command-tree contract used by generation and CI.
-func ValidateEmbeddedRuntimeSchemaCompleteness(root *cobra.Command) error {
+func ValidateRuntimeSchemaCompleteness(root *cobra.Command) error {
 	effective, err := completenessBuildEffective(root)
 	if err != nil {
 		return err

@@ -31,15 +31,15 @@ func TestFinalSchemaParametersMatchExecutableHelpFlags(t *testing.T) {
 	assertSchemaParametersMatchExecutableHelpFlags(t, bound, snapshot.Tools, "source-built final Schema")
 }
 
-// TestEmbeddedSchemaParametersMatchExecutableHelpFlags runs the same exact-set
+// TestDeliverySchemaParametersMatchExecutableHelpFlags runs the same exact-set
 // gate against the artifact that ships in the binary. Going through the real
 // schema --all command is intentional: a stale generated Catalog must fail
 // even when a fresh source-built snapshot would agree with Cobra Help.
-func TestEmbeddedSchemaParametersMatchExecutableHelpFlags(t *testing.T) {
+func TestDeliverySchemaParametersMatchExecutableHelpFlags(t *testing.T) {
 	root := NewRootCommand()
 	bound := boundSchemaCommandsForHelpFlagTest(t, root)
-	tools := embeddedSchemaAllToolsForHelpFlagTest(t, root)
-	assertSchemaParametersMatchExecutableHelpFlags(t, bound, tools, "embedded schema --all")
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, root)
+	assertSchemaParametersMatchExecutableHelpFlags(t, bound, tools, "delivery schema --all")
 }
 
 func boundSchemaCommandsForHelpFlagTest(t testing.TB, root *cobra.Command) cli.BoundCommandRegistry {
@@ -55,14 +55,14 @@ func boundSchemaCommandsForHelpFlagTest(t testing.TB, root *cobra.Command) cli.B
 	return bound
 }
 
-func embeddedSchemaAllToolsForHelpFlagTest(t testing.TB, root *cobra.Command) map[string]map[string]any {
+func deliverySchemaAllToolsForHelpFlagTest(t testing.TB, root *cobra.Command) map[string]map[string]any {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
 	root.SetArgs([]string{"schema", "--all", "--format", "json"})
 	if err := root.Execute(); err != nil {
-		t.Fatalf("execute embedded schema --all: %v; stderr=%s", err, stderr.String())
+		t.Fatalf("execute delivery schema --all: %v; stderr=%s", err, stderr.String())
 	}
 	var payload struct {
 		Products []struct {
@@ -70,7 +70,7 @@ func embeddedSchemaAllToolsForHelpFlagTest(t testing.TB, root *cobra.Command) ma
 		} `json:"products"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
-		t.Fatalf("decode embedded schema --all: %v", err)
+		t.Fatalf("decode delivery schema --all: %v", err)
 	}
 	tools := make(map[string]map[string]any)
 	for _, product := range payload.Products {

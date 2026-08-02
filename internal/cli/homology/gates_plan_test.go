@@ -45,7 +45,7 @@ var ciHomologyEntrypoints = []string{
 	"TestMCPPassthroughAdmissionExcludesLeafAndShortcut",
 	"TestHomologyCIEntrypointsPinned",
 	"TestFinalSchemaParametersMatchExecutableHelpFlags",
-	"TestEmbeddedSchemaParametersMatchExecutableHelpFlags",
+	"TestDeliverySchemaParametersMatchExecutableHelpFlags",
 	"TestSheetFinalSchemaConfirmationMatchesRuntimeGuards",
 }
 

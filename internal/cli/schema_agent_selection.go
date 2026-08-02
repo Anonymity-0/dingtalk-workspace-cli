@@ -103,7 +103,7 @@ func BuildAgentSelectionEvalFixture(bound BoundCommandRegistry) (AgentSelectionF
 			return fixture, report, err
 		}
 
-		selection := contractFinalSelectionHint(command.PrimaryCommand)
+		selection := contractFinalToolSelection(command.PrimaryCommand)
 		if len(selection.UseWhen) == 0 {
 			return fixture, report, fmt.Errorf("ContractFinal tool %s requires at least one positive use_when selection assertion", canonical)
 		}
@@ -165,20 +165,20 @@ func ValidateAgentSelectionContract(bound BoundCommandRegistry) (AgentSelectionR
 	return report, err
 }
 
-// contractFinalSelectionHint synthesizes selection assertions of a declared
+// contractFinalToolSelection synthesizes selection assertions of a declared
 // tool from its ContractFinal overlay.
-func contractFinalSelectionHint(command *cobra.Command) ManualAgentToolHint {
-	hint := ManualAgentToolHint{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.ContractDecl)"}
+func contractFinalToolSelection(command *cobra.Command) ManualAgentToolSelection {
+	out := ManualAgentToolSelection{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.ContractDecl)"}
 	payload, ok := contractfinal.RuntimeContractFinal(command)
 	if !ok || payload.Selection == nil {
-		return hint
+		return out
 	}
 	selection := payload.Selection
-	hint.AgentSummary = selection.AgentSummary
-	hint.UseWhen = selection.UseWhen
-	hint.AvoidWhen = selection.AvoidWhen
-	hint.Examples = selection.Examples
-	return hint
+	out.AgentSummary = selection.AgentSummary
+	out.UseWhen = selection.UseWhen
+	out.AvoidWhen = selection.AvoidWhen
+	out.Examples = selection.Examples
+	return out
 }
 
 func validateAgentSelectionBinding(bound BoundCommandRegistry, canonical string, command BoundCommandSpec) error {

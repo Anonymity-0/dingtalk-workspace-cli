@@ -20,9 +20,9 @@ func TestBuildSchemaCatalogSnapshotRejectsUnresolvedSource(t *testing.T) {
 	}
 }
 
-func TestEmbeddedSchemaCatalogIntegrity(t *testing.T) {
-	loaded := embeddedSchemaCatalog()
-	if !embeddedSchemaCatalogAvailable() {
+func TestDeliverySchemaCatalogIntegrity(t *testing.T) {
+	loaded := deliverySchemaCatalog()
+	if !deliverySchemaCatalogAvailable() {
 		t.Fatal("delivery schema catalog is unavailable or failed integrity validation")
 	}
 	if got := loaded.Registry.Source; got != SchemaSourceRuntimeAssembled {
@@ -30,16 +30,16 @@ func TestEmbeddedSchemaCatalogIntegrity(t *testing.T) {
 	}
 }
 
-func TestEmbeddedSchemaCatalogProgressiveQueries(t *testing.T) {
-	overview, err := embeddedSchemaOverviewPayload()
+func TestDeliverySchemaCatalogProgressiveQueries(t *testing.T) {
+	overview, err := deliverySchemaOverviewPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := schemaProductToolCount(map[string]any{"tools": overview["products"]}), len(embeddedSchemaCatalog().Registry.Products); got != want {
+	if got, want := schemaProductToolCount(map[string]any{"tools": overview["products"]}), len(deliverySchemaCatalog().Registry.Products); got != want {
 		t.Fatalf("compact product count = %d, want %d", got, want)
 	}
 
-	leaf, err := embeddedSchemaPayload([]string{"calendar event create"})
+	leaf, err := queryDeliverySchemaPayload([]string{"calendar event create"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestEmbeddedSchemaCatalogProgressiveQueries(t *testing.T) {
 		t.Fatal("calendar.create_event parameters are empty")
 	}
 
-	group, err := embeddedSchemaPayload([]string{"calendar.event"})
+	group, err := queryDeliverySchemaPayload([]string{"calendar.event"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestEmbeddedSchemaCatalogProgressiveQueries(t *testing.T) {
 		t.Fatal("calendar.event group is empty")
 	}
 
-	alias, err := embeddedSchemaPayload([]string{"aitable record list"})
+	alias, err := queryDeliverySchemaPayload([]string{"aitable record list"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,9 +73,9 @@ func TestEmbeddedSchemaCatalogProgressiveQueries(t *testing.T) {
 	}
 }
 
-func TestEmbeddedSchemaAllPayloadContainsEveryFullLeaf(t *testing.T) {
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
-	payload, err := embeddedSchemaAllPayload()
+func TestDeliverySchemaAllPayloadContainsEveryFullLeaf(t *testing.T) {
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	payload, err := deliverySchemaAllPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,8 +110,8 @@ func TestEmbeddedSchemaAllPayloadContainsEveryFullLeaf(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *testing.T) {
-	leaf, err := embeddedSchemaPayload([]string{"chat category create-smart"})
+func TestDeliveryCatalogPreservesRegistryIdentityAndManualParameterContract(t *testing.T) {
+	leaf, err := queryDeliverySchemaPayload([]string{"chat category create-smart"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,12 +160,12 @@ func TestEmbeddedCatalogPreservesRegistryIdentityAndManualParameterContract(t *t
 	}
 }
 
-func TestEmbeddedCatalogMailMessageListLimitMapsToSize(t *testing.T) {
+func TestDeliveryCatalogMailMessageListLimitMapsToSize(t *testing.T) {
 	// mail message list is a composite wrapper over search_emails and shares
 	// that RPC with mail message search. list has no versioned binding entry
 	// (composite identity), so clearing hints without a leaf-local contract.ParamDecl
 	// previously fell back to flag_name_inference → "limit".
-	listLeaf, err := embeddedSchemaPayload([]string{"mail message list"})
+	listLeaf, err := queryDeliverySchemaPayload([]string{"mail message list"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestEmbeddedCatalogMailMessageListLimitMapsToSize(t *testing.T) {
 
 	// Sibling search leaf maps the same --limit → size via binding + contract.ParamDecl
 	// and must keep the free-form KQL surface (not fold into list).
-	searchLeaf, err := embeddedSchemaPayload([]string{"mail message search"})
+	searchLeaf, err := queryDeliverySchemaPayload([]string{"mail message search"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,10 +209,10 @@ func TestEmbeddedCatalogMailMessageListLimitMapsToSize(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogSharedRenameDocumentParamDeclsStayOnDriveLeaf(t *testing.T) {
+func TestDeliveryCatalogSharedRenameDocumentParamDeclsStayOnDriveLeaf(t *testing.T) {
 	// drive rename and doc rename share RPC rename_document. The reviewed
 	// extension-stripping description must stay on drive rename only.
-	driveLeaf, err := embeddedSchemaPayload([]string{"drive rename"})
+	driveLeaf, err := queryDeliverySchemaPayload([]string{"drive rename"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestEmbeddedCatalogSharedRenameDocumentParamDeclsStayOnDriveLeaf(t *testing
 		t.Fatalf("drive rename --name description source = %#v, want native_annotation", driveDescProv)
 	}
 
-	docLeaf, err := embeddedSchemaPayload([]string{"doc rename"})
+	docLeaf, err := queryDeliverySchemaPayload([]string{"doc rename"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,11 +243,11 @@ func TestEmbeddedCatalogSharedRenameDocumentParamDeclsStayOnDriveLeaf(t *testing
 	}
 }
 
-func TestEmbeddedCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
+func TestDeliveryCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
 	// drive.upload is a composite multi-step leaf (no single RPCName /
 	// interface_ref). The reviewed --node → nodeId overlay must stay on the
 	// upload leaf via contract.ParamDecl, not on the manual upload-info / commit steps.
-	leaf, err := embeddedSchemaPayload([]string{"drive upload"})
+	leaf, err := queryDeliverySchemaPayload([]string{"drive upload"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +270,7 @@ func TestEmbeddedCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
 	}
 
 	for _, path := range []string{"drive upload-info", "drive commit"} {
-		sibling, err := embeddedSchemaPayload([]string{path})
+		sibling, err := queryDeliverySchemaPayload([]string{path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -284,10 +284,10 @@ func TestEmbeddedCatalogDriveUploadCompositeNodeParamDecl(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogDocReadParamDeclsMatchMergeBaseContract(t *testing.T) {
+func TestDeliveryCatalogDocReadParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// Former schema_hints overlays for get_document_content must stay on the
 	// doc read leaf after contract.ParamDecl migration (87910880 value parity).
-	leaf, err := embeddedSchemaPayload([]string{"doc read"})
+	leaf, err := queryDeliverySchemaPayload([]string{"doc read"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,11 +317,11 @@ func TestEmbeddedCatalogDocReadParamDeclsMatchMergeBaseContract(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogDocCommentParamDeclsMatchMergeBaseContract(t *testing.T) {
+func TestDeliveryCatalogDocCommentParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// create/reply/update mentioned-open-conversation-id overlays + update
 	// mention interface_type must survive hint clearance.
 	for _, path := range []string{"doc comment create", "doc comment reply"} {
-		leaf, err := embeddedSchemaPayload([]string{path})
+		leaf, err := queryDeliverySchemaPayload([]string{path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -338,7 +338,7 @@ func TestEmbeddedCatalogDocCommentParamDeclsMatchMergeBaseContract(t *testing.T)
 		}
 	}
 
-	updateLeaf, err := embeddedSchemaPayload([]string{"doc comment update"})
+	updateLeaf, err := queryDeliverySchemaPayload([]string{"doc comment update"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,10 +361,10 @@ func TestEmbeddedCatalogDocCommentParamDeclsMatchMergeBaseContract(t *testing.T)
 	}
 }
 
-func TestEmbeddedCatalogDocRenameKeepsPassthroughNameDescription(t *testing.T) {
+func TestDeliveryCatalogDocRenameKeepsPassthroughNameDescription(t *testing.T) {
 	// Shared-RPC sibling of drive rename: doc must keep the merge-base
 	// passthrough usage, not the drive extension-stripping contract.ParamDecl.
-	leaf, err := embeddedSchemaPayload([]string{"doc rename"})
+	leaf, err := queryDeliverySchemaPayload([]string{"doc rename"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,10 +382,10 @@ func TestEmbeddedCatalogDocRenameKeepsPassthroughNameDescription(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogDevdocQueryRemainsOptionalInRequireOneOf(t *testing.T) {
+func TestDeliveryCatalogDevdocQueryRemainsOptionalInRequireOneOf(t *testing.T) {
 	// Former hint required=false keeps query optional; positional keyword is
 	// the other require_one_of member (constraint may outrank the annotation).
-	leaf, err := embeddedSchemaPayload([]string{"devdoc article search"})
+	leaf, err := queryDeliverySchemaPayload([]string{"devdoc article search"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,8 +422,8 @@ func TestEmbeddedCatalogDevdocQueryRemainsOptionalInRequireOneOf(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogModelsAitableExportBranches(t *testing.T) {
-	leaf, err := embeddedSchemaPayload([]string{"aitable export data"})
+func TestDeliveryCatalogModelsAitableExportBranches(t *testing.T) {
+	leaf, err := queryDeliverySchemaPayload([]string{"aitable export data"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,12 +468,12 @@ func TestEmbeddedCatalogModelsAitableExportBranches(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogKeepsSharedFlagSemanticsCommandScoped(t *testing.T) {
-	queryLeaf, err := embeddedSchemaPayload([]string{"aitable record query"})
+func TestDeliveryCatalogKeepsSharedFlagSemanticsCommandScoped(t *testing.T) {
+	queryLeaf, err := queryDeliverySchemaPayload([]string{"aitable record query"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	getLeaf, err := embeddedSchemaPayload([]string{"aitable record get"})
+	getLeaf, err := queryDeliverySchemaPayload([]string{"aitable record get"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -504,7 +504,7 @@ func equalStringSlices(left, right []string) bool {
 }
 
 func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
-	leaf, err := embeddedSchemaPayload([]string{"calendar event create"})
+	leaf, err := queryDeliverySchemaPayload([]string{"calendar event create"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -543,7 +543,7 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 }
 
 func TestStripSchemaPayloadCompactPreservesParameterIdentity(t *testing.T) {
-	leaf, err := embeddedSchemaPayload([]string{"chat category create-smart"})
+	leaf, err := queryDeliverySchemaPayload([]string{"chat category create-smart"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -580,7 +580,7 @@ func sortedSchemaKeys(values map[string]map[string]any) []string {
 }
 
 func TestStripSchemaPayloadCompactOverview(t *testing.T) {
-	overview, err := embeddedSchemaOverviewPayload()
+	overview, err := deliverySchemaOverviewPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +601,7 @@ func TestStripSchemaPayloadCompactOverview(t *testing.T) {
 }
 
 func TestStripSchemaPayloadCompactProduct(t *testing.T) {
-	product, err := embeddedSchemaPayload([]string{"calendar"})
+	product, err := queryDeliverySchemaPayload([]string{"calendar"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,11 +618,11 @@ func TestStripSchemaPayloadCompactProduct(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogHrbrainUnpinnedParamDeclsKeepExplicitMappings(t *testing.T) {
+func TestDeliveryCatalogHrbrainUnpinnedParamDeclsKeepExplicitMappings(t *testing.T) {
 	// hrbrain leaves are Reviewed unpinned remote adapters. Clearing hint
 	// overlays must keep non-inferable properties on native_annotation
 	// (page→currentPage, order-by→orderByClauses), not flag_name_inference.
-	listLeaf, err := embeddedSchemaPayload([]string{"hrbrain talent-pool list"})
+	listLeaf, err := queryDeliverySchemaPayload([]string{"hrbrain talent-pool list"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -636,7 +636,7 @@ func TestEmbeddedCatalogHrbrainUnpinnedParamDeclsKeepExplicitMappings(t *testing
 		t.Fatalf("hrbrain talent-pool list --page property source = %#v, want native_annotation", pageProv)
 	}
 
-	structuredLeaf, err := embeddedSchemaPayload([]string{"hrbrain search employees-structured"})
+	structuredLeaf, err := queryDeliverySchemaPayload([]string{"hrbrain search employees-structured"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,7 +651,7 @@ func TestEmbeddedCatalogHrbrainUnpinnedParamDeclsKeepExplicitMappings(t *testing
 	}
 }
 
-func TestEmbeddedCatalogAttendanceSearchRequiredStaysNativeWithoutProperty(t *testing.T) {
+func TestDeliveryCatalogAttendanceSearchRequiredStaysNativeWithoutProperty(t *testing.T) {
 	// attendance * search overlays only reviewed required=false (no property).
 	// After clearing hints, Required must stay native_annotation and property
 	// must remain the reviewed mapping exclusion (empty), not inference.
@@ -660,7 +660,7 @@ func TestEmbeddedCatalogAttendanceSearchRequiredStaysNativeWithoutProperty(t *te
 		"attendance group search",
 		"attendance overtime search",
 	} {
-		leaf, err := embeddedSchemaPayload([]string{path})
+		leaf, err := queryDeliverySchemaPayload([]string{path})
 		if err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
@@ -685,10 +685,10 @@ func TestEmbeddedCatalogAttendanceSearchRequiredStaysNativeWithoutProperty(t *te
 	}
 }
 
-func TestEmbeddedCatalogMarkdownFetchOmitsHiddenIDAlias(t *testing.T) {
+func TestDeliveryCatalogMarkdownFetchOmitsHiddenIDAlias(t *testing.T) {
 	// markdown fetch keeps a hidden --id Cobra compat alias, but Schema must
 	// publish only --node (merge-base / 87910880 catalog parity).
-	leaf, err := embeddedSchemaPayload([]string{"markdown fetch"})
+	leaf, err := queryDeliverySchemaPayload([]string{"markdown fetch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -706,9 +706,9 @@ func TestEmbeddedCatalogMarkdownFetchOmitsHiddenIDAlias(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogMarkdownPatchContentMapsToReplacement(t *testing.T) {
+func TestDeliveryCatalogMarkdownPatchContentMapsToReplacement(t *testing.T) {
 	// --content is the CLI flag; MCP/workflow property is replacement.
-	leaf, err := embeddedSchemaPayload([]string{"markdown patch"})
+	leaf, err := queryDeliverySchemaPayload([]string{"markdown patch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -722,9 +722,9 @@ func TestEmbeddedCatalogMarkdownPatchContentMapsToReplacement(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogMinutesReplaceBatchPairDescriptionIsNative(t *testing.T) {
+func TestDeliveryCatalogMinutesReplaceBatchPairDescriptionIsNative(t *testing.T) {
 	// Former metadata overlay on minutes +replace-batch --pair description.
-	leaf, err := embeddedSchemaPayload([]string{"minutes +replace-batch"})
+	leaf, err := queryDeliverySchemaPayload([]string{"minutes +replace-batch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -739,12 +739,12 @@ func TestEmbeddedCatalogMinutesReplaceBatchPairDescriptionIsNative(t *testing.T)
 	}
 }
 
-func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
+func TestDeliveryCatalogTodoParamDeclsFrom87910880Reviewed(t *testing.T) {
 	// Spot-check former metadata/todo.json overlays now declared as contract.ParamDecl (87910880).
 	// --query-all is a Cobra Bool: merge-base catalog publishes type=boolean from
 	// cobra_flag_type (no separate interface_type field), while required/description
 	// stay native_annotation after contract.ParamDecl migration.
-	listLeaf, err := embeddedSchemaPayload([]string{"todo task list"})
+	listLeaf, err := queryDeliverySchemaPayload([]string{"todo task list"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -782,7 +782,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 		t.Fatalf("todo task list --role-types description source = %#v, want native_annotation", roleDescProv)
 	}
 
-	resetLeaf, err := embeddedSchemaPayload([]string{"todo task reset-reminder"})
+	resetLeaf, err := queryDeliverySchemaPayload([]string{"todo task reset-reminder"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -796,7 +796,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 		t.Fatalf("todo task reset-reminder --reminder-rules description source = %#v, want native_annotation", rulesDescProv)
 	}
 
-	createTag, err := embeddedSchemaPayload([]string{"todo tag create"})
+	createTag, err := queryDeliverySchemaPayload([]string{"todo tag create"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -805,7 +805,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 		t.Fatalf("todo tag create --name = %#v, want property=name required=true", name)
 	}
 
-	deleteTag, err := embeddedSchemaPayload([]string{"todo tag delete"})
+	deleteTag, err := queryDeliverySchemaPayload([]string{"todo tag delete"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -814,7 +814,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 		t.Fatalf("todo tag delete --tag-codes = %#v", deleteCodes)
 	}
 
-	addTag, err := embeddedSchemaPayload([]string{"todo tag add"})
+	addTag, err := queryDeliverySchemaPayload([]string{"todo tag add"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -826,7 +826,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 		t.Fatalf("todo tag add --tag-codes = %#v", addParams["tag-codes"])
 	}
 
-	updateTag, err := embeddedSchemaPayload([]string{"todo tag update"})
+	updateTag, err := queryDeliverySchemaPayload([]string{"todo tag update"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -844,7 +844,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 		{"todo tag add", "task-id", "property"},
 		{"todo tag update", "user-tags", "property"},
 	} {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatalf("%s: %v", tc.path, err)
 		}
@@ -855,7 +855,7 @@ func TestEmbeddedCatalogTodoParamDeclsFrom87910880Hints(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
+func TestDeliveryCatalogSheetParamDeclsFrom87910880Reviewed(t *testing.T) {
 	// Former metadata/sheet.json overlays now declared as contract.ParamDecl (87910880).
 	for _, tc := range []struct {
 		path string
@@ -866,7 +866,7 @@ func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
 		{"sheet pivot-table update", "properties", "object"},
 		{"sheet table-put", "sheets", "array"},
 	} {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatalf("%s: %v", tc.path, err)
 		}
@@ -881,7 +881,7 @@ func TestEmbeddedCatalogSheetParamDeclsFrom87910880Hints(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogPatSheetWikiRegisterSchemaHintParamDecls(t *testing.T) {
+func TestDeliveryCatalogPatSheetWikiParamDecls(t *testing.T) {
 	// pat/sheet/wiki required and required_when pins publish via ParamDecl.
 	for _, tc := range []struct {
 		path         string
@@ -897,7 +897,7 @@ func TestEmbeddedCatalogPatSheetWikiRegisterSchemaHintParamDecls(t *testing.T) {
 		{"wiki space create", "name", true, ""},
 		{"wiki space get", "workspace", true, ""},
 	} {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatalf("%s: %v", tc.path, err)
 		}
@@ -922,10 +922,10 @@ func TestEmbeddedCatalogPatSheetWikiRegisterSchemaHintParamDecls(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogReportCreateToChatRequiredAndAliasView(t *testing.T) {
+func TestDeliveryCatalogReportCreateToChatRequiredAndAliasView(t *testing.T) {
 	// Former report.create_report overlay: --to-chat required=false (MCP marks
 	// it required). Alias "report create" must keep the same contract.
-	primary, err := embeddedSchemaPayload([]string{"report entry submit"})
+	primary, err := queryDeliverySchemaPayload([]string{"report entry submit"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -941,7 +941,7 @@ func TestEmbeddedCatalogReportCreateToChatRequiredAndAliasView(t *testing.T) {
 		t.Fatalf("report entry submit --to-chat required source = %#v, want native_annotation", reqProv)
 	}
 
-	alias, err := embeddedSchemaPayload([]string{"report create"})
+	alias, err := queryDeliverySchemaPayload([]string{"report create"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -961,10 +961,10 @@ func TestEmbeddedCatalogReportCreateToChatRequiredAndAliasView(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
+func TestDeliveryCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// Former schema_hints overlays (87910880) must stay on helpers leaves via
 	// contract.ParamDecl after hint clearance — not on aitable +shortcuts.
-	queryLeaf, err := embeddedSchemaPayload([]string{"aitable record query"})
+	queryLeaf, err := queryDeliverySchemaPayload([]string{"aitable record query"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -979,14 +979,14 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 
 	// Sibling atomic get keeps Cobra-required --record-ids; shortcut has its
 	// own optional StringSlice surface and must not inherit helpers contract.ParamDecl.
-	getLeaf, err := embeddedSchemaPayload([]string{"aitable record get"})
+	getLeaf, err := queryDeliverySchemaPayload([]string{"aitable record get"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if schemaMap(getLeaf["parameters"])["record-ids"]["required"] != true {
 		t.Fatalf("aitable record get --record-ids must stay required")
 	}
-	shortcutLeaf, err := embeddedSchemaPayload([]string{"aitable +record-query"})
+	shortcutLeaf, err := queryDeliverySchemaPayload([]string{"aitable +record-query"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1004,7 +1004,7 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 		"aitable view update field-widths",
 		"aitable view update timebar",
 	} {
-		leaf, err := embeddedSchemaPayload([]string{path})
+		leaf, err := queryDeliverySchemaPayload([]string{path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1032,7 +1032,7 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 		{"aitable workflow update", "dsl", "dsl"},
 		{"aitable workflow update", "locale", "locale"},
 	} {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1046,7 +1046,7 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 		}
 	}
 
-	createLeaf, err := embeddedSchemaPayload([]string{"aitable workflow create"})
+	createLeaf, err := queryDeliverySchemaPayload([]string{"aitable workflow create"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1065,10 +1065,10 @@ func TestEmbeddedCatalogAitableParamDeclsMatchMergeBaseContract(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
+func TestDeliveryCatalogAitableQueryKeywordAndParamDecls(t *testing.T) {
 	// helpers record query: --query → keyword must not fall back to
 	// flag_name_inference; JSON list flags keep wire interface_type via ParamDecl.
-	queryLeaf, err := embeddedSchemaPayload([]string{"aitable record query"})
+	queryLeaf, err := queryDeliverySchemaPayload([]string{"aitable record query"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1101,7 +1101,7 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 	// shortcut +record-query Execute maps --query → MCP keyword at runtime, but
 	// merge-base Schema published property=query (flag_name_inference). Keep that
 	// delivery for schema-compatibility; do not reintroduce contract.ParamDecl keyword.
-	shortcutLeaf, err := embeddedSchemaPayload([]string{"aitable +record-query"})
+	shortcutLeaf, err := queryDeliverySchemaPayload([]string{"aitable +record-query"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1132,7 +1132,7 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 		{"aitable dashboard update", "name"},
 		{"aitable view update visible-fields", "field-ids"},
 	} {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1147,7 +1147,7 @@ func TestEmbeddedCatalogAitableQueryKeywordAndHintParamDecls(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
+func TestDeliveryCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
 	// Composite shortcuts whose Execute maps --query → MCP keyword still publish
 	// property=query at merge-base (flag_name_inference). Publishing keyword via
 	// contract.ParamDecl breaks schema-compatibility; keep Schema delivery aligned.
@@ -1168,7 +1168,7 @@ func TestEmbeddedCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
 		"chat +chat-search",
 		"chat +bot-find",
 	} {
-		leaf, err := embeddedSchemaPayload([]string{path})
+		leaf, err := queryDeliverySchemaPayload([]string{path})
 		if err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
@@ -1179,7 +1179,7 @@ func TestEmbeddedCatalogShortcutQueryKeepsMergeBaseProperty(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
+func TestDeliveryCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 	// Former metadata/contact.json overlays at 87910880 must stay on the
 	// published primary flags after contract.ParamDecl migration. Hidden Cobra
 	// aliases (--id/--userid/--dept-name/--super-dept*) must not appear.
@@ -1276,7 +1276,7 @@ func TestEmbeddedCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1317,11 +1317,11 @@ func TestEmbeddedCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 	}
 }
 
-func TestEmbeddedCatalogChatParamDeclsFrom87910880Hints(t *testing.T) {
+func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 	// CI P1: +messages-send must not publish RequiredWhen for bot/webhook
 	// credentials. Runtime validateMessagesSend already enforces them;
 	// re-adding Flag.RequiredWhen breaks merge-base schema-compatibility.
-	sendLeaf, err := embeddedSchemaPayload([]string{"chat +messages-send"})
+	sendLeaf, err := queryDeliverySchemaPayload([]string{"chat +messages-send"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1361,7 +1361,7 @@ func TestEmbeddedCatalogChatParamDeclsFrom87910880Hints(t *testing.T) {
 		{"chat +messages-send-card", "receiver-open-dingtalk-id", "receiverOpenDingTalkId", false, ""},
 		{"chat message list-favorites", "size", "", false, "string"},
 	} {
-		leaf, err := embeddedSchemaPayload([]string{tc.path})
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1391,7 +1391,7 @@ func TestEmbeddedCatalogChatParamDeclsFrom87910880Hints(t *testing.T) {
 	}
 
 	// Hidden conversation aliases must stay unpublished (merge-base parity).
-	editLeaf, err := embeddedSchemaPayload([]string{"chat message edit"})
+	editLeaf, err := queryDeliverySchemaPayload([]string{"chat message edit"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1401,7 +1401,7 @@ func TestEmbeddedCatalogChatParamDeclsFrom87910880Hints(t *testing.T) {
 			t.Fatalf("chat message edit unexpectedly publishes hidden alias --%s", hidden)
 		}
 	}
-	listByConv, err := embeddedSchemaPayload([]string{"chat category list-by-conv"})
+	listByConv, err := queryDeliverySchemaPayload([]string{"chat category list-by-conv"})
 	if err != nil {
 		t.Fatal(err)
 	}

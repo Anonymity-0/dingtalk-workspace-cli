@@ -71,7 +71,7 @@ func main() {
 	flag.StringVar(&skillPath, "skill", "skills/mono/SKILL.md", "Main DWS SKILL.md path")
 	flag.StringVar(&productsDir, "products", "skills/mono/references/products", "Product skill reference directory")
 	flag.StringVar(&intentGuidePath, "intent-guide", "skills/mono/references/intent-guide.md", "Cross-product intent guide path")
-	flag.StringVar(&hintsDir, "hints", "", "Optional residual Agent hint JSON directory (retired in production; ProductDecl/ContractFinal own routing)")
+	flag.StringVar(&hintsDir, "hints", "", "Retired; rejected when set. Declare ProductDecl/ContractFinal selection instead of schema_hints/")
 	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "internal/cli/schema_mcp_metadata.json", "Sanitized versioned MCP metadata used only for fallback Agent summaries")
 	flag.StringVar(&outputPath, "output", "", "Optional diagnostic single-file Agent metadata JSON (not a Catalog input)")
 	flag.StringVar(&outputDir, "output-dir", "", "Optional diagnostic split Agent metadata directory (not a Catalog input; Catalog injects in-memory)")
@@ -83,6 +83,9 @@ func main() {
 	flag.BoolVar(&validateRegistry, "validate-registry", true, "Require Agent metadata to use the embedded reviewed CommandRegistry")
 	flag.BoolVar(&legacyValidateSurface, "validate-surface", true, "Deprecated alias; false is rejected because Registry validation cannot be bypassed")
 	flag.Parse()
+	if strings.TrimSpace(hintsDir) != "" {
+		fail(fmt.Errorf("-hints is retired; clear the flag and declare ProductDecl/ContractFinal selection instead (got %q)", hintsDir))
+	}
 	// Disk output is optional and diagnostic only. Catalog generation uses the
 	// in-memory agentmetadata pipeline and does not consume schema_agent_metadata/.
 	writeRequested := strings.TrimSpace(outputDir) != "" || strings.TrimSpace(outputPath) != ""
@@ -96,9 +99,6 @@ func main() {
 		{Name: "product Skill input directory", Path: productsDir},
 		{Name: "intent guide input", Path: intentGuidePath},
 		{Name: "reviewed CommandRegistry input", Path: registryPath},
-	}
-	if strings.TrimSpace(hintsDir) != "" {
-		protectedInputs = append(protectedInputs, outputguard.Input{Name: "structured hint input directory", Path: hintsDir})
 	}
 	if strings.TrimSpace(interfaceMetadataPath) != "" {
 		protectedInputs = append(protectedInputs, outputguard.Input{Name: "pinned interface metadata input", Path: interfaceMetadataPath})

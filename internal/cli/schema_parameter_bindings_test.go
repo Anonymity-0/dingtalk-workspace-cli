@@ -17,7 +17,7 @@ import (
 
 const schemaParameterBindingInvalidBuildChildEnv = "DWS_SCHEMA_PARAMETER_BINDING_INVALID_BUILD_CHILD"
 
-func TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog(t *testing.T) {
+func TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog(t *testing.T) {
 	if err := ValidateEmbeddedSchemaParameterBindings(); err != nil {
 		t.Fatalf("ValidateEmbeddedSchemaParameterBindings() error = %v", err)
 	}
@@ -33,7 +33,7 @@ func TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog(t *testi
 		t.Fatalf("active binding manifest hash = %q, reviewed baseline = %q", manifestHash, snapshot.Baseline.SHA256)
 	}
 
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	for canonical, bindings := range snapshot.Bindings {
 		detail, ok := loaded.Snapshot.Tools[canonical]
 		if !ok {

@@ -208,8 +208,8 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 | Gate ID | CI 入口（`-run` 白名单 / 脚本） |
 |---|---|
-| `HOM-P1` / `HOM-D1` | `./internal/app`：`TestFinalSchemaParametersMatchExecutableHelpFlags`、`TestEmbeddedSchemaParametersMatchExecutableHelpFlags` |
-| `HOM-P2`（参数映射/bindings 子集） | `./internal/cli`：`TestSchemaParameterBindingsMatchReviewedBaselineAndEmbeddedCatalog`、`TestEmbeddedCatalogMCPParameterMappingsAreComplete` 等 bindings 门禁 |
+| `HOM-P1` / `HOM-D1` | `./internal/app`：`TestFinalSchemaParametersMatchExecutableHelpFlags`、`TestDeliverySchemaParametersMatchExecutableHelpFlags` |
+| `HOM-P2`（参数映射/bindings 子集） | `./internal/cli`：`TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog`、`TestDeliveryCatalogMCPParameterMappingsAreComplete` 等 bindings 门禁 |
 | `HOM-S1` / `HOM-S2`（confirmation 同源） | `./internal/cli/homology`：`TestUserRequiredSafetyHomologyWithRuntimeGate` + `check-runtime-confirmation-truth.sh`；`./internal/app`：`TestSheetFinalSchemaConfirmationMatchesRuntimeGuards` |
 | 词汇/决策钉扎 | `./internal/cli/homology`：`TestHomologyDecisionDocPinsPathAAndGateIDs`、`TestMCPPassthroughAdmissionExcludesLeafAndShortcut`、`TestHomologyCIEntrypointsPinned` |
 

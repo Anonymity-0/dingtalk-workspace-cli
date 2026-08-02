@@ -17,18 +17,18 @@ import (
 
 func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 	idx := func(v int) *int { return &v }
-	restoreHint := func() { agentExampleSelectionHintFn = contractFinalSelectionHint }
+	restoreSelection := func() { agentExampleSelectionFn = contractFinalToolSelection }
 
 	t.Run("disposition validation and map build", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
-		t.Cleanup(restoreHint)
-		agentExampleSelectionHintFn = func(cmd *cobra.Command) ManualAgentToolHint {
-			hint := contractFinalSelectionHint(cmd)
-			hint.ExampleDispositions = []ManualAgentExampleDisposition{{
+		t.Cleanup(restoreSelection)
+		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+			selection := contractFinalToolSelection(cmd)
+			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
 				Index: idx(0), Mode: ManualAgentExampleModeDryRun, Reviewed: true,
 				Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState,
 			}}
-			return hint
+			return selection
 		}
 		_, err := BuildAgentExampleExecutionPlan(bound, registry)
 		if err == nil || !strings.Contains(err.Error(), "invalid mode") {
@@ -119,14 +119,14 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, func(_ *cobra.Command, payload *contract.ContractFinalPayload) {
 			payload.DryRun = &contract.DryRunSpec{PreviewKind: "plan"}
 		})
-		t.Cleanup(restoreHint)
-		agentExampleSelectionHintFn = func(cmd *cobra.Command) ManualAgentToolHint {
-			hint := contractFinalSelectionHint(cmd)
-			hint.ExampleDispositions = []ManualAgentExampleDisposition{{
+		t.Cleanup(restoreSelection)
+		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+			selection := contractFinalToolSelection(cmd)
+			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
 				Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true,
 				Reason: "cannot dry-run safely", ReasonCode: ManualAgentExampleReasonStatefulPreflight,
 			}}
-			return hint
+			return selection
 		}
 		plan, err := BuildAgentExampleExecutionPlan(bound, registry)
 		if err != nil {
@@ -142,14 +142,14 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 
 	t.Run("disposition without dry_run capability fails", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
-		t.Cleanup(restoreHint)
-		agentExampleSelectionHintFn = func(cmd *cobra.Command) ManualAgentToolHint {
-			hint := contractFinalSelectionHint(cmd)
-			hint.ExampleDispositions = []ManualAgentExampleDisposition{{
+		t.Cleanup(restoreSelection)
+		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+			selection := contractFinalToolSelection(cmd)
+			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
 				Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true,
 				Reason: "no dry run", ReasonCode: ManualAgentExampleReasonLocalState,
 			}}
-			return hint
+			return selection
 		}
 		_, err := BuildAgentExampleExecutionPlan(bound, registry)
 		if err == nil || !strings.Contains(err.Error(), "narrows no explicit dry_run") {
@@ -455,11 +455,11 @@ func TestCrossPlatformCoverageSchemaAgentSelectionRemainingBranches(t *testing.T
 		}
 	})
 
-	t.Run("contractFinalSelectionHint without selection", func(t *testing.T) {
+	t.Run("contractFinalToolSelection without selection", func(t *testing.T) {
 		cmd := &cobra.Command{Use: "bare"}
-		hint := contractFinalSelectionHint(cmd)
-		if !hint.Reviewed || hint.AgentSummary != "" {
-			t.Fatalf("hint = %#v", hint)
+		selection := contractFinalToolSelection(cmd)
+		if !selection.Reviewed || selection.AgentSummary != "" {
+			t.Fatalf("selection = %#v", selection)
 		}
 	})
 
@@ -945,14 +945,14 @@ func TestCrossPlatformCoverageAgentExamplePlanAndTokenizerRemaining(t *testing.T
 		bound, registry := crossPlatformAgentExampleFixture(t, func(_ *cobra.Command, payload *contract.ContractFinalPayload) {
 			payload.DryRun = &contract.DryRunSpec{PreviewKind: "plan"}
 		})
-		t.Cleanup(func() { agentExampleSelectionHintFn = contractFinalSelectionHint })
-		agentExampleSelectionHintFn = func(cmd *cobra.Command) ManualAgentToolHint {
-			hint := contractFinalSelectionHint(cmd)
-			hint.ExampleDispositions = []ManualAgentExampleDisposition{{
+		t.Cleanup(func() { agentExampleSelectionFn = contractFinalToolSelection })
+		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+			selection := contractFinalToolSelection(cmd)
+			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
 				Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true,
 				Reason: "stateful", ReasonCode: ManualAgentExampleReasonStatefulPreflight,
 			}}
-			return hint
+			return selection
 		}
 		plan, err := BuildAgentExampleExecutionPlan(bound, registry)
 		if err != nil {

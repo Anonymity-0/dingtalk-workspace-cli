@@ -281,7 +281,7 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 	}
 }
 
-func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.T) {
+func TestCrossPlatformCoverageSelectionInputExemptsDeclaredTools(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
 	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{})
 	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(declared) })
@@ -301,7 +301,7 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.
 	}
 }
 
-func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredProducts(t *testing.T) {
+func TestCrossPlatformCoverageSelectionInputExemptsDeclaredProducts(t *testing.T) {
 	t.Cleanup(func() { contract.ClearProductDeclForTest("declared") })
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "declared",

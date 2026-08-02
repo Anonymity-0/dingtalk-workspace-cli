@@ -175,7 +175,7 @@ func TestViewGetWrappersUsePinnedGetViewsInterface(t *testing.T) {
 // (corecmd.contract). Former schema_hints audit JSON
 // (runtime-surface-completeness / zz-interface-disposition-review) is retired.
 func TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface(t *testing.T) {
-	tools := embeddedSchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
 	canonicals := make([]string, 0, len(tools))
 	for canonical := range tools {
 		canonicals = append(canonicals, canonical)

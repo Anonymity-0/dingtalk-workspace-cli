@@ -26,7 +26,7 @@ import (
 func TestEmbeddedAgentMetadataLoadsSplitDomains(t *testing.T) {
 	// Production no longer embeds or ships schema_agent_metadata/*.json.
 	// Runtime Agent metadata must stay empty; selection completeness now lives
-	// in schema_catalog (see TestEmbeddedSchemaCatalogSelectionCompleteness).
+	// in schema_catalog (see TestDeliverySchemaCatalogSelectionCompleteness).
 	metadata := runtimeAgentMetadata()
 	if len(metadata.Tools) != 0 || len(metadata.Products) != 0 || len(metadata.Domains) != 0 {
 		t.Fatalf("retired embedded Agent metadata must be empty: %#v", metadata)
@@ -43,15 +43,15 @@ func TestEmbeddedAgentMetadataLoadsSplitDomains(t *testing.T) {
 	}
 }
 
-// TestEmbeddedSchemaCatalogSelectionCompleteness replaces the retired
+// TestDeliverySchemaCatalogSelectionCompleteness replaces the retired
 // schema_agent_metadata/*.json split-domain coverage gate: every delivered
 // Catalog tool must carry non-empty selection routing, interface disposition,
 // and examples that never bypass confirmation with --yes.
-func TestEmbeddedSchemaCatalogSelectionCompleteness(t *testing.T) {
-	if !embeddedSchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", embeddedSchemaCatalogError())
+func TestDeliverySchemaCatalogSelectionCompleteness(t *testing.T) {
+	if !deliverySchemaCatalogAvailable() {
+		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
-	loaded := mustEmbeddedSchemaCatalogMaps(t)
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	products := map[string]struct{}{}
 	for canonical, tool := range loaded.Snapshot.Tools {
 		product := schemaString(tool["product_id"])

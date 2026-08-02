@@ -118,8 +118,8 @@ func restorePackageCLISchemaDeliveryForTest() {
 	resetDeliverySchemaCatalogStateForTest()
 	metaByCLIPathOnce = sync.Once{}
 	metaByCLIPath = nil
-	runtimeEmbeddedSchemaMetaIndexErr = nil
-	runtimeEmbeddedSchemaMetaIndexLazyCount.Store(0)
+	runtimeDeliverySchemaMetaIndexErr = nil
+	runtimeDeliverySchemaMetaIndexLazyCount.Store(0)
 }
 
 func repoRootFromCLIPackage() (string, error) {

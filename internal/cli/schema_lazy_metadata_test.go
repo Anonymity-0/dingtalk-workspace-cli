@@ -64,12 +64,12 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 	}
 }
 
-// TestEmbeddedSchemaCatalogProductionDecodeLoadsOnlyOnce uses a separate fresh
+// TestDeliverySchemaCatalogProductionDecodeLoadsOnlyOnce uses a separate fresh
 // process because sync.Once is intentionally not resettable. The test does not
 // require the committed snapshot to be valid: a successful decode and a
 // fail-closed decode must both be attempted exactly once under concurrent first
 // use.
-func TestEmbeddedSchemaCatalogProductionDecodeLoadsOnlyOnce(t *testing.T) {
+func TestDeliverySchemaCatalogProductionDecodeLoadsOnlyOnce(t *testing.T) {
 	if os.Getenv(schemaLazyCatalogChildEnv) == "1" {
 		if got := RuntimeSchemaMetadataLoadCounts().Catalog; got != 0 {
 			t.Fatalf("Catalog loaded during package init: %d", got)
@@ -80,7 +80,7 @@ func TestEmbeddedSchemaCatalogProductionDecodeLoadsOnlyOnce(t *testing.T) {
 			wait.Add(1)
 			go func() {
 				defer wait.Done()
-				_ = embeddedSchemaCatalogError()
+				_ = deliverySchemaCatalogError()
 			}()
 		}
 		wait.Wait()
@@ -88,14 +88,14 @@ func TestEmbeddedSchemaCatalogProductionDecodeLoadsOnlyOnce(t *testing.T) {
 		if got := RuntimeSchemaMetadataLoadCounts().Catalog; got != 1 {
 			t.Fatalf("Catalog lazy load count = %d, want 1", got)
 		}
-		_ = embeddedSchemaCatalogError()
+		_ = deliverySchemaCatalogError()
 		if got := RuntimeSchemaMetadataLoadCounts().Catalog; got != 1 {
 			t.Fatalf("Catalog reload count = %d, want 1", got)
 		}
 		return
 	}
 
-	command := exec.Command(os.Args[0], "-test.run=^TestEmbeddedSchemaCatalogProductionDecodeLoadsOnlyOnce$", "-test.count=1")
+	command := exec.Command(os.Args[0], "-test.run=^TestDeliverySchemaCatalogProductionDecodeLoadsOnlyOnce$", "-test.count=1")
 	command.Env = append(os.Environ(), schemaLazyCatalogChildEnv+"=1")
 	output, err := command.CombinedOutput()
 	if err != nil {

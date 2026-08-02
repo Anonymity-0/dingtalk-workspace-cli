@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestEmbeddedRuntimeSchemaExclusionsAreReviewedExact(t *testing.T) {
+func TestDeliveryRuntimeSchemaExclusionsAreReviewedExact(t *testing.T) {
 	exclusions, err := EmbeddedRuntimeSchemaExclusions()
 	if err != nil {
 		t.Fatal(err)
