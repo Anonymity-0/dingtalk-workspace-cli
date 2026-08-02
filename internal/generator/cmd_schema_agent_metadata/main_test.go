@@ -168,7 +168,7 @@ func TestWriteMetadataDirectorySplitsDomains(t *testing.T) {
 	}
 }
 
-func TestValidateManualHintsOutputIsolationRejectsOverlaps(t *testing.T) {
+func TestValidateAgentMetadataOutputIsolationRejectsHintOverlaps(t *testing.T) {
 	root := t.TempDir()
 	hintsRelative := filepath.Join("internal", "cli", "schema_hints")
 	hintsPath := filepath.Join(root, hintsRelative)
@@ -180,32 +180,33 @@ func TestValidateManualHintsOutputIsolationRejectsOverlaps(t *testing.T) {
 	if err := os.WriteFile(marker, []byte(markerContents), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := validateManualHintsOutputIsolation(root, hintsRelative, marker, "", "")
+	inputs := []outputguard.Input{{Name: "structured hint input directory", Path: hintsRelative}}
+	err := validateAgentMetadataOutputIsolation(root, inputs, marker, "", "")
 	if err == nil || !strings.Contains(err.Error(), "-output") {
-		t.Fatalf("validateManualHintsOutputIsolation() error = %v", err)
+		t.Fatalf("validateAgentMetadataOutputIsolation() error = %v", err)
 	}
-	err = validateManualHintsOutputIsolation(root, hintsRelative, "", hintsPath, "")
+	err = validateAgentMetadataOutputIsolation(root, inputs, "", hintsPath, "")
 	if err == nil || !strings.Contains(err.Error(), "structured hint") {
-		t.Fatalf("validateManualHintsOutputIsolation(dir) error = %v", err)
+		t.Fatalf("validateAgentMetadataOutputIsolation(dir) error = %v", err)
 	}
 }
 
-func TestValidateManualHintsOutputIsolationAllowsSeparateTargets(t *testing.T) {
+func TestValidateAgentMetadataOutputIsolationAllowsSeparateHintTargets(t *testing.T) {
 	root := t.TempDir()
 	hintsRelative := filepath.Join("internal", "cli", "schema_hints")
 	hintsPath := filepath.Join(root, hintsRelative)
 	if err := os.MkdirAll(filepath.Join(hintsPath, "selection"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	err := validateManualHintsOutputIsolation(
+	err := validateAgentMetadataOutputIsolation(
 		root,
-		hintsRelative,
+		[]outputguard.Input{{Name: "structured hint input directory", Path: hintsRelative}},
 		filepath.Join(root, "metadata.json"),
 		filepath.Join(root, "split"),
 		filepath.Join(root, "audit", "metadata-audit.json"),
 	)
 	if err != nil {
-		t.Fatalf("validateManualHintsOutputIsolation() error = %v", err)
+		t.Fatalf("validateAgentMetadataOutputIsolation() error = %v", err)
 	}
 }
 
@@ -248,32 +249,32 @@ func TestValidateAgentMetadataOutputIsolationProtectsAllSourceKinds(t *testing.T
 	}
 }
 
-func TestValidateSelectionHintInputAllowsMissingWhenCoverageEmpty(t *testing.T) {
+func TestValidateSelectionCoverageAllowsEmptyProjection(t *testing.T) {
 	root := t.TempDir()
-	if err := validateSelectionHintInput(root, "internal/cli/schema_hints", commandRegistryProjection{}); err != nil {
-		t.Fatalf("missing selection/ must be optional when coverage is empty: %v", err)
+	if err := validateSelectionCoverage(root, "internal/cli/schema_hints", commandRegistryProjection{}); err != nil {
+		t.Fatalf("empty coverage projection must pass: %v", err)
 	}
 }
 
-func TestValidateSelectionHintInputRequiresContractFinalWhenCoverageRemains(t *testing.T) {
+func TestValidateSelectionCoverageRequiresContractFinalWhenCoverageRemains(t *testing.T) {
 	root := t.TempDir()
 	registry := commandRegistryProjection{
 		CanonicalToolPaths: map[string]string{"sample.run": "sample run"},
 		ProductIDs:         map[string]bool{"sample": true},
 	}
-	err := validateSelectionHintInput(root, "", registry)
+	err := validateSelectionCoverage(root, "", registry)
 	if err == nil || !strings.Contains(err.Error(), "ProductDecl/ContractFinal selection coverage incomplete") {
-		t.Fatalf("validateSelectionHintInput() error = %v", err)
+		t.Fatalf("validateSelectionCoverage() error = %v", err)
 	}
 }
 
-func TestValidateSelectionHintInputAllowsMissingMetadataDir(t *testing.T) {
+func TestValidateSelectionCoverageIgnoresHintsDirArg(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "hints", "selection"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateSelectionHintInput(root, "hints", commandRegistryProjection{}); err != nil {
-		t.Fatalf("missing metadata/ must be optional: %v", err)
+	if err := validateSelectionCoverage(root, "hints", commandRegistryProjection{}); err != nil {
+		t.Fatalf("hintsDir arg is ignored for coverage: %v", err)
 	}
 }
 

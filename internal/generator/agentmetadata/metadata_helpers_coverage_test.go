@@ -296,6 +296,12 @@ func TestCrossPlatformCoverageMetadataSourceAndPathEdges(t *testing.T) {
 	if _, err := loadSources(Options{Root: root, ProductsDir: "products", ManualHintsPath: "missing.json"}); err == nil || !strings.Contains(err.Error(), "manual hints are retired") {
 		t.Fatalf("non-empty ManualHintsPath should fail closed: %v", err)
 	}
+	if got := SelectionCoverageProducts(RegistryProjection{ProductIDs: map[string]bool{"": true, "skip": false}}); len(got) != 0 {
+		t.Fatalf("SelectionCoverageProducts empty/skip = %#v", got)
+	}
+	if err := ValidateSelectionCoverage(RegistryProjection{}); err != nil {
+		t.Fatalf("ValidateSelectionCoverage empty projection: %v", err)
+	}
 
 	if got := sourceProductIDs(sourceFile{path: filepath.Join(root, "products", "sample", "guide.md")}, products, nil, nil); len(got) != 1 || got[0] != "sample" {
 		t.Fatalf("nested product ids = %#v", got)
@@ -530,17 +536,5 @@ func TestCrossPlatformCoverageContractFinalDeclarationFailureEdges(t *testing.T)
 		BoundCommands: bound,
 	}); err == nil || !strings.Contains(err.Error(), "no canonical CLI projection") {
 		t.Fatalf("generateFromSources contract final error = %v", err)
-	}
-}
-
-func TestCrossPlatformCoverageReviewedSelectionPrecedenceLabels(t *testing.T) {
-	if isReviewedSelectionPrecedence("") || isReviewedSelectionPrecedence("skill_document") {
-		t.Fatal("non-reviewed precedence labels must report false")
-	}
-	if !isReviewedSelectionPrecedence(selectionPrecedenceReviewedExplicit) {
-		t.Fatal("reviewed_explicit must report true")
-	}
-	if !isReviewedSelectionPrecedence(selectionPrecedenceContractFinal) {
-		t.Fatal("contract_final must report true")
 	}
 }

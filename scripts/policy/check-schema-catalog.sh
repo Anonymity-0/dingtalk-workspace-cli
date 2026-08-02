@@ -7,9 +7,10 @@ cd "$ROOT"
 . "$ROOT/scripts/policy/policy-runtime.sh"
 policy_prepare_runtime "$ROOT"
 
-# The release Catalog is committed as a per-product split; reassemble it into
-# the single-document shape (version + surface_hash + source_hash + catalog +
-# tools) that the jq queries below consume.
+# Assemble a fresh runtime Catalog dump (ResolveSchemaBuild via with-catalog.sh)
+# into the single-document shape (version + surface_hash + source_hash +
+# catalog + tools) that the jq queries below consume. No committed
+# schema_catalog/ split is consulted.
 catalog="$(mktemp)"
 trap 'rm -f "$catalog"' EXIT HUP INT TERM
 scripts/policy/with-catalog.sh >"$catalog"

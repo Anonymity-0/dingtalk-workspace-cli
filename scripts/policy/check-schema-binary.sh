@@ -9,8 +9,9 @@ BIN="${DWS_BIN:-$ROOT/dws}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 
-# The release Catalog is committed as a per-product split; reassemble it into
-# the single-document shape this check consumes.
+# Assemble a fresh runtime Catalog dump (ResolveSchemaBuild via with-catalog.sh)
+# into the single-document shape this check consumes. No committed
+# schema_catalog/ split is consulted.
 catalog_combined="$tmp/catalog-combined.json"
 scripts/policy/with-catalog.sh >"$catalog_combined"
 

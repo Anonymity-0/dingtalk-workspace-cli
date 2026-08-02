@@ -106,7 +106,7 @@ func loadEmbeddedCommandRegistry() (CommandRegistry, error) {
 
 // assembleCommandRegistry reads the per-product shards embedded at build time
 // and reassembles them into a single CommandRegistry, identical to the previous
-// single-file layout. Mirrors assembleEmbeddedSchemaCatalog for catalog shards.
+// single-file layout. Mirrors assembleSchemaCatalogSnapshot's shard merge shape.
 func assembleCommandRegistry() (CommandRegistry, error) {
 	return assembleCommandRegistryFrom(embeddedSchemaCommandRegistryEnvelopeJSON, embeddedSchemaCommandRegistryProducts, "schema_command_registry/products")
 }

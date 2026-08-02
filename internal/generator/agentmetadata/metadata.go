@@ -293,9 +293,6 @@ type Stats struct {
 	ToolIntents                   int
 	Examples                      int
 	RiskRules                     int
-	HintFiles                     int
-	HintProducts                  int
-	HintTools                     int
 	InterfaceMetadata             *InterfaceMetadataAudit
 	UnmatchedTools                int
 	SourceProducts                []string
@@ -320,8 +317,7 @@ type UnmatchedReference struct {
 // ReferenceReview is an optional disposition of a Skill command reference that
 // is not a current public leaf. Production no longer loads reviewed HintFile
 // reference_review maps; unmatched Skill paths are recorded in the build-time
-// audit without requiring a reviewed disposition. When residual HintFiles are
-// present in fixtures, alias reviews may still merge into a live target.
+// audit without requiring a reviewed disposition.
 type ReferenceReview struct {
 	Status string `json:"status"`
 	Target string `json:"target,omitempty"`
@@ -335,9 +331,6 @@ type Audit struct {
 	SourceHash                    string                  `json:"source_hash"`
 	SurfaceHash                   string                  `json:"surface_hash,omitempty"`
 	SourceFiles                   int                     `json:"source_files"`
-	HintFiles                     int                     `json:"hint_files,omitempty"`
-	HintProducts                  int                     `json:"hint_products,omitempty"`
-	HintTools                     int                     `json:"hint_tools,omitempty"`
 	InterfaceMetadata             *InterfaceMetadataAudit `json:"interface_metadata,omitempty"`
 	Coverage                      Coverage                `json:"coverage"`
 	SourceProducts                []string                `json:"source_products,omitempty"`
@@ -448,15 +441,6 @@ func generateFromSources(opts Options) (File, Stats, error) {
 			return File{}, Stats{}, err
 		}
 	}
-	usedSelection, err := parseHintSources(&out, files, opts, &stats, origins)
-	if err != nil {
-		return File{}, Stats{}, err
-	}
-	if usedSelection {
-		if err := validateSelectionAuthoringContracts(opts); err != nil {
-			return File{}, Stats{}, err
-		}
-	}
 	if err := applyInterfaceMetadataFallback(&out, byDisplay, opts, &stats, origins); err != nil {
 		return File{}, Stats{}, err
 	}
@@ -488,17 +472,9 @@ func generateFromSources(opts Options) (File, Stats, error) {
 	if err := validateEffectiveToolProjection(out, opts); err != nil {
 		return File{}, Stats{}, err
 	}
-	if usedSelection {
-		retainReviewedSelectionCandidates(&out)
-	}
 	normalizeFile(&out, opts.MaxExamples)
 	if err := validateToolFieldCandidateConflicts(out); err != nil {
 		return File{}, Stats{}, err
-	}
-	if usedSelection {
-		if err := validateReviewedSelectionDelivery(out, opts); err != nil {
-			return File{}, Stats{}, err
-		}
 	}
 	finalizeInterfaceDispositions(&out)
 	if err := validateInterfaceDispositions(out); err != nil {
@@ -559,9 +535,6 @@ func BuildAudit(file File, stats Stats) Audit {
 		SourceHash:                    file.SourceHash,
 		SurfaceHash:                   file.SurfaceHash,
 		SourceFiles:                   stats.SourceFiles,
-		HintFiles:                     stats.HintFiles,
-		HintProducts:                  stats.HintProducts,
-		HintTools:                     stats.HintTools,
 		InterfaceMetadata:             stats.InterfaceMetadata,
 		Coverage:                      file.Coverage,
 		SourceProducts:                append([]string(nil), stats.SourceProducts...),

@@ -33,7 +33,7 @@ var (
 	validateMetadataAllowlist      = validateAgentMetadataOutputAllowlist
 	validateMetadataRegistryFile   = validateCommandRegistryFile
 	loadMetadataRegistryProjection = loadEffectiveCommandRegistryProjection
-	validateMetadataSelection      = validateSelectionHintInput
+	validateMetadataSelection      = validateSelectionCoverage
 	generateAgentMetadata          = agentmetadata.Generate
 	writeMetadataDirectoryOutput   = writeMetadataDirectory
 	writeMetadataFileOutput        = writeMetadataFile
@@ -168,7 +168,7 @@ func main() {
 	}
 	_, _ = fmt.Fprintf(
 		os.Stderr,
-		"generated schema Agent metadata: output=%s sources=%d products=%d tools=%d summaries=%d interface_summaries=%d intents=%d examples=%d risk_rules=%d hint_files=%d hint_tools=%d unmatched=%d surface_tools=%d\n",
+		"generated schema Agent metadata: output=%s sources=%d products=%d tools=%d summaries=%d interface_summaries=%d intents=%d examples=%d risk_rules=%d unmatched=%d surface_tools=%d\n",
 		delivery,
 		stats.SourceFiles,
 		stats.Products,
@@ -178,8 +178,6 @@ func main() {
 		stats.ToolIntents,
 		stats.Examples,
 		stats.RiskRules,
-		stats.HintFiles,
-		stats.HintTools,
 		stats.UnmatchedTools,
 		registry.ToolCount,
 	)
@@ -408,8 +406,8 @@ func mergeRegistryShards(dir string) ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func validateSelectionHintInput(rootPath, hintsDir string, registry commandRegistryProjection) error {
-	return agentmetadata.ValidateSelectionHints(rootPath, hintsDir, registry)
+func validateSelectionCoverage(_ string, _ string, registry commandRegistryProjection) error {
+	return agentmetadata.ValidateSelectionCoverage(registry)
 }
 
 func resolveRootPath(root, path string) string {
@@ -418,15 +416,6 @@ func resolveRootPath(root, path string) string {
 		return path
 	}
 	return filepath.Join(root, path)
-}
-
-// validateManualHintsOutputIsolation protects reviewed human-authored hint
-// inputs before the generator writes any output.
-func validateManualHintsOutputIsolation(rootPath, hintsDir, outputPath, outputDir, auditOutputPath string) error {
-	return validateAgentMetadataOutputIsolation(rootPath,
-		[]outputguard.Input{{Name: "structured hint input directory", Path: hintsDir}},
-		outputPath, outputDir, auditOutputPath,
-	)
 }
 
 func validateAgentMetadataOutputIsolation(rootPath string, inputs []outputguard.Input, outputPath, outputDir, auditOutputPath string) error {

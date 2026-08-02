@@ -275,7 +275,7 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 - **CommandMeta 投影**（装配 Once 同步缓存 `map[cli_path]CommandMeta`；`ResolveMeta` / `SafetyForCLIPath` / leaf `--help` Safety 稳态 O(1) 读缓存，与 SchemaRegistry 同源）
 - **Dry-run Capabilities**（声明自动索引为 reviewed 能力）
 
-Agent selection / Safety 文案随 Schema 组装时内存 inject，不落盘、不 embed；`schema_agent_metadata/` 与 `schema_hints/` 已退役。不再需要外部 hint 文件维护 selection/metadata/dry-run 信息。`cmd_schema_catalog` 仅生成 CI/local dump，Catalog/meta-index 路径不得提交。
+生产权威是 leaf `ContractFinal` / `ProductDecl`（经 `RegisterSchemaSourceRoot` → `ResolveSchemaBuild` 装配进 Catalog）；`InstallBuildTimeAgentMetadataJSON` 仅用于 `cmd_schema_catalog` 的 CI/local dump inject，不是生产交付路径。`schema_agent_metadata/` 与 `schema_hints/` 已退役。不再需要外部 hint 文件维护 selection/metadata/dry-run 信息。Catalog/meta-index 路径不得提交。
 
 ## 设计原则
 

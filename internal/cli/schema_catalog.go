@@ -164,9 +164,9 @@ func loadTypedSchemaCatalog(envelope schemaCatalogEnvelopeTyped, tools map[strin
 }
 
 // assembleSchemaCatalogSnapshot merges an envelope document and a directory of
-// per-product tool shards back into the single-document snapshot shape. Split
-// from assembleEmbeddedSchemaCatalog so shard failure modes stay testable
-// against fake filesystems.
+// per-product tool shards back into the single-document snapshot shape used by
+// ephemeral cmd_schema_catalog dumps. Shard failure modes stay testable against
+// fake filesystems.
 func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string) (SchemaCatalogSnapshot, error) {
 	var envelope schemaCatalogEnvelope
 	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
@@ -214,12 +214,11 @@ var (
 	buildCatalogValidateDelivery          = ValidateSchemaDeliveryInvariants
 	buildCatalogValidateFinalCompleteness = validateResolvedSchemaCatalogDeliveryCompleteness
 
-	loadCatalogValidateInterfaces    = validateSchemaRegistryInterfaces
-	loadCatalogValidateProvenance    = validateFinalSchemaProvenanceCoverage
-	loadCatalogValidateAgentMetadata = validateSchemaRegistryAgentMetadata
+	loadCatalogValidateInterfaces = validateSchemaRegistryInterfaces
+	loadCatalogValidateProvenance = validateFinalSchemaProvenanceCoverage
 
-	renderEmbeddedSchemaAll      = func(registry SchemaRegistry) (map[string]any, error) { return registry.ToPayload() }
-	renderEmbeddedSchemaOverview = func(registry SchemaRegistry) (map[string]any, error) { return registry.ToOverviewPayload() }
+	renderDeliverySchemaAll      = func(registry SchemaRegistry) (map[string]any, error) { return registry.ToPayload() }
+	renderDeliverySchemaOverview = func(registry SchemaRegistry) (map[string]any, error) { return registry.ToOverviewPayload() }
 	renderSchemaProductSummary   = func(product ProductSpec) (map[string]any, error) { return product.ToSummaryPayload() }
 	renderSchemaToolSummary      = func(tool ToolSpec) (map[string]any, error) { return tool.ToSummaryPayload() }
 )
@@ -334,10 +333,10 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 	if err := loadCatalogValidateProvenance(registry); err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema provenance: %w", err)
 	}
-	// Agent metadata is no longer a shipped embed. Build-time Catalog generation
-	// still validates the injected Agent metadata set; the production loader
-	// trusts the committed catalog snapshot and must not reopen that retired
-	// intermediate artifact.
+	// Agent metadata is no longer a shipped embed. CI/local cmd_schema_catalog
+	// dumps may still inject Agent metadata for validation; production delivery
+	// reassembles via ResolveSchemaBuild and must not reopen retired
+	// schema_agent_metadata/ artifacts.
 	return loadedSchemaCatalog{Snapshot: snapshot, Registry: registry, Index: index}, nil
 }
 
@@ -360,7 +359,7 @@ func deliverySchemaOverviewPayload() (map[string]any, error) {
 }
 
 func schemaAllPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any, error) {
-	payload, err := renderEmbeddedSchemaAll(loaded.Registry)
+	payload, err := renderDeliverySchemaAll(loaded.Registry)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +371,7 @@ func schemaAllPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any, err
 }
 
 func schemaOverviewPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any, error) {
-	payload, err := renderEmbeddedSchemaOverview(loaded.Registry)
+	payload, err := renderDeliverySchemaOverview(loaded.Registry)
 	if err != nil {
 		return nil, err
 	}

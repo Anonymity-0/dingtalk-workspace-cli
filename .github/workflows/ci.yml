@@ -490,7 +490,8 @@ jobs:
     needs: lint
     if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # cli shard needs headroom beyond go test -timeout for setup + Schema assembly.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -498,6 +499,7 @@ jobs:
           - app
           - generators
           - helpers
+          - cli
           - remaining
     steps:
       - name: Check out repository
@@ -523,7 +525,13 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          go test -v -race -count=1 -timeout=12m "${packages[@]}"
+          # cli shard owns ResolveSchemaBuild TestMain assembly under -race; give
+          # it a dedicated budget so remaining is not SIGTERM'd by OOM/timeout.
+          timeout_budget=12m
+          if [ "$TEST_SHARD" = "cli" ]; then
+            timeout_budget=15m
+          fi
+          go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"
 
   test-release-scripts:
     name: Test (workflow and release contracts)
@@ -693,8 +701,14 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # Full ./internal/app (including schema --all assembly) already runs in the
+      # race:app shard. Keep this job focused on native auth/keychain paths so
+      # heavy Schema completeness tests cannot exhaust the 10m budget.
       - name: Test macOS auth and Keychain paths with Race Detection
-        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth ./internal/app
+        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth
+
+      - name: Test macOS auth migration and portable auth diagnostics
+        run: go test -v -race -count=1 -timeout=5m ./internal/app -run '^Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch|ExportRejectsWindowsDPAPIBackend|ImportRejectsWindowsDPAPIBackend)'
 
   test-windows:
     name: Test (Windows)

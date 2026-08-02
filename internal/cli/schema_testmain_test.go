@@ -56,7 +56,12 @@ func installAssembledSchemaDeliveryForPackageCLITests() (func(), error) {
 	}
 	cleanup := func() { _ = os.RemoveAll(tmp) }
 	outDir := filepath.Join(tmp, "schema_catalog")
+	// On Windows, go build -o without .exe writes foo.exe; exec.Command must
+	// use the same path or TestMain fails during go test -list / coverage gate.
 	generator := filepath.Join(tmp, "cmd_schema_catalog")
+	if runtime.GOOS == "windows" {
+		generator += ".exe"
+	}
 	build := exec.Command("go", "build", "-o", generator, "./internal/generator/cmd_schema_catalog")
 	build.Dir = repoRoot
 	if out, err := build.CombinedOutput(); err != nil {

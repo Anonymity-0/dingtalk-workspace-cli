@@ -271,7 +271,7 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 
 	root := t.TempDir()
 	registry := commandRegistryProjection{CanonicalToolPaths: map[string]string{"sample.run": "sample run"}}
-	if err := validateSelectionHintInput(root, "", registry); err == nil || !strings.Contains(err.Error(), "ProductDecl/ContractFinal selection coverage incomplete") {
+	if err := validateSelectionCoverage(root, "", registry); err == nil || !strings.Contains(err.Error(), "ProductDecl/ContractFinal selection coverage incomplete") {
 		t.Fatalf("missing ContractFinal coverage error = %v", err)
 	}
 
@@ -295,9 +295,9 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredTools(t *testing.
 			"sample.run": {PrimaryCommand: declared},
 		}},
 	}
-	expected := agentmetadata.SelectionHintCoverageTools(registry)
+	expected := agentmetadata.SelectionCoverageTools(registry)
 	if expected["sample.run"] || !expected["sample.get"] {
-		t.Fatalf("declared tool must be exempt from hint coverage, expected = %#v", expected)
+		t.Fatalf("declared tool must be exempt from selection coverage, expected = %#v", expected)
 	}
 }
 
@@ -311,10 +311,10 @@ func TestCrossPlatformCoverageSelectionHintInputExemptsDeclaredProducts(t *testi
 			AvoidWhen:    []string{"avoid declared"},
 		},
 	})
-	expected := agentmetadata.SelectionHintCoverageProducts(commandRegistryProjection{
+	expected := agentmetadata.SelectionCoverageProducts(commandRegistryProjection{
 		ProductIDs: map[string]bool{"declared": true, "hinted": true},
 	})
 	if expected["declared"] || !expected["hinted"] {
-		t.Fatalf("ProductDecl product must be exempt from hint coverage, expected = %#v", expected)
+		t.Fatalf("ProductDecl product must be exempt from selection coverage, expected = %#v", expected)
 	}
 }

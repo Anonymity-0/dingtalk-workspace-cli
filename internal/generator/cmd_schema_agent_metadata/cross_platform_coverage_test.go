@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/agentmetadata"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/generator/outputguard"
 )
 
 func TestCrossPlatformCoverageMetadataMainWithHintsProtectedInput(t *testing.T) {
@@ -130,21 +131,23 @@ func TestCrossPlatformCoverageValidateCommandRegistryFileDirectory(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageValidateManualHintsOutputIsolationWrapper(t *testing.T) {
+func TestCrossPlatformCoverageValidateAgentMetadataOutputIsolationWrapper(t *testing.T) {
 	root := t.TempDir()
 	hintsDir := filepath.Join(root, "hints")
 	if err := os.MkdirAll(hintsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateManualHintsOutputIsolation(root, "hints", "", filepath.Join(root, "out"), ""); err != nil {
-		t.Fatalf("validateManualHintsOutputIsolation() error = %v", err)
-	}
-}
-
-func TestCrossPlatformCoverageValidateAgentMetadataOutputIsolationWrapper(t *testing.T) {
-	root := t.TempDir()
-	if err := validateAgentMetadataOutputIsolation(root, nil, "", filepath.Join(root, "out"), ""); err != nil {
+	if err := validateAgentMetadataOutputIsolation(
+		root,
+		[]outputguard.Input{{Name: "structured hint input directory", Path: "hints"}},
+		"",
+		filepath.Join(root, "out"),
+		"",
+	); err != nil {
 		t.Fatalf("validateAgentMetadataOutputIsolation() error = %v", err)
+	}
+	if err := validateAgentMetadataOutputIsolation(root, nil, "", filepath.Join(root, "out"), ""); err != nil {
+		t.Fatalf("validateAgentMetadataOutputIsolation(nil inputs) error = %v", err)
 	}
 }
 

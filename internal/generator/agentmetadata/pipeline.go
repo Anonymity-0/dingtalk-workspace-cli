@@ -15,12 +15,12 @@ package agentmetadata
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -68,10 +68,9 @@ func ProjectEffectiveRegistry(effective cli.EffectiveCommandRegistry) RegistryPr
 	return projection
 }
 
-// SelectionHintCoverageTools returns the canonical tools that still need a
-// selection/ hint row. ContractFinal-declared leaves are exempt because their
-// selection fields live on the leaf declaration.
-func SelectionHintCoverageTools(projection RegistryProjection) map[string]bool {
+// SelectionCoverageTools returns canonical tools that still lack a
+// ContractFinal selection declaration. Declared leaves are exempt.
+func SelectionCoverageTools(projection RegistryProjection) map[string]bool {
 	expectedTools := make(map[string]bool, len(projection.CanonicalToolPaths))
 	for canonical := range projection.CanonicalToolPaths {
 		expectedTools[canonical] = true
@@ -85,20 +84,33 @@ func SelectionHintCoverageTools(projection RegistryProjection) map[string]bool {
 	return expectedTools
 }
 
-// SelectionHintCoverageProducts returns product IDs that still need a
-// selection/ products{} row. ProductDecl-registered products are exempt
-// because their routing prose lives on the in-code declaration.
-func SelectionHintCoverageProducts(projection RegistryProjection) map[string]bool {
-	return selectionHintCoverageProducts(projection.ProductIDs)
+// SelectionCoverageProducts returns product IDs that still lack a
+// ProductDecl. Declared products are exempt.
+func SelectionCoverageProducts(projection RegistryProjection) map[string]bool {
+	if projection.ProductIDs == nil {
+		return nil
+	}
+	expected := make(map[string]bool, len(projection.ProductIDs))
+	for productID, include := range projection.ProductIDs {
+		if !include {
+			continue
+		}
+		productID = strings.TrimSpace(productID)
+		if productID == "" || contract.HasProductDecl(productID) {
+			continue
+		}
+		expected[productID] = true
+	}
+	return expected
 }
 
 // ValidateSelectionCoverage requires every projected product to have
-// ProductDecl and every projected tool to have ContractFinal. Residual
-// schema_hints/ HintFiles are not accepted.
+// ProductDecl and every projected tool to have ContractFinal. Retired
+// schema_hints/ overlays are not accepted as coverage.
 func ValidateSelectionCoverage(projection RegistryProjection) error {
-	expectedTools := SelectionHintCoverageTools(projection)
-	expectedProducts := SelectionHintCoverageProducts(projection)
-	if !selectionHintCoverageRequired(expectedProducts, expectedTools) {
+	expectedTools := SelectionCoverageTools(projection)
+	expectedProducts := SelectionCoverageProducts(projection)
+	if !selectionCoverageRequired(expectedProducts, expectedTools) {
 		return nil
 	}
 	missingProducts := make([]string, 0)
@@ -118,19 +130,13 @@ func ValidateSelectionCoverage(projection RegistryProjection) error {
 	return fmt.Errorf("ProductDecl/ContractFinal selection coverage incomplete: missing_products=%v missing_tools=%v", missingProducts, missingTools)
 }
 
-// ValidateSelectionHints is a compatibility wrapper that ignores HintsDir and
-// enforces ContractFinal/ProductDecl coverage only.
-func ValidateSelectionHints(_ string, _ string, projection RegistryProjection) error {
-	return ValidateSelectionCoverage(projection)
-}
-
 var (
 	pipelineBuildEffectiveRegistry = cli.BuildEffectiveCommandRegistry
 	pipelineBindEffectiveRegistry  = cli.BindEffectiveCommandRegistry
 	pipelineGenerateMetadata       = Generate
 )
 
-func selectionHintCoverageRequired(expectedProducts, expectedTools map[string]bool) bool {
+func selectionCoverageRequired(expectedProducts, expectedTools map[string]bool) bool {
 	for _, include := range expectedProducts {
 		if include {
 			return true
@@ -202,12 +208,4 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 		return File{}, Stats{}, RegistryProjection{}, fmt.Errorf("generate in-memory Agent metadata: %w", err)
 	}
 	return metadata, stats, projection, nil
-}
-
-func resolvePipelineRootPath(root, path string) string {
-	path = strings.TrimSpace(path)
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(root, path)
 }
