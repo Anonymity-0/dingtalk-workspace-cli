@@ -18,6 +18,21 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
+func TestOverallCoverageGapBatchGrantConfirmation(t *testing.T) {
+	cmd := &cobra.Command{Use: "chmod"}
+	cmd.Flags().Bool("yes", false, "")
+	if err := requireBatchGrantConfirmation(cmd, true, []string{"a", "b"}); err == nil {
+		t.Fatal("batch grant without --yes must fail")
+	}
+	_ = cmd.Flags().Set("yes", "true")
+	if err := requireBatchGrantConfirmation(cmd, true, []string{"a", "b"}); err != nil {
+		t.Fatalf("--yes should allow batch grant: %v", err)
+	}
+	if err := requireBatchGrantConfirmation(cmd, false, []string{"only"}); err != nil {
+		t.Fatalf("single-scope non-plan grant should pass: %v", err)
+	}
+}
+
 type patEdgeCaller struct {
 	results []*edition.ToolResult
 	errs    []error

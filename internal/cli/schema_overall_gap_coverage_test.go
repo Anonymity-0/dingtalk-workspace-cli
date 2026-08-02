@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -682,4 +683,419 @@ func TestCrossPlatformCoverageRuntimeParameterMetadataApply(t *testing.T) {
 		t.Fatal("definitions missing registered metadata")
 	}
 	RegisterRuntimeSchemaParameterMetadata("", RuntimeSchemaParameterMetadata{Required: []string{"x"}})
+}
+
+func TestOverallCoverageGapSchemaCommandAndFieldResolve(t *testing.T) {
+	cmd := NewSchemaCommand(nil)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"drive", "--cli-path", "drive list"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("cli-path with positional arg must fail")
+	}
+	cmd = NewSchemaCommand(nil)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"drive", "--all"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("--all with path must fail")
+	}
+	prevCatalog := schemaCommandCatalogError
+	t.Cleanup(func() { schemaCommandCatalogError = prevCatalog })
+	schemaCommandCatalogError = func() error { return fmt.Errorf("catalog boom") }
+	cmd = NewSchemaCommand(nil)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"list"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "catalog boom") {
+		t.Fatalf("catalog load error = %v", err)
+	}
+
+	left := runtimeSchemaStringCandidateAtPriority("one", true, "same_src", 5, "same_p")
+	right := runtimeSchemaStringCandidateAtPriority("two", true, "same_src", 5, "same_p")
+	if _, err := resolveRuntimeSchemaCandidate("field", left, right); err == nil {
+		t.Fatal("equal-rank value conflict must fail")
+	}
+	sameA := runtimeSchemaStringCandidateAtPriority("same", true, "same_src", 5, "same_p")
+	sameA.ReviewReason = "z-reason"
+	sameB := runtimeSchemaStringCandidateAtPriority("same", true, "same_src", 5, "same_p")
+	sameB.ReviewReason = "a-reason"
+	if winner, err := resolveRuntimeSchemaCandidate("order", sameA, sameB); err != nil || winner.ReviewReason != "a-reason" {
+		t.Fatalf("review-reason tie-break = %#v err=%v", winner, err)
+	}
+
+	schemaCommandCatalogError = prevCatalog
+	// Delivery is installed by TestMain; exercise success + compact branches.
+	for _, args := range [][]string{
+		{},
+		{"--all"},
+		{"--cli-path", "dev", "--compact"},
+	} {
+		success := NewSchemaCommand(nil)
+		success.SetOut(&bytes.Buffer{})
+		success.SetErr(&bytes.Buffer{})
+		success.SetArgs(args)
+		if err := success.Execute(); err != nil {
+			t.Fatalf("schema %v error = %v", args, err)
+		}
+	}
+
+	prevResolver := resolveRuntimeSchemaField
+	t.Cleanup(func() { resolveRuntimeSchemaField = prevResolver })
+	resolveRuntimeSchemaField = func(string, ...runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, error) {
+		return runtimeSchemaFieldCandidate{
+			Value: false, Present: true, Source: "reviewed",
+			Compared: []runtimeSchemaFieldCandidate{
+				{Value: false, Present: true, Source: "reviewed"},
+				{Value: true, Present: true, Source: "cobra_hard_required"},
+				{Value: false, Present: true, Source: "other"},
+			},
+		}, nil
+	}
+	floor, err := resolveRequiredProjection(true)
+	if err != nil || floor.Value != true || floor.Resolution != "cobra_hard_required_floor" {
+		t.Fatalf("cobra hard floor = %#v err=%v", floor, err)
+	}
+	resolveRuntimeSchemaField = func(string, ...runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, error) {
+		return runtimeSchemaCandidate(true, true, "reviewed"), nil
+	}
+	if got, err := resolveRequiredProjection(true); err != nil || got.Value != true {
+		t.Fatalf("already-required projection = %#v err=%v", got, err)
+	}
+	if got, err := resolveRequiredProjection(false); err != nil || got.Value != true {
+		t.Fatalf("soft required projection = %#v err=%v", got, err)
+	}
+}
+
+func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
+	prevIndex := deliveryIndexResolve
+	prevTool := deliveryToolPayload
+	prevSummary := deliveryToolSummary
+	prevSchema := deliverySchemaPayload
+	prevRegistry := deliveryRegistryPayload
+	t.Cleanup(func() {
+		deliveryIndexResolve = prevIndex
+		deliveryToolPayload = prevTool
+		deliveryToolSummary = prevSummary
+		deliverySchemaPayload = prevSchema
+		deliveryRegistryPayload = prevRegistry
+	})
+
+	registry := SchemaRegistry{
+		Source: SchemaSourceRuntimeAssembled,
+		Products: []ProductSpec{{
+			ID: "sample",
+			Tools: []ToolSpec{{
+				Identity: contract.ToolIdentitySpec{
+					CLIPath: "sample group run", CanonicalPath: "sample.group.run", ProductID: "sample",
+					Name: "group.run", Path: "sample.group.run", PrimaryCLIPath: "sample group run",
+					Aliases: []string{"sample group r"},
+				},
+				Safety:    contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "yes"},
+				Selection: contract.SelectionSpec{AgentSummary: "s"},
+			}},
+		}},
+	}
+	index, err := registry.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := registry.ToSnapshotPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := SchemaCatalogSnapshot{
+		Version: SchemaCatalogSnapshotVersion, Catalog: payload.Catalog, Tools: payload.Tools,
+	}
+	snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
+	loaded := loadedSchemaCatalog{Snapshot: snapshot, Registry: registry, Index: index}
+	root := &cobra.Command{Use: "dws"}
+	sample := &cobra.Command{Use: "sample"}
+	group := &cobra.Command{Use: "group"}
+	run := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
+	group.AddCommand(run)
+	sample.AddCommand(group)
+	root.AddCommand(sample)
+
+	identity := map[string]runtimeSchemaResolvedIdentity{
+		"sample group run": {CanonicalPath: "sample.group.run", Source: "reviewed"},
+		"sample group r":   {CanonicalPath: "other.run", Source: "reviewed"},
+	}
+	deliveryIndexResolve = func(SchemaIndex, string) (ToolSpec, bool) { return ToolSpec{}, false }
+	report := schemaCatalogDeliveryCompletenessAgainstLoadedAndIdentity(root, loaded, nil, identity, []string{"map boom"})
+	if len(report.DeliveryErrors) == 0 {
+		t.Fatal("lost index / mapping errors must surface")
+	}
+	deliveryIndexResolve = prevIndex
+	deliverySchemaPayload = func(loadedSchemaCatalog, []string) (map[string]any, error) {
+		return nil, fmt.Errorf("query boom")
+	}
+	report = schemaCatalogDeliveryCompletenessAgainstLoadedAndIdentity(root, loaded, nil, map[string]runtimeSchemaResolvedIdentity{
+		"sample group run": {CanonicalPath: "sample.group.run", Source: "reviewed"},
+	}, nil)
+	if len(report.DeliveryErrors) == 0 {
+		t.Fatal("query failures must surface in completeness")
+	}
+	deliverySchemaPayload = func(_ loadedSchemaCatalog, args []string) (map[string]any, error) {
+		return map[string]any{"canonical_path": "wrong." + strings.Join(args, ".")}, nil
+	}
+	report = schemaCatalogDeliveryCompletenessAgainstLoadedAndIdentity(root, loaded, nil, map[string]runtimeSchemaResolvedIdentity{
+		"sample group run": {CanonicalPath: "sample.group.run", Source: "reviewed"},
+	}, nil)
+	if len(report.DeliveryErrors) == 0 {
+		t.Fatal("canonical mismatch must surface")
+	}
+	deliverySchemaPayload = prevSchema
+	deliveryToolPayload = func(ToolSpec) (map[string]any, error) { return nil, fmt.Errorf("render boom") }
+	report = schemaCatalogDeliveryCompletenessAgainstLoadedAndIdentity(root, loaded, nil, map[string]runtimeSchemaResolvedIdentity{
+		"sample group run": {CanonicalPath: "sample.group.run", Source: "reviewed"},
+	}, nil)
+	if len(report.DeliveryErrors) == 0 {
+		t.Fatal("tool render failures must surface")
+	}
+	deliveryToolPayload = prevTool
+
+	deliveryRegistryPayload = func(SchemaRegistry) (map[string]any, error) { return nil, fmt.Errorf("all boom") }
+	if problems := schemaRegistryProjectionErrors(loaded); len(problems) == 0 {
+		t.Fatal("--all render failure must surface")
+	}
+	deliveryRegistryPayload = func(SchemaRegistry) (map[string]any, error) {
+		return map[string]any{"products": []any{map[string]any{"tools": []any{
+			map[string]any{"name": "missing"},
+			map[string]any{"canonical_path": "sample.group.run"},
+			map[string]any{"canonical_path": "sample.group.run"},
+		}}}}, nil
+	}
+	if problems := schemaRegistryProjectionErrors(loaded); len(problems) < 2 {
+		t.Fatalf("duplicate/missing canonical problems = %v", problems)
+	}
+	deliveryRegistryPayload = prevRegistry
+	deliveryToolPayload = func(ToolSpec) (map[string]any, error) { return nil, fmt.Errorf("tool boom") }
+	if problems := schemaRegistryProjectionErrors(loaded); len(problems) == 0 {
+		t.Fatal("tool projection render failure must surface")
+	}
+	deliveryToolPayload = prevTool
+	deliveryToolSummary = func(ToolSpec) (map[string]any, error) { return nil, fmt.Errorf("summary boom") }
+	if problems := schemaRegistryProjectionErrors(loaded); len(problems) == 0 {
+		t.Fatal("group summary render failure must surface")
+	}
+	deliveryToolSummary = prevSummary
+
+	bound := BoundCommandRegistry{Commands: []BoundCommandSpec{
+		{CommandSpec: CommandSpec{CanonicalPath: "a.one", PrimaryCLIPath: "a one", Visibility: SchemaVisibilityPublic, Source: "s"}},
+		{CommandSpec: CommandSpec{CanonicalPath: "a.two", PrimaryCLIPath: "a one", Visibility: SchemaVisibilityPublic, Source: "s"}},
+		{CommandSpec: CommandSpec{CanonicalPath: "b.hidden", PrimaryCLIPath: "b hide", Visibility: SchemaVisibilityInternal, Source: "s"}},
+		{CommandSpec: CommandSpec{CanonicalPath: "c.blank", PrimaryCLIPath: " ", Visibility: SchemaVisibilityPublic, Source: "s"}},
+	}}
+	if _, conflicts := runtimeSchemaIdentityByBound(bound); len(conflicts) == 0 {
+		t.Fatal("path ownership conflicts must surface")
+	}
+
+	t.Cleanup(clearDeclaredDryRunCapabilitiesForTest)
+	restore := setReviewedDryRunCapabilityGroupsForTest([]dryRunCapabilityGroup{
+		{PreviewKind: contract.DryRunPreviewPlan, CanonicalPaths: []string{"gap.run"}},
+		{PreviewKind: contract.DryRunPreviewPlan, CanonicalPaths: []string{"gap.run"}},
+	})
+	t.Cleanup(restore)
+	if _, err := loadManualDryRunCapabilities(); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("cross-group duplicate dry-run error = %v", err)
+	}
+	restore = setReviewedDryRunCapabilityGroupsForTest([]dryRunCapabilityGroup{
+		{PreviewKind: contract.DryRunPreviewPlan, CanonicalPaths: []string{"gap.run"}},
+	})
+	t.Cleanup(restore)
+	if err := ValidateReviewedDryRunCapabilityDelivery(SchemaRegistry{}); err == nil || !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("missing dry-run delivery error = %v", err)
+	}
+	mismatch := SchemaRegistry{Products: []ProductSpec{{Tools: []ToolSpec{{
+		Identity: contract.ToolIdentitySpec{CanonicalPath: "gap.run"},
+		DryRun:   &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewDiff},
+	}}}}}
+	if err := ValidateReviewedDryRunCapabilityDelivery(mismatch); err == nil || !strings.Contains(err.Error(), "dry-run capability") {
+		t.Fatalf("mismatched dry-run delivery error = %v", err)
+	}
+	unreviewed := SchemaRegistry{Products: []ProductSpec{{Tools: []ToolSpec{{
+		Identity: contract.ToolIdentitySpec{CanonicalPath: "other.run"},
+		DryRun:   &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewPlan},
+	}}}}}
+	if err := ValidateReviewedDryRunCapabilityDelivery(unreviewed); err == nil || !strings.Contains(err.Error(), "unreviewed") {
+		t.Fatalf("unreviewed dry-run delivery error = %v", err)
+	}
+
+	walkLeafCommands(root, func(*cobra.Command) {})
+	hidden := &cobra.Command{Use: "hidden", Hidden: true}
+	root.AddCommand(hidden)
+	walkLeafCommands(root, func(*cobra.Command) {})
+	if hasRuntimeSchemaCommand(nil) {
+		t.Fatal("nil command must not report runtime schema")
+	}
+	_ = agentMetadataSummaryFrom(agentMetadata{
+		Version: 1, SourceHash: "h", SurfaceHash: "s",
+		Products: map[string]agentProductMetadata{"p": {}},
+		Tools:    map[string]agentToolMetadata{"t": {}},
+		Coverage: agentMetadataCoverage{
+			SurfaceProducts: 1, SurfaceTools: 2, ToolsWithSummary: 3, UnmatchedSkillTools: 4,
+		},
+	})
+
+	merged, err := ReviewedCommandRegistryMergedJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prevLoad := loadReviewedCommandRegistry
+	t.Cleanup(func() { loadReviewedCommandRegistry = prevLoad })
+	loadReviewedCommandRegistry = func() (CommandRegistry, error) { return CommandRegistry{}, fmt.Errorf("embed boom") }
+	if _, err := ValidateCommandRegistrySource(merged); err == nil || !strings.Contains(err.Error(), "embed boom") {
+		t.Fatalf("embed load error = %v", err)
+	}
+	alt, err := newCommandRegistry([]CommandSpec{{
+		CanonicalPath: "gap.only", SourceProductID: "gap", PrimaryCLIPath: "gap only", Visibility: SchemaVisibilityPublic,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	loadReviewedCommandRegistry = func() (CommandRegistry, error) { return alt, nil }
+	if _, err := ValidateCommandRegistrySource(merged); err == nil || !strings.Contains(err.Error(), "disagrees") {
+		t.Fatalf("semantic disagree error = %v", err)
+	}
+
+	prevBind := schemaParameterBindingData
+	t.Cleanup(func() { schemaParameterBindingData = prevBind })
+	schemaParameterBindingData = func() (schemaParameterBindingSnapshot, error) {
+		return schemaParameterBindingSnapshot{Bindings: map[string]map[string]string{"a.b": {"flag": "prop"}}}, nil
+	}
+	if got, err := LoadSchemaParameterBindings(); err != nil || got["a.b"]["flag"] != "prop" {
+		t.Fatalf("LoadSchemaParameterBindings() = %#v err=%v", got, err)
+	}
+
+	if _, err := buildInterfaceRegistry(map[string]embeddedMCPToolMetadata{"": {}}); err == nil {
+		t.Fatal("empty canonical interface registry must fail")
+	}
+	if _, err := buildInterfaceRegistry(map[string]embeddedMCPToolMetadata{"a.b": {}}); err == nil {
+		t.Fatal("missing interface_ref must fail")
+	}
+	if _, err := buildInterfaceRegistry(map[string]embeddedMCPToolMetadata{
+		"a.b":   {InterfaceRef: &embeddedMCPInterfaceRef{ProductID: "a", RPCName: "b"}},
+		" a.b ": {InterfaceRef: &embeddedMCPInterfaceRef{ProductID: "a", RPCName: "b"}},
+	}); err == nil {
+		t.Fatal("conflicting canonical paths must fail")
+	}
+	if _, err := buildInterfaceRegistry(map[string]embeddedMCPToolMetadata{
+		"a.b": {InterfaceRef: &embeddedMCPInterfaceRef{ProductID: "", RPCName: "b"}},
+	}); err == nil {
+		t.Fatal("incomplete interface_ref must fail")
+	}
+	if err := validateSchemaRegistryInterfacesWithMetadata(SchemaRegistry{Products: []ProductSpec{{
+		Tools: []ToolSpec{{Identity: contract.ToolIdentitySpec{}, Interface: contract.InterfaceSpec{Mode: "bogus"}}},
+	}}}, embeddedMCPMetadata{}); err == nil {
+		t.Fatal("invalid interface disposition must fail")
+	}
+	if err := validateToolInterfaceRef("x", "mcp", nil, InterfaceRegistry{}); err == nil {
+		t.Fatal("nil interface_ref must fail")
+	}
+}
+
+func TestOverallCoverageGapRuntimeParamsAndAgentMetadata(t *testing.T) {
+	prevSpecs := runtimeCommandParameterSpecsForPayload
+	t.Cleanup(func() { runtimeCommandParameterSpecsForPayload = prevSpecs })
+	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+		return nil, fmt.Errorf("specs boom")
+	}
+	if _, err := runtimeCommandParameters(&cobra.Command{Use: "run"}, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil {
+		t.Fatal("parameter specs error must surface")
+	}
+	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+		return []ParameterSpec{{Name: "ok", Type: "string"}}, nil
+	}
+	payload, err := runtimeCommandParameters(&cobra.Command{Use: "run"}, "sample.run", nil, RuntimeSchemaConstraints{})
+	if err != nil || payload["ok"] == nil {
+		t.Fatalf("parameter payload = %#v err=%v", payload, err)
+	}
+
+	flags := &cobra.Command{Use: "run"}
+	flags.Flags().String("need", "", "required value")
+	_ = flags.MarkFlagRequired("need")
+	flag := flags.Flags().Lookup("need")
+	setFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation, "not-bool")
+	if required, present := runtimeFlagRequiredState(flag); !required || !present {
+		t.Fatalf("cobra hard required fallback = %v/%v", required, present)
+	}
+
+	if _, err := collectRuntimeSchemaEntriesFromBound(BoundCommandRegistry{Commands: []BoundCommandSpec{
+		{CommandSpec: CommandSpec{CanonicalPath: "bad", Visibility: SchemaVisibilityPublic, PrimaryCLIPath: "bad"}},
+	}}); err == nil {
+		t.Fatal("invalid canonical must fail collect")
+	}
+	hidden := &cobra.Command{Use: "hide", Run: func(*cobra.Command, []string) {}}
+	entries, err := collectRuntimeSchemaEntriesFromBound(BoundCommandRegistry{Commands: []BoundCommandSpec{
+		{CommandSpec: CommandSpec{CanonicalPath: "sample.hide", Visibility: SchemaVisibilityInternal, PrimaryCLIPath: "sample hide"}, PrimaryCommand: hidden},
+	}})
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("internal visibility entries = %#v err=%v", entries, err)
+	}
+
+	tool := ToolSpec{
+		Identity: contract.ToolIdentitySpec{
+			CLIPath: "sample group run", CanonicalPath: "sample.group.run", ProductID: "sample",
+			Name: "group.run", Path: "sample.group.run", PrimaryCLIPath: "sample group run",
+			Aliases: []string{"ghost group run"},
+		},
+		Safety:    contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "yes"},
+		Selection: contract.SelectionSpec{AgentSummary: "s"},
+	}
+	registry := SchemaRegistry{Source: SchemaSourceRuntimeAssembled, Products: []ProductSpec{{ID: "sample", Tools: []ToolSpec{tool}}}}
+	index, err := registry.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	payloadSnap, err := registry.ToSnapshotPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded := loadedSchemaCatalog{
+		Registry: registry, Index: index,
+		Snapshot: SchemaCatalogSnapshot{Version: SchemaCatalogSnapshotVersion, Catalog: payloadSnap.Catalog, Tools: payloadSnap.Tools},
+	}
+	loaded.Snapshot.SourceHash = schemaCatalogSnapshotHash(loaded.Snapshot)
+	if problems := schemaRegistryProjectionErrors(loaded); len(problems) == 0 {
+		t.Fatal("ghost group product miss must surface")
+	}
+
+	prevMeta := finalSchemaAgentMetadata
+	t.Cleanup(func() { finalSchemaAgentMetadata = prevMeta })
+	finalSchemaAgentMetadata = func() agentMetadata {
+		return agentMetadata{Tools: map[string]agentToolMetadata{
+			"sample.group.run": {},
+			"sample group run": {},
+		}}
+	}
+	if err := validateSchemaRegistryAgentMetadata(registry); err == nil || !strings.Contains(err.Error(), "both resolve") {
+		t.Fatalf("duplicate agent metadata keys error = %v", err)
+	}
+	finalSchemaAgentMetadata = func() agentMetadata {
+		return agentMetadata{Tools: map[string]agentToolMetadata{"sample.group.run": {}}}
+	}
+	if err := validateSchemaRegistryAgentMetadata(registry); err != nil {
+		t.Fatalf("matching agent metadata should pass: %v", err)
+	}
+
+	badTool := tool
+	badTool.Identity.CanonicalPath = "sample.run"
+	if err := validateFinalSchemaProvenanceCoverage(SchemaRegistry{Products: []ProductSpec{{
+		ID: "sample", Selection: contract.SelectionSpec{AgentSummary: "p", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
+		Tools: []ToolSpec{badTool},
+	}}}); err == nil {
+		t.Fatal("invalid tool provenance coverage must fail")
+	}
+
+	restore := setReviewedDryRunCapabilityGroupsForTest([]dryRunCapabilityGroup{
+		{PreviewKind: "bogus", CanonicalPaths: []string{"gap.run"}},
+	})
+	t.Cleanup(restore)
+	if _, err := reviewedDryRunCapability("gap.run"); err == nil {
+		t.Fatal("invalid dry-run preview kind must fail capability load")
+	}
+	if err := ValidateReviewedDryRunCapabilityDelivery(SchemaRegistry{}); err == nil {
+		t.Fatal("invalid dry-run registry must fail delivery validation")
+	}
 }
