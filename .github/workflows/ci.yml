@@ -490,7 +490,7 @@ jobs:
     needs: lint
     if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite == 'true' }}
     runs-on: ubuntu-latest
-    # cli shard needs headroom beyond go test -timeout for setup + Schema assembly.
+    # cli/smoke shards need headroom beyond go test -timeout for setup + assembly.
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -500,6 +500,7 @@ jobs:
           - generators
           - helpers
           - cli
+          - smoke
           - remaining
     steps:
       - name: Check out repository
@@ -525,10 +526,10 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          # cli shard owns ResolveSchemaBuild TestMain assembly under -race; give
-          # it a dedicated budget so remaining is not SIGTERM'd by OOM/timeout.
+          # cli/smoke own heavy NewRootCommand / Schema assembly under -race; give
+          # them a dedicated budget so remaining is not SIGTERM'd by OOM/timeout.
           timeout_budget=12m
-          if [ "$TEST_SHARD" = "cli" ]; then
+          if [ "$TEST_SHARD" = "cli" ] || [ "$TEST_SHARD" = "smoke" ]; then
             timeout_budget=15m
           fi
           go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"
