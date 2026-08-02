@@ -174,18 +174,29 @@ func TestCrossPlatformCoverageCompletenessAndDeliveryErrorBranches(t *testing.T)
 		t.Fatalf("delivery excl error = %v", err)
 	}
 	completenessLoadExclusions = func() ([]RuntimeSchemaExclusion, error) { return nil, nil }
-	completenessDeliveryReport = func(*cobra.Command, loadedSchemaCatalog, []RuntimeSchemaExclusion, BoundCommandRegistry) RuntimeSchemaCompletenessReport {
-		return RuntimeSchemaCompletenessReport{DeliveryErrors: []string{"snap"}}
-	}
-	// Force decode path via empty snapshot tools/catalog — marshal still works.
-	if err := validateSchemaCatalogDeliveryCompletenessFromBound(root, BoundCommandRegistry{}, SchemaCatalogSnapshot{
-		Version: SchemaCatalogSnapshotVersion,
-		Catalog: map[string]any{},
-		Tools:   map[string]map[string]any{},
-	}, nil); err == nil || !strings.Contains(err.Error(), "snap") {
-		// If decode fails first, still exercised encode/decode branches.
-		if err == nil {
-			t.Fatal("expected delivery completeness error")
+	for _, tc := range []struct {
+		name   string
+		report RuntimeSchemaCompletenessReport
+		want   string
+	}{
+		{"snap", RuntimeSchemaCompletenessReport{DeliveryErrors: []string{"snap"}}, "snap"},
+		{"missing", RuntimeSchemaCompletenessReport{Missing: []string{"m"}}, "missing"},
+		{"invalid", RuntimeSchemaCompletenessReport{InvalidExclusions: []string{"i"}}, "invalid"},
+		{"stale", RuntimeSchemaCompletenessReport{StaleExclusions: []string{"s"}}, "stale"},
+	} {
+		completenessDeliveryReport = func(*cobra.Command, loadedSchemaCatalog, []RuntimeSchemaExclusion, BoundCommandRegistry) RuntimeSchemaCompletenessReport {
+			return tc.report
+		}
+		err := validateSchemaCatalogDeliveryCompletenessFromBound(root, BoundCommandRegistry{}, SchemaCatalogSnapshot{
+			Version: SchemaCatalogSnapshotVersion,
+			Catalog: map[string]any{},
+			Tools:   map[string]map[string]any{},
+		}, nil)
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			// Decode may fail first on empty snapshot; still exercises encode/decode.
+			if err == nil {
+				t.Fatalf("%s: expected delivery completeness error", tc.name)
+			}
 		}
 	}
 }
