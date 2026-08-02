@@ -34,57 +34,68 @@ var packageCLIAssembledDelivery *loadedSchemaCatalog
 // internal/app (cycle); the generator subprocess owns the app root factory.
 // Production binaries never use this path — only RegisterSchemaSourceRoot from app.
 func TestMain(m *testing.M) {
-	if err := installAssembledSchemaDeliveryForPackageCLITests(); err != nil {
+	cleanup, err := installAssembledSchemaDeliveryForPackageCLITests()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "schema package-cli TestMain: %v\n", err)
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	cleanup()
+	os.Exit(code)
 }
 
-func installAssembledSchemaDeliveryForPackageCLITests() error {
+func installAssembledSchemaDeliveryForPackageCLITests() (func(), error) {
+	noop := func() {}
 	repoRoot, err := repoRootFromCLIPackage()
 	if err != nil {
-		return err
+		return noop, err
 	}
 	tmp, err := os.MkdirTemp("", "dws-cli-schema-test-*")
 	if err != nil {
-		return err
+		return noop, err
 	}
+	cleanup := func() { _ = os.RemoveAll(tmp) }
 	outDir := filepath.Join(tmp, "schema_catalog")
 	generator := filepath.Join(tmp, "cmd_schema_catalog")
 	build := exec.Command("go", "build", "-o", generator, "./internal/generator/cmd_schema_catalog")
 	build.Dir = repoRoot
 	if out, err := build.CombinedOutput(); err != nil {
-		return fmt.Errorf("build cmd_schema_catalog: %w\n%s", err, out)
+		cleanup()
+		return noop, fmt.Errorf("build cmd_schema_catalog: %w\n%s", err, out)
 	}
 	run := exec.Command(generator, "-root", repoRoot, "-output", outDir, "-meta-index", filepath.Join(tmp, "schema_meta_index.gob"))
 	run.Dir = repoRoot
 	if out, err := run.CombinedOutput(); err != nil {
-		return fmt.Errorf("run cmd_schema_catalog: %w\n%s", err, out)
+		cleanup()
+		return noop, fmt.Errorf("run cmd_schema_catalog: %w\n%s", err, out)
 	}
 	envelope, err := os.ReadFile(filepath.Join(outDir, "catalog.json"))
 	if err != nil {
-		return err
+		cleanup()
+		return noop, err
 	}
 	typed, tools, err := assembleTypedSchemaCatalog(envelope, os.DirFS(outDir), "tools")
 	if err != nil {
-		return fmt.Errorf("assemble typed catalog dump: %w", err)
+		cleanup()
+		return noop, fmt.Errorf("assemble typed catalog dump: %w", err)
 	}
 	loaded, err := loadTypedSchemaCatalog(typed, tools)
 	if err != nil {
-		return fmt.Errorf("load typed catalog dump: %w", err)
+		cleanup()
+		return noop, fmt.Errorf("load typed catalog dump: %w", err)
 	}
 	if loaded.Snapshot.Tools == nil {
 		payload, err := registryToSnapshotPayload(loaded.Registry)
 		if err != nil {
-			return fmt.Errorf("materialize catalog maps: %w", err)
+			cleanup()
+			return noop, fmt.Errorf("materialize catalog maps: %w", err)
 		}
 		loaded.Snapshot.Catalog = payload.Catalog
 		loaded.Snapshot.Tools = payload.Tools
 	}
 	packageCLIAssembledDelivery = &loaded
 	restorePackageCLISchemaDeliveryForTest()
-	return nil
+	return cleanup, nil
 }
 
 func restorePackageCLISchemaDeliveryForTest() {

@@ -114,7 +114,8 @@ var (
 	jsonMarshalSchemaMetaIndex = json.MarshalIndent
 )
 
-// EncodeSchemaMetaIndex marshals the committed delivery artifact (gob).
+// EncodeSchemaMetaIndex marshals a CI/test SchemaMetaIndex dump (gob).
+// Production ResolveMeta does not embed or load this artifact.
 func EncodeSchemaMetaIndex(index SchemaMetaIndexSnapshot) ([]byte, error) {
 	encoded, err := encodeSchemaMetaIndexFn(index)
 	if err != nil {
@@ -135,7 +136,7 @@ func encodeSchemaMetaIndexGob(index SchemaMetaIndexSnapshot) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// DecodeSchemaMetaIndex parses a committed/generated gob meta index document.
+// DecodeSchemaMetaIndex parses a CI/test gob meta index dump.
 func DecodeSchemaMetaIndex(data []byte) (SchemaMetaIndexSnapshot, error) {
 	if len(data) == 0 {
 		return SchemaMetaIndexSnapshot{}, fmt.Errorf("decode schema meta index: empty payload")

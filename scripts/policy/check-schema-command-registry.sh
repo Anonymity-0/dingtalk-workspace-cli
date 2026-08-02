@@ -37,10 +37,20 @@ if [ ! -f internal/cli/schema_command_registry.schema.json ] ||
 	exit 1
 fi
 
-# The registry argument is validation-only and all go:generate outputs must be
-# downstream assets. Reject any directive that targets the reviewed input.
-if ! grep -Eq '^//go:generate .*cmd_schema_catalog ' internal/cli/gen.go; then
-	printf '%s\n' 'go generate must register the Catalog generator' >&2
+# Single-track delivery (声明即 Catalog): go:generate only refreshes
+# param_aliases. Catalog assembly is runtime ResolveSchemaBuild; CI proves
+# determinism via check-schema-assembly.sh. Reject committed Catalog generate
+# and any directive that targets the reviewed CommandRegistry input.
+if ! grep -Eq '^//go:generate .*cmd_param_aliases' internal/cli/gen.go; then
+	printf '%s\n' 'go generate must register the param_aliases generator' >&2
+	exit 1
+fi
+if grep -E '^//go:generate' internal/cli/gen.go | grep -Eq 'cmd_schema_catalog'; then
+	printf '%s\n' 'go generate must not register committed Catalog delivery (cmd_schema_catalog)' >&2
+	exit 1
+fi
+if ! grep -Eq 'check-schema-assembly\.sh' Makefile; then
+	printf '%s\n' 'Makefile must invoke check-schema-assembly.sh for assembly determinism' >&2
 	exit 1
 fi
 if grep -E '^//go:generate' internal/cli/gen.go | grep -Eq 'cmd_schema_agent_metadata|schema_agent_metadata'; then

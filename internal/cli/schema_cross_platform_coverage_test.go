@@ -373,7 +373,10 @@ func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 	})
 
 	t.Run("assembleSchemaCatalogSnapshot and helpers", func(t *testing.T) {
-		snapshot, err := func() (SchemaCatalogSnapshot, error) { loaded := mustDeliverySchemaCatalogMaps(t); return loaded.Snapshot, nil }()
+		snapshot, err := func() (SchemaCatalogSnapshot, error) {
+			loaded := mustDeliverySchemaCatalogMaps(t)
+			return loaded.Snapshot, nil
+		}()
 		if err != nil {
 			t.Fatalf("assembleSchemaCatalogSnapshot() error = %v", err)
 		}
@@ -417,7 +420,10 @@ func TestCrossPlatformCoverageSchemaMetaIndexAndCommandMeta(t *testing.T) {
 	if err := ValidateSchemaMetaIndexAgainstCatalog(index, loaded.Registry); err != nil {
 		t.Fatalf("ValidateSchemaMetaIndexAgainstCatalog() error = %v", err)
 	}
-	decoded, err := func() (SchemaMetaIndexSnapshot, error) { loaded := mustDeliverySchemaCatalogMaps(t); return BuildSchemaMetaIndex(loaded.Snapshot) }()
+	decoded, err := func() (SchemaMetaIndexSnapshot, error) {
+		loaded := mustDeliverySchemaCatalogMaps(t)
+		return BuildSchemaMetaIndex(loaded.Snapshot)
+	}()
 	if err != nil {
 		t.Fatalf("DecodeSchemaMetaIndex() error = %v", err)
 	}
