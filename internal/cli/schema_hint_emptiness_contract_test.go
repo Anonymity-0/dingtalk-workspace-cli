@@ -62,7 +62,7 @@ func TestSchemaHintsDirectoryRetired(t *testing.T) {
 // retained candidate after RegisterSchemaHints → contract.ParamDecl migration.
 func TestDeliveryCatalogHasNoToolSchemaHintProvenance(t *testing.T) {
 	if !deliverySchemaCatalogAvailable() {
-		t.Fatal("embedded schema catalog unavailable")
+		t.Fatal("delivery schema Catalog unavailable")
 	}
 	loaded := deliverySchemaCatalog()
 	hits := make([]string, 0)

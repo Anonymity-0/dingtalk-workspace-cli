@@ -31,42 +31,42 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
-const manualAgentSelectionLiveBatchSize = 12
+const agentSelectionLiveBatchSize = 12
 
-type manualAgentSelectionLiveCandidate struct {
+type agentSelectionLiveCandidate struct {
 	CanonicalPath string   `json:"canonical_path"`
 	AgentSummary  string   `json:"agent_summary"`
 	UseWhen       []string `json:"use_when"`
 	AvoidWhen     []string `json:"avoid_when"`
 }
 
-type manualAgentSelectionLiveInput struct {
-	Cases      []manualAgentSelectionLiveCase      `json:"cases"`
-	Candidates []manualAgentSelectionLiveCandidate `json:"candidates"`
+type agentSelectionLiveInput struct {
+	Cases      []agentSelectionLiveCase      `json:"cases"`
+	Candidates []agentSelectionLiveCandidate `json:"candidates"`
 }
 
-// manualAgentSelectionLiveCase is deliberately answer-free. Expected and
+// agentSelectionLiveCase is deliberately answer-free. Expected and
 // forbidden canonicals stay only in the local assertion fixture and are never
 // sent to the model being evaluated.
-type manualAgentSelectionLiveCase struct {
+type agentSelectionLiveCase struct {
 	ID       string `json:"id"`
 	Scenario string `json:"scenario"`
 }
 
-type manualAgentSelectionLiveResult struct {
+type agentSelectionLiveResult struct {
 	ID            string `json:"id"`
 	CanonicalPath string `json:"canonical_path"`
 }
 
-type manualAgentSelectionLiveResponse struct {
-	Results []manualAgentSelectionLiveResult `json:"results"`
+type agentSelectionLiveResponse struct {
+	Results []agentSelectionLiveResult `json:"results"`
 }
 
-// TestManualAgentSelectionArkLive is intentionally opt-in. Deterministic CI
+// TestAgentSelectionArkLive is intentionally opt-in. Deterministic CI
 // validates all fixture and Cobra facts without network access; this test asks
 // a real model to interpret the reviewed natural-language scenarios. Set
 // DWS_AGENT_SELECTION_FULL=1 to evaluate every positive and negative case.
-func TestManualAgentSelectionArkLive(t *testing.T) {
+func TestAgentSelectionArkLive(t *testing.T) {
 	if os.Getenv("DWS_AGENT_SELECTION_LIVE") != "1" {
 		t.Skip("set DWS_AGENT_SELECTION_LIVE=1 and ARK_API_KEY/ARK_BASE_URL/ARK_MODEL to run live Agent command-selection evaluation")
 	}
@@ -82,37 +82,37 @@ func TestManualAgentSelectionArkLive(t *testing.T) {
 			t.Fatalf("%s is required when DWS_AGENT_SELECTION_LIVE=1", name)
 		}
 	}
-	if err := validateManualAgentSelectionLiveBaseURL(baseURL, os.Getenv("DWS_AGENT_SELECTION_ALLOWED_BASE_URLS")); err != nil {
+	if err := validateAgentSelectionLiveBaseURL(baseURL, os.Getenv("DWS_AGENT_SELECTION_ALLOWED_BASE_URLS")); err != nil {
 		t.Fatal(err)
 	}
 
-	fixture, selectionSet := manualAgentSelectionLiveFixture(t)
-	cases := selectManualAgentSelectionLiveCases(t, fixture.Cases)
-	for _, batch := range batchManualAgentSelectionLiveCases(cases, manualAgentSelectionLiveBatchSize) {
+	fixture, selectionSet := agentSelectionLiveFixture(t)
+	cases := selectAgentSelectionLiveCases(t, fixture.Cases)
+	for _, batch := range batchAgentSelectionLiveCases(cases, agentSelectionLiveBatchSize) {
 		productID := batch[0].ProductID
-		t.Run(productID+"/"+sanitizeManualAgentSelectionLiveTestID(batch[0].ID), func(t *testing.T) {
-			input := buildManualAgentSelectionLiveInput(batch, selectionSet)
-			results := callManualAgentSelectionLiveModel(t, baseURL, apiKey, model, input)
-			assertManualAgentSelectionLiveResults(t, batch, results)
+		t.Run(productID+"/"+sanitizeAgentSelectionLiveTestID(batch[0].ID), func(t *testing.T) {
+			input := buildAgentSelectionLiveInput(batch, selectionSet)
+			results := callAgentSelectionLiveModel(t, baseURL, apiKey, model, input)
+			assertAgentSelectionLiveResults(t, batch, results)
 		})
 	}
 }
 
-func buildManualAgentSelectionLiveInput(batch []cli.AgentSelectionCase, selectionSet cli.ManualAgentSelectionSet) manualAgentSelectionLiveInput {
-	input := manualAgentSelectionLiveInput{Cases: make([]manualAgentSelectionLiveCase, 0, len(batch))}
+func buildAgentSelectionLiveInput(batch []cli.AgentSelectionCase, selectionSet cli.FixtureAgentSelectionSet) agentSelectionLiveInput {
+	input := agentSelectionLiveInput{Cases: make([]agentSelectionLiveCase, 0, len(batch))}
 	if len(batch) == 0 {
 		return input
 	}
 	for _, selectionCase := range batch {
-		input.Cases = append(input.Cases, manualAgentSelectionLiveCase{
+		input.Cases = append(input.Cases, agentSelectionLiveCase{
 			ID:       selectionCase.ID,
 			Scenario: selectionCase.Scenario,
 		})
 	}
-	input.Candidates = make([]manualAgentSelectionLiveCandidate, 0, len(batch[0].CandidateCanonicals))
+	input.Candidates = make([]agentSelectionLiveCandidate, 0, len(batch[0].CandidateCanonicals))
 	for _, canonical := range batch[0].CandidateCanonicals {
 		tool := selectionSet.Tools[canonical]
-		input.Candidates = append(input.Candidates, manualAgentSelectionLiveCandidate{
+		input.Candidates = append(input.Candidates, agentSelectionLiveCandidate{
 			CanonicalPath: canonical,
 			AgentSummary:  tool.AgentSummary,
 			UseWhen:       tool.UseWhen,
@@ -122,7 +122,7 @@ func buildManualAgentSelectionLiveInput(batch []cli.AgentSelectionCase, selectio
 	return input
 }
 
-func manualAgentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, cli.ManualAgentSelectionSet) {
+func agentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, cli.FixtureAgentSelectionSet) {
 	t.Helper()
 	root := NewRootCommand()
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
@@ -137,10 +137,10 @@ func manualAgentSelectionLiveFixture(t testing.TB) (cli.AgentSelectionFixture, c
 	if err != nil {
 		t.Fatalf("BuildAgentSelectionEvalFixture() error = %v", err)
 	}
-	return fixture, cli.ManualAgentSelectionSet{}
+	return fixture, cli.FixtureAgentSelectionSet{}
 }
 
-func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.AgentSelectionCase) []cli.AgentSelectionCase {
+func selectAgentSelectionLiveCases(t testing.TB, cases []cli.AgentSelectionCase) []cli.AgentSelectionCase {
 	t.Helper()
 	if raw := strings.TrimSpace(os.Getenv("DWS_AGENT_SELECTION_CASES")); raw != "" {
 		selected := map[string]bool{}
@@ -187,7 +187,7 @@ func selectManualAgentSelectionLiveCases(t testing.TB, cases []cli.AgentSelectio
 	return result
 }
 
-func batchManualAgentSelectionLiveCases(cases []cli.AgentSelectionCase, batchSize int) [][]cli.AgentSelectionCase {
+func batchAgentSelectionLiveCases(cases []cli.AgentSelectionCase, batchSize int) [][]cli.AgentSelectionCase {
 	if batchSize <= 0 {
 		batchSize = 1
 	}
@@ -214,9 +214,9 @@ func batchManualAgentSelectionLiveCases(cases []cli.AgentSelectionCase, batchSiz
 	return result
 }
 
-func callManualAgentSelectionLiveModel(t testing.TB, baseURL, apiKey, model string, input manualAgentSelectionLiveInput) []manualAgentSelectionLiveResult {
+func callAgentSelectionLiveModel(t testing.TB, baseURL, apiKey, model string, input agentSelectionLiveInput) []agentSelectionLiveResult {
 	t.Helper()
-	body, err := marshalManualAgentSelectionLiveRequest(baseURL, model, input)
+	body, err := marshalAgentSelectionLiveRequest(baseURL, model, input)
 	if err != nil {
 		t.Fatalf("marshal live selection request: %v", err)
 	}
@@ -256,7 +256,7 @@ func callManualAgentSelectionLiveModel(t testing.TB, baseURL, apiKey, model stri
 	if len(envelope.Choices) == 0 || strings.TrimSpace(envelope.Choices[0].Message.Content) == "" {
 		t.Fatal("live selection response has no model content")
 	}
-	var selection manualAgentSelectionLiveResponse
+	var selection agentSelectionLiveResponse
 	decoder := json.NewDecoder(strings.NewReader(envelope.Choices[0].Message.Content))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&selection); err != nil {
@@ -265,7 +265,7 @@ func callManualAgentSelectionLiveModel(t testing.TB, baseURL, apiKey, model stri
 	return selection.Results
 }
 
-func marshalManualAgentSelectionLiveRequest(baseURL, model string, input manualAgentSelectionLiveInput) ([]byte, error) {
+func marshalAgentSelectionLiveRequest(baseURL, model string, input agentSelectionLiveInput) ([]byte, error) {
 	inputJSON, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("marshal live selection input: %w", err)
@@ -290,9 +290,9 @@ func marshalManualAgentSelectionLiveRequest(baseURL, model string, input manualA
 	return json.Marshal(requestBody)
 }
 
-func assertManualAgentSelectionLiveResults(t testing.TB, cases []cli.AgentSelectionCase, results []manualAgentSelectionLiveResult) {
+func assertAgentSelectionLiveResults(t testing.TB, cases []cli.AgentSelectionCase, results []agentSelectionLiveResult) {
 	t.Helper()
-	byID := make(map[string]manualAgentSelectionLiveResult, len(results))
+	byID := make(map[string]agentSelectionLiveResult, len(results))
 	for _, result := range results {
 		if _, exists := byID[result.ID]; exists {
 			t.Fatalf("live selection returned duplicate case ID %q", result.ID)
@@ -311,7 +311,7 @@ func assertManualAgentSelectionLiveResults(t testing.TB, cases []cli.AgentSelect
 			t.Errorf("live selection returned empty canonical for %q", selectionCase.ID)
 			continue
 		}
-		if selected != "none" && !containsManualAgentSelectionCanonical(selectionCase.CandidateCanonicals, selected) {
+		if selected != "none" && !containsAgentSelectionCanonical(selectionCase.CandidateCanonicals, selected) {
 			t.Errorf("live selection returned non-candidate %q for %q", selected, selectionCase.ID)
 			continue
 		}
@@ -332,13 +332,13 @@ func assertManualAgentSelectionLiveResults(t testing.TB, cases []cli.AgentSelect
 	}
 }
 
-func validateManualAgentSelectionLiveBaseURL(raw, extraAllowed string) error {
+func validateAgentSelectionLiveBaseURL(raw, extraAllowed string) error {
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
 		return fmt.Errorf("ARK_BASE_URL must be an absolute HTTP(S) API base without query or fragment")
 	}
 	if parsed.Scheme == "http" {
-		if !manualAgentSelectionLoopbackHost(parsed.Hostname()) {
+		if !agentSelectionLiveLoopbackHost(parsed.Hostname()) {
 			return fmt.Errorf("ARK_BASE_URL may use plaintext HTTP only for a loopback test endpoint")
 		}
 		return nil
@@ -363,7 +363,7 @@ func validateManualAgentSelectionLiveBaseURL(raw, extraAllowed string) error {
 	return nil
 }
 
-func manualAgentSelectionLoopbackHost(host string) bool {
+func agentSelectionLiveLoopbackHost(host string) bool {
 	if strings.EqualFold(strings.TrimSpace(host), "localhost") {
 		return true
 	}
@@ -371,7 +371,7 @@ func manualAgentSelectionLoopbackHost(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-func containsManualAgentSelectionCanonical(values []string, target string) bool {
+func containsAgentSelectionCanonical(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
 			return true
@@ -380,36 +380,36 @@ func containsManualAgentSelectionCanonical(values []string, target string) bool 
 	return false
 }
 
-func sanitizeManualAgentSelectionLiveTestID(value string) string {
+func sanitizeAgentSelectionLiveTestID(value string) string {
 	value = strings.ReplaceAll(value, ".", "_")
 	value = strings.ReplaceAll(value, "/", "_")
 	return value
 }
 
-func TestManualAgentSelectionLiveResultContract(t *testing.T) {
+func TestAgentSelectionLiveResultContract(t *testing.T) {
 	cases := []cli.AgentSelectionCase{
 		{ID: "sample.search/use_when/0", Scenario: "find an item", ExpectedCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 		{ID: "sample.search/avoid_when/0", Scenario: "create an item", ForbiddenCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 	}
 	t.Run("accepts exact positive and negative choices", func(t *testing.T) {
-		assertManualAgentSelectionLiveResults(t, cases, []manualAgentSelectionLiveResult{
+		assertAgentSelectionLiveResults(t, cases, []agentSelectionLiveResult{
 			{ID: cases[0].ID, CanonicalPath: "sample.search"},
 			{ID: cases[1].ID, CanonicalPath: "sample.create"},
 		})
 	})
 }
 
-func TestManualAgentSelectionLiveInputDoesNotLeakAssertionsOrRepeatCandidates(t *testing.T) {
+func TestAgentSelectionLiveInputDoesNotLeakAssertionsOrRepeatCandidates(t *testing.T) {
 	batch := []cli.AgentSelectionCase{
 		{ID: "sample.search/use_when/0", Scenario: "find an item", ExpectedCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 		{ID: "sample.search/avoid_when/0", Scenario: "create an item", ForbiddenCanonical: "sample.search", CandidateCanonicals: []string{"sample.create", "sample.search"}},
 	}
-	selectionSet := cli.ManualAgentSelectionSet{Tools: map[string]cli.ManualAgentToolSelection{
+	selectionSet := cli.FixtureAgentSelectionSet{Tools: map[string]cli.AgentToolSelection{
 		"sample.create": {AgentSummary: "Create an item", UseWhen: []string{"create"}, AvoidWhen: []string{"find"}},
 		"sample.search": {AgentSummary: "Search items", UseWhen: []string{"find"}, AvoidWhen: []string{"create"}},
 	}}
-	input := buildManualAgentSelectionLiveInput(batch, selectionSet)
-	data, err := marshalManualAgentSelectionLiveRequest("https://ark.cn-beijing.volces.com/api/plan/v3", "fixed-model", input)
+	input := buildAgentSelectionLiveInput(batch, selectionSet)
+	data, err := marshalAgentSelectionLiveRequest("https://ark.cn-beijing.volces.com/api/plan/v3", "fixed-model", input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +426,7 @@ func TestManualAgentSelectionLiveInputDoesNotLeakAssertionsOrRepeatCandidates(t 
 	}
 }
 
-func TestValidateManualAgentSelectionLiveBaseURL(t *testing.T) {
+func TestValidateAgentSelectionLiveBaseURL(t *testing.T) {
 	tests := []struct {
 		name         string
 		baseURL      string
@@ -446,7 +446,7 @@ func TestValidateManualAgentSelectionLiveBaseURL(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := validateManualAgentSelectionLiveBaseURL(test.baseURL, test.extraAllowed)
+			err := validateAgentSelectionLiveBaseURL(test.baseURL, test.extraAllowed)
 			if test.wantErr == "" {
 				if err != nil {
 					t.Fatalf("validate base URL: %v", err)

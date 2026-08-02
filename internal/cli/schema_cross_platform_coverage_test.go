@@ -160,10 +160,10 @@ func TestCrossPlatformCoverageAgentExampleExecutionPlanErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("BuildManualAgentExampleExecutionPlan wrapper", func(t *testing.T) {
+	t.Run("BuildAgentExampleExecutionPlan", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
-		if _, err := BuildManualAgentExampleExecutionPlan(bound, registry, ManualAgentSelectionSet{}); err != nil {
-			t.Fatalf("BuildManualAgentExampleExecutionPlan() error = %v", err)
+		if _, err := BuildAgentExampleExecutionPlan(bound, registry); err != nil {
+			t.Fatalf("BuildAgentExampleExecutionPlan() error = %v", err)
 		}
 	})
 
@@ -171,19 +171,19 @@ func TestCrossPlatformCoverageAgentExampleExecutionPlanErrors(t *testing.T) {
 		examples := []string{"dws sample run --name x", "dws sample run --name y"}
 		cases := []struct {
 			name string
-			disp []ManualAgentExampleDisposition
+			disp []AgentExampleDisposition
 			want string
 		}{
-			{"nil index", []ManualAgentExampleDisposition{{Mode: ManualAgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState}}, "requires index"},
-			{"out of range", []ManualAgentExampleDisposition{{Index: idx(9), Mode: ManualAgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState}}, "out of range"},
-			{"duplicate index", []ManualAgentExampleDisposition{
-				{Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState},
-				{Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true, Reason: "r2", ReasonCode: ManualAgentExampleReasonLocalState},
+			{"nil index", []AgentExampleDisposition{{Mode: AgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: AgentExampleReasonLocalState}}, "requires index"},
+			{"out of range", []AgentExampleDisposition{{Index: idx(9), Mode: AgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: AgentExampleReasonLocalState}}, "out of range"},
+			{"duplicate index", []AgentExampleDisposition{
+				{Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: AgentExampleReasonLocalState},
+				{Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true, Reason: "r2", ReasonCode: AgentExampleReasonLocalState},
 			}, "duplicate example disposition"},
-			{"not reviewed", []ManualAgentExampleDisposition{{Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: false, Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState}}, "must be reviewed"},
-			{"invalid mode", []ManualAgentExampleDisposition{{Index: idx(0), Mode: ManualAgentExampleModeDryRun, Reviewed: true, Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState}}, "invalid mode"},
-			{"invalid reason_code", []ManualAgentExampleDisposition{{Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: "bogus"}}, "invalid reason_code"},
-			{"empty reason", []ManualAgentExampleDisposition{{Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true, Reason: "  ", ReasonCode: ManualAgentExampleReasonLocalState}}, "non-empty reason"},
+			{"not reviewed", []AgentExampleDisposition{{Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: false, Reason: "r", ReasonCode: AgentExampleReasonLocalState}}, "must be reviewed"},
+			{"invalid mode", []AgentExampleDisposition{{Index: idx(0), Mode: AgentExampleModeDryRun, Reviewed: true, Reason: "r", ReasonCode: AgentExampleReasonLocalState}}, "invalid mode"},
+			{"invalid reason_code", []AgentExampleDisposition{{Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true, Reason: "r", ReasonCode: "bogus"}}, "invalid reason_code"},
+			{"empty reason", []AgentExampleDisposition{{Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true, Reason: "  ", ReasonCode: AgentExampleReasonLocalState}}, "non-empty reason"},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -193,15 +193,15 @@ func TestCrossPlatformCoverageAgentExampleExecutionPlanErrors(t *testing.T) {
 				}
 			})
 		}
-		if !validAgentExampleReasonCode(ManualAgentExampleReasonLocalState) || validAgentExampleReasonCode("nope") {
+		if !validAgentExampleReasonCode(AgentExampleReasonLocalState) || validAgentExampleReasonCode("nope") {
 			t.Fatal("validAgentExampleReasonCode mismatch")
 		}
 	})
 
-	t.Run("tokenizeAgentExample and ParseManualAgentExampleArgv", func(t *testing.T) {
-		argv, err := ParseManualAgentExampleArgv(`dws sample run --name "a b"`)
+	t.Run("tokenizeAgentExample and ParseAgentExampleArgv", func(t *testing.T) {
+		argv, err := ParseAgentExampleArgv(`dws sample run --name "a b"`)
 		if err != nil || len(argv) != 5 || argv[4] != "a b" {
-			t.Fatalf("ParseManualAgentExampleArgv() = %#v, %v", argv, err)
+			t.Fatalf("ParseAgentExampleArgv() = %#v, %v", argv, err)
 		}
 		placeholder, err := tokenizeAgentExample(`dws sample run --file <path>`)
 		if err != nil || placeholder[len(placeholder)-1] != "<path>" {
@@ -494,7 +494,7 @@ func TestCrossPlatformCoverageSchemaRuntimeRegistryLegacyAndPayload(t *testing.T
 	for _, command := range bound.Commands {
 		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
 	}
-	agent := embeddedAgentMetadata{
+	agent := agentMetadata{
 		Version:  1,
 		Products: map[string]agentProductMetadata{"doc": {AgentSummary: "docs", UseWhen: []string{"read docs"}}},
 		Tools: map[string]agentToolMetadata{
@@ -585,11 +585,11 @@ func TestCrossPlatformCoverageSchemaAgentMetadataInstallAndLoad(t *testing.T) {
 		"schema_agent_metadata/index.json":  {Data: []byte(`{"domains":["sample"],"coverage":{"tools_with_metadata":1}}`)},
 		"schema_agent_metadata/sample.json": {Data: []byte(`{"product_id":"sample","tools":{"sample.get":{"agent_summary":"S","use_when":["u"],"avoid_when":["a"],"examples":["dws sample get"],"interface_mode":"local","availability":"available"}}}`)},
 	}
-	loaded := loadEmbeddedAgentMetadataFrom(fixture)
+	loaded := loadAgentMetadataFixtureFrom(fixture)
 	if len(loaded.Tools) != 1 {
 		t.Fatalf("loaded = %#v", loaded)
 	}
-	if loadEmbeddedAgentMetadataFrom(fstest.MapFS{"schema_agent_metadata/index.json": {Data: []byte(`{"domains":["bad/name"]}`)}}).Tools == nil {
+	if loadAgentMetadataFixtureFrom(fstest.MapFS{"schema_agent_metadata/index.json": {Data: []byte(`{"domains":["bad/name"]}`)}}).Tools == nil {
 		t.Fatal("invalid domain must return empty metadata")
 	}
 
@@ -692,7 +692,7 @@ func TestCrossPlatformCoverageSchemaCanonicalPathAndParamAliases(t *testing.T) {
 
 func TestCrossPlatformCoverageDeliverySchemaCatalogDelivery(t *testing.T) {
 	if !deliverySchemaCatalogAvailable() {
-		t.Fatalf("embedded catalog unavailable: %v", deliverySchemaCatalogError())
+		t.Fatalf("delivery catalog unavailable: %v", deliverySchemaCatalogError())
 	}
 	loaded := deliverySchemaCatalog()
 	if loaded.Registry.Source != SchemaSourceRuntimeAssembled {
@@ -808,7 +808,7 @@ func TestCrossPlatformCoverageRuntimeSchemaPayloadGroupAndProduct(t *testing.T) 
 	for _, command := range bound.Commands {
 		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
 	}
-	agent := embeddedAgentMetadata{
+	agent := agentMetadata{
 		Tools: map[string]agentToolMetadata{
 			"doc create": {Effect: "write", InterfaceMode: "local", Availability: "available", InterfaceReason: "test", AgentSummary: "create"},
 		},

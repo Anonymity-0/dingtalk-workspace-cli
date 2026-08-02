@@ -23,13 +23,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestEmbeddedAgentMetadataLoadsSplitDomains(t *testing.T) {
+func TestAgentMetadataFixtureLoadsSplitDomains(t *testing.T) {
 	// Production no longer embeds or ships schema_agent_metadata/*.json.
 	// Runtime Agent metadata must stay empty; selection completeness now lives
 	// in schema_catalog (see TestDeliverySchemaCatalogSelectionCompleteness).
 	metadata := runtimeAgentMetadata()
 	if len(metadata.Tools) != 0 || len(metadata.Products) != 0 || len(metadata.Domains) != 0 {
-		t.Fatalf("retired embedded Agent metadata must be empty: %#v", metadata)
+		t.Fatalf("retired Agent metadata snapshot must be empty: %#v", metadata)
 	}
 	// Temporary MapFS fixture only — exercises the retired split-domain loader
 	// seam without depending on a committed schema_agent_metadata/ directory.
@@ -37,7 +37,7 @@ func TestEmbeddedAgentMetadataLoadsSplitDomains(t *testing.T) {
 		"schema_agent_metadata/index.json":  {Data: []byte(`{"domains":["sample"],"coverage":{"tools_with_metadata":1}}`)},
 		"schema_agent_metadata/sample.json": {Data: []byte(`{"product_id":"sample","tools":{"sample.get":{"agent_summary":"S","use_when":["u"],"avoid_when":["a"],"examples":["dws sample get"],"interface_mode":"local","availability":"available"}}}`)},
 	}
-	loaded := loadEmbeddedAgentMetadataFrom(fixture)
+	loaded := loadAgentMetadataFixtureFrom(fixture)
 	if len(loaded.Tools) != 1 || loaded.Tools["sample.get"].AgentSummary != "S" {
 		t.Fatalf("fixture loader = %#v", loaded)
 	}
@@ -49,7 +49,7 @@ func TestEmbeddedAgentMetadataLoadsSplitDomains(t *testing.T) {
 // and examples that never bypass confirmation with --yes.
 func TestDeliverySchemaCatalogSelectionCompleteness(t *testing.T) {
 	if !deliverySchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
+		t.Fatalf("delivery schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	loaded := mustDeliverySchemaCatalogMaps(t)
 	products := map[string]struct{}{}
@@ -130,7 +130,7 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
     }
   }
 }`
-	var fragment embeddedAgentMetadataDomain
+	var fragment agentMetadataDomain
 	if err := json.Unmarshal([]byte(encoded), &fragment); err != nil {
 		t.Fatalf("decode generated Agent metadata: %v", err)
 	}
@@ -138,12 +138,12 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode generated Agent metadata: %v", err)
 	}
-	var decoded embeddedAgentMetadataDomain
+	var decoded agentMetadataDomain
 	if err := json.Unmarshal(roundTrip, &decoded); err != nil {
 		t.Fatalf("round-trip generated Agent metadata: %v", err)
 	}
 
-	metadataFixture := embeddedAgentMetadata{
+	metadataFixture := agentMetadata{
 		Products: map[string]agentProductMetadata{},
 		Tools:    decoded.Tools,
 	}
@@ -158,7 +158,7 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
 	if interfaceSpec.Ref == nil || interfaceSpec.Ref.ProductID != "calendar" || interfaceSpec.Ref.RPCName != "update_attendee" || interfaceSpec.Mode != "mcp" || interfaceSpec.Availability != "available" || interfaceSpec.Reason != "reviewed RPC mapping" {
 		t.Fatalf("interface = %#v", interfaceSpec)
 	}
-	if selection.AgentSummary != "Update one attendee" || selection.MetadataSource != embeddedAgentMetadataSource || selection.Reviewed == nil || !*selection.Reviewed || len(selection.Examples) != 1 {
+	if selection.AgentSummary != "Update one attendee" || selection.MetadataSource != agentMetadataSource || selection.Reviewed == nil || !*selection.Reviewed || len(selection.Examples) != 1 {
 		t.Fatalf("selection = %#v", selection)
 	}
 	risk := provenance["risk"]
@@ -207,7 +207,7 @@ func TestCrossPlatformCoverageAgentMetadataInterfaceProvenance(t *testing.T) {
 	}
 	mode := resolvedFieldProvenance("local", "reviewed.json", "", "reviewed_explicit", "highest_precedence", "reviewed local wrapper")
 
-	metadataFixture := embeddedAgentMetadata{
+	metadataFixture := agentMetadata{
 		Products: map[string]agentProductMetadata{},
 		Tools: map[string]agentToolMetadata{
 			"calendar event get": {
@@ -300,7 +300,7 @@ func TestCrossPlatformCoverageAgentMetadataInterfaceConflict(t *testing.T) {
 
 func TestCrossPlatformCoverageAgentProductSelectionAccessor(t *testing.T) {
 	provenance := resolvedFieldProvenance("Document operations", "manual", "manual.json", "reviewed_manual", "highest_precedence", "reviewed")
-	metadataFixture := embeddedAgentMetadata{
+	metadataFixture := agentMetadata{
 		Products: map[string]agentProductMetadata{
 			"doc": {
 				AgentSummary:       "Document operations",
@@ -315,7 +315,7 @@ func TestCrossPlatformCoverageAgentProductSelectionAccessor(t *testing.T) {
 	}
 
 	selection, ok := agentProductSelectionForIDsFromMetadata(metadataFixture, "missing", " doc ")
-	if !ok || selection.AgentSummary != "Document operations" || selection.AgentSummarySource != "reviewed-doc-routing" || selection.MetadataSource != embeddedAgentMetadataSource {
+	if !ok || selection.AgentSummary != "Document operations" || selection.AgentSummarySource != "reviewed-doc-routing" || selection.MetadataSource != agentMetadataSource {
 		t.Fatalf("product selection = %#v, ok=%v", selection, ok)
 	}
 	if len(selection.UseWhen) != 1 || len(selection.SourceRefs) != 2 || selection.SourceRefs[0] != "a.md" {
@@ -338,8 +338,8 @@ func TestCrossPlatformCoverageAgentProductSelectionAccessor(t *testing.T) {
 
 }
 
-func TestRuntimeSchemaIncludesEmbeddedAgentMetadata(t *testing.T) {
-	agentFixture := embeddedAgentMetadata{
+func TestRuntimeSchemaIncludesAgentMetadata(t *testing.T) {
+	agentFixture := agentMetadata{
 		Version:    1,
 		SourceHash: "sha256:test",
 		Products: map[string]agentProductMetadata{
@@ -371,7 +371,7 @@ func TestRuntimeSchemaIncludesEmbeddedAgentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runtimeSchemaPayloadForTest(leaf): %v", err)
 	}
-	if leaf["effect"] != "write" || leaf["agent_metadata_source"] != embeddedAgentMetadataSource {
+	if leaf["effect"] != "write" || leaf["agent_metadata_source"] != agentMetadataSource {
 		t.Fatalf("leaf Agent metadata = %#v", leaf)
 	}
 	if leaf["interface_mode"] != "local" || leaf["availability"] != "available" || leaf["interface_reason"] != "test local implementation" {
@@ -388,7 +388,7 @@ func TestRuntimeSchemaIncludesEmbeddedAgentMetadata(t *testing.T) {
 	summary, _ := catalog["agent_metadata"].(map[string]any)
 	// Catalog-level Agent summary is derived from assembled products/tools
 	// (ContractFinal / ProductDecl), not from the inject fixture source_hash.
-	if summary["source"] != embeddedAgentMetadataSource {
+	if summary["source"] != agentMetadataSource {
 		t.Fatalf("catalog Agent metadata summary = %#v", summary)
 	}
 	if summary["tools_with_metadata"] == nil || summary["products_with_metadata"] == nil {
@@ -431,7 +431,7 @@ func TestRuntimeSchemaIncludesEmbeddedAgentMetadata(t *testing.T) {
 func TestRuntimeSchemaAllPayloadContainsFullLeafParameters(t *testing.T) {
 	// Synthetic fixture has no ContractFinal/ProductDecl; exercise the
 	// test-isolated legacy assembly path (production fails closed).
-	registry, err := schemaRegistryForTestWithMetadata(buildRuntimeSchemaTestRoot(), emptyEmbeddedAgentMetadata(), embeddedMCPMetadata{})
+	registry, err := schemaRegistryForTestWithMetadata(buildRuntimeSchemaTestRoot(), emptyAgentMetadata(), embeddedMCPMetadata{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestRuntimeSchemaReportsEmbeddedInterfaceMetadata(t *testing.T) {
 			"doc.create_document": {Description: "创建文档"},
 		},
 	}
-	agentFixture := emptyEmbeddedAgentMetadata()
+	agentFixture := emptyAgentMetadata()
 
 	catalog, err := runtimeSchemaPayloadForTestWithMetadata(buildRuntimeSchemaTestRoot(), nil, agentFixture, mcpFixture)
 	if err != nil {
@@ -517,7 +517,7 @@ func schemaTestInt(value any) int {
 }
 
 func TestRuntimeSchemaUsesVersionedInterfaceRef(t *testing.T) {
-	agentFixture := embeddedAgentMetadata{
+	agentFixture := agentMetadata{
 		Tools: map[string]agentToolMetadata{
 			"doc create": {
 				InterfaceRef:  &embeddedMCPInterfaceRef{ProductID: "documents", RPCName: "create_doc_v2"},
@@ -554,7 +554,7 @@ func TestRuntimeSchemaUsesVersionedInterfaceRef(t *testing.T) {
 
 func TestMCPRequiredParticipatesInSourcePrecedence(t *testing.T) {
 	required := true
-	agentFixture := emptyEmbeddedAgentMetadata()
+	agentFixture := emptyAgentMetadata()
 	mcpFixture := embeddedMCPMetadata{
 		Tools: map[string]embeddedMCPToolMetadata{
 			"sample.list_items": {
@@ -585,7 +585,7 @@ func TestMCPRequiredParticipatesInSourcePrecedence(t *testing.T) {
 }
 
 func TestMCPDefaultDoesNotOverrideCLIDefault(t *testing.T) {
-	agentFixture := emptyEmbeddedAgentMetadata()
+	agentFixture := emptyAgentMetadata()
 	mcpFixture := embeddedMCPMetadata{
 		Tools: map[string]embeddedMCPToolMetadata{
 			"sample.list_items": {

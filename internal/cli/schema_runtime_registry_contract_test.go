@@ -166,7 +166,7 @@ func TestAssembleSchemaRegistryAllowingLegacyIsolatesOverlayPath(t *testing.T) {
 	for _, command := range bound.Commands {
 		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
 	}
-	agent := embeddedAgentMetadata{
+	agent := agentMetadata{
 		Version: 1,
 		Products: map[string]agentProductMetadata{
 			"doc": {AgentSummary: "docs", UseWhen: []string{"read docs"}},

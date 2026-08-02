@@ -68,7 +68,7 @@ func schemaRegistryForTest(root *cobra.Command) (SchemaRegistry, error) {
 	return AssembleSchemaRegistryFromBound(bound)
 }
 
-func schemaRegistryForTestWithMetadata(root *cobra.Command, agent embeddedAgentMetadata, mcp embeddedMCPMetadata) (SchemaRegistry, error) {
+func schemaRegistryForTestWithMetadata(root *cobra.Command, agent agentMetadata, mcp embeddedMCPMetadata) (SchemaRegistry, error) {
 	bound, err := boundTestCommandRegistry(root)
 	if err != nil {
 		return SchemaRegistry{}, err
@@ -93,7 +93,7 @@ func runtimeSchemaPayloadForTest(root *cobra.Command, args []string) (map[string
 	return runtimeSchemaPayloadFromRegistry(registry, args)
 }
 
-func runtimeSchemaPayloadForTestWithMetadata(root *cobra.Command, args []string, agent embeddedAgentMetadata, mcp embeddedMCPMetadata) (map[string]any, error) {
+func runtimeSchemaPayloadForTestWithMetadata(root *cobra.Command, args []string, agent agentMetadata, mcp embeddedMCPMetadata) (map[string]any, error) {
 	registry, err := schemaRegistryForTestWithMetadata(root, agent, mcp)
 	if err != nil {
 		return nil, err

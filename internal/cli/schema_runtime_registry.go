@@ -16,7 +16,7 @@ import (
 )
 
 type runtimeSchemaMetadataSources struct {
-	Agent embeddedAgentMetadata
+	Agent agentMetadata
 	MCP   embeddedMCPMetadata
 }
 

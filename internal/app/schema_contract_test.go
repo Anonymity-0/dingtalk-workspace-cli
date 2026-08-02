@@ -81,7 +81,7 @@ func TestDeliverySchemaContractMapsToExecutableTree(t *testing.T) {
 		for _, tool := range product.Tools {
 			canonical := strings.TrimSpace(tool.CanonicalPath)
 			if canonical == "" {
-				t.Fatal("embedded schema --all contains an empty canonical path")
+				t.Fatal("delivery schema --all contains an empty canonical path")
 			}
 			if actual[canonical] {
 				duplicates = append(duplicates, canonical)
@@ -91,7 +91,7 @@ func TestDeliverySchemaContractMapsToExecutableTree(t *testing.T) {
 	}
 	if len(duplicates) > 0 {
 		sort.Strings(duplicates)
-		t.Fatalf("embedded schema --all contains duplicate canonicals: %v", duplicates)
+		t.Fatalf("delivery schema --all contains duplicate canonicals: %v", duplicates)
 	}
 
 	var missing, extra []string

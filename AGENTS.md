@@ -344,7 +344,7 @@ proves natural-language understanding.
 
 Semantic selection is an explicit opt-in live-model check. Run the smoke set
 (one positive and one negative scenario per product) with
-`DWS_AGENT_SELECTION_LIVE=1 ARK_API_KEY=... ARK_BASE_URL=... ARK_MODEL=... go test ./internal/app -run TestManualAgentSelectionArkLive -count=1`.
+`DWS_AGENT_SELECTION_LIVE=1 ARK_API_KEY=... ARK_BASE_URL=... ARK_MODEL=... go test ./internal/app -run TestAgentSelectionArkLive -count=1`.
 Add `DWS_AGENT_SELECTION_FULL=1` to evaluate every committed tool scenario, or
 set `DWS_AGENT_SELECTION_CASES` to comma-separated fixture case IDs. Normal CI
 never calls a model; its blockers remain the reproducible fixture, binding,

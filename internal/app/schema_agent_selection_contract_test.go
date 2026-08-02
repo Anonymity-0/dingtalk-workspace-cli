@@ -19,7 +19,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
-func TestManualAgentSelectionScenariosCoverEveryExecutableSchemaTool(t *testing.T) {
+func TestAgentSelectionScenariosCoverEveryExecutableSchemaTool(t *testing.T) {
 	root := NewRootCommand()
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
 	if err != nil {

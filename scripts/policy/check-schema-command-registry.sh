@@ -70,13 +70,17 @@ fi
 # exactly two production locations: its declaration and the assignment inside
 # that accessor. Any third reference is an eager initializer or an accessor
 # bypass and fails this static check.
-# Agent metadata embed/loader is retired; production must not reopen it.
+# Agent metadata JSON embed/loader is retired; production must not reopen it.
 if policy_search_production_go 'go:embed schema_agent_metadata' internal/cli; then
 	printf '%s\n' 'schema_agent_metadata must not be re-embedded' >&2
 	exit 1
 fi
 if policy_search_production_go 'loadEmbeddedAgentMetadata\(' internal/cli; then
 	printf '%s\n' 'retired loadEmbeddedAgentMetadata must not remain in production code' >&2
+	exit 1
+fi
+if policy_search_production_go 'loadAgentMetadataFixtureFrom\(' internal/cli; then
+	printf '%s\n' 'Agent metadata fixture loader must stay test-only' >&2
 	exit 1
 fi
 check_schema_loader_references() {

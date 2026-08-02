@@ -77,16 +77,16 @@ func deliverySchemaAllToolsForHelpFlagTest(t testing.TB, root *cobra.Command) ma
 		for _, tool := range product.Tools {
 			canonical := strings.TrimSpace(schemaContractString(tool["canonical_path"]))
 			if canonical == "" {
-				t.Fatal("embedded schema --all contains an empty canonical path")
+				t.Fatal("delivery schema --all contains an empty canonical path")
 			}
 			if _, exists := tools[canonical]; exists {
-				t.Fatalf("embedded schema --all contains duplicate canonical %q", canonical)
+				t.Fatalf("delivery schema --all contains duplicate canonical %q", canonical)
 			}
 			tools[canonical] = tool
 		}
 	}
 	if len(tools) == 0 {
-		t.Fatal("embedded schema --all contains no tools")
+		t.Fatal("delivery schema --all contains no tools")
 	}
 	return tools
 }

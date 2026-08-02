@@ -22,7 +22,7 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 		// Package-cli TestMain may assemble Catalog via cmd_schema_catalog dump
 		// decode; that must not force Agent / parameter-binding loads. MCP may
 		// already be touched by assembly-related validation — record baseline.
-		agentBefore := runtimeEmbeddedAgentMetadataLazyLoadCount.Load()
+		agentBefore := runtimeAgentMetadataLazyLoadCount.Load()
 		mcpBefore := runtimeEmbeddedMCPMetadataLazyLoadCount.Load()
 		paramBefore := runtimeSchemaParameterBindingsLazyLoadCount.Load()
 		if agentBefore != 0 {
@@ -44,7 +44,7 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 		}
 		wait.Wait()
 
-		if got := runtimeEmbeddedAgentMetadataLazyLoadCount.Load(); got != 1 {
+		if got := runtimeAgentMetadataLazyLoadCount.Load(); got != 1 {
 			t.Fatalf("Agent metadata lazy load count = %d, want 1", got)
 		}
 		if got := runtimeEmbeddedMCPMetadataLazyLoadCount.Load(); got != mcpBefore+1 && got != 1 {

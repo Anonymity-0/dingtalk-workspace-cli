@@ -40,7 +40,7 @@ func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *tes
 		}
 	}
 	if deliveredShortcuts != schemaPublishedShortcutCount {
-		t.Fatalf("embedded schema --all shortcut tools = %d, want %d", deliveredShortcuts, schemaPublishedShortcutCount)
+		t.Fatalf("delivery schema --all shortcut tools = %d, want %d", deliveredShortcuts, schemaPublishedShortcutCount)
 	}
 
 	exclusions, err := cli.EmbeddedRuntimeSchemaExclusions()
@@ -64,15 +64,15 @@ func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *tes
 			if tool == nil {
 				cliPath := declared.Service + " " + declared.Command
 				if !excludedPaths[cliPath] {
-					t.Fatalf("embedded schema --all is missing %s (%s) without an exact reviewed exclusion", canonical, cliPath)
+					t.Fatalf("delivery schema --all is missing %s (%s) without an exact reviewed exclusion", canonical, cliPath)
 				}
 				excludedShortcuts++
 				return
 			}
-			assertEmbeddedShortcutIdentityAndSelection(t, tool, declared, canonical)
-			assertEmbeddedShortcutSafetyAndInterface(t, tool, declared, canonical)
-			assertEmbeddedShortcutParameters(t, tool, declared, canonical)
-			assertEmbeddedShortcutConstraints(t, tool, declared, canonical)
+			assertDeliveryShortcutIdentityAndSelection(t, tool, declared, canonical)
+			assertDeliveryShortcutSafetyAndInterface(t, tool, declared, canonical)
+			assertDeliveryShortcutParameters(t, tool, declared, canonical)
+			assertDeliveryShortcutConstraints(t, tool, declared, canonical)
 		})
 	}
 	if got, want := excludedShortcuts, publicShortcutCount-schemaPublishedShortcutCount; got != want {
@@ -143,7 +143,7 @@ func shortcutSchemaCanonical(declared shortcut.Shortcut) string {
 	return declared.Service + ".shortcut_" + name
 }
 
-func assertEmbeddedShortcutIdentityAndSelection(
+func assertDeliveryShortcutIdentityAndSelection(
 	t testing.TB,
 	tool map[string]any,
 	declared shortcut.Shortcut,
@@ -179,7 +179,7 @@ func assertEmbeddedShortcutIdentityAndSelection(
 	}
 }
 
-func assertEmbeddedShortcutSafetyAndInterface(
+func assertDeliveryShortcutSafetyAndInterface(
 	t testing.TB,
 	tool map[string]any,
 	declared shortcut.Shortcut,
@@ -214,7 +214,7 @@ func assertEmbeddedShortcutSafetyAndInterface(
 	}
 }
 
-func assertEmbeddedShortcutParameters(
+func assertDeliveryShortcutParameters(
 	t testing.TB,
 	tool map[string]any,
 	declared shortcut.Shortcut,
@@ -315,7 +315,7 @@ func shortcutSchemaRequired(declared shortcut.Shortcut, flagName string) bool {
 	return false
 }
 
-func assertEmbeddedShortcutConstraints(
+func assertDeliveryShortcutConstraints(
 	t testing.TB,
 	tool map[string]any,
 	declared shortcut.Shortcut,

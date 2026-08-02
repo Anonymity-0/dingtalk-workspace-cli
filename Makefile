@@ -134,7 +134,7 @@ mock-mcp-smoke:
 	$(GO) test -v -count=1 -run '^(TestHTTPClientEndToEnd|TestStdioClientEndToEnd)$$' ./internal/transport
 
 test-schema-agent-examples:
-	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestManualAgentExamplesDryRun$$'
+	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestAgentExamplesDryRun$$'
 
 # generate-schema refreshes param_aliases_generated.go and verifies that
 # ResolveSchemaBuild assembly is deterministic. Catalog is runtime-assembled

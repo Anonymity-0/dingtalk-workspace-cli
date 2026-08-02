@@ -16,7 +16,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,19 +29,19 @@ import (
 // InstallBuildTimeAgentMetadataJSON is a CI/local dump helper for
 // cmd_schema_catalog only; it is not a production source.
 
-const embeddedAgentMetadataSource = "embedded-skill-metadata"
+const agentMetadataSource = "embedded-skill-metadata"
 
-type embeddedAgentMetadata struct {
+type agentMetadata struct {
 	Version     int                             `json:"version"`
 	SourceHash  string                          `json:"source_hash"`
 	SurfaceHash string                          `json:"surface_hash,omitempty"`
-	Coverage    embeddedAgentMetadataCoverage   `json:"coverage"`
+	Coverage    agentMetadataCoverage           `json:"coverage"`
 	Products    map[string]agentProductMetadata `json:"products"`
 	Domains     []string                        `json:"domains"`
 	Tools       map[string]agentToolMetadata    `json:"tools"`
 }
 
-type embeddedAgentMetadataCoverage struct {
+type agentMetadataCoverage struct {
 	SurfaceProducts        int `json:"surface_products,omitempty"`
 	ProductsWithMetadata   int `json:"products_with_metadata"`
 	SurfaceTools           int `json:"surface_tools,omitempty"`
@@ -88,21 +87,16 @@ type agentToolMetadata struct {
 	FieldProvenance    map[string]contract.FieldProvenance `json:"field_provenance,omitempty"`
 }
 
-type embeddedAgentMetadataDomain struct {
-	ProductID string                       `json:"product_id"`
-	Tools     map[string]agentToolMetadata `json:"tools"`
-}
-
-var runtimeEmbeddedAgentMetadataLazy struct {
+var runtimeAgentMetadataLazy struct {
 	once     sync.Once
-	metadata embeddedAgentMetadata
+	metadata agentMetadata
 }
 
-var runtimeEmbeddedAgentMetadataLazyLoadCount atomic.Uint64
+var runtimeAgentMetadataLazyLoadCount atomic.Uint64
 
 var (
 	buildTimeAgentMetadataMu       sync.Mutex
-	buildTimeAgentMetadataOverride *embeddedAgentMetadata
+	buildTimeAgentMetadataOverride *agentMetadata
 )
 
 // InstallBuildTimeAgentMetadataJSON installs generator-produced Agent metadata
@@ -111,7 +105,7 @@ var (
 // The dump helper injects an in-memory snapshot so schema_agent_metadata/ is
 // neither committed nor embedded.
 func InstallBuildTimeAgentMetadataJSON(data []byte) error {
-	var metadata embeddedAgentMetadata
+	var metadata agentMetadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return fmt.Errorf("decode build-time Agent metadata: %w", err)
 	}
@@ -139,55 +133,22 @@ func ClearBuildTimeAgentMetadata() {
 // CI dump helper installed one; otherwise an empty snapshot. Shipped
 // binaries no longer embed schema_agent_metadata/*.json; production Agent
 // facts come from ContractFinal / ProductDecl.
-func runtimeAgentMetadata() embeddedAgentMetadata {
+func runtimeAgentMetadata() agentMetadata {
 	buildTimeAgentMetadataMu.Lock()
 	override := buildTimeAgentMetadataOverride
 	buildTimeAgentMetadataMu.Unlock()
 	if override != nil {
 		return *override
 	}
-	runtimeEmbeddedAgentMetadataLazy.once.Do(func() {
-		runtimeEmbeddedAgentMetadataLazyLoadCount.Add(1)
-		runtimeEmbeddedAgentMetadataLazy.metadata = emptyEmbeddedAgentMetadata()
+	runtimeAgentMetadataLazy.once.Do(func() {
+		runtimeAgentMetadataLazyLoadCount.Add(1)
+		runtimeAgentMetadataLazy.metadata = emptyAgentMetadata()
 	})
-	return runtimeEmbeddedAgentMetadataLazy.metadata
+	return runtimeAgentMetadataLazy.metadata
 }
 
-// loadEmbeddedAgentMetadataFrom remains a test-only seam for MapFS fixtures that
-// exercise the retired split-domain JSON shape. Production no longer embeds or
-// loads schema_agent_metadata/*.json.
-func loadEmbeddedAgentMetadataFrom(source fs.FS) embeddedAgentMetadata {
-	var metadata embeddedAgentMetadata
-	index, err := fs.ReadFile(source, "schema_agent_metadata/index.json")
-	if err != nil || json.Unmarshal(index, &metadata) != nil {
-		return emptyEmbeddedAgentMetadata()
-	}
-	metadata.Tools = map[string]agentToolMetadata{}
-	for _, domain := range metadata.Domains {
-		domain = strings.TrimSpace(domain)
-		if domain == "" || strings.Contains(domain, "/") || strings.Contains(domain, "\\") {
-			return emptyEmbeddedAgentMetadata()
-		}
-		data, err := fs.ReadFile(source, "schema_agent_metadata/"+domain+".json")
-		if err != nil {
-			return emptyEmbeddedAgentMetadata()
-		}
-		var fragment embeddedAgentMetadataDomain
-		if err := json.Unmarshal(data, &fragment); err != nil || strings.TrimSpace(fragment.ProductID) != domain {
-			return emptyEmbeddedAgentMetadata()
-		}
-		for path, tool := range fragment.Tools {
-			metadata.Tools[path] = tool
-		}
-	}
-	if metadata.Products == nil {
-		metadata.Products = map[string]agentProductMetadata{}
-	}
-	return metadata
-}
-
-func emptyEmbeddedAgentMetadata() embeddedAgentMetadata {
-	return embeddedAgentMetadata{
+func emptyAgentMetadata() agentMetadata {
+	return agentMetadata{
 		Products: map[string]agentProductMetadata{},
 		Tools:    map[string]agentToolMetadata{},
 	}
@@ -197,7 +158,7 @@ func emptyEmbeddedAgentMetadata() embeddedAgentMetadata {
 // metadata to runtime contract assembly. Path resolution happens once; all
 // consumers receive the same resolved safety, interface, selection and
 // provenance values without performing downstream map merges.
-func agentToolContractForPathsFromMetadata(source embeddedAgentMetadata, paths ...string) (contract.SafetySpec, contract.InterfaceSpec, contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
+func agentToolContractForPathsFromMetadata(source agentMetadata, paths ...string) (contract.SafetySpec, contract.InterfaceSpec, contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
 	metadata, ok := lookupAgentToolMetadataFrom(source, paths...)
 	if !ok {
 		return contract.SafetySpec{}, contract.InterfaceSpec{}, contract.SelectionSpec{}, nil, false
@@ -266,12 +227,12 @@ func projectAgentInterfaceRefProvenance(provenance contract.FieldProvenance, ref
 
 // agentProductSelectionForIDsFromMetadata exposes generated product routing
 // through the same typed contract.SelectionSpec used by ToolSpec.
-func agentProductSelectionForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (contract.SelectionSpec, bool) {
+func agentProductSelectionForIDsFromMetadata(source agentMetadata, ids ...string) (contract.SelectionSpec, bool) {
 	selection, _, ok := agentProductContractForIDsFromMetadata(source, ids...)
 	return selection, ok
 }
 
-func agentProductContractForIDsFromMetadata(source embeddedAgentMetadata, ids ...string) (contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
+func agentProductContractForIDsFromMetadata(source agentMetadata, ids ...string) (contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
 	for _, id := range ids {
 		metadata, ok := source.Products[strings.TrimSpace(id)]
 		if !ok {
@@ -283,7 +244,7 @@ func agentProductContractForIDsFromMetadata(source embeddedAgentMetadata, ids ..
 			UseWhen:            cloneOptionalStrings(metadata.UseWhen),
 			AvoidWhen:          cloneOptionalStrings(metadata.AvoidWhen),
 			SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
-			MetadataSource:     embeddedAgentMetadataSource,
+			MetadataSource:     agentMetadataSource,
 		}.Normalized()
 		return selection, cloneFieldProvenance(metadata.FieldProvenance), true
 	}
@@ -307,7 +268,7 @@ func agentToolSelection(metadata agentToolMetadata) contract.SelectionSpec {
 		Examples:           cloneOptionalStrings(metadata.Examples),
 		Reviewed:           reviewed,
 		SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
-		MetadataSource:     embeddedAgentMetadataSource,
+		MetadataSource:     agentMetadataSource,
 	}.Normalized()
 }
 
@@ -341,7 +302,7 @@ func cloneFieldCandidates(source []contract.FieldCandidateProvenance) []contract
 	return out
 }
 
-func lookupAgentToolMetadataFrom(source embeddedAgentMetadata, paths ...string) (agentToolMetadata, bool) {
+func lookupAgentToolMetadataFrom(source agentMetadata, paths ...string) (agentToolMetadata, bool) {
 	seen := map[string]bool{}
 	for _, path := range paths {
 		for _, candidate := range []string{
@@ -360,9 +321,9 @@ func lookupAgentToolMetadataFrom(source embeddedAgentMetadata, paths ...string) 
 	return agentToolMetadata{}, false
 }
 
-func agentMetadataSummaryFrom(metadata embeddedAgentMetadata) map[string]any {
+func agentMetadataSummaryFrom(metadata agentMetadata) map[string]any {
 	summary := map[string]any{
-		"source":                 embeddedAgentMetadataSource,
+		"source":                 agentMetadataSource,
 		"version":                metadata.Version,
 		"source_hash":            strings.TrimSpace(metadata.SourceHash),
 		"products_with_metadata": len(metadata.Products),
@@ -411,7 +372,7 @@ func agentMetadataSummaryFromProducts(products []ProductSpec) map[string]any {
 		}
 	}
 	summary := map[string]any{
-		"source":                 embeddedAgentMetadataSource,
+		"source":                 agentMetadataSource,
 		"version":                1,
 		"source_hash":            "",
 		"products_with_metadata": productsWith,

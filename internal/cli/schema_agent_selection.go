@@ -167,8 +167,8 @@ func ValidateAgentSelectionContract(bound BoundCommandRegistry) (AgentSelectionR
 
 // contractFinalToolSelection synthesizes selection assertions of a declared
 // tool from its ContractFinal overlay.
-func contractFinalToolSelection(command *cobra.Command) ManualAgentToolSelection {
-	out := ManualAgentToolSelection{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.ContractDecl)"}
+func contractFinalToolSelection(command *cobra.Command) AgentToolSelection {
+	out := AgentToolSelection{Reviewed: true, Revision: "contract", Reason: "Contract final declaration (corecmd.ContractDecl)"}
 	payload, ok := contractfinal.RuntimeContractFinal(command)
 	if !ok || payload.Selection == nil {
 		return out

@@ -28,7 +28,7 @@ type schemaParameterMappingFlagAudit struct {
 func TestDeliveryCatalogMCPParameterMappingsAreComplete(t *testing.T) {
 	loaded := mustDeliverySchemaCatalogMaps(t)
 	if !deliverySchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
+		t.Fatalf("delivery schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	bindings, err := runtimeSchemaParameterBindingData()
 	if err != nil {
@@ -47,7 +47,7 @@ func TestDeliveryCatalogMCPParameterMappingsAreComplete(t *testing.T) {
 func TestDeliveryCatalogDoesNotProjectHardRequiredFlagsAsOptional(t *testing.T) {
 	loaded := mustDeliverySchemaCatalogMaps(t)
 	if !deliverySchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
+		t.Fatalf("delivery schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	var problems []string
 	for canonical, tool := range loaded.Snapshot.Tools {
@@ -78,7 +78,7 @@ func TestDeliveryCatalogLocalInterfacesAreExactAndReviewed(t *testing.T) {
 	}
 	loaded := mustDeliverySchemaCatalogMaps(t)
 	if !deliverySchemaCatalogAvailable() {
-		t.Fatalf("embedded schema Catalog is unavailable: %v", deliverySchemaCatalogError())
+		t.Fatalf("delivery schema Catalog is unavailable: %v", deliverySchemaCatalogError())
 	}
 	gotLocal := make(map[string]bool)
 	for canonical, tool := range loaded.Snapshot.Tools {

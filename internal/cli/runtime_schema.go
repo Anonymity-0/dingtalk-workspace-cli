@@ -288,7 +288,7 @@ func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtime
 	return entries, nil
 }
 
-func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata embeddedAgentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
+func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata agentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
 	// Production authority: ContractFinal Interface.Ref remaps CLI canonical
 	// names onto pinned MCP tool keys (e.g. reply_personal_message →
 	// chat.send_personal_message). Agent-metadata inject is CI-dump only.

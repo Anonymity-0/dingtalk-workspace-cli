@@ -31,10 +31,10 @@ func TestDeliverySchemaCatalogStructure(t *testing.T) {
 	loaded := mustDeliverySchemaCatalogMaps(t)
 	data, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
-		t.Fatalf("marshal embedded catalog snapshot: %v", err)
+		t.Fatalf("marshal delivery catalog snapshot: %v", err)
 	}
 	if err := ValidateCatalogStructure(data); err != nil {
-		t.Fatalf("embedded schema catalog violates the unified command structure: %v", err)
+		t.Fatalf("delivery schema catalog violates the unified command structure: %v", err)
 	}
 }
 

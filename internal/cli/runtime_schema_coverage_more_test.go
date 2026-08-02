@@ -87,7 +87,7 @@ func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *te
 }
 
 func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
-	if _, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, embeddedAgentMetadata{}, embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}); ok {
+	if _, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}); ok {
 		t.Fatal("empty lookup unexpectedly matched")
 	}
 
@@ -107,7 +107,7 @@ func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
 			},
 		},
 	}}
-	got, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{Command: leaf, ProductID: "chat", ToolName: "reply_personal_message"}, embeddedAgentMetadata{}, mcp)
+	got, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{Command: leaf, ProductID: "chat", ToolName: "reply_personal_message"}, agentMetadata{}, mcp)
 	if !ok || got.Parameters["clawType"].Type != "string" {
 		t.Fatalf("ContractFinal Interface.Ref MCP remap = %#v ok=%v", got, ok)
 	}

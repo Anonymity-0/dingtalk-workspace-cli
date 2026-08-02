@@ -30,80 +30,76 @@ import (
 // remains a precise reviewed exception for such a capability whose runtime
 // preconditions cannot be exercised safely and deterministically in the
 // isolated test process.
-type AgentExampleMode = ManualAgentExampleMode
-
-// ManualAgentExampleMode is retained as the historical name for AgentExampleMode
-// so dry-run tests and policy scripts keep stable identifiers.
-type ManualAgentExampleMode string
+type AgentExampleMode string
 
 const (
-	ManualAgentExampleModeContract     ManualAgentExampleMode = "contract"
-	ManualAgentExampleModeDryRun       ManualAgentExampleMode = "dry_run"
-	ManualAgentExampleModeContractOnly ManualAgentExampleMode = "contract_only"
+	AgentExampleModeContract     AgentExampleMode = "contract"
+	AgentExampleModeDryRun       AgentExampleMode = "dry_run"
+	AgentExampleModeContractOnly AgentExampleMode = "contract_only"
 )
 
-// ManualAgentExampleReasonCode is a closed taxonomy for reviewed contract-only
+// AgentExampleReasonCode is a closed taxonomy for reviewed contract-only
 // exceptions to an explicit dry-run capability.
-type ManualAgentExampleReasonCode string
+type AgentExampleReasonCode string
 
 const (
-	ManualAgentExampleReasonLocalState        ManualAgentExampleReasonCode = "local_state"
-	ManualAgentExampleReasonStatefulPreflight ManualAgentExampleReasonCode = "stateful_preflight"
+	AgentExampleReasonLocalState        AgentExampleReasonCode = "local_state"
+	AgentExampleReasonStatefulPreflight AgentExampleReasonCode = "stateful_preflight"
 )
 
-// ManualAgentExampleDisposition narrows one exact example with an explicit
+// AgentExampleDisposition narrows one exact example with an explicit
 // typed dry-run capability to contract-only. Index is a pointer so a missing
 // field cannot silently select example zero.
 //
-// Dispositions are no longer authored via HintFiles. They remain available as
-// an in-test / future ContractFinal extension surface; production ContractFinal
-// Selection currently does not declare them, so the delivery plan treats every
-// example as default-typed (contract or dry_run from ToolSpec.DryRun).
-type ManualAgentExampleDisposition struct {
-	Index      *int                         `json:"index"`
-	Mode       ManualAgentExampleMode       `json:"mode"`
-	ReasonCode ManualAgentExampleReasonCode `json:"reason_code"`
-	Reason     string                       `json:"reason"`
-	Reviewed   bool                         `json:"reviewed"`
+// Dispositions are authored as an in-test / future ContractFinal extension
+// surface; production ContractFinal Selection currently does not declare them,
+// so the delivery plan treats every example as default-typed (contract or
+// dry_run from ToolSpec.DryRun).
+type AgentExampleDisposition struct {
+	Index      *int                   `json:"index"`
+	Mode       AgentExampleMode       `json:"mode"`
+	ReasonCode AgentExampleReasonCode `json:"reason_code"`
+	Reason     string                 `json:"reason"`
+	Reviewed   bool                   `json:"reviewed"`
 }
 
-// ManualAgentExampleExecution is one resolved example and its effective test mode.
-type ManualAgentExampleExecution struct {
+// AgentExampleExecution is one resolved example and its effective test mode.
+type AgentExampleExecution struct {
 	CanonicalPath string
 	Index         int
 	Example       string
-	Mode          ManualAgentExampleMode
+	Mode          AgentExampleMode
 	DryRun        *contract.DryRunSpec
-	ReasonCode    ManualAgentExampleReasonCode
+	ReasonCode    AgentExampleReasonCode
 	Reason        string
-	Source        ManualAgentExampleDispositionSource
+	Source        AgentExampleDispositionSource
 }
 
-// ManualAgentExampleDispositionSource distinguishes the normal typed-contract
+// AgentExampleDispositionSource distinguishes the normal typed-contract
 // classification from narrow reviewed exceptions.
-type ManualAgentExampleDispositionSource string
+type AgentExampleDispositionSource string
 
 const (
-	ManualAgentExampleDispositionDefault        ManualAgentExampleDispositionSource = "default"
-	ManualAgentExampleDispositionReviewedManual ManualAgentExampleDispositionSource = "reviewed_manual"
+	AgentExampleDispositionDefault  AgentExampleDispositionSource = "default"
+	AgentExampleDispositionReviewed AgentExampleDispositionSource = "reviewed_manual"
 )
 
-// ManualAgentExampleExecutionPlan is a stable, typed report used by the
+// AgentExampleExecutionPlan is a stable, typed report used by the
 // exhaustive real-Cobra dry-run test.
-type ManualAgentExampleExecutionPlan struct {
-	Examples             []ManualAgentExampleExecution
+type AgentExampleExecutionPlan struct {
+	Examples             []AgentExampleExecution
 	Total                int
 	Contract             int
 	DryRun               int
 	ContractOnly         int
 	ReviewedContractOnly int
-	ContractOnlyByReason map[ManualAgentExampleReasonCode]int
+	ContractOnlyByReason map[AgentExampleReasonCode]int
 }
 
 // ValidateAgentExampleDelivery is the final generation gate. It validates every
 // bound tool's ContractFinal Selection.Examples against the assembled typed
 // SchemaRegistry.
-func ValidateAgentExampleDelivery(bound BoundCommandRegistry, registry SchemaRegistry) (ManualAgentExampleExecutionPlan, error) {
+func ValidateAgentExampleDelivery(bound BoundCommandRegistry, registry SchemaRegistry) (AgentExampleExecutionPlan, error) {
 	return BuildAgentExampleExecutionPlan(bound, registry)
 }
 
@@ -115,16 +111,16 @@ var agentExampleSelectionFn = contractFinalToolSelection
 // BuildAgentExampleExecutionPlan validates every ContractFinal example against
 // its real BoundCommand/Cobra contract. Runtime dry-run execution is opt-in and
 // comes only from the final typed ToolSpec.
-func BuildAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaRegistry) (ManualAgentExampleExecutionPlan, error) {
+func BuildAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaRegistry) (AgentExampleExecutionPlan, error) {
 	tools := make(map[string]ToolSpec, len(bound.Commands))
 	for _, product := range registry.Products {
 		for _, tool := range product.Tools {
 			canonical := strings.TrimSpace(tool.Identity.CanonicalPath)
 			if canonical == "" {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("typed SchemaRegistry contains a tool with empty canonical path")
+				return AgentExampleExecutionPlan{}, fmt.Errorf("typed SchemaRegistry contains a tool with empty canonical path")
 			}
 			if _, duplicate := tools[canonical]; duplicate {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("typed SchemaRegistry contains duplicate tool %q", canonical)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("typed SchemaRegistry contains duplicate tool %q", canonical)
 			}
 			tools[canonical] = tool
 		}
@@ -132,31 +128,25 @@ func BuildAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaR
 	return buildAgentExampleExecutionPlan(bound, tools)
 }
 
-// BuildManualAgentExampleExecutionPlan is a compatibility wrapper that ignores
-// residual ManualAgentSelectionSet input and builds the plan from ContractFinal only.
-func BuildManualAgentExampleExecutionPlan(bound BoundCommandRegistry, registry SchemaRegistry, _ ManualAgentSelectionSet) (ManualAgentExampleExecutionPlan, error) {
-	return BuildAgentExampleExecutionPlan(bound, registry)
+// FixtureAgentSelectionSet is a transitional Agent selection fixture type
+// retained only so live-selection call sites can project candidate tables.
+// Production paths must keep it empty; example planning reads ContractFinal.
+type FixtureAgentSelectionSet struct {
+	Revisions map[string]FixtureAgentSelectionRevision `json:"revisions,omitempty"`
+	Products  map[string]FixtureAgentProductSelection  `json:"products,omitempty"`
+	Tools     map[string]AgentToolSelection            `json:"tools,omitempty"`
 }
 
-// ManualAgentSelectionSet is a transitional Agent selection fixture type
-// retained only so live-selection / example-plan call sites compile while they
-// migrate fully onto ContractFinal. Production paths must keep it empty.
-type ManualAgentSelectionSet struct {
-	Revisions map[string]ManualAgentSelectionRevision `json:"revisions,omitempty"`
-	Products  map[string]ManualAgentProductSelection  `json:"products,omitempty"`
-	Tools     map[string]ManualAgentToolSelection     `json:"tools,omitempty"`
-}
-
-// ManualAgentSelectionRevision is retained for transitional fixtures only.
-type ManualAgentSelectionRevision struct {
+// FixtureAgentSelectionRevision is retained for transitional fixtures only.
+type FixtureAgentSelectionRevision struct {
 	GeneratedBy   string `json:"generated_by"`
 	Model         string `json:"model,omitempty"`
 	PromptVersion string `json:"prompt_version,omitempty"`
 	Reason        string `json:"reason"`
 }
 
-// ManualAgentProductSelection is retained for transitional fixtures only.
-type ManualAgentProductSelection struct {
+// FixtureAgentProductSelection is retained for transitional fixtures only.
+type FixtureAgentProductSelection struct {
 	AgentSummary string   `json:"agent_summary"`
 	UseWhen      []string `json:"use_when"`
 	AvoidWhen    []string `json:"avoid_when"`
@@ -166,28 +156,30 @@ type ManualAgentProductSelection struct {
 	Evidence     []string `json:"evidence"`
 }
 
-// ManualAgentToolSelection is retained for transitional fixtures only.
-type ManualAgentToolSelection struct {
-	AgentSummary        string                          `json:"agent_summary"`
-	UseWhen             []string                        `json:"use_when"`
-	AvoidWhen           []string                        `json:"avoid_when"`
-	Examples            []string                        `json:"examples"`
-	ExampleDispositions []ManualAgentExampleDisposition `json:"example_dispositions,omitempty"`
-	Reviewed            bool                            `json:"reviewed"`
-	Revision            string                          `json:"revision"`
-	Reason              string                          `json:"reason"`
-	Evidence            []string                        `json:"evidence"`
+// AgentToolSelection is the tool-level selection projection used by example
+// planning and live-selection fixtures. Production authority remains
+// ContractFinal Selection on the owning leaf.
+type AgentToolSelection struct {
+	AgentSummary        string                    `json:"agent_summary"`
+	UseWhen             []string                  `json:"use_when"`
+	AvoidWhen           []string                  `json:"avoid_when"`
+	Examples            []string                  `json:"examples"`
+	ExampleDispositions []AgentExampleDisposition `json:"example_dispositions,omitempty"`
+	Reviewed            bool                      `json:"reviewed"`
+	Revision            string                    `json:"revision"`
+	Reason              string                    `json:"reason"`
+	Evidence            []string                  `json:"evidence"`
 }
 
-func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[string]ToolSpec) (ManualAgentExampleExecutionPlan, error) {
-	plan := ManualAgentExampleExecutionPlan{
-		ContractOnlyByReason: map[ManualAgentExampleReasonCode]int{},
+func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[string]ToolSpec) (AgentExampleExecutionPlan, error) {
+	plan := AgentExampleExecutionPlan{
+		ContractOnlyByReason: map[AgentExampleReasonCode]int{},
 	}
 	canonicalPaths := make([]string, 0, len(bound.Commands))
 	for _, command := range bound.Commands {
 		canonical := strings.TrimSpace(command.CanonicalPath)
 		if !contractfinal.HasRuntimeContractFinal(command.PrimaryCommand) {
-			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("bound tool %q has no ContractFinal declaration; Schema examples require leaf Schema.Selection", canonical)
+			return AgentExampleExecutionPlan{}, fmt.Errorf("bound tool %q has no ContractFinal declaration; Schema examples require leaf Schema.Selection", canonical)
 		}
 		canonicalPaths = append(canonicalPaths, canonical)
 	}
@@ -195,7 +187,7 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 	for _, canonical := range canonicalPaths {
 		spec, ok := bound.ByCanonical[canonical]
 		if !ok {
-			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("example plan references unknown canonical tool %q", canonical)
+			return AgentExampleExecutionPlan{}, fmt.Errorf("example plan references unknown canonical tool %q", canonical)
 		}
 		selection := agentExampleSelectionFn(spec.PrimaryCommand)
 		var typedTool ToolSpec
@@ -203,19 +195,19 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 			var found bool
 			typedTool, found = typedTools[canonical]
 			if !found {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("example tool %q is missing from final typed SchemaRegistry", canonical)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("example tool %q is missing from final typed SchemaRegistry", canonical)
 			}
 		}
 		if len(selection.Examples) == 0 {
-			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("ContractFinal tool %s requires non-empty Selection.Examples", canonical)
+			return AgentExampleExecutionPlan{}, fmt.Errorf("ContractFinal tool %s requires non-empty Selection.Examples", canonical)
 		}
 		if len(selection.Examples) > 2 {
-			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("ContractFinal tool %s has %d examples; maximum is 2", canonical, len(selection.Examples))
+			return AgentExampleExecutionPlan{}, fmt.Errorf("ContractFinal tool %s has %d examples; maximum is 2", canonical, len(selection.Examples))
 		}
 		if err := validateAgentExampleDispositions(canonical, selection.Examples, selection.ExampleDispositions); err != nil {
-			return ManualAgentExampleExecutionPlan{}, err
+			return AgentExampleExecutionPlan{}, err
 		}
-		dispositions := make(map[int]ManualAgentExampleDisposition, len(selection.ExampleDispositions))
+		dispositions := make(map[int]AgentExampleDisposition, len(selection.ExampleDispositions))
 		for _, disposition := range selection.ExampleDispositions {
 			dispositions[*disposition.Index] = disposition
 		}
@@ -232,29 +224,29 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 		for index, example := range selection.Examples {
 			argv, err := tokenizeAgentExample(example)
 			if err != nil {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example has invalid argv syntax: %w", canonical, err)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example has invalid argv syntax: %w", canonical, err)
 			}
 			if len(argv) < 2 || argv[0] != "dws" {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example must start with dws: %q", canonical, example)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example must start with dws: %q", canonical, example)
 			}
 			for _, argument := range argv[1:] {
 				if argument == "--yes" || strings.HasPrefix(argument, "--yes=") {
-					return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example must not bypass confirmation with --yes", canonical)
+					return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example must not bypass confirmation with --yes", canonical)
 				}
 				if argument == "--help" || strings.HasPrefix(argument, "--help=") || argument == "-h" || strings.HasPrefix(argument, "-h=") {
-					return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example must demonstrate execution, not only --help", canonical)
+					return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example must demonstrate execution, not only --help", canonical)
 				}
 			}
 			remainder, matched, ok := matchAgentExamplePath(argv, paths)
 			if !ok {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example does not use its reviewed primary/alias path: %q", canonical, example)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example does not use its reviewed primary/alias path: %q", canonical, example)
 			}
 			if matched.Command == nil {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s reviewed path %q has no bound Cobra command", canonical, matched.Path)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s reviewed path %q has no bound Cobra command", canonical, matched.Path)
 			}
 			constraints, err := strictCompatibilityConstraints(matched.Command, canonical)
 			if err != nil {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example for %q has invalid executable constraints: %w", canonical, matched.Path, err)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example for %q has invalid executable constraints: %w", canonical, matched.Path, err)
 			}
 			if typedTools != nil {
 				constraints.MutuallyExclusive = append(constraints.MutuallyExclusive, typedTool.Constraints.MutuallyExclusive...)
@@ -264,36 +256,36 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 			}
 			positionals, err := strictCompatibilityPositionals(matched.Command)
 			if err != nil {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example for %q has invalid executable positionals: %w", canonical, matched.Path, err)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example for %q has invalid executable positionals: %w", canonical, matched.Path, err)
 			}
 			if typedTools != nil {
 				positionals = mergeAgentExamplePositionals(positionals, typedTool.Positionals)
 			}
 			if err := validateAgentExampleCobraContract(matched.Command, remainder, constraints, positionals); err != nil {
-				return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example for %q: %w", canonical, matched.Path, err)
+				return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example for %q: %w", canonical, matched.Path, err)
 			}
 
-			execution := ManualAgentExampleExecution{
+			execution := AgentExampleExecution{
 				CanonicalPath: canonical,
 				Index:         index,
 				Example:       example,
-				Mode:          ManualAgentExampleModeContract,
-				Source:        ManualAgentExampleDispositionDefault,
+				Mode:          AgentExampleModeContract,
+				Source:        AgentExampleDispositionDefault,
 			}
 			if typedTool.DryRun != nil {
 				dryRun := *typedTool.DryRun
 				execution.DryRun = &dryRun
-				execution.Mode = ManualAgentExampleModeDryRun
+				execution.Mode = AgentExampleModeDryRun
 			}
 			disposition, hasDisposition := dispositions[index]
 			if hasDisposition {
 				if typedTools != nil && execution.DryRun == nil {
-					return ManualAgentExampleExecutionPlan{}, fmt.Errorf("tool %s example disposition index %d narrows no explicit dry_run capability", canonical, index)
+					return AgentExampleExecutionPlan{}, fmt.Errorf("tool %s example disposition index %d narrows no explicit dry_run capability", canonical, index)
 				}
 				execution.Mode = disposition.Mode
 				execution.ReasonCode = disposition.ReasonCode
 				execution.Reason = strings.TrimSpace(disposition.Reason)
-				execution.Source = ManualAgentExampleDispositionReviewedManual
+				execution.Source = AgentExampleDispositionReviewed
 				plan.ContractOnly++
 				plan.ReviewedContractOnly++
 				plan.ContractOnlyByReason[disposition.ReasonCode]++
@@ -315,7 +307,7 @@ func buildAgentExampleExecutionPlan(bound BoundCommandRegistry, typedTools map[s
 			}
 		}
 		if !found {
-			return ManualAgentExampleExecutionPlan{}, fmt.Errorf("final typed SchemaRegistry tool %q is missing from BoundCommandRegistry", canonical)
+			return AgentExampleExecutionPlan{}, fmt.Errorf("final typed SchemaRegistry tool %q is missing from BoundCommandRegistry", canonical)
 		}
 	}
 	return plan, nil
@@ -353,7 +345,7 @@ func matchAgentExamplePath(argv []string, paths []agentExamplePath) ([]string, a
 	return nil, agentExamplePath{}, false
 }
 
-func validateAgentExampleDispositions(canonical string, examples []string, dispositions []ManualAgentExampleDisposition) error {
+func validateAgentExampleDispositions(canonical string, examples []string, dispositions []AgentExampleDisposition) error {
 	seen := make(map[int]bool, len(dispositions))
 	for _, disposition := range dispositions {
 		if disposition.Index == nil {
@@ -370,8 +362,8 @@ func validateAgentExampleDispositions(canonical string, examples []string, dispo
 		if !disposition.Reviewed {
 			return fmt.Errorf("tool %s example disposition index %d must be reviewed", canonical, index)
 		}
-		if disposition.Mode != ManualAgentExampleModeContractOnly {
-			return fmt.Errorf("tool %s example disposition index %d has invalid mode %q; only %q may narrow an explicit dry_run capability", canonical, index, disposition.Mode, ManualAgentExampleModeContractOnly)
+		if disposition.Mode != AgentExampleModeContractOnly {
+			return fmt.Errorf("tool %s example disposition index %d has invalid mode %q; only %q may narrow an explicit dry_run capability", canonical, index, disposition.Mode, AgentExampleModeContractOnly)
 		}
 		if !validAgentExampleReasonCode(disposition.ReasonCode) {
 			return fmt.Errorf("tool %s example disposition index %d has invalid reason_code %q", canonical, index, disposition.ReasonCode)
@@ -383,9 +375,9 @@ func validateAgentExampleDispositions(canonical string, examples []string, dispo
 	return nil
 }
 
-func validAgentExampleReasonCode(code ManualAgentExampleReasonCode) bool {
+func validAgentExampleReasonCode(code AgentExampleReasonCode) bool {
 	switch code {
-	case ManualAgentExampleReasonLocalState, ManualAgentExampleReasonStatefulPreflight:
+	case AgentExampleReasonLocalState, AgentExampleReasonStatefulPreflight:
 		return true
 	default:
 		return false
@@ -474,9 +466,9 @@ func tokenizeAgentExample(input string) ([]string, error) {
 	return argv, nil
 }
 
-// ParseManualAgentExampleArgv exposes the shell-free argv parser used by
+// ParseAgentExampleArgv exposes the shell-free argv parser used by
 // example validation and dry-run tests.
-func ParseManualAgentExampleArgv(input string) ([]string, error) {
+func ParseAgentExampleArgv(input string) ([]string, error) {
 	return tokenizeAgentExample(input)
 }
 

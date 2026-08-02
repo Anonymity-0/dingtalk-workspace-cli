@@ -182,7 +182,7 @@ func TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface(t *testing.T) {
 	}
 	sort.Strings(canonicals)
 	if len(canonicals) == 0 {
-		t.Fatal("embedded schema --all contains no tools")
+		t.Fatal("delivery schema --all contains no tools")
 	}
 	for _, canonical := range canonicals {
 		tool := tools[canonical]

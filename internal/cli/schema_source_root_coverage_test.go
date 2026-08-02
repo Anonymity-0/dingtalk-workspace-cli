@@ -137,7 +137,7 @@ func TestCrossPlatformCoverageMCPMetadataInterfaceRefEdges(t *testing.T) {
 	if _, ok := mcpMetadataForInterfaceRef(embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}, "chat", "missing"); ok {
 		t.Fatal("missing MCP tool must miss")
 	}
-	agent := embeddedAgentMetadata{Tools: map[string]agentToolMetadata{
+	agent := agentMetadata{Tools: map[string]agentToolMetadata{
 		"chat reply": {InterfaceRef: &embeddedMCPInterfaceRef{ProductID: "chat", RPCName: "send_personal_message"}},
 	}}
 	mcp := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{

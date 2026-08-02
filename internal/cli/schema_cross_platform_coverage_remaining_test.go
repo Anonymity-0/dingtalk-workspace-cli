@@ -22,11 +22,11 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 	t.Run("disposition validation and map build", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
 		t.Cleanup(restoreSelection)
-		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+		agentExampleSelectionFn = func(cmd *cobra.Command) AgentToolSelection {
 			selection := contractFinalToolSelection(cmd)
-			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
-				Index: idx(0), Mode: ManualAgentExampleModeDryRun, Reviewed: true,
-				Reason: "r", ReasonCode: ManualAgentExampleReasonLocalState,
+			selection.ExampleDispositions = []AgentExampleDisposition{{
+				Index: idx(0), Mode: AgentExampleModeDryRun, Reviewed: true,
+				Reason: "r", ReasonCode: AgentExampleReasonLocalState,
 			}}
 			return selection
 		}
@@ -120,11 +120,11 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 			payload.DryRun = &contract.DryRunSpec{PreviewKind: "plan"}
 		})
 		t.Cleanup(restoreSelection)
-		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+		agentExampleSelectionFn = func(cmd *cobra.Command) AgentToolSelection {
 			selection := contractFinalToolSelection(cmd)
-			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
-				Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true,
-				Reason: "cannot dry-run safely", ReasonCode: ManualAgentExampleReasonStatefulPreflight,
+			selection.ExampleDispositions = []AgentExampleDisposition{{
+				Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true,
+				Reason: "cannot dry-run safely", ReasonCode: AgentExampleReasonStatefulPreflight,
 			}}
 			return selection
 		}
@@ -132,10 +132,10 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("plan error = %v", err)
 		}
-		if plan.ContractOnly != 1 || plan.ReviewedContractOnly != 1 || plan.ContractOnlyByReason[ManualAgentExampleReasonStatefulPreflight] != 1 {
+		if plan.ContractOnly != 1 || plan.ReviewedContractOnly != 1 || plan.ContractOnlyByReason[AgentExampleReasonStatefulPreflight] != 1 {
 			t.Fatalf("plan = %#v", plan)
 		}
-		if len(plan.Examples) != 1 || plan.Examples[0].Mode != ManualAgentExampleModeContractOnly {
+		if len(plan.Examples) != 1 || plan.Examples[0].Mode != AgentExampleModeContractOnly {
 			t.Fatalf("execution = %#v", plan.Examples)
 		}
 	})
@@ -143,11 +143,11 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 	t.Run("disposition without dry_run capability fails", func(t *testing.T) {
 		bound, registry := crossPlatformAgentExampleFixture(t, nil)
 		t.Cleanup(restoreSelection)
-		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+		agentExampleSelectionFn = func(cmd *cobra.Command) AgentToolSelection {
 			selection := contractFinalToolSelection(cmd)
-			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
-				Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true,
-				Reason: "no dry run", ReasonCode: ManualAgentExampleReasonLocalState,
+			selection.ExampleDispositions = []AgentExampleDisposition{{
+				Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true,
+				Reason: "no dry run", ReasonCode: AgentExampleReasonLocalState,
 			}}
 			return selection
 		}
@@ -699,7 +699,7 @@ func TestCrossPlatformCoverageRuntimeSchemaNormalizeGroups(t *testing.T) {
 func TestCrossPlatformCoverageSchemaRuntimeRegistryRemainingBranches(t *testing.T) {
 	t.Run("legacy product selection and ContractFinal param decl failure", func(t *testing.T) {
 		entry := runtimeSchemaEntry{ProductID: "legacy", ToolName: "run", Command: &cobra.Command{Use: "run"}}
-		agent := embeddedAgentMetadata{Products: map[string]agentProductMetadata{
+		agent := agentMetadata{Products: map[string]agentProductMetadata{
 			"legacy": {AgentSummary: "legacy product"},
 		}}
 		if _, _, err := assembleProductSelection(entry, runtimeSchemaMetadataSources{Agent: agent}, true); err != nil {
@@ -946,11 +946,11 @@ func TestCrossPlatformCoverageAgentExamplePlanAndTokenizerRemaining(t *testing.T
 			payload.DryRun = &contract.DryRunSpec{PreviewKind: "plan"}
 		})
 		t.Cleanup(func() { agentExampleSelectionFn = contractFinalToolSelection })
-		agentExampleSelectionFn = func(cmd *cobra.Command) ManualAgentToolSelection {
+		agentExampleSelectionFn = func(cmd *cobra.Command) AgentToolSelection {
 			selection := contractFinalToolSelection(cmd)
-			selection.ExampleDispositions = []ManualAgentExampleDisposition{{
-				Index: idx(0), Mode: ManualAgentExampleModeContractOnly, Reviewed: true,
-				Reason: "stateful", ReasonCode: ManualAgentExampleReasonStatefulPreflight,
+			selection.ExampleDispositions = []AgentExampleDisposition{{
+				Index: idx(0), Mode: AgentExampleModeContractOnly, Reviewed: true,
+				Reason: "stateful", ReasonCode: AgentExampleReasonStatefulPreflight,
 			}}
 			return selection
 		}

@@ -221,7 +221,7 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 
 	t.Run("validateSchemaRegistryAgentMetadata missing summary", func(t *testing.T) {
 		prev := finalSchemaAgentMetadata
-		finalSchemaAgentMetadata = func() embeddedAgentMetadata { return embeddedAgentMetadata{} }
+		finalSchemaAgentMetadata = func() agentMetadata { return agentMetadata{} }
 		t.Cleanup(func() { finalSchemaAgentMetadata = prev })
 		registry := SchemaRegistry{Products: []ProductSpec{{
 			ID: "sample",
