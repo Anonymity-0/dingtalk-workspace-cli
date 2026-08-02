@@ -61,18 +61,14 @@ live Cobra flag facts / typed parameter metadata
              +-----------+-----------+
              |                       |
              v                       v
-     build-time typed gates    snapshot serializer
-                                     |
-                                     v
-                              schema_catalog/
-                              (catalog.json + tools/<product>.json,
-                               sole delivery artifact; go:embed)
-                                     |
-                                     v
-                           go:embed -> typed loader
+     build-time typed gates   RegisterSchemaSourceRoot
+                              -> ResolveSchemaBuild
+                              (runtime assembly; lazy Once)
                                      |
                                      v
                          SchemaRegistry + SchemaIndex
+                         + ResolveMeta projection cache
+                           (in-process map; not gob/json fixture)
                                      |
                +---------------------+------------------+
                |                     |                  |
@@ -83,6 +79,7 @@ live Cobra flag facts / typed parameter metadata
                                      |
                                      v
                          runtime query + delivery gates
+                         (cmd_schema_catalog = CI/local dump only)
 ```
 
 `--help` 是 Cobra 自身的人类可读投影，不从 Catalog 生成。Schema projections 和 `--help` 共享同一真实 Cobra 命令面，但承担不同职责。Binder 之后不得再从 annotation、已退役 hint overlay 或生成 JSON 重新解析 command identity。
@@ -134,7 +131,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 | `schema_mcp_metadata.json` | pinned RPC identity、接口描述和脱敏参数事实（interface 同源） | CLI identity、运行时路由、**创建 CLI flag**、risk 推断 |
 | ProductDecl + leaf `Contract.Selection` | reviewed selection / product routing prose（`contract_final`） | 创建 Cobra 命令或参数、改写 safety；`schema_hints/` 已退役 |
 | Skills/Markdown | 产品路由、工作流和使用建议 | 命令存在性和 flag 事实 |
-| `schema_catalog/`（catalog.json + tools/<product>.json）及其他 generated JSON | resolved registry 的兼容发布序列化；运行时由 production loader 解回 typed registry/index | generation/source resolution 输入、identity fallback、手工修复源 |
+| `cmd_schema_catalog` CI/local dump（可选 `schema_catalog/` / meta-index） | resolved registry 的兼容序列化快照，仅供 jq/determinism；不得提交为 runtime 来源 | production delivery、`ResolveMeta` 权威、identity fallback、手工修复源 |
 
 `schema_command_registry.json` 承载 reviewed `CommandRegistry`。Manual command addition 先以确定性规则合并进 effective registry；从 binder 开始，下游只看到一个稳定 identity/navigation 模型。旧 wire 中的 `surface_hash` / `surface_tools` 字段仅为兼容名称，语义已经是 effective Registry hash/coverage，不构成第二事实源。
 
@@ -145,7 +142,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 摘要：
 
 - **同源面**：Contract → cobra flags ≡ `--help` Flags ≡ **嵌入注解后的** schema `parameters` / 关系约束；显式 `Risk` 经 `dws.schema.risk` overlay 进 Schema Safety。
-- **嵌入点**：`command.embedContractIntoSchema` 写入 `dws.schema.contract` / property / type / required；`AnnotateConstraints` 写入 constraints；Schema 组装（`runtimeToolSpecFromMetadata`）消费这些注解并进入 `go:embed` catalog。
+- **嵌入点**：`command.embedContractIntoSchema` 写入 `dws.schema.contract` / property / type / required；`AnnotateConstraints` 写入 constraints；Schema 组装（`runtimeToolSpecFromMetadata` / `ResolveSchemaBuild`）消费这些注解进入 typed `SchemaRegistry`（runtime assembly；非 `go:embed` catalog 交付）。
 - **硬规则**：CLI 表面事实 = **声明（Contract 数据字段）OR 人工标注**；禁止纯推断。非 CLI 表面字段（identity / selection / interface）必须有**评审源**。声明写法见同源文档 §1.2；标注见 §1.3；**`ToolSpec` 全字段权威见 RFC §5.0.4 / 同源 §1.4**。
 - **非同源面（有意）**：identity（registry）、selection 文案（ProductDecl / leaf `Contract.Selection`）、RPC 形状（MCP meta 仅 `interface_*`）、dry-run 正能力 registry。
 - **禁止**：以 MCP meta 为主通道生成 Leaf/Shortcut 的 flag；已退役的 hint overlay 改写 type/required/default；Schema 字段无权威归属。
@@ -188,9 +185,10 @@ Registry semantic hash 覆盖 canonical、primary CLI path、alias 集合、
 不使用当前命令数量作为常量。
 
 普通 `go generate ./internal/cli` 只把 Registry 作为 validation-only 输入，并生成
-`schema_catalog/`（以及 `param_aliases_generated.go`）等单向下游资产；Catalog
-生成时内存 inject Agent metadata，不写也不 embed `schema_agent_metadata/`。
-不生成或覆盖 Registry。drift policy 在生成
+`param_aliases_generated.go`；production Catalog / `ResolveMeta` 由 runtime
+`ResolveSchemaBuild` 装配（`deliverySchemaCatalog` Once 后缓存 Meta 投影）。
+`cmd_schema_catalog` 仅按需打 CI/local dump。组装时内存 inject Agent metadata，
+不写也不 embed `schema_agent_metadata/`。不生成或覆盖 Registry。drift policy 在生成
 前后对 reviewed Registry 做 byte-for-byte guard；独立的
 `check-schema-command-registry.sh` 在 interface/provenance/Catalog policy 之前检查
 JSON 输入契约、禁用旧 native materialization 符号，并从 Registry 动态计算审计

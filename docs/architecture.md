@@ -1,6 +1,6 @@
 # Architecture
 
-`dws` is a Go CLI with a versioned, static command surface for DingTalk MCP capabilities. Cobra help serves humans; the embedded Command Catalog serves AI agents.
+`dws` is a Go CLI with a versioned, static command surface for DingTalk MCP capabilities. Cobra help serves humans; runtime-assembled Schema (`ResolveSchemaBuild`) serves AI agents.
 
 ## High-Level Flow
 
@@ -10,7 +10,7 @@
 4. `internal/executor` and `internal/transport` execute MCP JSON-RPC calls; `internal/output` formats responses.
 5. `internal/auth` manages login state, PAT tokens, and agent-code detection.
 6. Schema assembly (`ResolveSchemaBuild`) starts from the reviewed `CommandRegistry`, binds each identity to the exact current Cobra leaf, and then resolves typed constraints, sanitized MCP snapshots, and leaf ContractFinal / ProductDecl into one `SchemaRegistry`. Startup and Schema queries do not call MCP `tools/list`. There is no generate-written Catalog delivery step.
-7. Production Catalog / `ResolveMeta` consume the lazily assembled registry (声明即 Catalog). Committed `schema_catalog/` shards are residual decode fixtures only. Flag-to-interface property delivery is owned by leaf `ParamDecl.Property` (native annotations). `schema_parameter_bindings.json` remains the reviewed mapping audit ledger: empty active bindings after Track 1 Phase 2, plus `mapping_exclusions`, `removals`, and optional `corrections`, validated against the final bound `SchemaRegistry`. CLI `required` and constraints come from the resolved typed contract, while MCP `required` remains interface-only metadata.
+7. Production Catalog / `ResolveMeta` consume the lazily assembled registry via `RegisterSchemaSourceRoot` → `ResolveSchemaBuild` / `deliverySchemaCatalog` (声明即 Catalog; lazy `sync.Once`). `ResolveMeta` projects Identity/Safety/Selection from that assembly into an in-process map cache — not a committed `schema_catalog/` or `schema_meta_index.*` fixture. Flag-to-interface property delivery is owned by leaf `ParamDecl.Property` (native annotations). `schema_parameter_bindings.json` remains the reviewed mapping audit ledger: empty active bindings after Track 1 Phase 2, plus `mapping_exclusions`, `removals`, and optional `corrections`, validated against the final bound `SchemaRegistry`. CLI `required` and constraints come from the resolved typed contract, while MCP `required` remains interface-only metadata.
 8. Agent selection results are fixed in versioned review inputs. Every public tool has explicit use/avoid/example and interface disposition metadata; Skill references that are not current leaves require an explicit alias/group/stale/out-of-surface review instead of fuzzy runtime matching.
 
 ## Repository Structure
