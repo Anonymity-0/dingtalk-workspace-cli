@@ -93,13 +93,13 @@ func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 		t.Fatal("value flag must exist")
 	}
 	for key, wants := range map[string][]string{
-		AnnotationFlagType:        {"string"},
-		AnnotationDescription: {"desc"},
-		AnnotationFlagFormat:      {"uri"},
-		AnnotationFlagExample:     {"example"},
-		AnnotationFlagRequired:    {"true"},
-		AnnotationFlagReqWhen:     {"when"},
-		AnnotationFlagEnum:        {"a", "b"},
+		AnnotationFlagType:     {"string"},
+		AnnotationDescription:  {"desc"},
+		AnnotationFlagFormat:   {"uri"},
+		AnnotationFlagExample:  {"example"},
+		AnnotationFlagRequired: {"true"},
+		AnnotationFlagReqWhen:  {"when"},
+		AnnotationFlagEnum:     {"a", "b"},
 	} {
 		got := valueFlag.Annotations[key]
 		for _, want := range wants {
