@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	validateCatalogParameterBindings = cli.ValidateEmbeddedSchemaParameterBindings
+	validateCatalogParameterBindings = cli.ValidateSchemaParameterBindings
 	buildCatalogSnapshot             = cli.BuildSchemaCatalogSnapshot
 	installCatalogAgentMetadata      = installBuildTimeAgentMetadata
 	makeCatalogDirectory             = os.MkdirAll

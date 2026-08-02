@@ -64,7 +64,7 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if err := cli.ValidateSchemaParameterBindingDelivery(bound, registry); err != nil {
 		t.Fatalf("ValidateSchemaParameterBindingDelivery() error = %v", err)
 	}
-	exclusions, err := cli.EmbeddedRuntimeSchemaExclusions()
+	exclusions, err := cli.ReviewedRuntimeSchemaExclusions()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,8 +76,8 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 		t.Fatalf("ReviewedDryRunCapabilities() = %d, %v", len(capabilities), err)
 	}
 	// Phase 2: active binding tuples are empty; property delivery is ParamDecl.
-	if bindings, err := cli.EmbeddedSchemaParameterBindings(); err != nil || len(bindings) != 0 {
-		t.Fatalf("EmbeddedSchemaParameterBindings() = %d, %v; want empty active map after Phase 2", len(bindings), err)
+	if bindings, err := cli.LoadSchemaParameterBindings(); err != nil || len(bindings) != 0 {
+		t.Fatalf("LoadSchemaParameterBindings() = %d, %v; want empty active map after Phase 2", len(bindings), err)
 	}
 	if counts := cli.RuntimeSchemaMetadataLoadCounts(); counts.AgentMetadata == 0 || counts.MCPMetadata == 0 {
 		t.Fatalf("RuntimeSchemaMetadataLoadCounts() = %#v", counts)

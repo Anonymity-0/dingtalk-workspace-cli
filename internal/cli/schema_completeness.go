@@ -28,7 +28,7 @@ type runtimeSchemaExclusionGroup struct {
 }
 
 var (
-	completenessLoadExclusions = EmbeddedRuntimeSchemaExclusions
+	completenessLoadExclusions = ReviewedRuntimeSchemaExclusions
 	completenessBuildEffective = BuildEffectiveCommandRegistry
 	completenessBindEffective  = BindEffectiveCommandRegistry
 	completenessRuntimeReport  = runtimeSchemaCompletenessFromBound
@@ -48,11 +48,11 @@ type RuntimeSchemaCompletenessReport struct {
 	DeliveryErrors    []string
 }
 
-// EmbeddedRuntimeSchemaExclusions returns the exact, reviewed list of public
+// ReviewedRuntimeSchemaExclusions returns the exact, reviewed list of public
 // CLI leaves intentionally kept outside the stable Agent command contract.
 // Authority is the reviewed Go registry in schema_command_exclusions.go
 // (central groups + non-empty reason); there is no JSON completeness input.
-func EmbeddedRuntimeSchemaExclusions() ([]RuntimeSchemaExclusion, error) {
+func ReviewedRuntimeSchemaExclusions() ([]RuntimeSchemaExclusion, error) {
 	var exclusions []RuntimeSchemaExclusion
 	seen := map[string]bool{}
 	for _, group := range reviewedRuntimeSchemaExclusionGroups {

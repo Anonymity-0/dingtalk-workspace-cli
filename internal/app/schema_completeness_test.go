@@ -10,7 +10,7 @@ import (
 )
 
 func TestRuntimeSchemaCompletenessCoversPublicCommandTree(t *testing.T) {
-	exclusions, err := cli.EmbeddedRuntimeSchemaExclusions()
+	exclusions, err := cli.ReviewedRuntimeSchemaExclusions()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 func TestDeliveryRuntimeSchemaExclusionsAreReviewedExact(t *testing.T) {
-	exclusions, err := EmbeddedRuntimeSchemaExclusions()
+	exclusions, err := ReviewedRuntimeSchemaExclusions()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestReviewedCommandRegistryOwnsIdentityWithoutNativeAnnotation(t *testing.T
 	product.AddCommand(leaf)
 	root.AddCommand(product)
 
-	reviewed, err := loadEmbeddedCommandRegistry()
+	reviewed, err := loadCommandRegistryFromEmbed()
 	if err != nil {
 		t.Fatal(err)
 	}

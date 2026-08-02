@@ -144,7 +144,7 @@ var (
 	embeddedParamConceptsOnce sync.Once
 	embeddedParamConceptsData ParamConcepts
 	embeddedParamConceptsErr  error
-	loadReviewedParamConcepts = loadEmbeddedParamConcepts
+	loadReviewedParamConcepts = loadParamConceptsFromEmbed
 )
 
 // LoadParamConcepts decodes and validates the embedded reviewed concept
@@ -153,7 +153,7 @@ func LoadParamConcepts() (ParamConcepts, error) {
 	return loadReviewedParamConcepts()
 }
 
-func loadEmbeddedParamConcepts() (ParamConcepts, error) {
+func loadParamConceptsFromEmbed() (ParamConcepts, error) {
 	embeddedParamConceptsOnce.Do(func() {
 		embeddedParamConceptsData, embeddedParamConceptsErr = decodeParamConcepts(embeddedParamConceptsJSON)
 	})

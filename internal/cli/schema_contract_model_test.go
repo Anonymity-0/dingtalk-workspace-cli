@@ -86,12 +86,12 @@ func TestToolSpecFromRuntimeBuildsOneTypedResolvedContract(t *testing.T) {
 					"required": {
 						Value:      json.RawMessage("false"),
 						Source:     "reviewed_manual_hint",
-						Precedence: "reviewed_manual",
+						Precedence: ProvenanceReviewedManual,
 						Resolution: "highest_precedence",
 						Candidates: []contract.FieldCandidateProvenance{{
 							Value:      json.RawMessage("false"),
 							Source:     "reviewed_manual_hint",
-							Precedence: "reviewed_manual",
+							Precedence: ProvenanceReviewedManual,
 							Selected:   &selected,
 						}},
 					},
@@ -157,7 +157,7 @@ func TestToolSpecDryRunCapabilityProjectsAndRoundTripsAtomically(t *testing.T) {
 				dryRun,
 				"reviewed_manual_hint",
 				"schema_manual_hints.json",
-				"reviewed_manual",
+				ProvenanceReviewedManual,
 				"highest_precedence",
 				"reviewed dry-run capability",
 			),
@@ -269,12 +269,12 @@ func TestToolSpecDryRunProvenanceRejectsAtomicDrift(t *testing.T) {
 			"dry_run": {
 				Value:      json.RawMessage(`{"preview_kind":"plan"}`),
 				Source:     "reviewed_manual_hint",
-				Precedence: "reviewed_manual",
+				Precedence: ProvenanceReviewedManual,
 				Resolution: "highest_precedence",
 				Candidates: []contract.FieldCandidateProvenance{{
 					Value:      json.RawMessage(`{"preview_kind":"plan"}`),
 					Source:     "reviewed_manual_hint",
-					Precedence: "reviewed_manual",
+					Precedence: ProvenanceReviewedManual,
 					Selected:   &selected,
 				}},
 			},
@@ -314,13 +314,13 @@ func TestToolSpecToPayloadKeepsCompatibleFlatShape(t *testing.T) {
 				"required": {
 					Value:        json.RawMessage("false"),
 					Source:       "reviewed_manual_hint",
-					Precedence:   "reviewed_manual",
+					Precedence:   ProvenanceReviewedManual,
 					Resolution:   "highest_precedence",
 					ReviewReason: "preview remains optional",
 					Candidates: []contract.FieldCandidateProvenance{{
 						Value:      json.RawMessage("false"),
 						Source:     "reviewed_manual_hint",
-						Precedence: "reviewed_manual",
+						Precedence: ProvenanceReviewedManual,
 						Selected:   &selected,
 					}},
 				},
@@ -344,12 +344,12 @@ func TestToolSpecToPayloadKeepsCompatibleFlatShape(t *testing.T) {
 			"canonical_path": {
 				Value:      json.RawMessage(`"chat.category_create_smart"`),
 				Source:     "reviewed_manual_hint",
-				Precedence: "reviewed_manual",
+				Precedence: ProvenanceReviewedManual,
 				Resolution: "highest_precedence",
 				Candidates: []contract.FieldCandidateProvenance{{
 					Value:      json.RawMessage(`"chat.category_create_smart"`),
 					Source:     "reviewed_manual_hint",
-					Precedence: "reviewed_manual",
+					Precedence: ProvenanceReviewedManual,
 					Selected:   &selected,
 				}},
 			},
@@ -449,7 +449,7 @@ func TestSchemaRegistryToPayloadIsDeterministic(t *testing.T) {
 }
 
 func TestProductFieldProvenanceSurvivesTypedPayloadAndFailsOnDrift(t *testing.T) {
-	provenance := resolvedFieldProvenance("Calendar operations", "manual", "schema_manual_hints.json", "reviewed_manual", "highest_precedence", "reviewed")
+	provenance := resolvedFieldProvenance("Calendar operations", "manual", "schema_manual_hints.json", ProvenanceReviewedManual, "highest_precedence", "reviewed")
 	product := ProductSpec{
 		ID: "calendar",
 		Selection: contract.SelectionSpec{
@@ -679,16 +679,16 @@ func TestFinalFieldProvenanceIgnoresFormattingWhitespaceOnly(t *testing.T) {
 	provenance := contract.FieldProvenance{
 		Value:      formatted,
 		Source:     "manual",
-		Precedence: "reviewed_manual",
+		Precedence: ProvenanceReviewedManual,
 		Resolution: "highest_precedence",
 		Candidates: []contract.FieldCandidateProvenance{{
-			Value: formatted, Source: "manual", Precedence: "reviewed_manual", Selected: &selected,
+			Value: formatted, Source: "manual", Precedence: ProvenanceReviewedManual, Selected: &selected,
 		}},
 	}
 	if err := validateFinalFieldProvenance("sample.run", "use_when", provenance, []string{"first", "second"}); err != nil {
 		t.Fatalf("formatted provenance should validate: %v", err)
 	}
-	escaped := resolvedFieldProvenance("<none>", "manual", "manual.json", "reviewed_manual", "highest_precedence", "reviewed")
+	escaped := resolvedFieldProvenance("<none>", "manual", "manual.json", ProvenanceReviewedManual, "highest_precedence", "reviewed")
 	escaped.Value = json.RawMessage(`"\u003cnone\u003e"`)
 	escaped.Candidates[0].Value = escaped.Value
 	if err := validateFinalFieldProvenance("sample.run", "interface_ref", escaped, "<none>"); err != nil {

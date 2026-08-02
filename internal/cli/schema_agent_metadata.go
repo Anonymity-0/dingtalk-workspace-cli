@@ -29,7 +29,17 @@ import (
 // InstallBuildTimeAgentMetadataJSON is a CI/local dump helper for
 // cmd_schema_catalog only; it is not a production source.
 
-const agentMetadataSource = "embedded-skill-metadata"
+// Wire provenance / metadata_source labels (#602 Catalog contract).
+// Const identifiers may be renamed; the string values must not change.
+const (
+	ProvenanceEmbeddedSkillMetadata = "embedded-skill-metadata"
+	ProvenanceEmbeddedMCPMetadata   = "embedded-mcp-metadata"
+	// ProvenanceEmbeddedCommandCatalog is a legacy Catalog envelope source
+	// label retained for wire/compat recognition; runtime assembly stamps
+	// SchemaSourceRuntimeAssembled instead.
+	ProvenanceEmbeddedCommandCatalog = "embedded-command-catalog"
+	ProvenanceReviewedManual         = "reviewed_manual"
+)
 
 type agentMetadata struct {
 	Version     int                             `json:"version"`
@@ -244,7 +254,7 @@ func agentProductContractForIDsFromMetadata(source agentMetadata, ids ...string)
 			UseWhen:            cloneOptionalStrings(metadata.UseWhen),
 			AvoidWhen:          cloneOptionalStrings(metadata.AvoidWhen),
 			SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
-			MetadataSource:     agentMetadataSource,
+			MetadataSource:     ProvenanceEmbeddedSkillMetadata,
 		}.Normalized()
 		return selection, cloneFieldProvenance(metadata.FieldProvenance), true
 	}
@@ -268,7 +278,7 @@ func agentToolSelection(metadata agentToolMetadata) contract.SelectionSpec {
 		Examples:           cloneOptionalStrings(metadata.Examples),
 		Reviewed:           reviewed,
 		SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
-		MetadataSource:     agentMetadataSource,
+		MetadataSource:     ProvenanceEmbeddedSkillMetadata,
 	}.Normalized()
 }
 
@@ -323,7 +333,7 @@ func lookupAgentToolMetadataFrom(source agentMetadata, paths ...string) (agentTo
 
 func agentMetadataSummaryFrom(metadata agentMetadata) map[string]any {
 	summary := map[string]any{
-		"source":                 agentMetadataSource,
+		"source":                 ProvenanceEmbeddedSkillMetadata,
 		"version":                metadata.Version,
 		"source_hash":            strings.TrimSpace(metadata.SourceHash),
 		"products_with_metadata": len(metadata.Products),
@@ -372,7 +382,7 @@ func agentMetadataSummaryFromProducts(products []ProductSpec) map[string]any {
 		}
 	}
 	summary := map[string]any{
-		"source":                 agentMetadataSource,
+		"source":                 ProvenanceEmbeddedSkillMetadata,
 		"version":                1,
 		"source_hash":            "",
 		"products_with_metadata": productsWith,

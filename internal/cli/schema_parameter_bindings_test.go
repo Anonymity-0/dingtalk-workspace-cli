@@ -18,8 +18,8 @@ import (
 const schemaParameterBindingInvalidBuildChildEnv = "DWS_SCHEMA_PARAMETER_BINDING_INVALID_BUILD_CHILD"
 
 func TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog(t *testing.T) {
-	if err := ValidateEmbeddedSchemaParameterBindings(); err != nil {
-		t.Fatalf("ValidateEmbeddedSchemaParameterBindings() error = %v", err)
+	if err := ValidateSchemaParameterBindings(); err != nil {
+		t.Fatalf("ValidateSchemaParameterBindings() error = %v", err)
 	}
 	snapshot, err := runtimeSchemaParameterBindingData()
 	if err != nil {

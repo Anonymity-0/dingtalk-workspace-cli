@@ -115,9 +115,9 @@ func TestDeliverySchemaContractMapsToExecutableTree(t *testing.T) {
 func TestGeneratedSchemaContractMapsToExecutableTree(t *testing.T) {
 	root := NewRootCommand()
 	snapshot := fullSchemaSnapshotForTest(t)
-	bindings, err := cli.EmbeddedSchemaParameterBindings()
+	bindings, err := cli.LoadSchemaParameterBindings()
 	if err != nil {
-		t.Fatalf("EmbeddedSchemaParameterBindings() error = %v", err)
+		t.Fatalf("LoadSchemaParameterBindings() error = %v", err)
 	}
 	if len(snapshot.Tools) == 0 {
 		t.Fatal("generated Schema Catalog contains no tools")

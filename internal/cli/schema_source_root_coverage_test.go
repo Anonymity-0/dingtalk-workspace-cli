@@ -143,7 +143,7 @@ func TestCrossPlatformCoverageMCPMetadataInterfaceRefEdges(t *testing.T) {
 	mcp := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
 		"chat.send_personal_message": {Parameters: map[string]embeddedMCPParamMeta{"clawType": {Type: "string"}}},
 	}}
-	got, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{
+	got, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{
 		PrimaryCLIPath: "chat reply", ProductID: "chat", ToolName: "reply_personal_message",
 	}, agent, mcp)
 	if !ok || got.Parameters["clawType"].Type != "string" {

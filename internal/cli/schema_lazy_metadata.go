@@ -21,7 +21,7 @@ func RuntimeSchemaMetadataLoadCounts() SchemaMetadataLoadCounts {
 		Catalog:          runtimeDeliverySchemaCatalogLazyCount.Load(),
 		MetaIndex:        runtimeDeliverySchemaMetaIndexLazyCount.Load(),
 		AgentMetadata:    runtimeAgentMetadataLazyLoadCount.Load(),
-		MCPMetadata:      runtimeEmbeddedMCPMetadataLazyLoadCount.Load(),
+		MCPMetadata:      runtimePinnedMCPMetadataLazyLoadCount.Load(),
 		ParameterBinding: runtimeSchemaParameterBindingsLazyLoadCount.Load(),
 	}
 }

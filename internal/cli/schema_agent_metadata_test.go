@@ -158,7 +158,7 @@ func TestAgentMetadataTypedAccessorRoundTripsProvenance(t *testing.T) {
 	if interfaceSpec.Ref == nil || interfaceSpec.Ref.ProductID != "calendar" || interfaceSpec.Ref.RPCName != "update_attendee" || interfaceSpec.Mode != "mcp" || interfaceSpec.Availability != "available" || interfaceSpec.Reason != "reviewed RPC mapping" {
 		t.Fatalf("interface = %#v", interfaceSpec)
 	}
-	if selection.AgentSummary != "Update one attendee" || selection.MetadataSource != agentMetadataSource || selection.Reviewed == nil || !*selection.Reviewed || len(selection.Examples) != 1 {
+	if selection.AgentSummary != "Update one attendee" || selection.MetadataSource != ProvenanceEmbeddedSkillMetadata || selection.Reviewed == nil || !*selection.Reviewed || len(selection.Examples) != 1 {
 		t.Fatalf("selection = %#v", selection)
 	}
 	risk := provenance["risk"]
@@ -299,7 +299,7 @@ func TestCrossPlatformCoverageAgentMetadataInterfaceConflict(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageAgentProductSelectionAccessor(t *testing.T) {
-	provenance := resolvedFieldProvenance("Document operations", "manual", "manual.json", "reviewed_manual", "highest_precedence", "reviewed")
+	provenance := resolvedFieldProvenance("Document operations", "manual", "manual.json", ProvenanceReviewedManual, "highest_precedence", "reviewed")
 	metadataFixture := agentMetadata{
 		Products: map[string]agentProductMetadata{
 			"doc": {
@@ -315,7 +315,7 @@ func TestCrossPlatformCoverageAgentProductSelectionAccessor(t *testing.T) {
 	}
 
 	selection, ok := agentProductSelectionForIDsFromMetadata(metadataFixture, "missing", " doc ")
-	if !ok || selection.AgentSummary != "Document operations" || selection.AgentSummarySource != "reviewed-doc-routing" || selection.MetadataSource != agentMetadataSource {
+	if !ok || selection.AgentSummary != "Document operations" || selection.AgentSummarySource != "reviewed-doc-routing" || selection.MetadataSource != ProvenanceEmbeddedSkillMetadata {
 		t.Fatalf("product selection = %#v, ok=%v", selection, ok)
 	}
 	if len(selection.UseWhen) != 1 || len(selection.SourceRefs) != 2 || selection.SourceRefs[0] != "a.md" {
@@ -371,7 +371,7 @@ func TestRuntimeSchemaIncludesAgentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runtimeSchemaPayloadForTest(leaf): %v", err)
 	}
-	if leaf["effect"] != "write" || leaf["agent_metadata_source"] != agentMetadataSource {
+	if leaf["effect"] != "write" || leaf["agent_metadata_source"] != ProvenanceEmbeddedSkillMetadata {
 		t.Fatalf("leaf Agent metadata = %#v", leaf)
 	}
 	if leaf["interface_mode"] != "local" || leaf["availability"] != "available" || leaf["interface_reason"] != "test local implementation" {
@@ -388,7 +388,7 @@ func TestRuntimeSchemaIncludesAgentMetadata(t *testing.T) {
 	summary, _ := catalog["agent_metadata"].(map[string]any)
 	// Catalog-level Agent summary is derived from assembled products/tools
 	// (ContractFinal / ProductDecl), not from the inject fixture source_hash.
-	if summary["source"] != agentMetadataSource {
+	if summary["source"] != ProvenanceEmbeddedSkillMetadata {
 		t.Fatalf("catalog Agent metadata summary = %#v", summary)
 	}
 	if summary["tools_with_metadata"] == nil || summary["products_with_metadata"] == nil {
@@ -454,7 +454,7 @@ func TestRuntimeSchemaAllPayloadContainsFullLeafParameters(t *testing.T) {
 	}
 }
 
-func TestRuntimeSchemaReportsEmbeddedInterfaceMetadata(t *testing.T) {
+func TestRuntimeSchemaReportsPinnedInterfaceMetadata(t *testing.T) {
 	mcpFixture := embeddedMCPMetadata{
 		Version:        1,
 		Source:         "cli-registry",

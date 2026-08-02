@@ -20,11 +20,11 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 	originalJSON := embeddedMCPMetadataJSON
 	t.Cleanup(func() { embeddedMCPMetadataJSON = originalJSON })
 	embeddedMCPMetadataJSON = []byte("{")
-	if got := loadEmbeddedMCPMetadata(); got.Tools == nil || len(got.Tools) != 0 {
+	if got := loadPinnedMCPMetadata(); got.Tools == nil || len(got.Tools) != 0 {
 		t.Fatalf("invalid embedded metadata = %#v", got)
 	}
 	embeddedMCPMetadataJSON = []byte(`{"version":1}`)
-	if got := loadEmbeddedMCPMetadata(); got.Tools == nil {
+	if got := loadPinnedMCPMetadata(); got.Tools == nil {
 		t.Fatal("nil tools map was not normalized")
 	}
 
@@ -87,7 +87,7 @@ func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *te
 }
 
 func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
-	if _, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}); ok {
+	if _, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}); ok {
 		t.Fatal("empty lookup unexpectedly matched")
 	}
 
@@ -107,7 +107,7 @@ func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
 			},
 		},
 	}}
-	got, ok := embeddedMCPMetadataForEntryFrom(runtimeSchemaEntry{Command: leaf, ProductID: "chat", ToolName: "reply_personal_message"}, agentMetadata{}, mcp)
+	got, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{Command: leaf, ProductID: "chat", ToolName: "reply_personal_message"}, agentMetadata{}, mcp)
 	if !ok || got.Parameters["clawType"].Type != "string" {
 		t.Fatalf("ContractFinal Interface.Ref MCP remap = %#v ok=%v", got, ok)
 	}
@@ -148,7 +148,7 @@ func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
 		return runtimeSchemaStringCandidate("selected", "mcp_metadata"), nil
 	}
 	_, _, source, _, err := runtimeToolTextMetadataFromMetadata(runtimeSchemaEntry{}, runtimeSchemaMetadataSources{})
-	if err != nil || source != "embedded-mcp-metadata" {
+	if err != nil || source != ProvenanceEmbeddedMCPMetadata {
 		t.Fatalf("MCP metadata source = %q, err = %v", source, err)
 	}
 }
@@ -294,7 +294,7 @@ func TestCrossPlatformCoverageRuntimeSchemaPureHelperEdges(t *testing.T) {
 	if !reflect.DeepEqual(groups, [][]string{{"one"}}) {
 		t.Fatalf("normalized groups = %#v", groups)
 	}
-	if meta, ok := lookupEmbeddedMCPParam(map[string]embeddedMCPParamMeta{"flag": {Type: "string"}}, "property", "flag"); !ok || meta.Type != "string" {
+	if meta, ok := lookupPinnedMCPParam(map[string]embeddedMCPParamMeta{"flag": {Type: "string"}}, "property", "flag"); !ok || meta.Type != "string" {
 		t.Fatalf("flag fallback metadata = %#v/%v", meta, ok)
 	}
 	if isGenericPayloadFlag(nil) {

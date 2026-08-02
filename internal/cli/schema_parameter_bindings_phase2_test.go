@@ -44,9 +44,9 @@ var schemaParameterBindingsPhase2MigratedProducts = []string{
 }
 
 func TestSchemaParameterBindingsPhase2MigratedProductsHaveNoActiveRows(t *testing.T) {
-	snapshot, err := loadSchemaParameterBindings()
+	snapshot, err := loadSchemaParameterBindingSnapshot()
 	if err != nil {
-		t.Fatalf("loadSchemaParameterBindings() error = %v", err)
+		t.Fatalf("loadSchemaParameterBindingSnapshot() error = %v", err)
 	}
 	for _, product := range schemaParameterBindingsPhase2MigratedProducts {
 		prefix := product + "."
@@ -59,9 +59,9 @@ func TestSchemaParameterBindingsPhase2MigratedProductsHaveNoActiveRows(t *testin
 }
 
 func TestSchemaParameterBindingsPhase2RemainingInventory(t *testing.T) {
-	snapshot, err := loadSchemaParameterBindings()
+	snapshot, err := loadSchemaParameterBindingSnapshot()
 	if err != nil {
-		t.Fatalf("loadSchemaParameterBindings() error = %v", err)
+		t.Fatalf("loadSchemaParameterBindingSnapshot() error = %v", err)
 	}
 	byProduct := map[string]int{}
 	total := 0

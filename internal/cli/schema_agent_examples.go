@@ -81,7 +81,7 @@ type AgentExampleDispositionSource string
 
 const (
 	AgentExampleDispositionDefault  AgentExampleDispositionSource = "default"
-	AgentExampleDispositionReviewed AgentExampleDispositionSource = "reviewed_manual"
+	AgentExampleDispositionReviewed AgentExampleDispositionSource = ProvenanceReviewedManual
 )
 
 // AgentExampleExecutionPlan is a stable, typed report used by the

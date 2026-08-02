@@ -124,23 +124,23 @@ func decodeSchemaParameterBindings(data []byte) (schemaParameterBindingSnapshot,
 	return snapshot, nil
 }
 
-func loadSchemaParameterBindings() (schemaParameterBindingSnapshot, error) {
+func loadSchemaParameterBindingSnapshot() (schemaParameterBindingSnapshot, error) {
 	return decodeSchemaParameterBindings(embeddedSchemaParameterBindingsJSON)
 }
 
 func runtimeSchemaParameterBindingData() (schemaParameterBindingSnapshot, error) {
 	runtimeSchemaParameterBindingsLazy.once.Do(func() {
 		runtimeSchemaParameterBindingsLazyLoadCount.Add(1)
-		runtimeSchemaParameterBindingsLazy.snapshot, runtimeSchemaParameterBindingsLazy.err = loadSchemaParameterBindings()
+		runtimeSchemaParameterBindingsLazy.snapshot, runtimeSchemaParameterBindingsLazy.err = loadSchemaParameterBindingSnapshot()
 	})
 	return runtimeSchemaParameterBindingsLazy.snapshot, runtimeSchemaParameterBindingsLazy.err
 }
 
-// ValidateEmbeddedSchemaParameterBindings is the production validation gate
+// ValidateSchemaParameterBindings is the production validation gate
 // for the reviewed binding source. Build and generator entrypoints call this
 // before any candidate resolution so malformed input can never degrade to an
 // empty binding set and flag-name inference.
-func ValidateEmbeddedSchemaParameterBindings() error {
+func ValidateSchemaParameterBindings() error {
 	_, err := schemaParameterBindingData()
 	return err
 }
@@ -464,11 +464,11 @@ func applyRuntimeSchemaParameterBindingsFrom(cmd *cobra.Command, canonical strin
 	}
 }
 
-// EmbeddedSchemaParameterBindings returns a defensive copy of the reviewed
+// LoadSchemaParameterBindings returns a defensive copy of the reviewed
 // active public flag-to-interface bindings. After Track 1 Phase 2 this map is
 // empty; property delivery comes from ParamDecl.Property. Mapping exclusions
 // and removals remain on the embedded audit snapshot (not returned here).
-func EmbeddedSchemaParameterBindings() (map[string]map[string]string, error) {
+func LoadSchemaParameterBindings() (map[string]map[string]string, error) {
 	snapshot, err := schemaParameterBindingData()
 	if err != nil {
 		return nil, err

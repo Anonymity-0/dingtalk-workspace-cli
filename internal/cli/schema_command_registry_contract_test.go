@@ -34,9 +34,9 @@ func TestCommandRegistryJSONSchemaDocumentsClosedCommandSpec(t *testing.T) {
 	}
 
 	var source map[string]any
-	merged, err := EmbeddedCommandRegistryMergedJSON()
+	merged, err := ReviewedCommandRegistryMergedJSON()
 	if err != nil {
-		t.Fatalf("EmbeddedCommandRegistryMergedJSON() error = %v", err)
+		t.Fatalf("ReviewedCommandRegistryMergedJSON() error = %v", err)
 	}
 	if err := json.Unmarshal(merged, &source); err != nil {
 		t.Fatalf("decode merged registry: %v", err)
@@ -166,7 +166,7 @@ func TestNewCommandRegistryRejectsAliasAndCanonicalCollisions(t *testing.T) {
 }
 
 func TestMinutesFixedScopeLeavesRemainDistinctRegistryIdentities(t *testing.T) {
-	registry, err := loadEmbeddedCommandRegistry()
+	registry, err := loadCommandRegistryFromEmbed()
 	if err != nil {
 		t.Fatalf("load embedded command registry: %v", err)
 	}

@@ -25,7 +25,7 @@ var (
 	resolveBoundCommandRegistry      = BindEffectiveCommandRegistry
 	resolveAssembleSchemaRegistry    = AssembleSchemaRegistryFromBound
 	resolveValidateParameterDelivery = ValidateSchemaParameterBindingDelivery
-	assembleValidateBindings         = ValidateEmbeddedSchemaParameterBindings
+	assembleValidateBindings         = ValidateSchemaParameterBindings
 	assembleCollectEntries           = collectRuntimeSchemaEntriesFromBound
 	assembleRuntimeToolSpec          = runtimeToolSpecFromMetadata
 	assembleTypedRegistry            = SchemaRegistryFromRuntime
@@ -69,7 +69,7 @@ func (resolved ResolvedSchemaBuild) CommandCount() int {
 	return len(resolved.effective.Commands)
 }
 
-func embeddedRuntimeSchemaMetadataSources() runtimeSchemaMetadataSources {
+func pinnedRuntimeSchemaMetadataSources() runtimeSchemaMetadataSources {
 	return runtimeSchemaMetadataSources{
 		Agent: runtimeAgentMetadata(),
 		MCP:   runtimeMCPMetadata(),
@@ -126,7 +126,7 @@ func AssembleSchemaRegistryFromBound(bound BoundCommandRegistry) (SchemaRegistry
 	if err := assembleValidateBindings(); err != nil {
 		return SchemaRegistry{}, fmt.Errorf("validate reviewed Schema parameter bindings: %w", err)
 	}
-	return assembleSchemaRegistryFromBound(bound, embeddedRuntimeSchemaMetadataSources())
+	return assembleSchemaRegistryFromBound(bound, pinnedRuntimeSchemaMetadataSources())
 }
 
 // assembleSchemaOptions controls production vs test-isolated assembly.
@@ -250,7 +250,7 @@ func runtimeToolSpecAllowingLegacy(entry runtimeSchemaEntry, metadata runtimeSch
 func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)
-	embeddedMeta, _ := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
+	pinnedMeta, _ := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
 	// Apply parameter declarations from the contract.ContractFinalPayload before the
 	// resolver reads them. The decls were put there by AttachContract at
 	// DeclareLeafMetadata time; now that all flags exist on the fully-built
@@ -258,7 +258,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 	if err := ApplyParamDecls(entry.Command, final.Parameters); err != nil {
 		return ToolSpec{}, fmt.Errorf("apply Contract Schema ParamDecls for %s: %w", canonicalPath, err)
 	}
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, embeddedMeta.Parameters, constraints)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, pinnedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
 	}
@@ -546,13 +546,13 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve reviewed dry-run capability for %s: %w", canonicalPath, err)
 	}
-	embeddedMeta, hasEmbeddedMeta := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
+	pinnedMeta, hasPinnedMeta := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
 	title, description, metadataSource, textProvenance, err := resolveRuntimeToolText(entry, metadata)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Schema text metadata for %s: %w", canonicalPath, err)
 	}
 	constraints := runtimeCommandConstraints(entry.Command)
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, embeddedMeta.Parameters, constraints)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, pinnedMeta.Parameters, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Schema parameters for %s: %w", canonicalPath, err)
 	}
@@ -565,8 +565,8 @@ func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtim
 	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
 		safety = applyContractGateToSafety(safety, gate)
 	}
-	if metadataSource == "" && hasEmbeddedMeta {
-		metadataSource = "embedded-mcp-metadata"
+	if metadataSource == "" && hasPinnedMeta {
+		metadataSource = ProvenanceEmbeddedMCPMetadata
 		textProvenance["metadata_source"] = runtimeSchemaFieldProvenance(
 			runtimeSchemaStringCandidate(metadataSource, "metadata_source_resolution"),
 		)

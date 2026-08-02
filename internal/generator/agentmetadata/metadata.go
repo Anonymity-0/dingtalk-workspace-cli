@@ -257,7 +257,7 @@ const (
 	selectionPrecedenceImported           = "imported"
 	selectionPrecedenceExplicit           = "explicit"
 	selectionPrecedenceReviewedExplicit   = "reviewed_explicit"
-	selectionPrecedenceReviewedManual     = "reviewed_manual"
+	selectionPrecedenceReviewedManual     = cli.ProvenanceReviewedManual
 	selectionPrecedenceContractFinal      = "contract_final"
 )
 
@@ -271,9 +271,12 @@ type Options struct {
 	SkillPath       string
 	ProductsDir     string
 	IntentGuidePath string
-	// HintsDir is retired. Empty is required; any non-empty value fails closed.
+	// HintsDir is a fail-closed anti-regression valve. The field name and the
+	// "schema_hints/" error text are intentional: policy and callers still probe
+	// this retired path. Non-empty values must keep failing; do not rename away.
 	HintsDir string
-	// ManualHintsPath is retired. Empty is required; any non-empty value fails closed.
+	// ManualHintsPath is a fail-closed anti-regression valve for the retired
+	// manual-hints file path. Keep the field name; non-empty values must fail.
 	ManualHintsPath          string
 	InterfaceMetadataPath    string
 	MaxExamples              int

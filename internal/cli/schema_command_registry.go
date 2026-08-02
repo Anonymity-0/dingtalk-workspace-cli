@@ -94,10 +94,10 @@ var (
 	embeddedSchemaCommandRegistryOnce sync.Once
 	embeddedSchemaCommandRegistryData CommandRegistry
 	embeddedSchemaCommandRegistryErr  error
-	loadReviewedCommandRegistry       = loadEmbeddedCommandRegistry
+	loadReviewedCommandRegistry       = loadCommandRegistryFromEmbed
 )
 
-func loadEmbeddedCommandRegistry() (CommandRegistry, error) {
+func loadCommandRegistryFromEmbed() (CommandRegistry, error) {
 	embeddedSchemaCommandRegistryOnce.Do(func() {
 		embeddedSchemaCommandRegistryData, embeddedSchemaCommandRegistryErr = assembleCommandRegistry()
 	})
@@ -153,15 +153,15 @@ func assembleCommandRegistryFrom(envelopeJSON []byte, shards fs.FS, dir string) 
 	return decodeCommandRegistry(data)
 }
 
-// EmbeddedCommandRegistryMergedJSON returns the per-product shards reassembled
+// ReviewedCommandRegistryMergedJSON returns the per-product shards reassembled
 // into a single JSON document matching the pre-split layout. Used by tests that
 // need the full registry bytes.
-func EmbeddedCommandRegistryMergedJSON() ([]byte, error) {
+func ReviewedCommandRegistryMergedJSON() ([]byte, error) {
 	return mergedCommandRegistryJSON(embeddedSchemaCommandRegistryEnvelopeJSON, embeddedSchemaCommandRegistryProducts, "schema_command_registry/products")
 }
 
 // mergedCommandRegistryJSON is the injectable core of
-// EmbeddedCommandRegistryMergedJSON.
+// ReviewedCommandRegistryMergedJSON.
 func mergedCommandRegistryJSON(envelopeJSON []byte, shards fs.FS, dir string) ([]byte, error) {
 	var envelope struct {
 		Schema  string `json:"$schema,omitempty"`
@@ -222,9 +222,9 @@ func ValidateCommandRegistrySource(data []byte) (CommandRegistry, error) {
 	return candidate, nil
 }
 
-// EmbeddedCommandRegistrySourceHash returns the stable semantic hash used by
+// ReviewedCommandRegistrySourceHash returns the stable semantic hash used by
 // all generated downstream views.
-func EmbeddedCommandRegistrySourceHash() (string, error) {
+func ReviewedCommandRegistrySourceHash() (string, error) {
 	registry, err := loadReviewedCommandRegistry()
 	if err != nil {
 		return "", err

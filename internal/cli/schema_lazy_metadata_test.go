@@ -23,7 +23,7 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 		// decode; that must not force Agent / parameter-binding loads. MCP may
 		// already be touched by assembly-related validation — record baseline.
 		agentBefore := runtimeAgentMetadataLazyLoadCount.Load()
-		mcpBefore := runtimeEmbeddedMCPMetadataLazyLoadCount.Load()
+		mcpBefore := runtimePinnedMCPMetadataLazyLoadCount.Load()
 		paramBefore := runtimeSchemaParameterBindingsLazyLoadCount.Load()
 		if agentBefore != 0 {
 			t.Fatalf("Agent metadata loaded during package init: %d", agentBefore)
@@ -47,7 +47,7 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 		if got := runtimeAgentMetadataLazyLoadCount.Load(); got != 1 {
 			t.Fatalf("Agent metadata lazy load count = %d, want 1", got)
 		}
-		if got := runtimeEmbeddedMCPMetadataLazyLoadCount.Load(); got != mcpBefore+1 && got != 1 {
+		if got := runtimePinnedMCPMetadataLazyLoadCount.Load(); got != mcpBefore+1 && got != 1 {
 			t.Fatalf("MCP metadata lazy load count = %d, want 1 or baseline+1 (baseline=%d)", got, mcpBefore)
 		}
 		if got := runtimeSchemaParameterBindingsLazyLoadCount.Load(); got != 1 {

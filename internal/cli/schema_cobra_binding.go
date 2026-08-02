@@ -43,7 +43,7 @@ type RuntimeCompatibilityEquivalence struct {
 }
 
 var (
-	bindValidateParameterBindings  = ValidateEmbeddedSchemaParameterBindings
+	bindValidateParameterBindings  = ValidateSchemaParameterBindings
 	loadCompatibilityFlagContracts = effectiveCompatibilityFlagContracts
 	compatibilityParameterBindings = runtimeSchemaParameterBindingData
 )

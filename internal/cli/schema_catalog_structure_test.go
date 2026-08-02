@@ -40,7 +40,7 @@ func TestDeliverySchemaCatalogStructure(t *testing.T) {
 
 func validCatalogToolEntry() map[string]any {
 	return map[string]any{
-		"agent_metadata_source": "embedded-skill-metadata",
+		"agent_metadata_source": ProvenanceEmbeddedSkillMetadata,
 		"agent_source_refs":     []any{"skills/mono/references/products/aitable.md"},
 		"agent_summary":         "创建多维表格记录",
 		"agent_summary_source":  "dws-agent-selection/aitable",

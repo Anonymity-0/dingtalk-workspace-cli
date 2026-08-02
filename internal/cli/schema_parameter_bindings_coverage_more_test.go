@@ -241,13 +241,13 @@ func TestCrossPlatformCoverageSchemaParameterBindingHelpersAndLoaderErrors(t *te
 		return schemaParameterBindingSnapshot{}, errors.New("binding data failed")
 	}
 	t.Cleanup(func() { schemaParameterBindingData = previous })
-	if err := ValidateEmbeddedSchemaParameterBindings(); err == nil || !strings.Contains(err.Error(), "binding data failed") {
-		t.Fatalf("ValidateEmbeddedSchemaParameterBindings() error = %v", err)
+	if err := ValidateSchemaParameterBindings(); err == nil || !strings.Contains(err.Error(), "binding data failed") {
+		t.Fatalf("ValidateSchemaParameterBindings() error = %v", err)
 	}
 	if err := ValidateSchemaParameterBindingDelivery(BoundCommandRegistry{}, SchemaRegistry{}); err == nil || !strings.Contains(err.Error(), "binding data failed") {
 		t.Fatalf("ValidateSchemaParameterBindingDelivery() error = %v", err)
 	}
-	if _, err := EmbeddedSchemaParameterBindings(); err == nil || !strings.Contains(err.Error(), "binding data failed") {
-		t.Fatalf("EmbeddedSchemaParameterBindings() error = %v", err)
+	if _, err := LoadSchemaParameterBindings(); err == nil || !strings.Contains(err.Error(), "binding data failed") {
+		t.Fatalf("LoadSchemaParameterBindings() error = %v", err)
 	}
 }

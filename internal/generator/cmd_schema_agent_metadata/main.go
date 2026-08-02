@@ -71,6 +71,9 @@ func main() {
 	flag.StringVar(&skillPath, "skill", "skills/mono/SKILL.md", "Main DWS SKILL.md path")
 	flag.StringVar(&productsDir, "products", "skills/mono/references/products", "Product skill reference directory")
 	flag.StringVar(&intentGuidePath, "intent-guide", "skills/mono/references/intent-guide.md", "Cross-product intent guide path")
+	// Flag name "-hints" is retained as a fail-closed anti-regression valve
+	// (historical CLI compatibility). Non-empty values are rejected below;
+	// do not remove the flag or silently ignore it.
 	flag.StringVar(&hintsDir, "hints", "", "Retired; rejected when set. Declare ProductDecl/ContractFinal selection instead of schema_hints/")
 	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "internal/cli/schema_mcp_metadata.json", "Sanitized versioned MCP metadata used only for fallback Agent summaries")
 	flag.StringVar(&outputPath, "output", "", "Optional diagnostic single-file Agent metadata JSON (not a Catalog input)")

@@ -42,7 +42,7 @@ var (
 	getenv           = os.Getenv
 	loadTokenData    = auth.LoadTokenDataKeychain
 	staticServers    = syncdata.StaticServers
-	registrySource   = cli.EmbeddedCommandRegistryMergedJSON
+	registrySource   = cli.ReviewedCommandRegistryMergedJSON
 	listToolsTimeout = 30 * time.Second
 	gitHeadPath      = ".git/HEAD"
 	newToolLister    = func(token string) toolLister {
