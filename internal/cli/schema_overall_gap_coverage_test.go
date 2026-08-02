@@ -21,8 +21,12 @@ func TestCrossPlatformCoverageResolveSchemaBuildAndAssembleEdges(t *testing.T) {
 	if _, err := AssembleSchemaRegistry(nil); err == nil {
 		t.Fatal("nil root must fail AssembleSchemaRegistry")
 	}
-	if _, err := AssembleSchemaRegistryFromBound(BoundCommandRegistry{}); err == nil {
-		t.Log("empty bound assemble returned nil error")
+	emptyRegistry, err := AssembleSchemaRegistryFromBound(BoundCommandRegistry{})
+	if err != nil {
+		t.Fatalf("empty bound assemble must succeed: %v", err)
+	}
+	if len(emptyRegistry.Products) != 0 {
+		t.Fatalf("empty bound assemble products = %#v", emptyRegistry.Products)
 	}
 
 	registry := SchemaRegistry{

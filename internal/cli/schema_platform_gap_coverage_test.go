@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -174,6 +175,38 @@ func TestCrossPlatformCoverageCompletenessAndDeliveryErrorBranches(t *testing.T)
 		t.Fatalf("delivery excl error = %v", err)
 	}
 	completenessLoadExclusions = func() ([]RuntimeSchemaExclusion, error) { return nil, nil }
+	prevIface := loadCatalogValidateInterfaces
+	prevProv := loadCatalogValidateProvenance
+	t.Cleanup(func() {
+		loadCatalogValidateInterfaces = prevIface
+		loadCatalogValidateProvenance = prevProv
+	})
+	loadCatalogValidateInterfaces = func(SchemaRegistry) error { return nil }
+	loadCatalogValidateProvenance = func(SchemaRegistry) error { return nil }
+	registry := SchemaRegistry{
+		Source: SchemaSourceRuntimeAssembled,
+		Products: []ProductSpec{{
+			ID: "sample",
+			Tools: []ToolSpec{{
+				Identity: contract.ToolIdentitySpec{
+					CLIPath: "sample run", CanonicalPath: "sample.run", ProductID: "sample",
+					Name: "run", Path: "sample.run", PrimaryCLIPath: "sample run",
+				},
+				Safety:    contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "yes"},
+				Selection: contract.SelectionSpec{AgentSummary: "s"},
+			}},
+		}},
+	}
+	payload, err := registry.ToSnapshotPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := SchemaCatalogSnapshot{
+		Version: SchemaCatalogSnapshotVersion,
+		Catalog: payload.Catalog,
+		Tools:   payload.Tools,
+	}
+	snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
 	for _, tc := range []struct {
 		name   string
 		report RuntimeSchemaCompletenessReport
@@ -187,16 +220,8 @@ func TestCrossPlatformCoverageCompletenessAndDeliveryErrorBranches(t *testing.T)
 		completenessDeliveryReport = func(*cobra.Command, loadedSchemaCatalog, []RuntimeSchemaExclusion, BoundCommandRegistry) RuntimeSchemaCompletenessReport {
 			return tc.report
 		}
-		err := validateSchemaCatalogDeliveryCompletenessFromBound(root, BoundCommandRegistry{}, SchemaCatalogSnapshot{
-			Version: SchemaCatalogSnapshotVersion,
-			Catalog: map[string]any{},
-			Tools:   map[string]map[string]any{},
-		}, nil)
-		if err == nil || !strings.Contains(err.Error(), tc.want) {
-			// Decode may fail first on empty snapshot; still exercises encode/decode.
-			if err == nil {
-				t.Fatalf("%s: expected delivery completeness error", tc.name)
-			}
+		if err := validateSchemaCatalogDeliveryCompletenessFromBound(root, BoundCommandRegistry{}, snapshot, nil); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("%s error = %v", tc.name, err)
 		}
 	}
 }

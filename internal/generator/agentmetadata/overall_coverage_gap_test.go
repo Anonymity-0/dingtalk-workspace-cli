@@ -141,11 +141,8 @@ func TestOverallCoverageGapAgentmetadataMergeAndDisposition(t *testing.T) {
 	if err := validateInterfaceDispositions(invalid); err == nil {
 		t.Fatal("interface disposition matrix must fail")
 	}
-	if got := uniqueStringsInOrder([]string{"", " ", "a", "a"}); got != nil {
-		// empty/blank only -> nil; with "a" should keep a
-		if len(got) != 1 || got[0] != "a" {
-			t.Fatalf("uniqueStringsInOrder = %#v", got)
-		}
+	if got := uniqueStringsInOrder([]string{"", " ", "a", "a"}); len(got) != 1 || got[0] != "a" {
+		t.Fatalf("uniqueStringsInOrder = %#v", got)
 	}
 	if got := uniqueStringsInOrder([]string{"", " "}); got != nil {
 		t.Fatalf("blank uniqueStringsInOrder = %#v", got)
