@@ -1568,7 +1568,14 @@ func TestCrossPlatformCoverageConfirmSafetyTerminalProbeHook(t *testing.T) {
 	if stdinIsTerminal(strings.NewReader("x")) {
 		t.Fatal("non-file reader must not be a terminal")
 	}
-	_ = stdinIsTerminal(os.Stdin)
+	regular, err := os.CreateTemp(t.TempDir(), "notty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer regular.Close()
+	if stdinIsTerminal(regular) {
+		t.Fatal("regular file must not be a terminal")
+	}
 }
 
 func TestCrossPlatformCoverageBoolFlagGettersNilCommand(t *testing.T) {

@@ -43,22 +43,40 @@ func TestOverallCoverageGapAgentmetadataMergeAndDisposition(t *testing.T) {
 	for _, r := range []int{
 		selectionRankContractFinal, selectionRankReviewedManual, selectionRankReviewedExplicit,
 		selectionRankExplicit, selectionRankImported, selectionRankUnreviewedExplicit,
-		selectionRankSkill, selectionRankMCPFallback, selectionRankDefault, 999,
+		selectionRankSkill, selectionRankMCPFallback, selectionRankDefault,
 	} {
-		_ = selectionPrecedence(r)
+		if precedenceRank(selectionPrecedence(r)) != r {
+			t.Fatalf("selection precedence round-trip lost rank %d", r)
+		}
+	}
+	if got := selectionPrecedence(999); got != selectionPrecedenceDefault {
+		t.Fatalf("unknown rank precedence = %q, want %q", got, selectionPrecedenceDefault)
 	}
 	for _, p := range []string{
 		selectionPrecedenceContractFinal, selectionPrecedenceReviewedManual, selectionPrecedenceReviewedExplicit,
 		selectionPrecedenceExplicit, selectionPrecedenceImported, selectionPrecedenceUnreviewedExplicit,
-		selectionPrecedenceSkill, selectionPrecedenceMCPFallback, "unknown",
+		selectionPrecedenceSkill, selectionPrecedenceMCPFallback,
 	} {
-		_ = precedenceRank(p)
+		if selectionPrecedence(precedenceRank(p)) != p {
+			t.Fatalf("selection precedence round-trip lost %q", p)
+		}
+	}
+	if got := precedenceRank("unknown"); got != selectionRankDefault {
+		t.Fatalf("unknown precedence rank = %d, want %d", got, selectionRankDefault)
 	}
 
 	if cloneInterfaceRef(nil) != nil {
 		t.Fatal("nil interface ref clone must stay nil")
 	}
-	_ = cloneInterfaceRef(&InterfaceRef{ProductID: "a", RPCName: "b"})
+	srcRef := &InterfaceRef{ProductID: "a", RPCName: "b"}
+	clonedRef := cloneInterfaceRef(srcRef)
+	if clonedRef == nil || *clonedRef != *srcRef {
+		t.Fatalf("cloneInterfaceRef = %#v, want copy of %#v", clonedRef, srcRef)
+	}
+	clonedRef.ProductID = "mutated"
+	if srcRef.ProductID != "a" {
+		t.Fatal("cloneInterfaceRef must not alias the source")
+	}
 	if cloneStringList(nil) != nil {
 		t.Fatal("nil string list clone must stay nil")
 	}
@@ -92,6 +110,12 @@ func TestOverallCoverageGapAgentmetadataMergeAndDisposition(t *testing.T) {
 	recordProductListCandidate(&product, "use_when", []string{"x"}, true, selectionRankSkill, "src")
 	recordProductStringCandidate(&product, "summary", "s", true, selectionRankSkill, "src")
 	recordProductStringCandidate(&product, "summary", "s", true, selectionRankSkill, "src")
+	if got := product.fieldCandidates["use_when"]; len(got) != 1 || got[0].Precedence != selectionPrecedenceSkill || got[0].Source != "src" {
+		t.Fatalf("use_when candidates after dedup = %#v", got)
+	}
+	if got := product.fieldCandidates["summary"]; len(got) != 1 || got[0].Value != "s" {
+		t.Fatalf("summary candidates after dedup = %#v", got)
+	}
 
 	mergeFieldCandidateHistory(nil, ToolMetadata{})
 	targetTool := ToolMetadata{}
@@ -100,6 +124,9 @@ func TestOverallCoverageGapAgentmetadataMergeAndDisposition(t *testing.T) {
 	}}
 	mergeFieldCandidateHistory(&targetTool, incoming)
 	mergeFieldCandidateHistory(&targetTool, incoming)
+	if got := targetTool.fieldCandidates["use_when"]; len(got) != 1 {
+		t.Fatalf("mergeFieldCandidateHistory must merge once and dedup, got %#v", got)
+	}
 
 	if err := validateToolFieldCandidateConflicts(File{
 		Products: map[string]ProductMetadata{"p": {fieldCandidates: map[string][]FieldCandidateProvenance{

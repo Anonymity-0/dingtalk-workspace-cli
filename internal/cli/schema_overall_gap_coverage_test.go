@@ -591,7 +591,7 @@ func TestCrossPlatformCoverageDeliveryInvariantProjectionMismatches(t *testing.T
 	if len(problems) < 2 {
 		t.Fatalf("duplicate/missing canonical problems = %v", problems)
 	}
-	_ = schemaOverviewPayloadFromCatalog(map[string]any{
+	overview := schemaOverviewPayloadFromCatalog(map[string]any{
 		"kind": "schema", "source": "runtime",
 		"products": []any{
 			map[string]any{"id": "p1", "agent_summary": "s", "tools": []any{map[string]any{"canonical_path": "p1.t"}}},
@@ -599,6 +599,16 @@ func TestCrossPlatformCoverageDeliveryInvariantProjectionMismatches(t *testing.T
 			map[string]any{"id": "p3", "description": "d", "tools": []any{}},
 		},
 	})
+	if overview["count"] != 3 || overview["tool_count"] != 1 || overview["source"] != "runtime" {
+		t.Fatalf("schema overview payload = %#v", overview)
+	}
+	overviewProducts, _ := overview["products"].([]map[string]any)
+	if len(overviewProducts) != 3 ||
+		overviewProducts[0]["agent_summary"] != "s" ||
+		overviewProducts[1]["use_when"].([]string)[0] != "u" ||
+		overviewProducts[2]["description"] != "d" {
+		t.Fatalf("schema overview products = %#v", overviewProducts)
+	}
 }
 
 func TestCrossPlatformCoverageCompletenessValidSnapshotReportBranches(t *testing.T) {
@@ -926,14 +936,19 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 		t.Fatalf("unreviewed dry-run delivery error = %v", err)
 	}
 
-	walkLeafCommands(root, func(*cobra.Command) {})
+	leafCount := 0
+	walkLeafCommands(root, func(*cobra.Command) { leafCount++ })
 	hidden := &cobra.Command{Use: "hidden", Hidden: true}
 	root.AddCommand(hidden)
-	walkLeafCommands(root, func(*cobra.Command) {})
+	hiddenLeafCount := 0
+	walkLeafCommands(root, func(*cobra.Command) { hiddenLeafCount++ })
+	if leafCount == 0 || hiddenLeafCount != leafCount {
+		t.Fatalf("walkLeafCommands must skip hidden leaves: before=%d after=%d", leafCount, hiddenLeafCount)
+	}
 	if hasRuntimeSchemaCommand(nil) {
 		t.Fatal("nil command must not report runtime schema")
 	}
-	_ = agentMetadataSummaryFrom(agentMetadata{
+	summary := agentMetadataSummaryFrom(agentMetadata{
 		Version: 1, SourceHash: "h", SurfaceHash: "s",
 		Products: map[string]agentProductMetadata{"p": {}},
 		Tools:    map[string]agentToolMetadata{"t": {}},
@@ -941,6 +956,12 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 			SurfaceProducts: 1, SurfaceTools: 2, ToolsWithSummary: 3, UnmatchedSkillTools: 4,
 		},
 	})
+	if summary["version"] != 1 || summary["source_hash"] != "h" || summary["surface_hash"] != "s" ||
+		summary["products_with_metadata"] != 1 || summary["tools_with_metadata"] != 1 ||
+		summary["surface_products"] != 1 || summary["surface_tools"] != 2 ||
+		summary["tools_with_agent_summary"] != 3 || summary["unmatched_skill_tools"] != 4 {
+		t.Fatalf("agentMetadataSummaryFrom = %#v", summary)
+	}
 
 	merged, err := ReviewedCommandRegistryMergedJSON()
 	if err != nil {

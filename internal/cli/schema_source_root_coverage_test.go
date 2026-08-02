@@ -199,7 +199,13 @@ func TestCrossPlatformCoverageSafetyForCLIPathUnregisteredFactory(t *testing.T) 
 	if _, ok := SafetyForCLIPath("dev app delete"); ok {
 		t.Fatal("SafetyForCLIPath without factory must return ok=false")
 	}
-	RenderSafetyAnnotation(&cobra.Command{Use: "dws"})
+	safetyOut := &bytes.Buffer{}
+	safetyCmd := &cobra.Command{Use: "dws"}
+	safetyCmd.SetOut(safetyOut)
+	RenderSafetyAnnotation(safetyCmd)
+	if safetyOut.Len() != 0 {
+		t.Fatalf("RenderSafetyAnnotation without factory must stay silent, got %q", safetyOut.String())
+	}
 }
 
 func TestCrossPlatformCoverageReviewedCommandRegistrySourceHash(t *testing.T) {

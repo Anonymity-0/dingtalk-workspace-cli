@@ -88,6 +88,34 @@ func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 	AnnotateRuntimeFlagExample(cmd, "missing", "x")
 	AnnotateRuntimeFlagExample(cmd, "value", " example ")
 
+	valueFlag := cmd.Flags().Lookup("value")
+	if valueFlag == nil {
+		t.Fatal("value flag must exist")
+	}
+	for key, wants := range map[string][]string{
+		AnnotationFlagType:        {"string"},
+		AnnotationDescription: {"desc"},
+		AnnotationFlagFormat:      {"uri"},
+		AnnotationFlagExample:     {"example"},
+		AnnotationFlagRequired:    {"true"},
+		AnnotationFlagReqWhen:     {"when"},
+		AnnotationFlagEnum:        {"a", "b"},
+	} {
+		got := valueFlag.Annotations[key]
+		for _, want := range wants {
+			found := false
+			for _, v := range got {
+				if v == want {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("value flag annotation %s = %#v, want to contain %q", key, got, want)
+			}
+		}
+	}
+
 	if flag := CommandFlag(cmd, "inherited"); flag == nil {
 		t.Fatal("CommandFlag must resolve persistent parent flag")
 	}
