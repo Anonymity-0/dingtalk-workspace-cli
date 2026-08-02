@@ -101,11 +101,11 @@ check_schema_loader_references() {
 }
 
 check_schema_loader_references \
-	'loadEmbeddedMCPMetadata' \
-	'^internal/cli/runtime_schema\.go:[0-9]+:(func loadEmbeddedMCPMetadata\(\) embeddedMCPMetadata \{|[[:space:]]*runtimeEmbeddedMCPMetadataLazy\.metadata = loadEmbeddedMCPMetadata\(\))$'
+	'loadPinnedMCPMetadata' \
+	'^internal/cli/runtime_schema\.go:[0-9]+:(func loadPinnedMCPMetadata\(\) embeddedMCPMetadata \{|[[:space:]]*runtimePinnedMCPMetadataLazy\.metadata = loadPinnedMCPMetadata\(\))$'
 check_schema_loader_references \
-	'loadSchemaParameterBindings' \
-	'^internal/cli/schema_parameter_bindings\.go:[0-9]+:(func loadSchemaParameterBindings\(\) \(schemaParameterBindingSnapshot, error\) \{|[[:space:]]*runtimeSchemaParameterBindingsLazy\.snapshot, runtimeSchemaParameterBindingsLazy\.err = loadSchemaParameterBindings\(\))$'
+	'loadSchemaParameterBindingSnapshot' \
+	'^internal/cli/schema_parameter_bindings\.go:[0-9]+:(func loadSchemaParameterBindingSnapshot\(\) \(schemaParameterBindingSnapshot, error\) \{|[[:space:]]*runtimeSchemaParameterBindingsLazy\.snapshot, runtimeSchemaParameterBindingsLazy\.err = loadSchemaParameterBindingSnapshot\(\))$'
 
 # Catch the common direct eager form statically; the fresh-process tests below
 # additionally catch indirect or multi-line package initializers.
@@ -118,7 +118,7 @@ fi
 # Root construction may register the schema command, but app production code
 # must never parse or inspect generation metadata. The schema command reads the
 # already embedded Catalog only when it is actually executed.
-if policy_search_production_go '(loadEmbeddedAgentMetadata|loadEmbeddedMCPMetadata|loadSchemaParameterBindings|runtimeAgentMetadata|runtimeMCPMetadata|runtimeSchemaParameterBindingData|EmbeddedSchemaParameterBindings)\(' \
+if policy_search_production_go '(loadEmbeddedAgentMetadata|loadPinnedMCPMetadata|loadSchemaParameterBindingSnapshot|runtimeAgentMetadata|runtimeMCPMetadata|runtimeSchemaParameterBindingData|EmbeddedSchemaParameterBindings)\(' \
 	internal/app; then
 	printf '%s\n' 'root/app production code must not access Schema generation metadata loaders or accessors' >&2
 	exit 1
