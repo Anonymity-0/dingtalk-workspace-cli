@@ -27,8 +27,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// schemaCommandCatalogError / payloads use deliverySchemaCatalog: ResolveSchemaBuild
-// when the app registers a source root, else the committed embed fallback.
+// schemaCommandCatalogError / payloads use deliverySchemaCatalog
+// (RegisterSchemaSourceRoot → ResolveSchemaBuild). There is no committed
+// Catalog embed fallback.
 var schemaCommandCatalogError = deliverySchemaCatalogError
 
 type FlagKind string
