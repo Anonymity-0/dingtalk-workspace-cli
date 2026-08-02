@@ -358,13 +358,25 @@ func gitChangedLines(baseRef string) (map[string][]lineRange, error) {
 	return parseChangedLines(output)
 }
 
+// physicalPath resolves symlinks so git-reported and go-reported paths agree.
+// git rev-parse --show-toplevel prints the physical path while go list reports
+// Dirs derived from the logical CWD; on macOS /tmp is a symlink to /private/tmp
+// and the mismatch makes every buildable file relativize outside the root,
+// silently emptying the changed-code gate.
+func physicalPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return path
+}
+
 func goListBuildableFiles() (map[string]bool, error) {
 	rootCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootOutput, err := rootCommand.Output()
 	if err != nil {
 		return nil, fmt.Errorf("resolve repository root: %w", err)
 	}
-	root := strings.TrimSpace(string(rootOutput))
+	root := physicalPath(strings.TrimSpace(string(rootOutput)))
 
 	command := exec.Command("go", "list", "-json", "./...")
 	output, err := command.Output()
@@ -391,7 +403,7 @@ func goListBuildableFiles() (map[string]bool, error) {
 			return nil, fmt.Errorf("decode go list output: %w", err)
 		}
 		for _, name := range append(packageInfo.GoFiles, packageInfo.CgoFiles...) {
-			relative, err := filepath.Rel(root, filepath.Join(packageInfo.Dir, name))
+			relative, err := filepath.Rel(root, filepath.Join(physicalPath(packageInfo.Dir), name))
 			if err != nil {
 				return nil, fmt.Errorf("normalize buildable file %s: %w", name, err)
 			}

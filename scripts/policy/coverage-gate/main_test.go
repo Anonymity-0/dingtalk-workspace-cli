@@ -616,3 +616,43 @@ func TestRunLogsExemptedNonExecutableFiles(t *testing.T) {
 		t.Fatalf("stderr = %q, want exemption log for pragma-only file", stderr.String())
 	}
 }
+
+func TestPhysicalPath(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	expected, err := filepath.EvalSymlinks(real)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(real): %v", err)
+	}
+	if got := physicalPath(link); got != expected {
+		t.Fatalf("physicalPath(%q) = %q, want %q", link, got, expected)
+	}
+	missing := filepath.Join(t.TempDir(), "missing")
+	if got := physicalPath(missing); got != missing {
+		t.Fatalf("physicalPath(%q) = %q, want path returned unchanged", missing, got)
+	}
+}
+
+func TestGoListBuildableFilesIncludesSelfPackage(t *testing.T) {
+	buildable, err := goListBuildableFiles()
+	if err != nil {
+		t.Fatalf("goListBuildableFiles: %v", err)
+	}
+	if !buildable["scripts/policy/coverage-gate/main.go"] {
+		t.Fatalf("buildable files missing self package; sample keys: %v", firstKeys(buildable, 3))
+	}
+}
+
+func firstKeys(m map[string]bool, n int) []string {
+	keys := make([]string, 0, n)
+	for key := range m {
+		keys = append(keys, key)
+		if len(keys) == n {
+			break
+		}
+	}
+	return keys
+}
