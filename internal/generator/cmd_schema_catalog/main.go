@@ -43,7 +43,7 @@ func main() {
 	var metaIndexPath string
 	flag.StringVar(&rootPath, "root", ".", "Repository root used to protect Schema generator inputs")
 	flag.StringVar(&surfacePath, "surface", "", "Deprecated compatibility input relative to --root; when set it must equal the embedded reviewed CommandRegistry")
-	flag.StringVar(&outputPath, "output", "internal/cli/schema_catalog", "Output directory for a CI/local Catalog dump (catalog.json + tools/<product>.json); not a go:generate delivery step")
+	flag.StringVar(&outputPath, "output", "artifacts/schema_catalog", "Output directory for a CI/local Catalog dump (catalog.json + tools/<product>.json); not a go:generate or production delivery step")
 	flag.StringVar(&metaIndexPath, "meta-index", "", "Output path for CommandMeta summary index gob (default: sibling schema_meta_index.gob next to --output)")
 	flag.Parse()
 	// cmd_schema_catalog is a CI/determinism and policy dump tool. Production
@@ -99,13 +99,13 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surface
 	}
 	if err := outputguard.ValidateRepoTargetAllowlist(rootPath,
 		outputguard.Target{Name: "--output", Path: outputPath, Directory: true},
-		"internal/cli/schema_catalog",
+		"artifacts/schema_catalog",
 	); err != nil {
 		return err
 	}
 	return outputguard.ValidateRepoTargetAllowlist(rootPath,
 		outputguard.Target{Name: "--meta-index", Path: metaIndexPath},
-		"internal/cli/schema_meta_index.gob",
+		"artifacts/schema_meta_index.gob",
 	)
 }
 

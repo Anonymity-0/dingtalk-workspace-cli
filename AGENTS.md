@@ -13,11 +13,12 @@ unrelated work, and use `gofmt` for every modified Go file.
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
 
 Schema Catalog delivery is **声明即 Catalog**: production assembles via
-`ResolveSchemaBuild` (factory registered in `internal/app`). There is no
+`RegisterSchemaSourceRoot` → `ResolveSchemaBuild` (factory registered in
+`internal/app`). There is no
 `cmd_schema_catalog` `//go:generate` delivery step. `dws schema -f json` remains
-the wire projection. Committed `schema_catalog/` + `schema_meta_index.gob` are
-residual package-cli decode fixtures only — not runtime authority; do not
-hand-edit them. `schema_agent_metadata/` is retired: if that directory
+the wire projection. `cmd_schema_catalog` produces CI/local dumps only;
+`internal/cli/schema_catalog/`, `internal/cli/schema_meta_index.gob`, and
+`internal/cli/schema_meta_index.json` must not be committed. `schema_agent_metadata/` is retired: if that directory
 (or `schema_agent_metadata_audit.json`) is present, policy fails.
 `internal/cli/schema_command_registry.json` is different: it is a reviewed
 `CommandRegistry` source, not a generated snapshot. It is the single reviewed
@@ -118,7 +119,7 @@ records, or use a previous Catalog JSON as a source.
 - Runtime entry: `RegisterSchemaSourceRoot` (`internal/app`) →
   `ResolveSchemaBuild` / `deliverySchemaCatalog` (lazy, sync.Once).
 - CI tool: `cmd_schema_catalog` dumps an assembled Catalog for jq/determinism;
-  it is **not** a `//go:generate` committed delivery step.
+  it is **not** a `//go:generate` or committed delivery step.
 - `gen.go` only generates `param_aliases_generated.go`.
 - Inputs: authored source groups (registry + ProductDecl/ContractFinal + MCP
   metadata + parameter mapping audit (`schema_parameter_bindings.json`:
@@ -237,7 +238,7 @@ For every curated tool:
    (`DeclareLeafMetadata` / `Shortcut.Contract` / `contract.ParamDecl`) and product routing
    via `ProductDecl` when needed.
 2. Run `make generate-schema` (param aliases + assembly determinism). Do not
-   hand-edit residual `schema_catalog/` fixtures.
+   create or commit `schema_catalog/` or Schema meta-index fixtures.
 
 ### Pull live MCP descriptions (personal token)
 

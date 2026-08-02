@@ -16,9 +16,9 @@
 // to get a CommandMeta struct — one function, one struct, no need to know which
 // declaration layer a field comes from.
 //
-// Production (app registers Schema source root): ResolveMeta projects
-// CommandMeta from the lazily assembled SchemaRegistry (声明即 Catalog).
-// Package-cli tests without a factory still decode schema_meta_index.gob.
+// ResolveMeta projects CommandMeta from the lazily assembled SchemaRegistry
+// (RegisterSchemaSourceRoot → ResolveSchemaBuild). Without a registered
+// factory it fails closed — there is no schema_meta_index.gob fallback.
 
 package cli
 
@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // CommandMeta is the complete runtime metadata view for a single command.
@@ -59,38 +60,35 @@ var (
 	metaByCLIPath     map[string]CommandMeta
 )
 
-// decodeEmbeddedSchemaMetaIndexLookupFn is the gob fallback used when no
-// Schema source root factory is registered (package-cli tests).
-var decodeEmbeddedSchemaMetaIndexLookupFn = func() (map[string]CommandMeta, error) {
-	return decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexGob)
-}
+// Counter names retain "MetaIndex" for RuntimeSchemaMetadataLoadCounts
+// compatibility; they now count ResolveMeta lookup init from assembled Catalog.
+var (
+	runtimeEmbeddedSchemaMetaIndexErr       error
+	runtimeEmbeddedSchemaMetaIndexLazyCount atomic.Uint64
+)
 
 func resetMetaByCLIPathStateForTest() {
 	metaByCLIPathOnce = sync.Once{}
 	metaByCLIPath = nil
 	runtimeEmbeddedSchemaMetaIndexErr = nil
+	runtimeEmbeddedSchemaMetaIndexLazyCount.Store(0)
 	resetDeliverySchemaCatalogStateForTest()
 }
 
-func initMetaByCLIPath() {
+// installDeliveryCommandMeta materializes the ResolveMeta lookup from an
+// assembled Catalog. Called from deliverySchemaCatalog's sync.Once so Meta
+// shares assembly and subsequent ResolveMeta is a plain map read.
+func installDeliveryCommandMeta(loaded loadedSchemaCatalog, err error) {
 	runtimeEmbeddedSchemaMetaIndexLazyCount.Add(1)
-	if schemaSourceRootFn != nil {
-		loaded := deliverySchemaCatalog()
-		if err := runtimeDeliverySchemaCatalogErr; err != nil {
-			runtimeEmbeddedSchemaMetaIndexErr = err
-			metaByCLIPath = nil
-			return
-		}
-		metaByCLIPath = buildMetaByCLIPath(loaded)
-		return
-	}
-	lookup, err := decodeEmbeddedSchemaMetaIndexLookupFn()
 	if err != nil {
 		runtimeEmbeddedSchemaMetaIndexErr = err
 		metaByCLIPath = nil
+		metaByCLIPathOnce.Do(func() {})
 		return
 	}
-	metaByCLIPath = lookup
+	metaByCLIPath = buildMetaByCLIPath(loaded)
+	runtimeEmbeddedSchemaMetaIndexErr = nil
+	metaByCLIPathOnce.Do(func() {})
 }
 
 // panicIfMetaIndexUnusable fails closed when CommandMeta lookup could not be
@@ -213,12 +211,12 @@ func registerCommandMetaAliases(lookup map[string]CommandMeta, metas []CommandMe
 // for "report inbox list"). Returns ok=false for commands not in the Schema
 // surface (utility commands, hidden commands, shortcuts).
 //
-// Production projects from the runtime-assembled SchemaRegistry. Without a
-// registered source root, it falls back to schema_meta_index.gob. Assembly or
-// decode failure panics (fail-closed) so help Safety cannot silently disappear.
+// Ensures deliverySchemaCatalog Once (assembles + caches Meta), then O(1) map
+// lookup. Without a registered source root, fails closed (panic).
 func ResolveMeta(cliPath string) (CommandMeta, bool) {
-	metaByCLIPathOnce.Do(initMetaByCLIPath)
+	cliPath = strings.TrimSpace(cliPath)
+	_ = deliverySchemaCatalog()
 	panicIfMetaIndexUnusable(runtimeEmbeddedSchemaMetaIndexErr)
-	m, ok := metaByCLIPath[strings.TrimSpace(cliPath)]
+	m, ok := metaByCLIPath[cliPath]
 	return m, ok
 }

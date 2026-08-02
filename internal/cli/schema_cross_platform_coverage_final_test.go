@@ -107,8 +107,9 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 	})
 
 	t.Run("registryToSnapshotPayloadFn error body via materialize", func(t *testing.T) {
-		resetEmbeddedSchemaCatalogStateForTest()
-		assembleEmbeddedSchemaCatalogHook = func() (loadedSchemaCatalog, error) {
+		restorePackageCLISchemaDeliveryForTest()
+		RegisterSchemaSourceRoot(func() *cobra.Command { return &cobra.Command{Use: "dws"} })
+		assembleDeliverySchemaCatalogFn = func(*cobra.Command) (loadedSchemaCatalog, error) {
 			return loadedSchemaCatalog{
 				Registry: SchemaRegistry{},
 				Snapshot: SchemaCatalogSnapshot{Version: SchemaCatalogSnapshotVersion, SourceHash: "x"},
@@ -120,11 +121,9 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		}
 		t.Cleanup(func() {
 			registryToSnapshotPayloadFn = prev
-			assembleEmbeddedSchemaCatalogHook = assembleEmbeddedSchemaCatalog
-			resetEmbeddedSchemaCatalogStateForTest()
+			restorePackageCLISchemaDeliveryForTest()
 		})
-		_ = embeddedSchemaCatalog()
-		if _, err := materializeEmbeddedSchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "materialize") {
+		if _, err := materializeDeliverySchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "materialize") {
 			t.Fatalf("materialize error = %v", err)
 		}
 	})
@@ -286,11 +285,8 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		}
 	})
 
-	t.Run("assembleEmbeddedSchemaCatalog error passthrough", func(t *testing.T) {
-		orig := embeddedSchemaCatalogEnvelopeJSON
-		t.Cleanup(func() { embeddedSchemaCatalogEnvelopeJSON = orig })
-		embeddedSchemaCatalogEnvelopeJSON = []byte("{bad")
-		if _, err := assembleEmbeddedSchemaCatalog(); err == nil || !strings.Contains(err.Error(), "decode embedded schema catalog.json") {
+	t.Run("assembleTypedSchemaCatalog error passthrough", func(t *testing.T) {
+		if _, _, err := assembleTypedSchemaCatalog([]byte("{bad"), nil, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog.json") {
 			t.Fatalf("assembly error = %v", err)
 		}
 	})
@@ -310,23 +306,18 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *testing.T) {
-	t.Run("delivery payload helpers without factory use embed", func(t *testing.T) {
-		RegisterSchemaSourceRoot(nil)
-		resetDeliverySchemaCatalogStateForTest()
-		if _, err := deliverySchemaAllPayload(); err != nil {
-			t.Fatalf("deliverySchemaAllPayload() error = %v", err)
-		}
-		if _, err := deliverySchemaOverviewPayload(); err != nil {
-			t.Fatalf("deliverySchemaOverviewPayload() error = %v", err)
-		}
-		if _, err := queryDeliverySchemaPayload([]string{"dev"}); err != nil {
-			t.Fatalf("queryDeliverySchemaPayload() error = %v", err)
+	t.Run("delivery payload helpers without factory fail closed", func(t *testing.T) {
+		schemaSourceRootFn = nil
+		assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+		resetMetaByCLIPathStateForTest()
+		t.Cleanup(restorePackageCLISchemaDeliveryForTest)
+		if _, err := deliverySchemaAllPayload(); err == nil || !strings.Contains(err.Error(), "schema source root factory is not registered") {
+			t.Fatalf("deliverySchemaAllPayload() error = %v, want missing factory", err)
 		}
 	})
 
 	t.Run("NewSchemaCommand delivery branches", func(t *testing.T) {
-		RegisterSchemaSourceRoot(nil)
-		resetDeliverySchemaCatalogStateForTest()
+		restorePackageCLISchemaDeliveryForTest()
 		cmd := NewSchemaCommand(nil)
 		cmd.SetArgs([]string{"--all"})
 		if err := cmd.Execute(); err != nil {
@@ -358,9 +349,10 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 	t.Run("ResolveMeta via registered source root", func(t *testing.T) {
 		resetMetaByCLIPathStateForTest()
 		t.Cleanup(func() {
-			RegisterSchemaSourceRoot(nil)
-			assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+			restorePackageCLISchemaDeliveryForTest()
+			assembleDeliverySchemaCatalogFn = assembleDeliverySchemaCatalogFn
 			resetMetaByCLIPathStateForTest()
+			restorePackageCLISchemaDeliveryForTest()
 		})
 		RegisterSchemaSourceRoot(func() *cobra.Command {
 			return &cobra.Command{Use: "dws"}
@@ -389,7 +381,7 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 	t.Run("ResolveMeta factory assembly failure", func(t *testing.T) {
 		resetMetaByCLIPathStateForTest()
 		t.Cleanup(func() {
-			RegisterSchemaSourceRoot(nil)
+			restorePackageCLISchemaDeliveryForTest()
 			resetMetaByCLIPathStateForTest()
 		})
 		RegisterSchemaSourceRoot(func() *cobra.Command { return nil })
@@ -402,12 +394,11 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 	})
 
 	t.Run("RuntimeSchemaMetadataLoadCounts prefers delivery counter", func(t *testing.T) {
-		RegisterSchemaSourceRoot(nil)
-		resetDeliverySchemaCatalogStateForTest()
+		restorePackageCLISchemaDeliveryForTest()
 		resetEmbeddedSchemaCatalogStateForTest()
 		RegisterSchemaSourceRoot(func() *cobra.Command { return nil })
 		t.Cleanup(func() {
-			RegisterSchemaSourceRoot(nil)
+			restorePackageCLISchemaDeliveryForTest()
 			resetDeliverySchemaCatalogStateForTest()
 		})
 		_ = deliverySchemaCatalog()

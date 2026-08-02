@@ -271,11 +271,11 @@ type/default/usage provenance 保持不变，command 统一补充 Required、Enu
 声明即 review：代码中的 Contract 声明经过 code review 后直接投影为：
 
 - **Agent Runtime Schema**（`dws.schema.*` Cobra annotations；经 `runtimeannotate` / ContractFinal 嵌入）
-- **Catalog ToolSpec wire**（`internal/cli/schema_catalog/` = `catalog.json` + per-product `tools/<product>.json`；`dws schema` / `--all` / 完整 leaf 载荷）
-- **`schema_meta_index.json`**（CommandMeta 摘要；`ResolveMeta` / `SafetyForCLIPath` / leaf `--help` Safety 只读此索引）
+- **运行时组装的 SchemaRegistry / Catalog ToolSpec wire**（`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`；`dws schema` / `--all` / 完整 leaf 载荷）
+- **CommandMeta 投影**（装配 Once 同步缓存 `map[cli_path]CommandMeta`；`ResolveMeta` / `SafetyForCLIPath` / leaf `--help` Safety 稳态 O(1) 读缓存，与 SchemaRegistry 同源）
 - **Dry-run Capabilities**（声明自动索引为 reviewed 能力）
 
-Agent selection / Safety 文案随 Catalog 生成时内存 inject，不落盘、不 embed；`schema_agent_metadata/` 与 `schema_hints/` 已退役。不再需要外部 hint 文件维护 selection/metadata/dry-run 信息。
+Agent selection / Safety 文案随 Schema 组装时内存 inject，不落盘、不 embed；`schema_agent_metadata/` 与 `schema_hints/` 已退役。不再需要外部 hint 文件维护 selection/metadata/dry-run 信息。`cmd_schema_catalog` 仅生成 CI/local dump，Catalog/meta-index 路径不得提交。
 
 ## 设计原则
 

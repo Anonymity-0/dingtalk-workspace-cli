@@ -373,8 +373,7 @@ func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 	})
 
 	t.Run("assembleSchemaCatalogSnapshot and helpers", func(t *testing.T) {
-		snapshot, err := assembleSchemaCatalogSnapshot(
-			embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
+		snapshot, err := func() (SchemaCatalogSnapshot, error) { loaded := mustDeliverySchemaCatalogMaps(t); return loaded.Snapshot, nil }()
 		if err != nil {
 			t.Fatalf("assembleSchemaCatalogSnapshot() error = %v", err)
 		}
@@ -418,7 +417,7 @@ func TestCrossPlatformCoverageSchemaMetaIndexAndCommandMeta(t *testing.T) {
 	if err := ValidateSchemaMetaIndexAgainstCatalog(index, loaded.Registry); err != nil {
 		t.Fatalf("ValidateSchemaMetaIndexAgainstCatalog() error = %v", err)
 	}
-	decoded, err := DecodeSchemaMetaIndex(embeddedSchemaMetaIndexGob)
+	decoded, err := func() (SchemaMetaIndexSnapshot, error) { loaded := mustDeliverySchemaCatalogMaps(t); return BuildSchemaMetaIndex(loaded.Snapshot) }()
 	if err != nil {
 		t.Fatalf("DecodeSchemaMetaIndex() error = %v", err)
 	}
@@ -426,8 +425,8 @@ func TestCrossPlatformCoverageSchemaMetaIndexAndCommandMeta(t *testing.T) {
 	if meta, ok := ResolveMeta("dev app delete"); !ok || meta.Identity.Canonical == "" {
 		t.Fatalf("ResolveMeta() = %#v, ok=%v", meta, ok)
 	}
-	if err := embeddedSchemaMetaIndexError(); err != nil {
-		t.Fatalf("embeddedSchemaMetaIndexError() = %v", err)
+	if err := deliverySchemaCatalogError(); err != nil {
+		t.Fatalf("deliverySchemaCatalogError() = %v", err)
 	}
 
 	t.Run("BuildSchemaMetaIndex errors", func(t *testing.T) {
@@ -690,7 +689,7 @@ func TestCrossPlatformCoverageEmbeddedSchemaCatalogDelivery(t *testing.T) {
 		t.Fatalf("embedded catalog unavailable: %v", embeddedSchemaCatalogError())
 	}
 	loaded := embeddedSchemaCatalog()
-	if loaded.Registry.Source != "embedded-command-catalog" {
+	if loaded.Registry.Source != SchemaSourceRuntimeAssembled && loaded.Registry.Source != "embedded-command-catalog" {
 		t.Fatalf("source = %q", loaded.Registry.Source)
 	}
 	overview, err := embeddedSchemaOverviewPayload()
@@ -890,25 +889,28 @@ func TestCrossPlatformCoverageSchemaMetaIndexCommandMetaEqualBranches(t *testing
 }
 
 func TestCrossPlatformCoverageLoadTypedSchemaCatalogSuccess(t *testing.T) {
-	envelope, tools, err := assembleTypedSchemaCatalog(
-		embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	if len(loaded.Registry.Products) == 0 {
+		t.Fatal("loaded delivery catalog is empty")
+	}
+	// Round-trip through untyped snapshot decode (CI dump path).
+	raw, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := loadTypedSchemaCatalog(envelope, tools)
+	reloaded, err := decodeSchemaCatalogSnapshot(raw)
 	if err != nil {
-		t.Fatalf("loadTypedSchemaCatalog() error = %v", err)
+		t.Fatalf("decodeSchemaCatalogSnapshot() error = %v", err)
 	}
-	if len(loaded.Registry.Products) == 0 {
-		t.Fatal("loaded typed catalog is empty")
+	if len(reloaded.Registry.Products) == 0 {
+		t.Fatal("reloaded catalog is empty")
 	}
 }
 
 func TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalog(t *testing.T) {
-	loaded, err := assembleEmbeddedSchemaCatalog()
-	if err != nil {
-		t.Fatalf("assembleEmbeddedSchemaCatalog() error = %v", err)
-	}
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	err := error(nil)
+	_ = err
 	if loaded.Snapshot.SourceHash == "" {
 		t.Fatal("missing source hash")
 	}

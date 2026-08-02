@@ -4,11 +4,11 @@ set -eu
 # Drift policy after Catalog generator retirement as a committed delivery step:
 #   1. param_aliases_generated.go matches a fresh generation (still committed)
 #   2. Schema assembly is deterministic (check-schema-assembly.sh)
-#   3. Reviewed inputs are not mutated; retired intermediates stay absent
+#   3. Reviewed inputs are not mutated; retired delivery artifacts stay absent
 #
-# Committed schema_catalog/ + schema_meta_index.gob are residual fixtures for
-# package-cli decode tests and are NOT compared here. Production assembles via
-# ResolveSchemaBuild.
+# Production delivers Schema exclusively through runtime assembly:
+# RegisterSchemaSourceRoot → ResolveSchemaBuild. Catalog and meta-index dumps
+# are CI/local artifacts and must never be committed under internal/cli.
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -61,9 +61,11 @@ if [ -e internal/cli/schema_hints ]; then
 	exit 1
 fi
 
-if [ -e internal/cli/schema_meta_index.json ]; then
-	printf '%s\n' 'generated drift: retired schema_meta_index.json must not be present' >&2
-	printf '%s\n' 'remove internal/cli/schema_meta_index.json (ResolveMeta projects from runtime assembly)' >&2
+if [ -e internal/cli/schema_catalog ] ||
+	[ -e internal/cli/schema_meta_index.gob ] ||
+	[ -e internal/cli/schema_meta_index.json ]; then
+	printf '%s\n' 'generated drift: committed Schema Catalog/meta-index fixtures must not be present' >&2
+	printf '%s\n' 'remove internal/cli/schema_catalog, schema_meta_index.gob, and schema_meta_index.json (ResolveMeta projects from runtime assembly)' >&2
 	exit 1
 fi
 
@@ -80,7 +82,7 @@ if ! cmp -s internal/cli/param_aliases_generated.go "$param_aliases_tmp"; then
 	exit 1
 fi
 
-# Assembly determinism replaces committed schema_catalog/ byte drift.
+# Assembly determinism validates fresh CI/local Catalog dumps.
 "$ROOT/scripts/policy/check-schema-assembly.sh"
 
 printf 'generated drift check: ok\n'

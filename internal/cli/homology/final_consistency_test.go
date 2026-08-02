@@ -4,12 +4,10 @@
 package homology
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -20,20 +18,15 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
-// TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog walks every
-// reviewed registry leaf and checks, one by one:
+// TestAllCommandsContractFinalConsistentWithLiveCatalog walks every reviewed
+// registry leaf and checks, one by one:
 //  1. PrimaryCommand has runtime ContractFinal (command-side declaration)
 //  2. Live assembly ToolSpec fields match that ContractFinal
-//  3. Embedded full-leaf shard fields match live ToolSpec (incl. examples)
-func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing.T) {
+func TestAllCommandsContractFinalConsistentWithLiveCatalog(t *testing.T) {
 	root := app.NewSchemaSourceRootCommand()
 	liveReg, err := cli.AssembleSchemaRegistry(root)
 	if err != nil {
 		t.Fatalf("AssembleSchemaRegistry(live) error = %v", err)
-	}
-	embedByCanon, err := loadEmbeddedFullLeafTools()
-	if err != nil {
-		t.Fatalf("load embedded full leaf shards: %v", err)
 	}
 
 	effective, err := cli.BuildEffectiveCommandRegistry(root)
@@ -77,12 +70,6 @@ func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing
 			rows = append(rows, row{canonical, cliPath, "FAIL", "absent from live registry"})
 			continue
 		}
-		embedTool, ok := embedByCanon[canonical]
-		if !ok {
-			failCount++
-			rows = append(rows, row{canonical, cliPath, "FAIL", "absent from embedded full leaf shard"})
-			continue
-		}
 		final, has := contractfinal.RuntimeContractFinal(cmd.PrimaryCommand)
 		if !has {
 			failCount++
@@ -91,7 +78,6 @@ func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing
 		}
 		checked++
 		problems := compareFinalToLive(canonical, final, liveTool)
-		problems = append(problems, compareLiveToEmbedded(canonical, liveTool, embedTool)...)
 		if len(problems) > 0 {
 			failCount++
 			rows = append(rows, row{canonical, cliPath, "FAIL", strings.Join(problems, "; ")})
@@ -114,8 +100,8 @@ func TestAllCommandsContractFinalConsistentWithLiveAndEmbeddedCatalog(t *testing
 			t.Errorf("%s", strings.TrimSpace(line))
 		}
 	}
-	summary := fmt.Sprintf("SUMMARY checked=%d fail=%d ok=%d live=%d embed=%d\n",
-		checked, failCount, checked-failCount, len(liveByCanon), len(embedByCanon))
+	summary := fmt.Sprintf("SUMMARY checked=%d fail=%d ok=%d live=%d\n",
+		checked, failCount, checked-failCount, len(liveByCanon))
 	b.WriteString(summary)
 	if err := os.WriteFile(reportPath, []byte(b.String()), 0o644); err != nil {
 		t.Fatalf("write report: %v", err)
@@ -157,23 +143,6 @@ type liveToolView struct {
 	Examples        []string
 }
 
-type embedToolView struct {
-	Description    string
-	MetadataSource string
-	Effect         string
-	Risk           string
-	Confirmation   string
-	Idempotency    string
-	InterfaceMode  string
-	Availability   string
-	InterfacePID   string
-	InterfaceRPC   string
-	AgentSummary   string
-	UseWhen        []string
-	AvoidWhen      []string
-	Examples       []string
-}
-
 func indexLiveTools(reg cli.SchemaRegistry) map[string]liveToolView {
 	out := make(map[string]liveToolView)
 	for _, product := range reg.Products {
@@ -201,65 +170,6 @@ func indexLiveTools(reg cli.SchemaRegistry) map[string]liveToolView {
 		}
 	}
 	return out
-}
-
-func repoCLIDir() string {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "."
-	}
-	// This file lives in internal/cli/homology; schema_catalog is under internal/cli.
-	return filepath.Clean(filepath.Join(filepath.Dir(file), ".."))
-}
-
-func loadEmbeddedFullLeafTools() (map[string]embedToolView, error) {
-	toolsDir := filepath.Join(repoCLIDir(), "schema_catalog", "tools")
-	entries, err := os.ReadDir(toolsDir)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string]embedToolView)
-	for _, ent := range entries {
-		if ent.IsDir() || !strings.HasSuffix(ent.Name(), ".json") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(toolsDir, ent.Name()))
-		if err != nil {
-			return nil, err
-		}
-		var shard struct {
-			Tools map[string]map[string]any `json:"tools"`
-		}
-		if err := json.Unmarshal(data, &shard); err != nil {
-			return nil, fmt.Errorf("%s: %w", ent.Name(), err)
-		}
-		for key, raw := range shard.Tools {
-			canonical := asString(raw["canonical_path"])
-			if canonical == "" {
-				canonical = key
-			}
-			view := embedToolView{
-				Description:    asString(raw["description"]),
-				MetadataSource: asString(raw["metadata_source"]),
-				Effect:         asString(raw["effect"]),
-				Risk:           asString(raw["risk"]),
-				Confirmation:   asString(raw["confirmation"]),
-				Idempotency:    asString(raw["idempotency"]),
-				InterfaceMode:  asString(raw["interface_mode"]),
-				Availability:   asString(raw["availability"]),
-				AgentSummary:   asString(raw["agent_summary"]),
-				UseWhen:        asStringSlice(raw["use_when"]),
-				AvoidWhen:      asStringSlice(raw["avoid_when"]),
-				Examples:       asStringSlice(raw["examples"]),
-			}
-			if ref, ok := raw["interface_ref"].(map[string]any); ok {
-				view.InterfacePID = asString(ref["product_id"])
-				view.InterfaceRPC = asString(ref["rpc_name"])
-			}
-			out[canonical] = view
-		}
-	}
-	return out, nil
 }
 
 func compareFinalToLive(canonical string, final contract.ContractFinalPayload, tool liveToolView) []string {
@@ -304,37 +214,6 @@ func compareFinalToLive(canonical string, final contract.ContractFinalPayload, t
 		if !reflect.DeepEqual(final.Selection.Examples, tool.Examples) {
 			problems = append(problems, "examples mismatch")
 		}
-	}
-	_ = canonical
-	return problems
-}
-
-func compareLiveToEmbedded(canonical string, live liveToolView, embed embedToolView) []string {
-	var problems []string
-	add := func(field, a, b string) {
-		if strings.TrimSpace(a) != strings.TrimSpace(b) {
-			problems = append(problems, fmt.Sprintf("%s: live=%q embed=%q", field, a, b))
-		}
-	}
-	add("description", live.Description, embed.Description)
-	add("effect", live.Effect, embed.Effect)
-	add("risk", live.Risk, embed.Risk)
-	add("confirmation", live.Confirmation, embed.Confirmation)
-	add("idempotency", live.Idempotency, embed.Idempotency)
-	add("interface_mode", live.InterfaceMode, embed.InterfaceMode)
-	add("availability", live.Availability, embed.Availability)
-	add("agent_summary", live.AgentSummary, embed.AgentSummary)
-	add("metadata_source", live.MetadataSource, embed.MetadataSource)
-	add("interface_product", live.InterfacePID, embed.InterfacePID)
-	add("interface_rpc", live.InterfaceRPC, embed.InterfaceRPC)
-	if !reflect.DeepEqual(live.UseWhen, embed.UseWhen) {
-		problems = append(problems, "use_when live!=embed")
-	}
-	if !reflect.DeepEqual(live.AvoidWhen, embed.AvoidWhen) {
-		problems = append(problems, "avoid_when live!=embed")
-	}
-	if !reflect.DeepEqual(live.Examples, embed.Examples) {
-		problems = append(problems, "examples live!=embed")
 	}
 	_ = canonical
 	return problems

@@ -5,6 +5,8 @@ PUBLISH ?= 0
 YES ?= 0
 DWS_POLICY_TMPDIR ?= $(CURDIR)/.worktrees/policy-tmp
 POLICY_GOTMPDIR ?= $(DWS_POLICY_TMPDIR)/go
+SCHEMA_CATALOG_OUTPUT ?= artifacts/schema_catalog
+SCHEMA_META_INDEX_OUTPUT ?= artifacts/schema_meta_index.gob
 POLICY_ENV = DWS_POLICY_TMPDIR="$(DWS_POLICY_TMPDIR)" GOTMPDIR="$(POLICY_GOTMPDIR)"
 GO_SOURCE_LIST = git ls-files -z --cached --others --exclude-standard -- '*.go'
 
@@ -35,7 +37,7 @@ help:
 	@printf "  make mock-mcp-smoke - Verify HTTP and stdio MCP request/response transport\n"
 	@printf "  make test-schema-agent-examples - Contract-check all Agent examples and dry-run the eligible subset\n"
 	@printf "  make generate-schema - Refresh param_aliases + verify Schema assembly determinism\n"
-	@printf "  make generate-schema-catalog - CI dump of assembled Catalog to a path (not a delivery step)\n"
+	@printf "  make generate-schema-catalog - Optional assembled Catalog dump under artifacts/ (not a delivery step)\n"
 	@printf "  make package       - Build all release artifacts locally\n"
 	@printf "  make changelog-pre VERSION=vX.Y.Z-beta.N - Prepare prerelease notes\n"
 	@printf "  make changelog-stable VERSION=vX.Y.Z FROM_BETA=vX.Y.Z-beta.N - Prepare stable notes\n"
@@ -172,15 +174,14 @@ generate-schema:
 	fi; \
 	./scripts/policy/check-schema-assembly.sh
 
-# Optional local/CI dump of an assembled Catalog to a path. Not wired into
-# go:generate; production does not embed the result as delivery authority.
+# Optional local/CI dump of an assembled Catalog under artifacts/ by default.
+# Override SCHEMA_CATALOG_OUTPUT and SCHEMA_META_INDEX_OUTPUT as needed. This
+# is not a go:generate or production delivery step.
 generate-schema-catalog:
 	$(GO) run -a ./internal/generator/cmd_schema_catalog \
 		-root . \
-		-output internal/cli/schema_catalog \
-		-meta-index internal/cli/schema_meta_index.gob
-	@rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json
-	@rm -f internal/cli/schema_meta_index.json
+		-output "$(SCHEMA_CATALOG_OUTPUT)" \
+		-meta-index "$(SCHEMA_META_INDEX_OUTPUT)"
 
 fetch-mcp-metadata:
 	@printf '  %sRefreshing MCP metadata from live server%s\n' "$(COLOR_RUN)" "$(COLOR_RESET)"

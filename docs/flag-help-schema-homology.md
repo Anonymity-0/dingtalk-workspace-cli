@@ -12,10 +12,10 @@
 
 1. cobra 实际注册的 flags / required / defaults；
 2. `--help` 的 Flags 与「参数约束」段；
-3. **嵌入后的** Schema 交付（双产物，均 `go:embed`）中的 parameters、关系约束和 SafetySpec：
-   - **Catalog**（`schema_catalog/` = catalog.json + per-product shards）是 **ToolSpec wire**，供 `dws schema` / `--all` / 完整 leaf 载荷；参数同源门禁仍谈 Catalog。
-   - **`schema_meta_index.json`** 是 CommandMeta 摘要；运行时 **`ResolveMeta` / `SafetyForCLIPath` / leaf `--help` Safety 只读此索引**，不解码完整 Catalog ToolSpec 树。
-   Agent metadata 在 Catalog 生成时经内存 inject，不落盘、不 embed；`schema_agent_metadata/` 已退役，若存在则 policy 失败。
+3. 运行时**组装后的** Schema 交付中的 parameters、关系约束和 SafetySpec：
+   - **SchemaRegistry / Catalog ToolSpec wire** 供 `dws schema` / `--all` / 完整 leaf 载荷（lazy；首次 `dws schema` 触发完整装配）。
+   - **`ResolveMeta` / `SafetyForCLIPath` / leaf `--help` Safety** 与装配同源：`deliverySchemaCatalog` sync.Once 装配后同步物化 `map[cli_path]CommandMeta`；稳态为 O(1) map lookup，不为 Meta 单独重做全量 ToolSpec/wire 投影。
+   Agent metadata 在组装期间经内存 inject，不落盘、不 embed；`schema_agent_metadata/` 已退役，若存在则 policy 失败。
 
 嵌入机制（已落地）：
 
@@ -28,8 +28,9 @@ corecmd.Spec
        dws.schema.constraints
   → RegisterRuntimeContractFinal(SafetySpec + ContractDecl)
   → Schema 组装透传 Contract Final
-    （Catalog 生成时内存 inject Agent metadata）
-  → go:embed schema_catalog/  +  schema_meta_index.json
+    （组装时内存 inject Agent metadata）
+  → RegisterSchemaSourceRoot → ResolveSchemaBuild
+  → SchemaRegistry (+ Meta cache map) / dws schema wire projection
 ```
 
 command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷，不使用字符串枚举注解。

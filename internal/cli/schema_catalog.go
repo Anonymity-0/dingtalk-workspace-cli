@@ -15,14 +15,11 @@ package cli
 
 import (
 	"crypto/sha256"
-	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
@@ -30,19 +27,11 @@ import (
 
 const SchemaCatalogSnapshotVersion = 1
 
-// Committed schema_catalog/ shards are a residual package-cli test fixture and
-// decode-path coverage target. Production delivery assembles via
-// RegisterSchemaSourceRoot → ResolveSchemaBuild (see schema_source_root.go) and
-// does not treat these files as the Agent contract authority.
-//
-//	schema_catalog/catalog.json        global envelope + Catalog map
-//	schema_catalog/tools/<product>.json   that product's leaf ToolSpecs
-//
-//go:embed schema_catalog/catalog.json
-var embeddedSchemaCatalogEnvelopeJSON []byte
-
-//go:embed schema_catalog/tools
-var embeddedSchemaCatalogTools embed.FS
+// Schema Catalog delivery is single-track: RegisterSchemaSourceRoot →
+// ResolveSchemaBuild (see schema_source_root.go). There is no committed
+// schema_catalog/ embed and no gob/Catalog fixture fallback. Shard assemble
+// helpers below exist for CI dumps (cmd_schema_catalog) and synthetic unit
+// tests that pass explicit envelope/FS bytes.
 
 // SchemaCatalogSnapshot is the release-stable Agent contract. Catalog holds
 // the progressive product/tool index; Tools holds full leaf parameter schemas.
@@ -69,18 +58,6 @@ type loadedSchemaCatalog struct {
 	Index    SchemaIndex
 }
 
-var (
-	runtimeEmbeddedSchemaCatalogOnce     sync.Once
-	runtimeEmbeddedSchemaCatalog         loadedSchemaCatalog
-	runtimeEmbeddedSchemaCatalogErr      error
-	runtimeEmbeddedSchemaCatalogMapsOnce sync.Once
-	runtimeEmbeddedSchemaCatalogMapsErr  error
-)
-
-var runtimeEmbeddedSchemaCatalogLazyLoadCount atomic.Uint64
-
-var assembleEmbeddedSchemaCatalogHook = assembleEmbeddedSchemaCatalog
-
 func registryToSnapshotPayload(registry SchemaRegistry) (SchemaCatalogSnapshot, error) {
 	payload, err := registry.ToSnapshotPayload()
 	if err != nil {
@@ -90,50 +67,6 @@ func registryToSnapshotPayload(registry SchemaRegistry) (SchemaCatalogSnapshot, 
 }
 
 var registryToSnapshotPayloadFn = registryToSnapshotPayload
-
-func resetEmbeddedSchemaCatalogStateForTest() {
-	runtimeEmbeddedSchemaCatalogOnce = sync.Once{}
-	runtimeEmbeddedSchemaCatalogMapsOnce = sync.Once{}
-	runtimeEmbeddedSchemaCatalog = loadedSchemaCatalog{}
-	runtimeEmbeddedSchemaCatalogErr = nil
-	runtimeEmbeddedSchemaCatalogMapsErr = nil
-	runtimeEmbeddedSchemaCatalogLazyLoadCount.Store(0)
-}
-
-func embeddedSchemaCatalog() loadedSchemaCatalog {
-	runtimeEmbeddedSchemaCatalogOnce.Do(func() {
-		runtimeEmbeddedSchemaCatalogLazyLoadCount.Add(1)
-		runtimeEmbeddedSchemaCatalog, runtimeEmbeddedSchemaCatalogErr = assembleEmbeddedSchemaCatalogHook()
-	})
-	return runtimeEmbeddedSchemaCatalog
-}
-
-// materializeEmbeddedSchemaCatalogMaps fills Snapshot.Catalog/Tools from the
-// typed Registry for callers that still need the untyped delivery maps.
-// Production ResolveMeta projects from deliverySchemaCatalog / registry and
-// does not call this helper.
-func materializeEmbeddedSchemaCatalogMaps() (loadedSchemaCatalog, error) {
-	_ = embeddedSchemaCatalog()
-	if runtimeEmbeddedSchemaCatalogErr != nil {
-		return loadedSchemaCatalog{}, runtimeEmbeddedSchemaCatalogErr
-	}
-	runtimeEmbeddedSchemaCatalogMapsOnce.Do(func() {
-		if runtimeEmbeddedSchemaCatalog.Snapshot.Tools != nil {
-			return
-		}
-		payload, err := registryToSnapshotPayloadFn(runtimeEmbeddedSchemaCatalog.Registry)
-		if err != nil {
-			runtimeEmbeddedSchemaCatalogMapsErr = fmt.Errorf("materialize embedded Schema Catalog maps: %w", err)
-			return
-		}
-		runtimeEmbeddedSchemaCatalog.Snapshot.Catalog = payload.Catalog
-		runtimeEmbeddedSchemaCatalog.Snapshot.Tools = payload.Tools
-	})
-	if runtimeEmbeddedSchemaCatalogMapsErr != nil {
-		return loadedSchemaCatalog{}, runtimeEmbeddedSchemaCatalogMapsErr
-	}
-	return runtimeEmbeddedSchemaCatalog, nil
-}
 
 // schemaCatalogEnvelope is the global half of the split release Catalog. It
 // mirrors the generator's envelope struct; the Catalog map and release hashes
@@ -168,32 +101,16 @@ type schemaCatalogToolShardTyped struct {
 	Tools   map[string]schemaToolWire `json:"tools"`
 }
 
-// assembleEmbeddedSchemaCatalog reassembles the split release Catalog shards
-// by decoding JSON bytes directly into typed wire structs, then building
-// SchemaRegistry/SchemaIndex. Unyped Snapshot.Catalog/Tools maps are left
-// empty until materializeEmbeddedSchemaCatalogMaps (tests / rare map callers).
-//
-// Wire JSON (catalog.json + tools/*.json) is unchanged. Generation-time
-// delivery invariants still prove content equality through the map-based
-// decodeSchemaCatalogSnapshot path.
-func assembleEmbeddedSchemaCatalog() (loadedSchemaCatalog, error) {
-	envelope, tools, err := assembleTypedSchemaCatalog(embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		return loadedSchemaCatalog{}, err
-	}
-	return loadTypedSchemaCatalog(envelope, tools)
-}
-
 // assembleTypedSchemaCatalog decodes the embedded envelope and per-product
 // shards straight into wire structs for the production loader.
 func assembleTypedSchemaCatalog(envelopeJSON []byte, shards fs.FS, dir string) (schemaCatalogEnvelopeTyped, map[string]schemaToolWire, error) {
 	var envelope schemaCatalogEnvelopeTyped
 	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
-		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode embedded schema catalog.json: %w", err)
+		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode schema catalog.json: %w", err)
 	}
 	entries, err := fs.ReadDir(shards, dir)
 	if err != nil {
-		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read embedded schema catalog tools directory: %w", err)
+		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read schema catalog tools directory: %w", err)
 	}
 	tools := make(map[string]schemaToolWire, len(entries)*8)
 	for _, entry := range entries {
@@ -202,11 +119,11 @@ func assembleTypedSchemaCatalog(envelopeJSON []byte, shards fs.FS, dir string) (
 		}
 		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
 		if readErr != nil {
-			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read embedded schema catalog shard %s: %w", entry.Name(), readErr)
+			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read schema catalog shard %s: %w", entry.Name(), readErr)
 		}
 		var shard schemaCatalogToolShardTyped
 		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
-			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode embedded schema catalog shard %s: %w", entry.Name(), err)
+			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode schema catalog shard %s: %w", entry.Name(), err)
 		}
 		for canonical, spec := range shard.Tools {
 			tools[canonical] = spec
@@ -253,11 +170,11 @@ func loadTypedSchemaCatalog(envelope schemaCatalogEnvelopeTyped, tools map[strin
 func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string) (SchemaCatalogSnapshot, error) {
 	var envelope schemaCatalogEnvelope
 	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
-		return SchemaCatalogSnapshot{}, fmt.Errorf("decode embedded schema catalog.json: %w", err)
+		return SchemaCatalogSnapshot{}, fmt.Errorf("decode schema catalog.json: %w", err)
 	}
 	entries, err := fs.ReadDir(shards, dir)
 	if err != nil {
-		return SchemaCatalogSnapshot{}, fmt.Errorf("read embedded schema catalog tools directory: %w", err)
+		return SchemaCatalogSnapshot{}, fmt.Errorf("read schema catalog tools directory: %w", err)
 	}
 	tools := make(map[string]map[string]any, len(entries)*8)
 	for _, entry := range entries {
@@ -266,11 +183,11 @@ func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string
 		}
 		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
 		if readErr != nil {
-			return SchemaCatalogSnapshot{}, fmt.Errorf("read embedded schema catalog shard %s: %w", entry.Name(), readErr)
+			return SchemaCatalogSnapshot{}, fmt.Errorf("read schema catalog shard %s: %w", entry.Name(), readErr)
 		}
 		var shard schemaCatalogToolShard
 		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
-			return SchemaCatalogSnapshot{}, fmt.Errorf("decode embedded schema catalog shard %s: %w", entry.Name(), err)
+			return SchemaCatalogSnapshot{}, fmt.Errorf("decode schema catalog shard %s: %w", entry.Name(), err)
 		}
 		for canonical, spec := range shard.Tools {
 			tools[canonical] = spec
@@ -283,11 +200,6 @@ func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string
 		Catalog:     envelope.Catalog,
 		Tools:       tools,
 	}, nil
-}
-
-func embeddedSchemaCatalogError() error {
-	_ = embeddedSchemaCatalog()
-	return runtimeEmbeddedSchemaCatalogErr
 }
 
 var (
@@ -356,7 +268,7 @@ func BuildSchemaCatalogSnapshot(resolved ResolvedSchemaBuild, options SchemaCata
 	// collectRuntimeSchemaEntriesFromBound. Do not apply a post-assembly
 	// allowlist: doing so could silently erase an otherwise valid reviewed
 	// manual-only command after the exact-set validation above has passed.
-	registry.Source = "embedded-command-catalog"
+	registry.Source = SchemaSourceRuntimeAssembled
 	payload, err := registry.ToSnapshotPayload()
 	if err != nil {
 		return SchemaCatalogSnapshot{}, fmt.Errorf("serialize typed Schema registry: %w", err)
@@ -429,23 +341,21 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 	return loadedSchemaCatalog{Snapshot: snapshot, Registry: registry, Index: index}, nil
 }
 
-func embeddedSchemaCatalogAvailable() bool {
-	return len(embeddedSchemaCatalog().Index.CanonicalPaths()) > 0
-}
-
-func embeddedSchemaAllPayload() (map[string]any, error) {
-	return schemaAllPayloadFromLoaded(embeddedSchemaCatalog())
-}
-
-func embeddedSchemaOverviewPayload() (map[string]any, error) {
-	return schemaOverviewPayloadFromLoaded(embeddedSchemaCatalog())
+func deliverySchemaCatalogAvailable() bool {
+	return deliverySchemaCatalogError() == nil && len(deliverySchemaCatalog().Index.CanonicalPaths()) > 0
 }
 
 func deliverySchemaAllPayload() (map[string]any, error) {
+	if err := deliverySchemaCatalogError(); err != nil {
+		return nil, err
+	}
 	return schemaAllPayloadFromLoaded(deliverySchemaCatalog())
 }
 
 func deliverySchemaOverviewPayload() (map[string]any, error) {
+	if err := deliverySchemaCatalogError(); err != nil {
+		return nil, err
+	}
 	return schemaOverviewPayloadFromLoaded(deliverySchemaCatalog())
 }
 
@@ -501,16 +411,15 @@ func exactSchemaCommand(root *cobra.Command, rawPath string) *cobra.Command {
 	return current
 }
 
-func embeddedSchemaPayload(args []string) (map[string]any, error) {
-	return schemaPayloadFromLoadedCatalog(embeddedSchemaCatalog(), args)
-}
-
 // queryDeliverySchemaPayload serves dws schema queries through the production
 // delivery loader. Completeness / invariant gates must call
 // schemaPayloadFromLoadedCatalog (or the deliverySchemaPayload var alias) with
 // an explicit loaded catalog — never this helper — to avoid an init cycle
 // through assembleSchemaCatalogFromRoot → BuildSchemaCatalogSnapshot.
 func queryDeliverySchemaPayload(args []string) (map[string]any, error) {
+	if err := deliverySchemaCatalogError(); err != nil {
+		return nil, err
+	}
 	return schemaPayloadFromLoadedCatalog(deliverySchemaCatalog(), args)
 }
 
@@ -541,12 +450,16 @@ func schemaPayloadFromLoadedCatalog(loaded loadedSchemaCatalog, args []string) (
 			if err != nil {
 				return nil, err
 			}
+			source := strings.TrimSpace(loaded.Registry.Source)
+			if source == "" {
+				source = SchemaSourceRuntimeAssembled
+			}
 			return map[string]any{
 				"kind":    "schema",
 				"level":   "product",
 				"count":   len(product.Tools),
 				"product": payload,
-				"source":  "embedded-command-catalog",
+				"source":  source,
 			}, nil
 		}
 	}
@@ -564,13 +477,17 @@ func schemaPayloadFromLoadedCatalog(loaded loadedSchemaCatalog, args []string) (
 				}
 			}
 			if len(matched) > 0 {
+				source := strings.TrimSpace(loaded.Registry.Source)
+				if source == "" {
+					source = SchemaSourceRuntimeAssembled
+				}
 				return map[string]any{
 					"kind":   "schema",
 					"level":  "group",
 					"path":   path,
 					"count":  len(matched),
 					"tools":  matched,
-					"source": "embedded-command-catalog",
+					"source": source,
 				}, nil
 			}
 		}

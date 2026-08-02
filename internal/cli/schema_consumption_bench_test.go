@@ -1,291 +1,41 @@
 // Copyright 2026 Alibaba Group
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 package cli
 
-import (
-	"crypto/sha256"
-	"io/fs"
-	"strings"
-	"testing"
-)
+import "testing"
 
-// These benchmarks attribute Schema consumption cost. sync.Once wrappers are
-// memoized, so cold-path benches call the underlying work directly — measuring
-// the exported wrappers would time one real run followed by N no-ops.
-//
-// Cold-start attribution (Apple M3 Pro, benchtime=3x, 2026-08-01):
-//
-// Full Catalog (dws schema / --all only — not ResolveMeta):
-//
-//	BenchmarkAssembleEmbeddedSchemaCatalog      ~294–360ms  ~175MB  ~1.2M allocs
-//	BenchmarkCatalogStageDecodeTyped            ~160–173ms  ~117MB
-//	BenchmarkCatalogStageTypedRegistryFromWire  ~80–120ms    ~40MB
-//
-// CommandMeta summary index (ResolveMeta / leaf --help Safety; gob delivery):
-//
-//	BenchmarkResolveMetaFirstHit                ~0.74–0.83ms ~1.7MB  ~19k allocs
-//	BenchmarkResolveMetaSteadyState             ~70–125ns      0B  0 allocs
-//
-// Historical JSON meta-index first hit ~5.8ms/~3.5MB; pre typed-wire /
-// pre meta index AssembleEmbedded ~1091ms/732MB (first ResolveMeta paid that
-// full Catalog cost). loadcost_bench_test.go's old ~1.4s/740MB figure is obsolete.
-//
-// Package tests still enable validateSnapshotTypedRoundTrip via
-// schema_snapshot_roundtrip_test.go; benches force it off so they measure the
-// production path.
-
-func withProductionSchemaRoundTrip(b *testing.B) func() {
-	b.Helper()
-	prev := validateSchemaSnapshotTypedRoundTrip
-	validateSchemaSnapshotTypedRoundTrip = false
-	return func() { validateSchemaSnapshotTypedRoundTrip = prev }
-}
-
-// BenchmarkAssembleEmbeddedSchemaCatalog measures decoding the embedded release
-// snapshot: the global envelope plus every per-product tools shard, then typed
-// registry construction (production cold-start path).
-func BenchmarkAssembleEmbeddedSchemaCatalog(b *testing.B) {
-	restore := withProductionSchemaRoundTrip(b)
-	defer restore()
+func BenchmarkDeliverySchemaCatalog(b *testing.B) {
+	if err := deliverySchemaCatalogError(); err != nil {
+		b.Fatalf("delivery catalog unavailable: %v", err)
+	}
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		loaded, err := assembleEmbeddedSchemaCatalog()
-		if err != nil {
-			b.Fatal(err)
-		}
-		if len(loaded.Registry.Products) == 0 {
-			b.Fatal("decoded an empty catalog")
-		}
-	}
-}
-
-// BenchmarkSchemaRegistryFromSnapshot measures the map-based loader used by
-// generation/delivery decodeSchemaCatalogSnapshot (not the embed cold path).
-func BenchmarkSchemaRegistryFromSnapshot(b *testing.B) {
-	restore := withProductionSchemaRoundTrip(b)
-	defer restore()
-	snapshot, err := assembleSchemaCatalogSnapshot(
-		embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		b.Skip("embedded catalog unavailable")
-	}
 	b.ResetTimer()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		registry, _, err := schemaRegistryFromSnapshot(snapshot)
-		if err != nil {
-			b.Fatal(err)
-		}
-		if len(registry.Products) == 0 {
-			b.Fatal("empty registry")
-		}
+		resetDeliverySchemaCatalogStateForTest()
+		_ = deliverySchemaCatalog()
 	}
 }
 
-// BenchmarkBuildMetaByCLIPath measures projecting CommandMeta from a decoded
-// Catalog registry (consistency-gate path), isolated from Catalog decode.
-func BenchmarkBuildMetaByCLIPath(b *testing.B) {
-	loaded := embeddedSchemaCatalog()
-	if len(loaded.Registry.Products) == 0 {
-		b.Skip("embedded catalog unavailable")
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		if len(buildMetaByCLIPath(loaded)) == 0 {
-			b.Fatal("built an empty lookup")
-		}
-	}
-}
-
-// BenchmarkResolveMetaFirstHit measures decoding the committed CommandMeta
-// summary index into the ResolveMeta lookup. This is the cold cost leaf
-// --help Safety / ResolveMeta pay; it must not assemble the full Catalog.
-func BenchmarkResolveMetaFirstHit(b *testing.B) {
-	if len(embeddedSchemaMetaIndexGob) == 0 {
-		b.Skip("embedded meta index unavailable")
-	}
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		lookup, err := decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexGob)
-		if err != nil {
-			b.Fatal(err)
-		}
-		if _, ok := lookup["dev app delete"]; !ok {
-			b.Fatal("first-hit lookup missed")
-		}
-	}
-}
-
-// BenchmarkResolveMetaSteadyState measures a warm lookup, i.e. what every
-// --help Safety annotation costs once the map exists.
 func BenchmarkResolveMetaSteadyState(b *testing.B) {
 	if _, ok := ResolveMeta("dev app delete"); !ok {
-		b.Skip("embedded meta index unavailable")
+		b.Fatal("ResolveMeta(dev app delete) missing")
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		if _, ok := ResolveMeta("dev app delete"); !ok {
-			b.Fatal("warm lookup missed")
-		}
+		_, _ = ResolveMeta("dev app delete")
 	}
 }
 
-// The benchmarks below attribute the cost *inside* assembleEmbeddedSchemaCatalog.
-
-// BenchmarkCatalogStageDecodeShards measures only the untyped JSON decode of the
-// envelope plus the per-product shards into map[string]any (legacy/test path).
-func BenchmarkCatalogStageDecodeShards(b *testing.B) {
+func BenchmarkBuildMetaByCLIPath(b *testing.B) {
+	loaded := deliverySchemaCatalog()
+	if err := deliverySchemaCatalogError(); err != nil {
+		b.Fatal(err)
+	}
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		snapshot, err := assembleSchemaCatalogSnapshot(
-			embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-		if err != nil {
-			b.Fatal(err)
-		}
-		if len(snapshot.Tools) == 0 {
-			b.Fatal("decoded an empty snapshot")
-		}
-	}
-}
-
-// BenchmarkCatalogStageDecodeTyped measures production shard decode: JSON bytes
-// → schemaCatalogWire + map[canonical]schemaToolWire with no map[string]any.
-func BenchmarkCatalogStageDecodeTyped(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		envelope, tools, err := assembleTypedSchemaCatalog(
-			embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-		if err != nil {
-			b.Fatal(err)
-		}
-		if envelope.Catalog.Kind == "" || len(tools) == 0 {
-			b.Fatal("decoded an empty typed snapshot")
-		}
-	}
-}
-
-// BenchmarkCatalogStageSourceHash measures re-hashing the decoded snapshot,
-// which production no longer does on cold start (drift CI covers it).
-func BenchmarkCatalogStageSourceHash(b *testing.B) {
-	snapshot, err := assembleSchemaCatalogSnapshot(
-		embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		b.Skip("embedded catalog unavailable")
-	}
 	b.ResetTimer()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		if schemaCatalogSnapshotHash(snapshot) == "" {
-			b.Fatal("empty hash")
-		}
-	}
-}
-
-// BenchmarkCatalogStageTypedRegistry measures converting untyped snapshot maps
-// into the typed registry (map path, round-trip off).
-func BenchmarkCatalogStageTypedRegistry(b *testing.B) {
-	restore := withProductionSchemaRoundTrip(b)
-	defer restore()
-	snapshot, err := assembleSchemaCatalogSnapshot(
-		embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		b.Skip("embedded catalog unavailable")
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		registry, _, err := schemaRegistryFromSnapshot(snapshot)
-		if err != nil {
-			b.Fatal(err)
-		}
-		if len(registry.Products) == 0 {
-			b.Fatal("empty registry")
-		}
-	}
-}
-
-// BenchmarkCatalogStageTypedRegistryFromWire measures wire→SchemaRegistry with
-// no map[string]any intermediate (production convert stage).
-func BenchmarkCatalogStageTypedRegistryFromWire(b *testing.B) {
-	envelope, tools, err := assembleTypedSchemaCatalog(
-		embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		b.Skip("embedded catalog unavailable")
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		registry, _, err := schemaRegistryFromTyped(envelope.Catalog, tools)
-		if err != nil {
-			b.Fatal(err)
-		}
-		if len(registry.Products) == 0 {
-			b.Fatal("empty registry")
-		}
-	}
-}
-
-// BenchmarkCatalogStageValidations measures the whole-registry validation
-// passes the loader runs after conversion.
-func BenchmarkCatalogStageValidations(b *testing.B) {
-	loaded := embeddedSchemaCatalog()
-	if len(loaded.Registry.Products) == 0 {
-		b.Skip("embedded catalog unavailable")
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		if err := loadCatalogValidateInterfaces(loaded.Registry); err != nil {
-			b.Fatal(err)
-		}
-		if err := loadCatalogValidateProvenance(loaded.Registry); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// BenchmarkCatalogStageRawByteHash measures hashing the embedded bytes directly,
-// as an alternative to schemaCatalogSnapshotHash, which re-marshals the decoded
-// maps. It is the cost a raw-bytes integrity check would pay instead.
-func BenchmarkCatalogStageRawByteHash(b *testing.B) {
-	entries, err := fs.ReadDir(embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		b.Skip("embedded catalog unavailable")
-	}
-	shards := make([][]byte, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		data, readErr := fs.ReadFile(embeddedSchemaCatalogTools, "schema_catalog/tools/"+entry.Name())
-		if readErr != nil {
-			b.Skip("embedded shard unavailable")
-		}
-		shards = append(shards, data)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		sum := sha256.New()
-		sum.Write(embeddedSchemaCatalogEnvelopeJSON)
-		for _, shard := range shards {
-			sum.Write(shard)
-		}
-		if len(sum.Sum(nil)) != sha256.Size {
-			b.Fatal("short digest")
-		}
+		_ = buildMetaByCLIPath(loaded)
 	}
 }

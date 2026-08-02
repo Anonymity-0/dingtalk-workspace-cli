@@ -4,8 +4,8 @@
 # (version + surface_hash + source_hash + catalog + tools) that policy jq
 # queries consume.
 #
-# Production runtime does not read committed schema_catalog/; this helper is
-# for CI/policy only.
+# Production reads runtime assembly only; this helper creates an ephemeral
+# Catalog dump exclusively for CI/policy queries.
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"

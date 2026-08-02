@@ -5,7 +5,7 @@
 // costs to store one product's Schema catalog as compiled-in Go literals rather
 // than embedded JSON, which is how internal/shortcut stores its 376 definitions
 // (measured at 1.9ms/3MB versus the full catalog assemble ~294–360ms/~175MB;
-// ResolveMeta itself now uses schema_meta_index.gob instead).
+// ResolveMeta itself now uses assembled SchemaRegistry instead).
 //
 // The struct shape mirrors the runtime-consumed subset of schemaToolWire. It is
 // structurally equivalent rather than shared, because the real type is

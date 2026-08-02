@@ -522,48 +522,24 @@ func crossPlatformAgentSelectionBound(t *testing.T, mutate func(*cobra.Command, 
 
 func TestCrossPlatformCoverageSchemaCatalogRemainingBranches(t *testing.T) {
 	t.Run("materialize maps error paths", func(t *testing.T) {
-		resetEmbeddedSchemaCatalogStateForTest()
-		t.Cleanup(resetEmbeddedSchemaCatalogStateForTest)
-		assembleEmbeddedSchemaCatalogHook = func() (loadedSchemaCatalog, error) {
+		RegisterSchemaSourceRoot(func() *cobra.Command { return &cobra.Command{Use: "dws"} })
+		assembleDeliverySchemaCatalogFn = func(*cobra.Command) (loadedSchemaCatalog, error) {
 			return loadedSchemaCatalog{}, fmt.Errorf("catalog load failed")
 		}
-		if _, err := materializeEmbeddedSchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "catalog load failed") {
+		t.Cleanup(restorePackageCLISchemaDeliveryForTest)
+		if _, err := materializeDeliverySchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "catalog load failed") {
 			t.Fatalf("catalog err = %v", err)
-		}
-		resetEmbeddedSchemaCatalogStateForTest()
-		assembleEmbeddedSchemaCatalogHook = assembleEmbeddedSchemaCatalog
-		_ = embeddedSchemaCatalog()
-		runtimeEmbeddedSchemaCatalog.Snapshot.Tools = map[string]map[string]any{"x": {}}
-		if _, err := materializeEmbeddedSchemaCatalogMaps(); err != nil {
-			t.Fatalf("pre-materialized tools should succeed: %v", err)
-		}
-		resetEmbeddedSchemaCatalogStateForTest()
-		_ = embeddedSchemaCatalog()
-		registryToSnapshotPayloadFn = func(SchemaRegistry) (SchemaCatalogSnapshot, error) {
-			return SchemaCatalogSnapshot{}, fmt.Errorf("payload failed")
-		}
-		t.Cleanup(func() {
-			registryToSnapshotPayloadFn = func(r SchemaRegistry) (SchemaCatalogSnapshot, error) {
-				payload, err := r.ToSnapshotPayload()
-				if err != nil {
-					return SchemaCatalogSnapshot{}, err
-				}
-				return SchemaCatalogSnapshot{Catalog: payload.Catalog, Tools: payload.Tools}, nil
-			}
-		})
-		if _, err := materializeEmbeddedSchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "materialize embedded Schema Catalog maps") {
-			t.Fatalf("payload err = %v", err)
 		}
 	})
 
 	t.Run("assembleTypedSchemaCatalog shard errors", func(t *testing.T) {
 		envelope := []byte(`{"version":1,"source_hash":"x","catalog":{"kind":"schema","level":"catalog","source":"t","count":1,"tool_count":1,"products":[]}}`)
 		missingDir := fstest.MapFS{}
-		if _, _, err := assembleTypedSchemaCatalog(envelope, missingDir, "missing"); err == nil || !strings.Contains(err.Error(), "read embedded schema catalog tools directory") {
+		if _, _, err := assembleTypedSchemaCatalog(envelope, missingDir, "missing"); err == nil || !strings.Contains(err.Error(), "read schema catalog tools directory") {
 			t.Fatalf("read dir error = %v", err)
 		}
 		shards := shardReadErrFS{MapFS: fstest.MapFS{"tools/bad.json": {Data: []byte(`{"product":"sample","tools":{}}`)}}}
-		if _, _, err := assembleTypedSchemaCatalog(envelope, shards, "tools"); err == nil || !strings.Contains(err.Error(), "read embedded schema catalog shard") {
+		if _, _, err := assembleTypedSchemaCatalog(envelope, shards, "tools"); err == nil || !strings.Contains(err.Error(), "read schema catalog shard") {
 			t.Fatalf("read shard error = %v", err)
 		}
 	})
@@ -784,20 +760,14 @@ func collectFirstEntry(t *testing.T, bound BoundCommandRegistry) runtimeSchemaEn
 }
 
 func TestCrossPlatformCoverageCommandMetaRemainingBranches(t *testing.T) {
-	t.Run("init decode failure and panic guard", func(t *testing.T) {
+	t.Run("missing factory fail-closed panic guard", func(t *testing.T) {
+		schemaSourceRootFn = nil
+		assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 		resetMetaByCLIPathStateForTest()
-		t.Cleanup(resetMetaByCLIPathStateForTest)
-		decodeEmbeddedSchemaMetaIndexLookupFn = func() (map[string]CommandMeta, error) {
-			return nil, fmt.Errorf("broken index")
-		}
-		t.Cleanup(func() {
-			decodeEmbeddedSchemaMetaIndexLookupFn = func() (map[string]CommandMeta, error) {
-				return decodeSchemaMetaIndexLookup(embeddedSchemaMetaIndexGob)
-			}
-		})
+		t.Cleanup(restorePackageCLISchemaDeliveryForTest)
 		defer func() {
 			if recovered := recover(); recovered == nil {
-				t.Fatal("ResolveMeta must panic when meta index decode fails")
+				t.Fatal("ResolveMeta must panic when source root is missing")
 			}
 		}()
 		ResolveMeta("dev app delete")

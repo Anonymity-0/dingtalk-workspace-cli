@@ -320,8 +320,8 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 			}
 		})
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "internal/cli/schema_catalog"), filepath.Join(root, "internal/cli/schema_meta_index.gob"), ""); err != nil {
-		t.Fatalf("safe output rejected: %v", err)
+	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "artifacts/schema_catalog"), filepath.Join(root, "artifacts/schema_meta_index.gob"), ""); err != nil {
+		t.Fatalf("safe artifact output rejected: %v", err)
 	}
 	if err := validateCatalogOutputIsolation(root, filepath.Join(t.TempDir(), "schema_catalog"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), ""); err != nil {
 		t.Fatalf("external temporary output rejected: %v", err)

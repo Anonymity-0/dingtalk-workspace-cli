@@ -23,14 +23,14 @@ func TestCalendarRecurrenceParamDeclsCoverHintPins(t *testing.T) {
 		"recurrence-range-type":   "any recurrence-* flag is provided",
 	}
 	wantProperty := map[string]string{
-		"recurrence-day-of-month":     "recurrence.pattern.dayOfMonth",
-		"recurrence-days-of-week":     "recurrence.pattern.daysOfWeek",
-		"recurrence-index":            "recurrence.pattern.index",
-		"recurrence-interval":         "recurrence.pattern.interval",
-		"recurrence-type":             "recurrence.pattern.type",
-		"recurrence-end-date":         "recurrence.range.endDate",
-		"recurrence-count":            "recurrence.range.numberOfOccurrences",
-		"recurrence-range-type":       "recurrence.range.type",
+		"recurrence-day-of-month":      "recurrence.pattern.dayOfMonth",
+		"recurrence-days-of-week":      "recurrence.pattern.daysOfWeek",
+		"recurrence-index":             "recurrence.pattern.index",
+		"recurrence-interval":          "recurrence.pattern.interval",
+		"recurrence-type":              "recurrence.pattern.type",
+		"recurrence-end-date":          "recurrence.range.endDate",
+		"recurrence-count":             "recurrence.range.numberOfOccurrences",
+		"recurrence-range-type":        "recurrence.range.type",
 		"recurrence-first-day-of-week": "recurrence.pattern.firstDayOfWeek",
 	}
 	if len(decls) != len(wantProperty) {

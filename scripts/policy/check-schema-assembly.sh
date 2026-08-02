@@ -2,8 +2,8 @@
 set -eu
 
 # Prove ResolveSchemaBuild → Catalog assembly is deterministic across two
-# consecutive runs. Does not compare against committed schema_catalog/ (that
-# residual fixture is no longer the delivery authority).
+# consecutive CI/local dump runs. Production consumes the assembled registry,
+# not a committed Catalog or meta-index fixture.
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -47,8 +47,10 @@ if [ -e internal/cli/schema_hints ]; then
 	exit 1
 fi
 
-if [ -e internal/cli/schema_meta_index.json ]; then
-	printf '%s\n' 'schema assembly: retired schema_meta_index.json must not be present' >&2
+if [ -e internal/cli/schema_catalog ] ||
+	[ -e internal/cli/schema_meta_index.gob ] ||
+	[ -e internal/cli/schema_meta_index.json ]; then
+	printf '%s\n' 'schema assembly: committed Schema Catalog/meta-index fixtures must not be present' >&2
 	exit 1
 fi
 

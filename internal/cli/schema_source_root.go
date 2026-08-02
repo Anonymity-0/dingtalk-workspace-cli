@@ -21,10 +21,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// SchemaSourceRuntimeAssembled is stamped on SchemaRegistry.Source for
+// declare→ResolveSchemaBuild delivery.
+const SchemaSourceRuntimeAssembled = "runtime-assembled"
+
+// errSchemaSourceRootNotRegistered is returned when Catalog / ResolveMeta
+// delivery is requested without a root factory.
+var errSchemaSourceRootNotRegistered = fmt.Errorf(
+	"schema source root factory is not registered; call RegisterSchemaSourceRoot (app.NewRootCommand or test helper)",
+)
+
 // schemaSourceRootFn builds the distribution-owned Cobra tree used to assemble
-// Schema at runtime (声明即 Catalog). The app package registers
-// NewSchemaSourceRootCommand during init; package cli tests may leave this nil
-// and fall back to the committed shard/gob fixtures.
+// Schema at runtime (声明即 Catalog). Without a factory, delivery fails closed
+// — there is no committed Catalog/gob fallback.
 var schemaSourceRootFn func() *cobra.Command
 
 var (
@@ -32,13 +41,16 @@ var (
 	runtimeDeliverySchemaCatalog          loadedSchemaCatalog
 	runtimeDeliverySchemaCatalogErr       error
 	runtimeDeliverySchemaCatalogLazyCount atomic.Uint64
+	runtimeDeliverySchemaCatalogMapsOnce  sync.Once
+	runtimeDeliverySchemaCatalogMapsErr   error
 )
 
 // RegisterSchemaSourceRoot installs the root factory used by runtime Schema
 // delivery (dws schema / ResolveMeta). Production registers from internal/app.
-// Passing nil clears the factory (tests only).
+// Passing nil clears the factory (tests only) and resets lazy delivery / Meta state.
 func RegisterSchemaSourceRoot(factory func() *cobra.Command) {
 	schemaSourceRootFn = factory
+	resetMetaByCLIPathStateForTest()
 }
 
 // SchemaSourceRootRegistered reports whether runtime assembly has a root factory.
@@ -51,11 +63,11 @@ func resetDeliverySchemaCatalogStateForTest() {
 	runtimeDeliverySchemaCatalog = loadedSchemaCatalog{}
 	runtimeDeliverySchemaCatalogErr = nil
 	runtimeDeliverySchemaCatalogLazyCount.Store(0)
+	runtimeDeliverySchemaCatalogMapsOnce = sync.Once{}
+	runtimeDeliverySchemaCatalogMapsErr = nil
 }
 
-// assembleSchemaCatalogFromRoot is the declare→Catalog runtime path. It uses
-// ResolveSchemaBuild + typed registry projection (not BuildSchemaCatalogSnapshot):
-// full generate-time gates stay in CI (cmd_schema_catalog / check-schema-assembly).
+// assembleSchemaCatalogFromRoot is the declare→Catalog runtime path.
 func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, error) {
 	if root == nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("schema source root is nil")
@@ -68,7 +80,7 @@ func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, er
 		return loadedSchemaCatalog{}, fmt.Errorf("validate Schema parameter binding delivery: %w", err)
 	}
 	registry := resolved.registry
-	registry.Source = "embedded-command-catalog"
+	registry.Source = SchemaSourceRuntimeAssembled
 	if err := loadCatalogValidateInterfaces(registry); err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("validate Schema interface disposition: %w", err)
 	}
@@ -79,22 +91,12 @@ func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, er
 	if err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("build Schema index: %w", err)
 	}
-	payload, err := registry.ToSnapshotPayload()
-	if err != nil {
-		return loadedSchemaCatalog{}, fmt.Errorf("serialize Schema registry: %w", err)
-	}
-	snapshot := SchemaCatalogSnapshot{
-		Version:     SchemaCatalogSnapshotVersion,
-		SurfaceHash: resolved.RegistryHash(),
-		Catalog:     payload.Catalog,
-		Tools:       payload.Tools,
-	}
-	snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
+	surfaceHash := resolved.RegistryHash()
 	return loadedSchemaCatalog{
 		Snapshot: SchemaCatalogSnapshot{
-			Version:     snapshot.Version,
-			SurfaceHash: snapshot.SurfaceHash,
-			SourceHash:  snapshot.SourceHash,
+			Version:     SchemaCatalogSnapshotVersion,
+			SurfaceHash: surfaceHash,
+			SourceHash:  surfaceHash,
 		},
 		Registry: registry,
 		Index:    index,
@@ -103,29 +105,65 @@ func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, er
 
 var assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 
-// deliverySchemaCatalog is the production Catalog loader. When a root factory
-// is registered it lazily assembles via ResolveSchemaBuild; otherwise it falls
-// back to the committed schema_catalog/ embed (package-cli test residual).
+// deliverySchemaCatalog is the sole production Catalog loader. It lazily
+// assembles via ResolveSchemaBuild and caches the ResolveMeta map. Without a
+// factory it fails closed.
 func deliverySchemaCatalog() loadedSchemaCatalog {
-	if schemaSourceRootFn == nil {
-		return embeddedSchemaCatalog()
-	}
 	runtimeDeliverySchemaCatalogOnce.Do(func() {
 		runtimeDeliverySchemaCatalogLazyCount.Add(1)
+		if schemaSourceRootFn == nil {
+			runtimeDeliverySchemaCatalogErr = errSchemaSourceRootNotRegistered
+			installDeliveryCommandMeta(loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr)
+			return
+		}
 		root := schemaSourceRootFn()
 		if root == nil {
 			runtimeDeliverySchemaCatalogErr = fmt.Errorf("schema source root factory returned nil")
+			installDeliveryCommandMeta(loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr)
 			return
 		}
 		runtimeDeliverySchemaCatalog, runtimeDeliverySchemaCatalogErr = assembleDeliverySchemaCatalogFn(root)
+		if runtimeDeliverySchemaCatalogErr != nil {
+			installDeliveryCommandMeta(loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr)
+			return
+		}
+		installDeliveryCommandMeta(runtimeDeliverySchemaCatalog, nil)
 	})
 	return runtimeDeliverySchemaCatalog
 }
 
 func deliverySchemaCatalogError() error {
 	_ = deliverySchemaCatalog()
-	if schemaSourceRootFn != nil {
-		return runtimeDeliverySchemaCatalogErr
+	return runtimeDeliverySchemaCatalogErr
+}
+
+// materializeDeliverySchemaCatalogMaps fills Snapshot.Catalog/Tools when a
+// caller still needs untyped maps.
+func materializeDeliverySchemaCatalogMaps() (loadedSchemaCatalog, error) {
+	_ = deliverySchemaCatalog()
+	if runtimeDeliverySchemaCatalogErr != nil {
+		return loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr
 	}
-	return embeddedSchemaCatalogError()
+	runtimeDeliverySchemaCatalogMapsOnce.Do(func() {
+		if runtimeDeliverySchemaCatalog.Snapshot.Tools != nil {
+			return
+		}
+		payload, err := registryToSnapshotPayloadFn(runtimeDeliverySchemaCatalog.Registry)
+		if err != nil {
+			runtimeDeliverySchemaCatalogMapsErr = fmt.Errorf("materialize Schema Catalog maps: %w", err)
+			return
+		}
+		runtimeDeliverySchemaCatalog.Snapshot.Catalog = payload.Catalog
+		runtimeDeliverySchemaCatalog.Snapshot.Tools = payload.Tools
+		runtimeDeliverySchemaCatalog.Snapshot.SourceHash = schemaCatalogSnapshotHash(SchemaCatalogSnapshot{
+			Version:     runtimeDeliverySchemaCatalog.Snapshot.Version,
+			SurfaceHash: runtimeDeliverySchemaCatalog.Snapshot.SurfaceHash,
+			Catalog:     payload.Catalog,
+			Tools:       payload.Tools,
+		})
+	})
+	if runtimeDeliverySchemaCatalogMapsErr != nil {
+		return loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogMapsErr
+	}
+	return runtimeDeliverySchemaCatalog, nil
 }

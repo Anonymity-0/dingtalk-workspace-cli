@@ -5,16 +5,35 @@ package cli
 
 import "testing"
 
-// mustEmbeddedSchemaCatalogMaps returns the embedded catalog with Snapshot
-// Catalog/Tools maps materialized. Production ResolveMeta never pays this cost.
-func mustEmbeddedSchemaCatalogMaps(t *testing.T) loadedSchemaCatalog {
+func mustDeliverySchemaCatalogMaps(t *testing.T) loadedSchemaCatalog {
 	t.Helper()
-	loaded, err := materializeEmbeddedSchemaCatalogMaps()
+	if !SchemaSourceRootRegistered() {
+		t.Fatal("schema source root factory is not registered; package-cli TestMain should install assembly delivery")
+	}
+	loaded, err := materializeDeliverySchemaCatalogMaps()
 	if err != nil {
-		t.Fatalf("materialize embedded Schema Catalog maps: %v", err)
+		t.Fatalf("materialize delivery Schema Catalog maps: %v", err)
 	}
 	if len(loaded.Snapshot.Tools) == 0 {
-		t.Fatal("embedded Schema Catalog tools maps are empty after materialize")
+		t.Fatal("delivery Schema Catalog tools maps are empty after materialize")
 	}
 	return loaded
 }
+
+// Compatibility aliases for existing package-cli tests.
+func mustEmbeddedSchemaCatalogMaps(t *testing.T) loadedSchemaCatalog {
+	return mustDeliverySchemaCatalogMaps(t)
+}
+
+func embeddedSchemaCatalog() loadedSchemaCatalog { return deliverySchemaCatalog() }
+func embeddedSchemaCatalogAvailable() bool       { return deliverySchemaCatalogAvailable() }
+func embeddedSchemaCatalogError() error          { return deliverySchemaCatalogError() }
+func embeddedSchemaPayload(args []string) (map[string]any, error) {
+	return queryDeliverySchemaPayload(args)
+}
+func embeddedSchemaAllPayload() (map[string]any, error)      { return deliverySchemaAllPayload() }
+func embeddedSchemaOverviewPayload() (map[string]any, error) { return deliverySchemaOverviewPayload() }
+func materializeEmbeddedSchemaCatalogMaps() (loadedSchemaCatalog, error) {
+	return materializeDeliverySchemaCatalogMaps()
+}
+func resetEmbeddedSchemaCatalogStateForTest() { restorePackageCLISchemaDeliveryForTest() }

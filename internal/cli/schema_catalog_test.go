@@ -23,10 +23,10 @@ func TestBuildSchemaCatalogSnapshotRejectsUnresolvedSource(t *testing.T) {
 func TestEmbeddedSchemaCatalogIntegrity(t *testing.T) {
 	loaded := embeddedSchemaCatalog()
 	if !embeddedSchemaCatalogAvailable() {
-		t.Fatal("embedded schema catalog is unavailable or failed integrity validation")
+		t.Fatal("delivery schema catalog is unavailable or failed integrity validation")
 	}
-	if got := loaded.Registry.Source; got != "embedded-command-catalog" {
-		t.Fatalf("catalog source = %q", got)
+	if got := loaded.Registry.Source; got != SchemaSourceRuntimeAssembled && got != "embedded-command-catalog" {
+		t.Fatalf("catalog source = %q, want %q", got, SchemaSourceRuntimeAssembled)
 	}
 }
 

@@ -55,18 +55,18 @@ func TestAssembleSchemaCatalogSnapshotMergesShards(t *testing.T) {
 
 func TestAssembleSchemaCatalogSnapshotFailureModes(t *testing.T) {
 	valid := []byte(`{"version":1,"source_hash":"sha256:c","catalog":{}}`)
-	if _, err := assembleSchemaCatalogSnapshot([]byte("{bad"), fstest.MapFS{}, "tools"); err == nil || !strings.Contains(err.Error(), "decode embedded schema catalog.json") {
+	if _, err := assembleSchemaCatalogSnapshot([]byte("{bad"), fstest.MapFS{}, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog.json") {
 		t.Fatalf("bad envelope err = %v", err)
 	}
 	if _, err := assembleSchemaCatalogSnapshot(valid, fstest.MapFS{}, "missing-dir"); err == nil || !strings.Contains(err.Error(), "tools directory") {
 		t.Fatalf("missing dir err = %v", err)
 	}
 	badShard := fstest.MapFS{"tools/doc.json": {Data: []byte("{bad")}}
-	if _, err := assembleSchemaCatalogSnapshot(valid, badShard, "tools"); err == nil || !strings.Contains(err.Error(), "decode embedded schema catalog shard") {
+	if _, err := assembleSchemaCatalogSnapshot(valid, badShard, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog shard") {
 		t.Fatalf("bad shard err = %v", err)
 	}
 	denied := failingReadFS{fstest.MapFS{"tools/doc.json": {Data: []byte(`{}`)}}}
-	if _, err := assembleSchemaCatalogSnapshot(valid, denied, "tools"); err == nil || !strings.Contains(err.Error(), "read embedded schema catalog shard") {
+	if _, err := assembleSchemaCatalogSnapshot(valid, denied, "tools"); err == nil || !strings.Contains(err.Error(), "read schema catalog shard") {
 		t.Fatalf("denied shard err = %v", err)
 	}
 }
@@ -224,11 +224,8 @@ func TestRenderSafetyAnnotation(t *testing.T) {
 // TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalogPropagatesAssemblyError
 // 通过临时替换嵌入的 envelope 字节，覆盖 assembleEmbeddedSchemaCatalog 的错误透传分支。
 func TestCrossPlatformCoverageAssembleEmbeddedSchemaCatalogPropagatesAssemblyError(t *testing.T) {
-	orig := embeddedSchemaCatalogEnvelopeJSON
-	t.Cleanup(func() { embeddedSchemaCatalogEnvelopeJSON = orig })
-	embeddedSchemaCatalogEnvelopeJSON = []byte("{bad")
-	if _, err := assembleEmbeddedSchemaCatalog(); err == nil || !strings.Contains(err.Error(), "decode embedded schema catalog.json") {
-		t.Fatalf("err = %v, want assembly error passthrough", err)
+	if _, _, err := assembleTypedSchemaCatalog([]byte("{bad"), nil, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog.json") {
+		t.Fatalf("error = %v", err)
 	}
 }
 

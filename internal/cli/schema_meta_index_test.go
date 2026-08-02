@@ -23,14 +23,11 @@ import (
 
 const schemaLazyMetaIndexChildEnv = "DWS_SCHEMA_LAZY_META_INDEX_CHILD"
 
-func TestEmbeddedSchemaMetaIndexMatchesCatalog(t *testing.T) {
-	index, err := DecodeSchemaMetaIndex(embeddedSchemaMetaIndexGob)
+func TestAssembledSchemaMetaIndexMatchesCatalog(t *testing.T) {
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	index, err := BuildSchemaMetaIndex(loaded.Snapshot)
 	if err != nil {
-		t.Fatalf("DecodeSchemaMetaIndex() error = %v", err)
-	}
-	loaded := embeddedSchemaCatalog()
-	if len(loaded.Registry.Products) == 0 {
-		t.Fatal("embedded catalog unavailable")
+		t.Fatalf("BuildSchemaMetaIndex() error = %v", err)
 	}
 	if err := ValidateSchemaMetaIndexAgainstCatalog(index, loaded.Registry); err != nil {
 		t.Fatalf("ValidateSchemaMetaIndexAgainstCatalog() error = %v", err)
@@ -43,28 +40,38 @@ func TestEmbeddedSchemaMetaIndexMatchesCatalog(t *testing.T) {
 	}
 }
 
-func TestResolveMetaDoesNotLoadFullCatalog(t *testing.T) {
+func TestResolveMetaLazilyAssemblesRegisteredSourceRoot(t *testing.T) {
 	if os.Getenv(schemaLazyMetaIndexChildEnv) == "1" {
-		if counts := RuntimeSchemaMetadataLoadCounts(); counts != (SchemaMetadataLoadCounts{}) {
-			t.Fatalf("package init loaded Schema metadata: %#v", counts)
+		// Child process starts fresh; TestMain installs assembled delivery.
+		// MCP/parameter embeds may load from unrelated package init — only
+		// Catalog/MetaIndex must stay at zero until ResolveMeta.
+		counts := RuntimeSchemaMetadataLoadCounts()
+		if counts.Catalog != 0 || counts.MetaIndex != 0 {
+			t.Fatalf("Catalog/MetaIndex loaded during package init: %#v", counts)
 		}
 		if _, ok := ResolveMeta("dev app delete"); !ok {
 			t.Fatal(`ResolveMeta("dev app delete") ok=false`)
 		}
-		counts := RuntimeSchemaMetadataLoadCounts()
+		counts = RuntimeSchemaMetadataLoadCounts()
 		if counts.MetaIndex != 1 {
 			t.Fatalf("MetaIndex load count = %d, want 1", counts.MetaIndex)
 		}
-		if counts.Catalog != 0 {
-			t.Fatalf("Catalog load count = %d, want 0 after ResolveMeta", counts.Catalog)
+		if counts.Catalog != 1 {
+			t.Fatalf("Catalog load count = %d, want 1 after ResolveMeta (single-track assembly)", counts.Catalog)
 		}
-		if err := embeddedSchemaMetaIndexError(); err != nil {
-			t.Fatalf("embeddedSchemaMetaIndexError() = %v", err)
+		for range 8 {
+			if _, ok := ResolveMeta("dev app delete"); !ok {
+				t.Fatal("steady ResolveMeta ok=false")
+			}
+		}
+		counts = RuntimeSchemaMetadataLoadCounts()
+		if counts.Catalog != 1 || counts.MetaIndex != 1 {
+			t.Fatalf("steady ResolveMeta re-assembled: %#v", counts)
 		}
 		return
 	}
 
-	command := exec.Command(os.Args[0], "-test.run=^TestResolveMetaDoesNotLoadFullCatalog$", "-test.count=1")
+	command := exec.Command(os.Args[0], "-test.run=^TestResolveMetaLazilyAssemblesRegisteredSourceRoot$", "-test.count=1")
 	command.Env = append(os.Environ(), schemaLazyMetaIndexChildEnv+"=1")
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -72,7 +79,27 @@ func TestResolveMetaDoesNotLoadFullCatalog(t *testing.T) {
 	}
 }
 
-func TestEmbeddedSchemaMetaIndexLoadsOnlyOnce(t *testing.T) {
+func TestResolveMetaFailsClosedWithoutSourceRoot(t *testing.T) {
+	resetMetaByCLIPathStateForTest()
+	schemaSourceRootFn = nil
+	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+	t.Cleanup(restorePackageCLISchemaDeliveryForTest)
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("ResolveMeta must panic without registered source root")
+		}
+		msg, _ := r.(string)
+		if !strings.Contains(msg, "schema source root factory is not registered") &&
+			!strings.Contains(msg, "schema CommandMeta index is unusable") {
+			t.Fatalf("panic = %#v, want fail-closed missing factory", r)
+		}
+	}()
+	ResolveMeta("dev app delete")
+}
+
+func TestResolveMetaLoadsOnlyOnce(t *testing.T) {
 	const childEnv = "DWS_SCHEMA_LAZY_META_INDEX_ONCE_CHILD"
 	if os.Getenv(childEnv) == "1" {
 		var wait sync.WaitGroup
@@ -90,7 +117,7 @@ func TestEmbeddedSchemaMetaIndexLoadsOnlyOnce(t *testing.T) {
 		return
 	}
 
-	command := exec.Command(os.Args[0], "-test.run=^TestEmbeddedSchemaMetaIndexLoadsOnlyOnce$", "-test.count=1")
+	command := exec.Command(os.Args[0], "-test.run=^TestResolveMetaLoadsOnlyOnce$", "-test.count=1")
 	command.Env = append(os.Environ(), childEnv+"=1")
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -99,16 +126,12 @@ func TestEmbeddedSchemaMetaIndexLoadsOnlyOnce(t *testing.T) {
 }
 
 func TestBuildSchemaMetaIndexDeterministic(t *testing.T) {
-	snapshot, err := assembleSchemaCatalogSnapshot(
-		embeddedSchemaCatalogEnvelopeJSON, embeddedSchemaCatalogTools, "schema_catalog/tools")
-	if err != nil {
-		t.Skip("embedded catalog unavailable")
-	}
-	first, err := BuildSchemaMetaIndex(snapshot)
+	loaded := mustDeliverySchemaCatalogMaps(t)
+	first, err := BuildSchemaMetaIndex(loaded.Snapshot)
 	if err != nil {
 		t.Fatalf("BuildSchemaMetaIndex() error = %v", err)
 	}
-	second, err := BuildSchemaMetaIndex(snapshot)
+	second, err := BuildSchemaMetaIndex(loaded.Snapshot)
 	if err != nil {
 		t.Fatalf("second BuildSchemaMetaIndex() error = %v", err)
 	}
@@ -123,7 +146,7 @@ func TestBuildSchemaMetaIndexDeterministic(t *testing.T) {
 	if string(left) != string(right) {
 		t.Fatal("BuildSchemaMetaIndex is not deterministic")
 	}
-	if err := ValidateSchemaMetaIndexAgainstSnapshot(first, snapshot); err != nil {
+	if err := ValidateSchemaMetaIndexAgainstSnapshot(first, loaded.Snapshot); err != nil {
 		t.Fatalf("ValidateSchemaMetaIndexAgainstSnapshot() error = %v", err)
 	}
 }

@@ -8,7 +8,7 @@ DWS Schema 是当前二进制公开 CLI 的版本化 Agent 执行契约。它描
 
 1. **Schema 描述 CLI，不制造 CLI。** `CommandRegistry`、ProductDecl / leaf `Contract`、metadata 和 Catalog 都不能凭空创建 Cobra 命令或 flag；registry 中的每个路径都必须精确绑定真实 runnable Cobra leaf。**`schema_mcp_metadata` 同样不得生成 CLI flag**——它只提供 interface 事实（见 §4.1 同源决策）。
 2. **所有来源只解析一次。** 来源经过统一 resolver 进入 typed `SchemaRegistry`，所有查询、导出和门禁都消费同一个 `SchemaRegistry/SchemaIndex`。
-3. **Registry-first，Catalog 只出不进。** reviewed `CommandRegistry` 是稳定 command identity/navigation 的唯一事实源；交付物为 `schema_catalog/`（`catalog.json` + 每产品 `tools/<product>.json`，ToolSpec wire，`go:embed`）与 `schema_meta_index.json`（CommandMeta 摘要，供 `ResolveMeta`），均不能成为命令、metadata 或下一轮 Catalog 的来源。`schema_agent_metadata/` / `schema_hints/` 已退役；若存在则 policy 失败。Agent metadata 在 Catalog 生成时经内存 inject（`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON`），不落盘、不 embed。运行时 production loader 解码 embedded snapshot 只是交付边界，不是 source resolution。
+3. **Registry-first，Catalog 只出不进。** reviewed `CommandRegistry` 是稳定 command identity/navigation 的唯一事实源；production 通过 `RegisterSchemaSourceRoot` → `ResolveSchemaBuild` 组装 `SchemaRegistry`，并从它投影 ToolSpec wire 与 `ResolveMeta`。`cmd_schema_catalog` 只能生成 CI/local dump，`internal/cli/schema_catalog/`、`schema_meta_index.gob` 和 `schema_meta_index.json` 不得提交或成为运行时来源。`schema_agent_metadata/` / `schema_hints/` 已退役；若存在则 policy 失败。Agent metadata 在 Schema 组装时经内存 inject（`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON`），不落盘、不 embed。
 
 Schema 不调用 MCP `tools/list`，不访问网络，也不读取用户本地 discovery cache。
 
@@ -275,25 +275,20 @@ dws schema --all                               # 所有工具的完整 leaf 导�
 
 1. 审核真实 Cobra 变化，确认命令和 flag 已实际存在。新增或修改稳定 command identity、primary CLI path 或 alias 时，精确编辑 reviewed `CommandRegistry`（当前持久化文件为 `schema_command_registry.json`）。参数、Skill 或 metadata 单独变化时不要机械改写 Registry，也不要从旧 Catalog 反向生成它。
 2. 仅对明确例外使用 reviewed manual command addition；它必须精确引用现有 runnable leaf、带 reason，并在生成时归一化进 `EffectiveCommandRegistry`。Native identity annotation 若存在，应作为与 Registry 一致的实现断言维护，而不是用来 materialize identity。
-3. 生成最终 Catalog 与 meta-index（`go:generate` 入口仅为 `cmd_schema_catalog` + `cmd_param_aliases`）。Catalog 生成经 `agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON` 在内存中注入 Agent metadata，不写 `schema_agent_metadata/`：
+3. 生成参数别名并验证运行时 Schema 组装。`go generate ./internal/cli` 只运行 `cmd_param_aliases`；`cmd_schema_catalog` 仅按需生成 CI/local dump。Schema 组装经 `agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON` 在内存中注入 Agent metadata，不写 `schema_agent_metadata/`：
 
    ```bash
    make generate-schema
-   # 或等价：
-   make generate-schema-catalog
    go generate ./internal/cli
+   # 可选：生成 artifacts/ 下的 CI/local dump
+   make generate-schema-catalog
    ```
 
 `cmd_schema_agent_metadata` 可保留为非交付工具/测试，但不是 `go:generate` 入口，也不应再作为发布步骤。
 
-生成文件（交付物）包括：
+生成文件只有 `internal/cli/param_aliases_generated.go`（参数别名生成物）。`cmd_schema_catalog` 的 Catalog 和 meta-index 是可选 CI/local dump，不是交付物，且不得写入或提交到 `internal/cli/`。
 
-- `internal/cli/schema_catalog/catalog.json`（全局信封 + Catalog）
-- `internal/cli/schema_catalog/tools/<product>.json`（每产品 leaf ToolSpecs，按产品分片以免并发 PR 冲突）
-- `internal/cli/schema_meta_index.json`（CommandMeta 摘要；`ResolveMeta` / leaf `--help` Safety 读此文件，不解码完整 Catalog）
-- `internal/cli/param_aliases_generated.go`（参数别名生成物）
-
-`schema_agent_metadata/`、`schema_agent_metadata_audit.json` 与 `schema_hints/` 已退役；若存在则 policy 失败。只编辑来源；不要手工编辑 Catalog / meta-index 输出。
+`schema_agent_metadata/`、`schema_agent_metadata_audit.json` 与 `schema_hints/` 已退役；若存在则 policy 失败。只编辑来源；不要手工编辑或提交 Catalog / meta-index dump。
 
 ## 9. Completeness 与 final-delivery invariant
 

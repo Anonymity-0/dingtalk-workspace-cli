@@ -15,26 +15,23 @@ package cli
 
 import (
 	"bytes"
-	_ "embed"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
 	"strings"
-	"sync/atomic"
 )
 
-// SchemaMetaIndexVersion is the committed CommandMeta summary index format.
+// SchemaMetaIndexVersion is the CommandMeta summary index format used by CI
+// dumps (cmd_schema_catalog) and unit-test encode/decode fixtures. Production
+// ResolveMeta projects from the runtime-assembled SchemaRegistry — there is
+// no committed schema_meta_index.gob embed.
 const SchemaMetaIndexVersion = 1
 
-//go:embed schema_meta_index.gob
-var embeddedSchemaMetaIndexGob []byte
-
-// SchemaMetaIndexSnapshot is the CommandMeta summary shape. Production
-// ResolveMeta projects from the runtime-assembled SchemaRegistry when a source
-// root factory is registered; this gob embed is a package-cli test residual.
-// JSON helpers remain for unit-test fixtures only.
+// SchemaMetaIndexSnapshot is the CommandMeta summary shape written by CI
+// Catalog dumps for determinism checks. Runtime delivery does not embed or
+// decode this artifact.
 type SchemaMetaIndexSnapshot struct {
 	Version     int                    `json:"version"`
 	SourceHash  string                 `json:"source_hash"`
@@ -59,11 +56,6 @@ type SchemaMetaIndexEntry struct {
 	AvoidWhen    []string `json:"avoid_when,omitempty"`
 	Examples     []string `json:"examples,omitempty"`
 }
-
-var (
-	runtimeEmbeddedSchemaMetaIndexErr       error
-	runtimeEmbeddedSchemaMetaIndexLazyCount atomic.Uint64
-)
 
 // BuildSchemaMetaIndex extracts the ResolveMeta summary from a full Catalog
 // snapshot. Entries are sorted by cli_path for deterministic generation.
@@ -230,11 +222,6 @@ func decodeSchemaMetaIndexLookup(data []byte) (map[string]CommandMeta, error) {
 		return nil, err
 	}
 	return commandMetaLookupFromIndex(index)
-}
-
-func embeddedSchemaMetaIndexError() error {
-	metaByCLIPathOnce.Do(initMetaByCLIPath)
-	return runtimeEmbeddedSchemaMetaIndexErr
 }
 
 // ValidateSchemaMetaIndexAgainstSnapshot proves the summary index matches the
