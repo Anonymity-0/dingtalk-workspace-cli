@@ -42,8 +42,9 @@ func TestCrossPlatformCoverageResolveSchemaMetaIndexPathDefault(t *testing.T) {
 	if got != want {
 		t.Fatalf("default meta index path = %q, want %q", got, want)
 	}
-	if got := resolveCatalogRootPath("/abs", "/abs/path"); got != "/abs/path" {
-		t.Fatalf("absolute catalog path = %q", got)
+	absCatalog := filepath.Join(t.TempDir(), "catalog")
+	if got := resolveCatalogRootPath(filepath.Dir(absCatalog), absCatalog); got != absCatalog {
+		t.Fatalf("absolute catalog path = %q, want %q", got, absCatalog)
 	}
 }
 

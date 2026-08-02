@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,6 +13,75 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
+
+func TestCrossPlatformCoverageAssembleSchemaCatalogFromRootSuccess(t *testing.T) {
+	t.Cleanup(restorePackageCLISchemaDeliveryForTest)
+
+	prevResolve := resolveSchemaBuildForDelivery
+	prevValidateParam := resolveValidateParameterDelivery
+	prevValidateIface := loadCatalogValidateInterfaces
+	prevValidateProv := loadCatalogValidateProvenance
+	t.Cleanup(func() {
+		resolveSchemaBuildForDelivery = prevResolve
+		resolveValidateParameterDelivery = prevValidateParam
+		loadCatalogValidateInterfaces = prevValidateIface
+		loadCatalogValidateProvenance = prevValidateProv
+	})
+
+	root := &cobra.Command{Use: "dws"}
+	registry := SchemaRegistry{
+		Products: []ProductSpec{{
+			ID: "sample",
+			Tools: []ToolSpec{{
+				Identity: contract.ToolIdentitySpec{
+					CLIPath: "sample run", CanonicalPath: "sample.run",
+					ProductID: "sample", Name: "run", Path: "sample.run", PrimaryCLIPath: "sample run",
+				},
+				Safety:    contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "yes"},
+				Selection: contract.SelectionSpec{AgentSummary: "sample"},
+			}},
+		}},
+	}
+	resolveSchemaBuildForDelivery = func(*cobra.Command) (ResolvedSchemaBuild, error) {
+		return ResolvedSchemaBuild{registry: registry, root: root}, nil
+	}
+	resolveValidateParameterDelivery = func(BoundCommandRegistry, SchemaRegistry) error { return nil }
+	loadCatalogValidateInterfaces = func(SchemaRegistry) error { return nil }
+	loadCatalogValidateProvenance = func(SchemaRegistry) error { return nil }
+
+	loaded, err := assembleSchemaCatalogFromRoot(root)
+	if err != nil {
+		t.Fatalf("assembleSchemaCatalogFromRoot success path: %v", err)
+	}
+	if loaded.Registry.Source != SchemaSourceRuntimeAssembled {
+		t.Fatalf("Source = %q", loaded.Registry.Source)
+	}
+	if loaded.Snapshot.SourceHash == "" || loaded.Snapshot.SurfaceHash == "" {
+		t.Fatalf("snapshot hashes missing: %#v", loaded.Snapshot)
+	}
+	if len(loaded.Index.CanonicalPaths()) == 0 {
+		t.Fatal("index must be populated on success")
+	}
+
+	InstallProductionSchemaAssemblyForTest(func() *cobra.Command { return root })
+	if !SchemaSourceRootRegistered() {
+		t.Fatal("InstallProductionSchemaAssemblyForTest must register factory")
+	}
+	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
+	resetDeliverySchemaCatalogStateForTest()
+	sourceHash, err := MaterializeDeliverySchemaCatalogMapsForTest()
+	if err != nil || sourceHash == "" {
+		t.Fatalf("materialize success = %q err=%v", sourceHash, err)
+	}
+	// Second materialize hits Tools-already-set short circuit.
+	if again, err := MaterializeDeliverySchemaCatalogMapsForTest(); err != nil || again != sourceHash {
+		t.Fatalf("rematerialize = %q err=%v", again, err)
+	}
+	payload, err := DeliverySchemaAllPayloadForTest()
+	if err != nil || payload == nil {
+		t.Fatalf("DeliverySchemaAllPayloadForTest = %#v err=%v", payload, err)
+	}
+}
 
 func TestCrossPlatformCoverageSchemaSourceRootErrorBranchesAndRestoreFallback(t *testing.T) {
 	t.Cleanup(restorePackageCLISchemaDeliveryForTest)
@@ -127,6 +197,50 @@ func TestCrossPlatformCoverageSafetyForCLIPathUnregisteredFactory(t *testing.T) 
 	schemaSourceRootFn = nil
 	if _, ok := SafetyForCLIPath("dev app delete"); ok {
 		t.Fatal("SafetyForCLIPath without factory must return ok=false")
+	}
+	RenderSafetyAnnotation(&cobra.Command{Use: "dws"})
+}
+
+func TestCrossPlatformCoverageReviewedCommandRegistrySourceHash(t *testing.T) {
+	hash, err := ReviewedCommandRegistrySourceHash()
+	if err != nil || hash == "" {
+		t.Fatalf("ReviewedCommandRegistrySourceHash = %q err=%v", hash, err)
+	}
+	prev := loadReviewedCommandRegistry
+	t.Cleanup(func() { loadReviewedCommandRegistry = prev })
+	loadReviewedCommandRegistry = func() (CommandRegistry, error) {
+		return CommandRegistry{}, fmt.Errorf("load boom")
+	}
+	if _, err := ReviewedCommandRegistrySourceHash(); err == nil || !strings.Contains(err.Error(), "load boom") {
+		t.Fatalf("ReviewedCommandRegistrySourceHash error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageRenderSafetyAnnotationSuccess(t *testing.T) {
+	restorePackageCLISchemaDeliveryForTest()
+	t.Cleanup(restorePackageCLISchemaDeliveryForTest)
+
+	root := &cobra.Command{Use: "dws"}
+	dev := &cobra.Command{Use: "dev"}
+	appCmd := &cobra.Command{Use: "app"}
+	deleteCmd := &cobra.Command{Use: "delete"}
+	root.AddCommand(dev)
+	dev.AddCommand(appCmd)
+	appCmd.AddCommand(deleteCmd)
+	var out bytes.Buffer
+	deleteCmd.SetOut(&out)
+	RenderSafetyAnnotation(deleteCmd)
+	rendered := out.String()
+	if !strings.Contains(rendered, "Safety:") || !strings.Contains(rendered, "effect=") {
+		t.Fatalf("RenderSafetyAnnotation success = %q", rendered)
+	}
+	unknown := &cobra.Command{Use: "unknown-cmd"}
+	root.AddCommand(unknown)
+	var silent bytes.Buffer
+	unknown.SetOut(&silent)
+	RenderSafetyAnnotation(unknown)
+	if silent.Len() != 0 {
+		t.Fatalf("unknown command rendered %q", silent.String())
 	}
 }
 

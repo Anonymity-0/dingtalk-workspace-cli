@@ -100,3 +100,15 @@ func TestCrossPlatformCoverageSelectionSpecNormalizedAndProvenanceHelpers(t *tes
 		t.Fatalf("marshal fallback value = %s", prov.Value)
 	}
 }
+
+func TestCrossPlatformCoverageStoreProductDeclRawForTest(t *testing.T) {
+	const id = "coverage-raw-product"
+	t.Cleanup(func() { ClearProductDeclForTest(id) })
+	StoreProductDeclRawForTest(" ", "ignored")
+	StoreProductDeclRawForTest(id, "not-a-decl")
+	if _, ok := LookupProductDecl(id); ok {
+		t.Fatal("raw non-decl store must not surface via LookupProductDecl")
+	}
+	ClearProductDeclForTest(" ")
+	ClearProductDeclForTest(id)
+}

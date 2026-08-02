@@ -1035,7 +1035,7 @@ func ConfirmSafety(cmd *cobra.Command, safety contract.SafetySpec) error {
 	// callers there should pass --yes/--dry-run. A piped answer
 	// (printf 'yes\n' | cmd) is still honored for general ConfirmSafety; Sheet
 	// mutations additionally require --yes via protectSheetMutationCommand.
-	if stdinIsTerminal(cmd.InOrStdin()) {
+	if stdinIsTerminalFn(cmd.InOrStdin()) {
 		fmt.Fprintf(
 			cmd.ErrOrStderr(),
 			"即将执行 %s（effect=%s, risk=%s），确认继续？(yes/no): ",
@@ -1056,6 +1056,10 @@ func ConfirmSafety(cmd *cobra.Command, safety contract.SafetySpec) error {
 	}
 	return apperrors.NewValidation("用户取消了操作")
 }
+
+// stdinIsTerminalFn is the ConfirmSafety TTY probe. Tests may stub it; production
+// keeps the real ioctl-backed check.
+var stdinIsTerminalFn = stdinIsTerminal
 
 // stdinIsTerminal reports whether the given input is a real terminal. Only
 // *os.File inputs can be terminals; cobra SetIn buffers and other readers are

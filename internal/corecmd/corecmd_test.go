@@ -15,6 +15,8 @@ package corecmd
 
 import (
 	"errors"
+	"io"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -351,6 +354,15 @@ func TestCrossPlatformCoverageValidateEnums(t *testing.T) {
 		!strings.Contains(err.Error(), `参数 --items 取值 "bad" 不合法`) {
 		t.Fatalf("invalid slice enum error = %v", err)
 	}
+
+	// ValidationShortcut enums are enforced by ValidateRequired, not ValidateEnums.
+	shortcut := []FlagSpec{{Name: "mode", Usage: "M", ValidationMode: ValidationShortcut, Enum: []string{"a", "b"}}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, shortcut)
+	_ = cmd.Flags().Set("mode", "bad")
+	if err := ValidateEnums(cmd, shortcut); err != nil {
+		t.Fatalf("ValidateEnums must skip ValidationShortcut, got %v", err)
+	}
 }
 
 // ── toolArgs assembly ──────────────────────────────────────────────
@@ -611,6 +623,12 @@ func TestCrossPlatformCoverageValidateConstraints(t *testing.T) {
 	if err := ValidateConstraints(build(), flags, nil); err != nil {
 		t.Fatalf("no constraints err = %v", err)
 	}
+
+	// Custom constraints are declaration/help-only; Validate owns the rule.
+	custom := []Constraint{{Kind: Custom, Flags: []string{"a"}, Description: "由 Validate 执行"}}
+	if err := ValidateConstraints(build("a"), flags, custom); err != nil {
+		t.Fatalf("custom constraint must be a no-op in ValidateConstraints, got %v", err)
+	}
 }
 
 // ── safety confirmation ────────────────────────────────────────────
@@ -760,6 +778,21 @@ func TestCrossPlatformCoverageAnnotateConstraints(t *testing.T) {
 	AnnotateConstraints(bare, nil)
 	if bare.Annotations["dws.schema.constraints"] != "" {
 		t.Fatalf("unexpected annotation %q", bare.Annotations["dws.schema.constraints"])
+	}
+
+	// Single-flag AtLeastOne/ExactlyOne collapse to required-flag annotations
+	// (hidden companions are filtered out before projection).
+	single := newTestCommand()
+	single.Flags().String("only", "", "")
+	single.Flags().String("hidden", "", "")
+	_ = single.Flags().MarkHidden("hidden")
+	AnnotateConstraints(single, []Constraint{
+		{Kind: AtLeastOne, Flags: []string{"only", "hidden"}},
+		{Kind: ExactlyOne, Flags: []string{"only", "hidden"}},
+	})
+	got := single.Flags().Lookup("only").Annotations[runtimeannotate.AnnotationFlagRequired]
+	if len(got) != 1 || got[0] != "true" {
+		t.Fatalf("single-flag required annotation = %#v", single.Flags().Lookup("only").Annotations)
 	}
 }
 
@@ -1515,6 +1548,30 @@ func TestCrossPlatformCoverageConfirmSafetyTerminalPromptsBeforeReading(t *testi
 	}
 }
 
+func TestCrossPlatformCoverageConfirmSafetyTerminalProbeHook(t *testing.T) {
+	prev := stdinIsTerminalFn
+	t.Cleanup(func() { stdinIsTerminalFn = prev })
+	stdinIsTerminalFn = func(io.Reader) bool { return true }
+
+	var stderr strings.Builder
+	cmd := newTestCommand()
+	cmd.PersistentFlags().Bool("yes", false, "")
+	cmd.PersistentFlags().Bool("dry-run", false, "")
+	cmd.SetIn(strings.NewReader("yes\n"))
+	cmd.SetErr(&stderr)
+	if err := ConfirmSafety(cmd, testWriteSafety()); err != nil {
+		t.Fatalf("hooked terminal yes answer must confirm, got %v", err)
+	}
+	if !strings.Contains(stderr.String(), "确认继续") {
+		t.Fatalf("hooked terminal probe must print prompt, got %q", stderr.String())
+	}
+	// Exercise the real probe's non-file and file paths.
+	if stdinIsTerminal(strings.NewReader("x")) {
+		t.Fatal("non-file reader must not be a terminal")
+	}
+	_ = stdinIsTerminal(os.Stdin)
+}
+
 func TestCrossPlatformCoverageBoolFlagGettersNilCommand(t *testing.T) {
 	if got := boolFlagGetters(nil); got != nil {
 		t.Fatalf("boolFlagGetters(nil) = %#v, want nil", got)
@@ -1581,6 +1638,7 @@ func TestCrossPlatformCoverageAttachContractOverwritesLegacySelectionSources(t *
 	AttachContract(cmd, testWriteSafety(), ContractDecl{
 		Description: "Declared description for attach coverage",
 		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
+		Parameters:  []contract.ParamDecl{{Name: "mode", Property: "mode", InterfaceType: "string"}},
 		Selection: contract.SelectionSpec{
 			AgentSummary:       "Declared summary",
 			UseWhen:            []string{"use declared"},
@@ -1594,6 +1652,9 @@ func TestCrossPlatformCoverageAttachContractOverwritesLegacySelectionSources(t *
 	payload, ok := contractfinal.RuntimeContractFinal(cmd)
 	if !ok || payload.Selection == nil {
 		t.Fatal("expected ContractFinal selection payload")
+	}
+	if len(payload.Parameters) != 1 || payload.Parameters[0].Name != "mode" {
+		t.Fatalf("Parameters copy = %#v", payload.Parameters)
 	}
 	sel := payload.Selection
 	if sel.AgentSummarySource != "corecmd.ContractDecl" ||

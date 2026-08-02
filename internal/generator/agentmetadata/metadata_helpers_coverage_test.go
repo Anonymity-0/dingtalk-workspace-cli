@@ -5,6 +5,7 @@ package agentmetadata
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -301,6 +302,97 @@ func TestCrossPlatformCoverageMetadataSourceAndPathEdges(t *testing.T) {
 	}
 	if err := ValidateSelectionCoverage(RegistryProjection{}); err != nil {
 		t.Fatalf("ValidateSelectionCoverage empty projection: %v", err)
+	}
+	if selectionCoverageRequired(map[string]bool{"p": true}, nil) != true {
+		t.Fatal("product include must require coverage")
+	}
+	if selectionCoverageRequired(nil, map[string]bool{"t": true}) != true {
+		t.Fatal("tool include must require coverage")
+	}
+	if selectionCoverageRequired(map[string]bool{"p": false}, map[string]bool{"t": false}) {
+		t.Fatal("all-false maps must not require coverage")
+	}
+	if got := SelectionCoverageProducts(RegistryProjection{}); got != nil {
+		t.Fatalf("nil ProductIDs must return nil, got %#v", got)
+	}
+	missingProduct := SelectionCoverageProducts(RegistryProjection{
+		ProductIDs: map[string]bool{"coverage-missing-product-xyz": true},
+	})
+	if !missingProduct["coverage-missing-product-xyz"] {
+		t.Fatalf("missing ProductDecl must remain expected, got %#v", missingProduct)
+	}
+	proj := ProjectEffectiveRegistry(cli.EffectiveCommandRegistry{Commands: []cli.CommandSpec{
+		{CanonicalPath: "hidden.tool", PrimaryCLIPath: "hidden tool", Visibility: cli.SchemaVisibilityInternal},
+		{CanonicalPath: "sample.run", PrimaryCLIPath: "sample run", Aliases: []string{" sample alias ", ""}, Visibility: cli.SchemaVisibilityPublic},
+	}})
+	if proj.ToolCount != 1 || proj.ToolPaths["sample alias"] != "sample run" {
+		t.Fatalf("ProjectEffectiveRegistry = %#v", proj)
+	}
+	if err := ValidateSelectionCoverage(RegistryProjection{
+		ProductIDs:         map[string]bool{"coverage-missing-product-xyz": true},
+		CanonicalToolPaths: map[string]string{"coverage.missing": "coverage missing"},
+	}); err == nil || !strings.Contains(err.Error(), "selection coverage incomplete") {
+		t.Fatalf("ValidateSelectionCoverage missing error = %v", err)
+	}
+	if _, _, _, err := GenerateFromCommandRoot(".", nil, Options{}); err == nil || !strings.Contains(err.Error(), "schema source root is nil") {
+		t.Fatalf("GenerateFromCommandRoot nil root = %v", err)
+	}
+	prevBuild := pipelineBuildEffectiveRegistry
+	prevBind := pipelineBindEffectiveRegistry
+	prevGenerate := pipelineGenerateMetadata
+	t.Cleanup(func() {
+		pipelineBuildEffectiveRegistry = prevBuild
+		pipelineBindEffectiveRegistry = prevBind
+		pipelineGenerateMetadata = prevGenerate
+	})
+	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+		return cli.EffectiveCommandRegistry{}, nil
+	}
+	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+		return cli.BoundCommandRegistry{}, nil
+	}
+	pipelineGenerateMetadata = func(Options) (File, Stats, error) {
+		return File{}, Stats{}, nil
+	}
+	if _, _, _, err := GenerateFromCommandRoot("  ", &cobra.Command{Use: "dws"}, Options{}); err != nil {
+		t.Fatalf("GenerateFromCommandRoot empty rootPath defaults: %v", err)
+	}
+	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+		return cli.EffectiveCommandRegistry{}, errors.New("build boom")
+	}
+	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "build effective") {
+		t.Fatalf("build error = %v", err)
+	}
+	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+		return cli.EffectiveCommandRegistry{}, nil
+	}
+	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+		return cli.BoundCommandRegistry{}, errors.New("bind boom")
+	}
+	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "bind effective") {
+		t.Fatalf("bind error = %v", err)
+	}
+	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+		return cli.BoundCommandRegistry{}, nil
+	}
+	pipelineGenerateMetadata = func(Options) (File, Stats, error) {
+		return File{}, Stats{}, errors.New("generate boom")
+	}
+	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "generate in-memory") {
+		t.Fatalf("generate error = %v", err)
+	}
+	pipelineBuildEffectiveRegistry = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+		return cli.EffectiveCommandRegistry{Commands: []cli.CommandSpec{{
+			CanonicalPath:  "coverage.missing",
+			PrimaryCLIPath: "coverage missing",
+			Visibility:     cli.SchemaVisibilityPublic,
+		}}}, nil
+	}
+	pipelineBindEffectiveRegistry = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
+		return cli.BoundCommandRegistry{}, nil
+	}
+	if _, _, _, err := GenerateFromCommandRoot(".", &cobra.Command{Use: "dws"}, Options{}); err == nil || !strings.Contains(err.Error(), "selection coverage incomplete") {
+		t.Fatalf("selection coverage error = %v", err)
 	}
 
 	if got := sourceProductIDs(sourceFile{path: filepath.Join(root, "products", "sample", "guide.md")}, products, nil, nil); len(got) != 1 || got[0] != "sample" {

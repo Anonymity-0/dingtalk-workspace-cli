@@ -533,8 +533,17 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Fatal("Code Admission workflow missing race test job boundaries")
 	}
 	raceJob := admission[raceStart:raceEnd]
-	if !strings.Contains(raceJob, `go test -v -race -count=1 -timeout=12m "${packages[@]}"`) {
-		t.Error("full race shards must retain enough package-level time for internal/app")
+	// Full race shards use a dynamic package-level timeout: default/floor 12m,
+	// with the cli shard raised to 15m for ResolveSchemaBuild TestMain assembly.
+	for _, want := range []string{
+		"timeout_budget=12m",
+		`if [ "$TEST_SHARD" = "cli" ]; then`,
+		"timeout_budget=15m",
+		`go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"`,
+	} {
+		if !strings.Contains(raceJob, want) {
+			t.Errorf("full race shards must retain dynamic timeout budget contract %q", want)
+		}
 	}
 
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
