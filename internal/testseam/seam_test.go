@@ -45,3 +45,14 @@ func TestCrossPlatformCoverageSwapFunctionSeam(t *testing.T) {
 		t.Fatalf("function seam not restored: %d", got)
 	}
 }
+
+func TestCrossPlatformCoverageProtectRestores(t *testing.T) {
+	value := 5
+	t.Run("child", func(t *testing.T) {
+		Protect(t, &value)
+		value = 99 // code under test mutates the seam
+	})
+	if value != 5 {
+		t.Fatalf("Protect did not restore mutated value: %d", value)
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -514,9 +515,7 @@ func TestMarkdownCICoverageGlobalDryRunAndNames(t *testing.T) {
 	})
 
 	t.Run("nil command", func(t *testing.T) {
-		previous := deps
-		deps = nil
-		t.Cleanup(func() { deps = previous })
+		testseam.Swap(t, &deps, nil)
 		if markdownGlobalDryRun(nil) {
 			t.Fatal("nil command unexpectedly enabled dry run")
 		}

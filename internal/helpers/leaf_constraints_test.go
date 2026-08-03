@@ -25,6 +25,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func leafConstraintTestSpec(captured *map[string]any) LeafSpec {
@@ -336,8 +337,7 @@ func TestCrossPlatformCoverageLeafSpecCorePaths(t *testing.T) {
 
 	caller := &guardedMutationCaller{}
 	serverRouted := func() error {
-		previous := deps
-		t.Cleanup(func() { deps = previous })
+		testseam.Protect(t, &deps)
 		InitDeps(caller)
 		deps.Out.w = io.Discard
 		cmd := NewLeafCommand(LeafSpec{
@@ -417,8 +417,7 @@ func TestCrossPlatformCoverageLeafSpecCorePaths(t *testing.T) {
 	// 默认 product 路由（无 Server）+ LeafInt Required（走 leafHasEffectiveValue
 	// 的 LeafInt 分支）+ Transform 返回 (nil,nil) 跳过键。
 	defaultRouted := func() error {
-		previous := deps
-		t.Cleanup(func() { deps = previous })
+		testseam.Protect(t, &deps)
 		oldArgs := os.Args
 		os.Args = []string{"dws", "chat"}
 		t.Cleanup(func() { os.Args = oldArgs })

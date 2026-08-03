@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -211,9 +212,7 @@ func TestCrossPlatformCoverageDeclareLeafMetadataValidateWithoutConfirmRunsInner
 // no-Validate/no-Caller fallback: without deps the deferred CallTool gate has
 // nothing to hook, so ConfirmSafety runs before the inner RunE (fail closed).
 func TestCrossPlatformCoverageDeclareLeafMetadataConfirmFallbackWithoutCaller(t *testing.T) {
-	prev := deps
-	deps = nil
-	t.Cleanup(func() { deps = prev })
+	testseam.Swap(t, &deps, nil)
 
 	ran := false
 	cmd := &cobra.Command{
@@ -265,10 +264,8 @@ func TestCrossPlatformCoverageDeclareLeafMetadataConfirmFallbackWithoutCaller(t 
 // is rejected. Post-RunE ConfirmSafety is intentionally not used — local side
 // effects may already have run.
 func TestCrossPlatformCoverageDeclareLeafMetadataDeferredConfirmAfterRunEWithoutCallTool(t *testing.T) {
-	prev := deps
 	caller := &deferConfirmTestCaller{}
-	deps = &Deps{Caller: caller, Out: NewFormatter()}
-	t.Cleanup(func() { deps = prev })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: NewFormatter()})
 
 	ran := 0
 	cmd := &cobra.Command{

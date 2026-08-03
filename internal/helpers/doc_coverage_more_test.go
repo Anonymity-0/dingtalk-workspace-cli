@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -81,11 +82,10 @@ func TestCrossPlatformCoverageDocUploadDownloadParsingCoverage(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageResolveDocContentCoverage(t *testing.T) {
-	previous := deps
+	testseam.Protect(t, &deps)
 	InitDeps(&productExampleCaller{})
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	t.Cleanup(func() { deps = previous })
 	newCommand := func() *cobra.Command {
 		cmd := &cobra.Command{Use: "doc"}
 		cmd.Flags().String("content-file", "", "")
@@ -152,11 +152,10 @@ func TestCrossPlatformCoverageRunDocReadJSONMLCoverage(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageDocDeprecationWrappersCoverage(t *testing.T) {
-	previous := deps
+	testseam.Protect(t, &deps)
 	InitDeps(&productExampleCaller{})
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	t.Cleanup(func() { deps = previous })
 	for _, wrap := range []func(*cobra.Command){
 		func(cmd *cobra.Command) { wrapDocDeprecated(cmd, "drive target") },
 		func(cmd *cobra.Command) { wrapDocDeprecatedToWiki(cmd, "wiki target") },

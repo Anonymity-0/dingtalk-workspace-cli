@@ -1080,3 +1080,85 @@ func TestOverallCoverageGapRuntimeParamsAndAgentMetadata(t *testing.T) {
 		t.Fatal("invalid dry-run registry must fail delivery validation")
 	}
 }
+
+func TestCrossPlatformCoverageOverallRegressionRecovery(t *testing.T) {
+	if _, ok := lookupPinnedMCPParam(nil, "property", "flag"); ok {
+		t.Fatal("nil pinned params must miss")
+	}
+	if _, ok := lookupPinnedMCPParam(map[string]embeddedMCPParamMeta{}, "property", "flag"); ok {
+		t.Fatal("empty pinned params must miss")
+	}
+	if _, ok := lookupPinnedMCPParam(map[string]embeddedMCPParamMeta{"other": {Type: "string"}}, "property", "flag"); ok {
+		t.Fatal("unmatched pinned params must miss")
+	}
+	if _, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{}); ok {
+		t.Fatal("empty MCP metadata must not match")
+	}
+	if _, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{
+		Tools: map[string]embeddedMCPToolMetadata{"other.key": {}},
+	}); ok {
+		t.Fatal("missing MCP metadata keys must not match")
+	}
+
+	left := runtimeSchemaStringCandidateAtPriority("same", true, "z-source", 5, "p")
+	right := runtimeSchemaStringCandidateAtPriority("same", true, "a-source", 5, "p")
+	winner, err := resolveRuntimeSchemaCandidate("source-order", left, right)
+	if err != nil || winner.Source != "a-source" {
+		t.Fatalf("source tie-break = %#v err=%v", winner, err)
+	}
+
+	if validCommandRegistryCLIPath("bad!token") {
+		t.Fatal("invalid CLI path token must fail validation")
+	}
+	registry := EffectiveCommandRegistry{Commands: []CommandSpec{{
+		CanonicalPath: "sample.run", PrimaryCLIPath: "sample run",
+	}}}
+	if got := registry.SourceHash(); got == "" {
+		t.Fatal("default visibility hash must be non-empty")
+	}
+	if got := stableUniqueStrings([]string{"", "a", "a", " b ", "b"}); len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("stableUniqueStrings = %#v", got)
+	}
+
+	root := &cobra.Command{Use: "dws"}
+	root.AddCommand(&cobra.Command{Use: "help"})
+	run := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
+	root.AddCommand(run)
+	visited := 0
+	walkLeafCommands(root, func(*cobra.Command) { visited++ })
+	if visited != 1 {
+		t.Fatalf("walkLeafCommands visited %d leaves, want 1", visited)
+	}
+
+	provenance := commandRegistryIdentityProvenance(BoundCommandSpec{
+		CommandSpec: CommandSpec{
+			CanonicalPath:  "sample.run",
+			PrimaryCLIPath: "sample run",
+			Source:         "reviewed",
+		},
+		PrimaryCommand: run,
+		AliasCommands:  []BoundAlias{{Path: "sample alias", Command: nil}},
+	})
+	if provenance.Resolution != "registry_identity" {
+		t.Fatalf("identity provenance = %#v", provenance)
+	}
+
+	if _, err := (SchemaRegistry{Products: []ProductSpec{{ID: "", Tools: []ToolSpec{}}}}).ToSnapshotPayload(); err == nil {
+		t.Fatal("empty product id must fail ToSnapshotPayload")
+	}
+
+	prevExclusions := reviewedSchemaParameterMappingExclusions
+	t.Cleanup(func() { reviewedSchemaParameterMappingExclusions = prevExclusions })
+	reviewedSchemaParameterMappingExclusions = map[string]string{}
+	if _, err := loadSchemaParameterBindingSnapshot(); err == nil {
+		t.Fatal("empty mapping exclusions ledger must fail load")
+	}
+
+	cmd := NewSchemaCommand(nil)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"__coverage_gate_unknown_schema_path__"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("unknown schema path must fail schema command")
+	}
+}

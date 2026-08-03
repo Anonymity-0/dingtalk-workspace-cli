@@ -20,6 +20,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -686,8 +687,7 @@ func TestCrossPlatformCoverageRemainingCommandExecutionBranches(t *testing.T) {
 	})
 
 	t.Run("doc version confirmed revert", func(t *testing.T) {
-		previous := deps
-		t.Cleanup(func() { deps = previous })
+		testseam.Protect(t, &deps)
 		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"versions":[{"version":3}]}`}, {text: `{}`}}}
 		if err := runDocCoverageCommand(t, caller, "--yes", "version", "revert", "--node=node", "--version=3"); err != nil {
 			t.Fatal(err)
@@ -698,8 +698,7 @@ func TestCrossPlatformCoverageRemainingCommandExecutionBranches(t *testing.T) {
 	})
 
 	t.Run("mail invalid parameter suggestion", func(t *testing.T) {
-		previous := deps
-		t.Cleanup(func() { deps = previous })
+		testseam.Protect(t, &deps)
 		caller := &coverageErrorCaller{err: &CLIError{Code: CodeMCPToolError, Message: "Invalid parameter"}}
 		InitDeps(caller)
 		cmd := newMailCommand()
@@ -712,8 +711,7 @@ func TestCrossPlatformCoverageRemainingCommandExecutionBranches(t *testing.T) {
 	})
 
 	t.Run("sheet style dry run", func(t *testing.T) {
-		previous := deps
-		t.Cleanup(func() { deps = previous })
+		testseam.Protect(t, &deps)
 		batchPath := filepath.Join(t.TempDir(), "styles.json")
 		if err := os.WriteFile(batchPath, []byte(`[{"sheetId":"Sheet1","range":"A1:B2","fontWeight":"bold"}]`), 0o600); err != nil {
 			t.Fatal(err)
@@ -727,8 +725,7 @@ func TestCrossPlatformCoverageRemainingCommandExecutionBranches(t *testing.T) {
 	})
 
 	t.Run("business error classification", func(t *testing.T) {
-		previous := deps
-		t.Cleanup(func() { deps = previous })
+		testseam.Protect(t, &deps)
 		InitDeps(&coverageErrorCaller{result: &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{"success":false,"message":"bad"}`}}}})
 		if err := callMCPTool("business", nil); err == nil {
 			t.Fatal("business error was not classified")

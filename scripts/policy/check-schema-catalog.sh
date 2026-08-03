@@ -266,6 +266,19 @@ fi
 # retired bindings snapshot (loadSchemaParameterBindingSnapshot) are gone with
 # their JSON inputs; the bans below keep them from reappearing.
 
+# Injection-seam swaps in tests must use internal/testseam.Swap/Protect: the
+# manual save/assign/t.Cleanup-restore trio can forget the restore and leak
+# process-global state into sibling tests. The testseam package implements
+# the mechanism and is exempt.
+manual_seam_restores="$(policy_search_go \
+	't\.Cleanup\(func\(\) *\{ *[A-Za-z_][A-Za-z0-9_.]* *= *prev(ious)? *\}\)' \
+	internal | grep '_test\.go:' | grep -v '^internal/testseam/' || true)"
+if [ -n "$manual_seam_restores" ]; then
+	printf '%s\n' 'manual seam restore found; use testseam.Swap or testseam.Protect instead:' >&2
+	printf '%s\n' "$manual_seam_restores" >&2
+	exit 1
+fi
+
 # Catch the common direct eager form statically; the fresh-process tests below
 # additionally catch indirect or multi-line package initializers.
 if policy_search_production_go '^[[:space:]]*var .*=[[:space:]]*(runtimeAgentMetadata|runtimeMCPMetadata|runtimeSchemaParameterBindingData)\(' \

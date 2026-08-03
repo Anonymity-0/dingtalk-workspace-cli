@@ -23,6 +23,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -474,9 +475,7 @@ func TestCrossPlatformCoverageBuildGroupsByService(t *testing.T) {
 }
 
 func TestBuiltInCommandsExcludeUserDefinedShortcuts(t *testing.T) {
-	previous := append([]Shortcut(nil), allShortcuts...)
-	t.Cleanup(func() { allShortcuts = previous })
-	allShortcuts = nil
+	testseam.Swap(t, &allShortcuts, []Shortcut(nil))
 	Register(
 		Shortcut{Service: "calendar", Command: "+builtin", Execute: noop},
 		Shortcut{Service: "calendar", Command: "+user", UserDefined: true, Execute: noop},

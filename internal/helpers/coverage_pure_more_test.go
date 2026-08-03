@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -235,12 +236,11 @@ func TestCrossPlatformCoverageChartMailAndSheetPureHelpersCoverage(t *testing.T)
 }
 
 func TestCrossPlatformCoverageSheetResponseCleanupCoverage(t *testing.T) {
-	previous := deps
+	testseam.Protect(t, &deps)
 	caller := &helpersCoreCaller{format: "json"}
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	t.Cleanup(func() { deps = previous })
 
 	for _, text := range []string{
 		"",

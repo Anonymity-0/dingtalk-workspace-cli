@@ -176,9 +176,7 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 	})
 
 	t.Run("schemaRegistryFromSnapshot wire and typed failures", func(t *testing.T) {
-		prev := validateSchemaSnapshotTypedRoundTrip
-		validateSchemaSnapshotTypedRoundTrip = false
-		t.Cleanup(func() { validateSchemaSnapshotTypedRoundTrip = prev })
+		testseam.Swap(t, &validateSchemaSnapshotTypedRoundTrip, false)
 		snapshot := SchemaCatalogSnapshot{
 			Catalog: map[string]any{"kind": "schema", "level": "catalog", "source": "t", "count": 1, "tool_count": 1, "products": []any{
 				map[string]any{"id": "sample", "tools": []any{map[string]any{"canonical_path": "sample.run"}}},

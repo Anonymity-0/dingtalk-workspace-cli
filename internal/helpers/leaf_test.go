@@ -24,6 +24,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -464,8 +465,7 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 func TestDeclareLeafMetadataDefersConfirmUntilCallTool(t *testing.T) {
 	// Without Validate: RunE-local checks run before ConfirmSafety; the gate
 	// fires on the first MCP CallTool.
-	prev := deps
-	t.Cleanup(func() { deps = prev })
+	testseam.Protect(t, &deps)
 	concrete := &deferConfirmTestCaller{}
 	InitDeps(concrete)
 	deps.Out.w = io.Discard

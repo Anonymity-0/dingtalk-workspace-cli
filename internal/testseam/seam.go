@@ -36,3 +36,12 @@ func Swap[T any](t *testing.T, ptr *T, next T) {
 	*ptr = next
 	t.Cleanup(func() { *ptr = prev })
 }
+
+// Protect snapshots *ptr and restores it at test end without replacing it.
+// Use it when the code under test mutates the seam itself (e.g. os.Args) and
+// no stub value is available up front. Same sequential-only caveat as Swap.
+func Protect[T any](t *testing.T, ptr *T) {
+	t.Helper()
+	prev := *ptr
+	t.Cleanup(func() { *ptr = prev })
+}

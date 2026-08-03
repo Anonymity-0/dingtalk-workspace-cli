@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -49,11 +50,10 @@ func (*scriptedToolCaller) JQ() string       { return "" }
 
 func installScriptedCaller(t *testing.T, caller *scriptedToolCaller) {
 	t.Helper()
-	previous := deps
+	testseam.Protect(t, &deps)
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	t.Cleanup(func() { deps = previous })
 }
 
 func installImmediateTiming(t *testing.T) {

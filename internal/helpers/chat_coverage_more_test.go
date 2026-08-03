@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -337,12 +338,11 @@ func TestCrossPlatformCoverageChatFileUtilityCoverage(t *testing.T) {
 	_ = unmarshalJSONUseNumber(`{"n":1}`, &map[string]any{})
 	_ = firstStringField(map[string]any{"one": "", "two": 2}, "one", "two")
 
-	previous := deps
+	testseam.Protect(t, &deps)
 	caller := &helpersCoreCaller{format: "json"}
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	t.Cleanup(func() { deps = previous })
 	caller.format = "raw"
 }
 

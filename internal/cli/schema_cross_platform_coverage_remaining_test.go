@@ -11,6 +11,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -1068,9 +1069,7 @@ func TestCrossPlatformCoverageSchemaCatalogAndSnapshotMoreBranches(t *testing.T)
 	})
 
 	t.Run("schemaRegistryFromSnapshot minimal decode", func(t *testing.T) {
-		prev := validateSchemaSnapshotTypedRoundTrip
-		validateSchemaSnapshotTypedRoundTrip = false
-		t.Cleanup(func() { validateSchemaSnapshotTypedRoundTrip = prev })
+		testseam.Swap(t, &validateSchemaSnapshotTypedRoundTrip, false)
 		snapshot := SchemaCatalogSnapshot{
 			Catalog: map[string]any{"kind": "schema", "level": "catalog", "source": "t", "count": 1, "tool_count": 1, "products": []any{}},
 			Tools:   map[string]map[string]any{},

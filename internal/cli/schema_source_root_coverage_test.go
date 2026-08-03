@@ -11,6 +11,7 @@ import (
 	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -179,9 +180,7 @@ func TestCrossPlatformCoverageSchemaSourceRootErrorBranchesAndRestoreFallback(t 
 		t.Fatalf("materialize assemble error = %v", err)
 	}
 
-	prevHook := restorePackageCLISchemaDeliveryHook
-	restorePackageCLISchemaDeliveryHook = nil
-	t.Cleanup(func() { restorePackageCLISchemaDeliveryHook = prevHook })
+	testseam.Swap(t, &restorePackageCLISchemaDeliveryHook, nil)
 	RestorePackageCLISchemaDeliveryForTest()
 	if SchemaSourceRootRegistered() {
 		t.Fatal("restore fallback must clear Schema source root")
