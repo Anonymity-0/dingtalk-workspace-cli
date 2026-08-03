@@ -11,6 +11,18 @@ unrelated work, and use `gofmt` for every modified Go file.
 - Refresh pinned MCP metadata: `make fetch-mcp-metadata` (requires `dws auth login`)
 - Check generated drift + assembly determinism: `./scripts/policy/check-generated-drift.sh`
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
+- Coverage-gate test naming: tests that carry coverage for the macOS platform
+  gate must be named `TestCrossPlatformCoverage*` (or `TestAllShortcuts*`);
+  `scripts/policy/run-platform-coverage-gate.sh` only selects those prefixes,
+  so a covering test with any other name silently leaves its target uncovered.
+- Package-var injection seams (e.g. `pipelineBuildEffectiveRegistry`): swap
+  them in tests only via `testseam.Swap(t, &seam, stub)` from
+  `internal/testseam` — it restores the previous value through `t.Cleanup`
+  structurally. Like the manual pattern it replaces, Swap mutates global state
+  and is **not** safe for `t.Parallel` tests.
+- Cross-package test helpers (e.g. `StoreProductDeclRawForTest`) live in
+  per-package `fortest.go` files, never scattered through production files;
+  the `ForTest` suffix is the boundary and production code must not call them.
 
 Schema Catalog delivery is **声明即 Catalog**: production assembles via
 `RegisterSchemaSourceRoot` → `ResolveSchemaBuild` (factory registered in
