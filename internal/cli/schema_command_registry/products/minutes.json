@@ -148,6 +148,10 @@
     {
       "canonical_path": "minutes.shortcut_replace_batch",
       "cli_path": "minutes +replace-batch"
+    },
+    {
+      "canonical_path": "minutes.shortcut_minutes_search",
+      "cli_path": "minutes +minutes-search"
     }
   ]
 }

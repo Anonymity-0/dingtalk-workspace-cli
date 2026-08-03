@@ -117,8 +117,8 @@ func TestAllCommandsContractFinalConsistentWithLiveCatalog(t *testing.T) {
 	if failCount > 0 {
 		t.Fatalf("per-command consistency failed: %d/%d", failCount, len(rows))
 	}
-	if checked != 845 {
-		t.Fatalf("checked = %d, want 845 reviewed tools", checked)
+	if checked != 846 {
+		t.Fatalf("checked = %d, want 846 reviewed tools", checked)
 	}
 	if err := cli.ValidateRuntimeSchemaCompleteness(app.NewSchemaSourceRootCommand()); err != nil {
 		t.Fatalf("ValidateRuntimeSchemaCompleteness() error = %v", err)
