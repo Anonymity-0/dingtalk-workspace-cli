@@ -21,7 +21,7 @@ func TestValidateSchemaRegistryAgainstCommandRegistryChecksFullIdentity(t *testi
 		Path:            "sample.run",
 		CLIPath:         "sample run",
 		PrimaryCLIPath:  "sample run",
-		Source:          "reviewed_command_registry",
+		Source:          "contract_identity",
 	}}
 	registry, err := SchemaRegistryFromRuntime("test", []ProductSpec{{ID: "sample", Tools: []ToolSpec{tool}}})
 	if err != nil {
@@ -33,7 +33,7 @@ func TestValidateSchemaRegistryAgainstCommandRegistryChecksFullIdentity(t *testi
 		SourceProductID: "implementation_a",
 		PrimaryCLIPath:  "sample run",
 		Visibility:      SchemaVisibilityPublic,
-		Source:          "reviewed_command_registry",
+		Source:          "contract_identity",
 	}
 	for name, test := range map[string]struct {
 		mutate func(*CommandSpec)
@@ -72,14 +72,14 @@ func TestValidateSchemaRegistryAgainstCommandRegistryRejectsAliasViewAsCanonical
 		CLIPath:        "sample run",
 		PrimaryCLIPath: "sample run",
 		Aliases:        []string{"sample execute"},
-		Source:         "reviewed_command_registry",
+		Source:         "contract_identity",
 	}}
 	effective, err := newEffectiveCommandRegistry([]CommandSpec{{
 		CanonicalPath:  "sample.run",
 		PrimaryCLIPath: "sample run",
 		Aliases:        []string{"sample execute"},
 		Visibility:     SchemaVisibilityPublic,
-		Source:         "reviewed_command_registry",
+		Source:         "contract_identity",
 	}})
 	if err != nil {
 		t.Fatal(err)

@@ -29,6 +29,12 @@ var (
 	commandRegistryCLIPathToken     = regexp.MustCompile(`^(?:[A-Za-z0-9][A-Za-z0-9._:-]*|\+[A-Za-z0-9][A-Za-z0-9._:-]*)$`)
 )
 
+// CommandSourceContractIdentity is the delivery source label for command
+// identity collected from ContractFinal.Identity declarations. The collector
+// (CollectIdentitySpecs) is the single identity source since the reviewed
+// schema_command_registry retirement.
+const CommandSourceContractIdentity = "contract_identity"
+
 // CommandSpec is one command identity. Identity and navigation are
 // deliberately kept together so no downstream renderer can independently
 // invent a canonical name, primary path, or alias.
@@ -148,7 +154,7 @@ func indexCommandSpecs(commands []CommandSpec) ([]CommandSpec, map[string]Comman
 		}
 		spec.Source = strings.TrimSpace(spec.Source)
 		if spec.Source == "" {
-			spec.Source = "reviewed_command_registry"
+			spec.Source = CommandSourceContractIdentity
 		}
 		spec.ReviewReason = strings.TrimSpace(spec.ReviewReason)
 		if previous, exists := byCanonical[spec.CanonicalPath]; exists {

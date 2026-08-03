@@ -128,7 +128,7 @@ func CollectIdentitySpecs(root *cobra.Command) ([]CommandSpec, IdentityCollectio
 			PrimaryCLIPath:  primaryCLIPathFromIdentity(id),
 			Aliases:         append([]string(nil), id.Aliases...),
 			Visibility:      SchemaVisibilityPublic,
-			Source:          "reviewed_command_registry",
+			Source:          CommandSourceContractIdentity,
 		})
 	})
 	sort.Slice(specs, func(i, j int) bool { return specs[i].CanonicalPath < specs[j].CanonicalPath })
