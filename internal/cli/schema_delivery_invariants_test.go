@@ -219,8 +219,7 @@ func TestSchemaOverviewPayloadFromCatalogPreservesListSelectionPriority(t *testi
 				"tools":       []map[string]any{{}, {}},
 			},
 		},
-		"interface_metadata": map[string]any{"coverage": "complete"},
-		"agent_metadata":     map[string]any{"coverage": "reviewed"},
+		"agent_metadata": map[string]any{"coverage": "reviewed"},
 	}
 
 	got := schemaOverviewPayloadFromCatalog(catalog)
@@ -235,7 +234,7 @@ func TestSchemaOverviewPayloadFromCatalogPreservesListSelectionPriority(t *testi
 	if got["count"] != 3 || got["tool_count"] != 3 || got["source"] != "runtime-assembled" {
 		t.Fatalf("overview envelope = %#v", got)
 	}
-	if !schemaJSONEqual(got["interface_metadata"], catalog["interface_metadata"]) || !schemaJSONEqual(got["agent_metadata"], catalog["agent_metadata"]) {
+	if !schemaJSONEqual(got["agent_metadata"], catalog["agent_metadata"]) {
 		t.Fatalf("overview metadata = %#v", got)
 	}
 }

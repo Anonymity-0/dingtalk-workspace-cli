@@ -592,8 +592,8 @@ func TestStripSchemaPayloadCompactOverview(t *testing.T) {
 			t.Fatalf("compact overview missing key %q", key)
 		}
 	}
-	// Must strip agent_metadata / interface_metadata at top level.
-	for _, key := range []string{"agent_metadata", "interface_metadata", "source"} {
+	// Must strip agent_metadata at top level.
+	for _, key := range []string{"agent_metadata", "source"} {
 		if _, ok := stripped[key]; ok {
 			t.Fatalf("compact overview still contains stripped key %q", key)
 		}

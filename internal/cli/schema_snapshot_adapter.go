@@ -17,14 +17,13 @@ import (
 // These wire structs are used only at the JSON boundary. Once decoded, the
 // release command keeps and queries SchemaRegistry/SchemaIndex exclusively.
 type schemaCatalogWire struct {
-	Kind              string              `json:"kind"`
-	Level             string              `json:"level"`
-	Source            string              `json:"source"`
-	Count             int                 `json:"count"`
-	ToolCount         int                 `json:"tool_count"`
-	Products          []schemaProductWire `json:"products"`
-	InterfaceMetadata json.RawMessage     `json:"interface_metadata"`
-	AgentMetadata     json.RawMessage     `json:"agent_metadata"`
+	Kind          string              `json:"kind"`
+	Level         string              `json:"level"`
+	Source        string              `json:"source"`
+	Count         int                 `json:"count"`
+	ToolCount     int                 `json:"tool_count"`
+	Products      []schemaProductWire `json:"products"`
+	AgentMetadata json.RawMessage     `json:"agent_metadata"`
 }
 
 type schemaProductWire struct {
@@ -193,12 +192,11 @@ func schemaRegistryFromTyped(catalog schemaCatalogWire, tools map[string]schemaT
 		return SchemaRegistry{}, SchemaIndex{}, fmt.Errorf("schema Catalog full tools absent from typed products: %s", strings.Join(missing, ", "))
 	}
 	registry := SchemaRegistry{
-		Kind:              catalog.Kind,
-		Level:             catalog.Level,
-		Source:            catalog.Source,
-		Products:          products,
-		InterfaceMetadata: catalog.InterfaceMetadata,
-		AgentMetadata:     catalog.AgentMetadata,
+		Kind:          catalog.Kind,
+		Level:         catalog.Level,
+		Source:        catalog.Source,
+		Products:      products,
+		AgentMetadata: catalog.AgentMetadata,
 	}
 	index, err := registry.Index()
 	if err != nil {

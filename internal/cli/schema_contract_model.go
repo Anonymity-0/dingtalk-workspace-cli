@@ -29,13 +29,12 @@ import (
 // the outer boundary by ToPayload. This keeps map[string]any out of the
 // contract assembly path.
 type SchemaRegistry struct {
-	Kind              string
-	Level             string
-	Source            string
-	Products          []ProductSpec
-	InterfaceMetadata json.RawMessage
-	AgentMetadata     json.RawMessage
-	Extensions        map[string]json.RawMessage
+	Kind          string
+	Level         string
+	Source        string
+	Products      []ProductSpec
+	AgentMetadata json.RawMessage
+	Extensions    map[string]json.RawMessage
 }
 
 // ProductSpec is one deterministic product grouping in SchemaRegistry.
@@ -492,9 +491,6 @@ func (r SchemaRegistry) ToSnapshotPayload() (SchemaSnapshotPayload, error) {
 	if r.Source != "" {
 		catalog["source"] = r.Source
 	}
-	if err := putRawJSON(catalog, "interface_metadata", r.InterfaceMetadata); err != nil {
-		return SchemaSnapshotPayload{}, fmt.Errorf("interface_metadata: %w", err)
-	}
 	if err := putRawJSON(catalog, "agent_metadata", r.AgentMetadata); err != nil {
 		return SchemaSnapshotPayload{}, fmt.Errorf("agent_metadata: %w", err)
 	}
@@ -833,9 +829,6 @@ func (r SchemaRegistry) ToPayload() (map[string]any, error) {
 	if r.Source != "" {
 		payload["source"] = r.Source
 	}
-	if err := putRawJSON(payload, "interface_metadata", r.InterfaceMetadata); err != nil {
-		return nil, fmt.Errorf("interface_metadata: %w", err)
-	}
 	if err := putRawJSON(payload, "agent_metadata", r.AgentMetadata); err != nil {
 		return nil, fmt.Errorf("agent_metadata: %w", err)
 	}
@@ -878,9 +871,6 @@ func (r SchemaRegistry) ToOverviewPayload() (map[string]any, error) {
 	}
 	if r.Source != "" {
 		payload["source"] = r.Source
-	}
-	if err := putRawJSON(payload, "interface_metadata", r.InterfaceMetadata); err != nil {
-		return nil, fmt.Errorf("interface_metadata: %w", err)
 	}
 	if err := putRawJSON(payload, "agent_metadata", r.AgentMetadata); err != nil {
 		return nil, fmt.Errorf("agent_metadata: %w", err)

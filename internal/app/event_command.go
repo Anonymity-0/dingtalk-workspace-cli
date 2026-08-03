@@ -1411,7 +1411,3 @@ func eventTypesWithDefault(types []string) []string {
 	}
 	return registry.CatchAllEventTypes()
 }
-
-// compile-time guard: avoid "imported and not used" if any of these
-// indirect imports become unused after future refactors.
-var _ = io.Discard

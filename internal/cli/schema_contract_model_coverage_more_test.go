@@ -117,9 +117,8 @@ func TestCrossPlatformCoverageSchemaSnapshotRendererDependencyEdges(t *testing.T
 	snapshotProductSummary = oldProductSummary
 
 	for name, candidate := range map[string]SchemaRegistry{
-		"extensions":         {Extensions: map[string]json.RawMessage{"bad": json.RawMessage(`{`)}},
-		"interface metadata": {InterfaceMetadata: json.RawMessage(`{`)},
-		"agent metadata":     {AgentMetadata: json.RawMessage(`{`)},
+		"extensions":     {Extensions: map[string]json.RawMessage{"bad": json.RawMessage(`{`)}},
+		"agent metadata": {AgentMetadata: json.RawMessage(`{`)},
 	} {
 		if _, err := candidate.ToSnapshotPayload(); err == nil {
 			t.Errorf("%s error was nil", name)
@@ -230,7 +229,6 @@ func TestCrossPlatformCoverageContractModelPayloadErrorEdges(t *testing.T) {
 	for name, registry := range map[string]SchemaRegistry{
 		"product":            {Products: []ProductSpec{{ID: "sample", Extensions: map[string]json.RawMessage{"bad": badRaw}}}},
 		"registry extension": {Extensions: map[string]json.RawMessage{"bad": badRaw}},
-		"interface metadata": {InterfaceMetadata: badRaw},
 		"agent metadata":     {AgentMetadata: badRaw},
 	} {
 		if _, err := registry.ToPayload(); err == nil {
@@ -238,8 +236,7 @@ func TestCrossPlatformCoverageContractModelPayloadErrorEdges(t *testing.T) {
 		}
 	}
 	for name, registry := range map[string]SchemaRegistry{
-		"interface metadata": {InterfaceMetadata: badRaw},
-		"agent metadata":     {AgentMetadata: badRaw},
+		"agent metadata": {AgentMetadata: badRaw},
 	} {
 		if _, err := registry.ToOverviewPayload(); err == nil {
 			t.Errorf("overview %s error was nil", name)

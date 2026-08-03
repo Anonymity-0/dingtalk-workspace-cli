@@ -454,51 +454,6 @@ func TestRuntimeSchemaAllPayloadContainsFullLeafParameters(t *testing.T) {
 	}
 }
 
-func TestRuntimeSchemaReportsPinnedInterfaceMetadata(t *testing.T) {
-	mcpFixture := embeddedMCPMetadata{
-		Version:        1,
-		Source:         "cli-registry",
-		SourceRevision: "revision-test",
-		SourceHash:     "sha256:interface-test",
-		Coverage: embeddedMCPMetadataCoverage{
-			SurfaceScope:   "source_revision",
-			SourceTools:    10,
-			SurfaceTools:   2,
-			MatchedTools:   1,
-			UnmatchedTools: 1,
-		},
-		Tools: map[string]embeddedMCPToolMetadata{
-			"doc.create_document": {Description: "创建文档"},
-		},
-	}
-	agentFixture := emptyAgentMetadata()
-
-	catalog, err := runtimeSchemaPayloadForTestWithMetadata(buildRuntimeSchemaTestRoot(), nil, agentFixture, mcpFixture)
-	if err != nil {
-		t.Fatalf("runtimeSchemaPayloadForTest(catalog): %v", err)
-	}
-	summary, _ := catalog["interface_metadata"].(map[string]any)
-	if summary["source"] != "cli-registry" || summary["source_hash"] != "sha256:interface-test" || schemaTestInt(summary["tool_count"]) != 1 {
-		t.Fatalf("interface metadata summary = %#v", summary)
-	}
-	coverage, _ := summary["coverage"].(map[string]any)
-	if summary["source_revision"] != "revision-test" || coverage["surface_scope"] != "source_revision" || schemaTestInt(coverage["surface_tools"]) != 2 {
-		t.Fatalf("interface metadata provenance = %#v", summary)
-	}
-
-	registry, err := schemaRegistryForTestWithMetadata(buildRuntimeSchemaTestRoot(), agentFixture, mcpFixture)
-	if err != nil {
-		t.Fatalf("schemaRegistryForTest(): %v", err)
-	}
-	compact, err := registry.ToOverviewPayload()
-	if err != nil {
-		t.Fatalf("ToOverviewPayload(): %v", err)
-	}
-	if compact["interface_metadata"] == nil {
-		t.Fatalf("compact schema dropped interface metadata: %#v", compact)
-	}
-}
-
 func schemaTestInt(value any) int {
 	switch typed := value.(type) {
 	case int:

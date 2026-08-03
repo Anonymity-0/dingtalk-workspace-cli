@@ -447,17 +447,6 @@ func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
 	assembleMarshalRaw = func(any) (json.RawMessage, error) {
 		calls++
 		if calls == 1 {
-			return nil, fmt.Errorf("iface boom")
-		}
-		return json.RawMessage(`{}`), nil
-	}
-	if _, err := assembleSchemaRegistryFromBound(BoundCommandRegistry{}, runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "iface boom") {
-		t.Fatalf("iface marshal error = %v", err)
-	}
-	calls = 0
-	assembleMarshalRaw = func(any) (json.RawMessage, error) {
-		calls++
-		if calls == 2 {
 			return nil, fmt.Errorf("agent boom")
 		}
 		return json.RawMessage(`{}`), nil

@@ -196,10 +196,6 @@ func assembleSchemaRegistryFromBoundWithOptions(bound BoundCommandRegistry, meta
 	if err != nil {
 		return SchemaRegistry{}, fmt.Errorf("build typed Schema registry: %w", err)
 	}
-	registry.InterfaceMetadata, err = assembleMarshalRaw(interfaceMetadataSummaryFrom(metadata.MCP))
-	if err != nil {
-		return SchemaRegistry{}, fmt.Errorf("encode interface metadata summary: %w", err)
-	}
 	// Derive Agent metadata summary from the assembled ContractFinal /
 	// ProductDecl surface so runtime delivery and cmd_schema_catalog dumps
 	// share one Catalog blob (inject remains validation-only for the dump).

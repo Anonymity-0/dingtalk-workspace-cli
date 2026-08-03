@@ -101,7 +101,6 @@ jq -S '
     ]
   } +
   (if (($catalog.source // "") | type == "string" and length > 0) then {source: $catalog.source} else {} end) +
-  (if $catalog | has("interface_metadata") then {interface_metadata: $catalog.interface_metadata} else {} end) +
   (if $catalog | has("agent_metadata") then {agent_metadata: $catalog.agent_metadata} else {} end) +
   {catalog_hash: $snapshot.source_hash} +
   (if (($snapshot.surface_hash // "") | nonempty) then {surface_hash: $snapshot.surface_hash} else {} end)

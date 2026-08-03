@@ -115,22 +115,6 @@ func emptyPinnedMCPMetadata() embeddedMCPMetadata {
 	return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
 }
 
-func interfaceMetadataSummaryFrom(metadata embeddedMCPMetadata) map[string]any {
-	summary := map[string]any{
-		"source":      strings.TrimSpace(metadata.Source),
-		"version":     metadata.Version,
-		"source_hash": strings.TrimSpace(metadata.SourceHash),
-		"tool_count":  len(metadata.Tools),
-	}
-	if revision := strings.TrimSpace(metadata.SourceRevision); revision != "" {
-		summary["source_revision"] = revision
-	}
-	if metadata.Coverage.SurfaceTools > 0 {
-		summary["coverage"] = metadata.Coverage
-	}
-	return summary
-}
-
 // applyContractRiskToSafety overlays Schema Safety fields from an embedded
 // Contract Risk value. Path A: Contract wins effect/risk/confirmation for the
 // managed surface; other Safety fields (e.g. idempotency) are preserved.
@@ -1309,7 +1293,6 @@ var schemaCompactStripKeys = map[string]bool{
 	"metadata_source":       true,
 	"source":                true,
 	"agent_metadata":        true,
-	"interface_metadata":    true,
 	"field_provenance":      true,
 	"reviewed":              true,
 	// redundant with canonical_path / cli_path
