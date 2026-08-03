@@ -2,8 +2,8 @@
   "version": 3,
   "baseline": {
     "manifest": "schema-parameter-bindings-v3",
-    "sha256": "sha256:ff0f76145dd27da5429434a348344c9cdf74c44eaf6f4ea5411d29d904a9066f",
-    "reason": "Reviewed v3 baseline after binding sheet.info --include to the include property while porting the wukong sheet info expansion flag.",
+    "sha256": "sha256:50f417873ca33f7d5bd9e3a2df4e852f3713a64fd2f6340f06e7a9e9c05b81d3",
+    "reason": "Reviewed v3 baseline after binding the OA full-request flags to their pinned request-wrapper parameters and recording simple-mode wrapper inputs as exact mapping exclusions.",
     "reviewed": true
   },
   "removals": {
@@ -955,6 +955,9 @@
       "limit": "pageSize",
       "page": "pageNumber"
     },
+    "oa.forecast_process": {
+      "request": "ProcessForecastPopRequest"
+    },
     "oa.list_initiated_instances": {
       "cursor": "nextToken",
       "end": "endTime",
@@ -982,6 +985,9 @@
     },
     "oa.revoke_processInstance": {
       "instance-id": "processInstanceId"
+    },
+    "oa.start_process_instance": {
+      "request": "ProcessInstanceCreationPopRequest"
     },
     "report.get_received_report_list": {
       "end": "endTime",
@@ -1965,6 +1971,17 @@
     "sheet.write_image --file": "local upload input used to obtain resourceId/resourceUrl",
     "sheet.write_image --mime-type": "local upload metadata",
     "sheet.write_image --name": "local upload metadata",
+    "oa.forecast_process --dept-id": "Conditional request wrapper: --dept-id is encoded inside ProcessForecastPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+    "oa.forecast_process --form-values": "Conditional request wrapper: --form-values is transformed into formComponentValues inside ProcessForecastPopRequest, so it has no independent top-level MCP property.",
+    "oa.forecast_process --process-code": "Conditional request wrapper: --process-code is encoded inside ProcessForecastPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --approvers": "Conditional request wrapper: --approvers is transformed into an approvers array inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --approvers-action-type": "Conditional request wrapper: --approvers-action-type only configures the generated approvers array inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --cc-list": "Conditional request wrapper: --cc-list is encoded inside ProcessInstanceCreationPopRequest only when supplied, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --cc-position": "Conditional request wrapper: --cc-position only configures the generated ccList inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --dept-id": "Conditional request wrapper: --dept-id is encoded inside ProcessInstanceCreationPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --form-values": "Conditional request wrapper: --form-values is transformed into formComponentValues inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --originator-user-id": "Conditional request wrapper: --originator-user-id is encoded inside ProcessInstanceCreationPopRequest only when supplied, so it has no independent top-level MCP property.",
+    "oa.start_process_instance --process-code": "Conditional request wrapper: --process-code is encoded inside ProcessInstanceCreationPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
     "todo.add_todo_attachment --file-path": "local upload input used to construct attachmentList",
     "todo.get_user_todos_in_current_org --query-all": "Local route selector: the default path calls get_user_todos_in_current_org, while --query-all switches to get_user_todos; it is not a property of the pinned default RPC.",
     "todo.list_todo_attachment --task-id": "Reviewed unpinned adapter: --task-id is nested under todoAttachmentListRequest at runtime, while the immutable pinned MCP snapshot has no interface_ref for todo.list_todo_attachment.",

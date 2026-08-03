@@ -1622,16 +1622,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --dept-id is encoded inside ProcessForecastPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "deptId"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "deptId"
+              "review_reason": "Conditional request wrapper: --dept-id is encoded inside ProcessForecastPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -1682,7 +1690,6 @@
               "value": "string"
             }
           },
-          "property": "deptId",
           "required": true,
           "type": "string"
         },
@@ -1712,16 +1719,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --form-values is transformed into formComponentValues inside ProcessForecastPopRequest, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "formValues"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "formValues"
+              "review_reason": "Conditional request wrapper: --form-values is transformed into formComponentValues inside ProcessForecastPopRequest, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -1772,7 +1787,6 @@
               "value": "string"
             }
           },
-          "property": "formValues",
           "required": true,
           "type": "string"
         },
@@ -1802,16 +1816,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --process-code is encoded inside ProcessForecastPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "processCode"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "processCode"
+              "review_reason": "Conditional request wrapper: --process-code is encoded inside ProcessForecastPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -1862,7 +1884,6 @@
               "value": "string"
             }
           },
-          "property": "processCode",
           "required": true,
           "type": "string"
         },
@@ -1878,6 +1899,12 @@
                   "value": "完整请求 JSON（与简单模式互斥）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "ProcessForecastPopRequest"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -1889,32 +1916,64 @@
               "source": "cobra_usage",
               "value": "完整请求 JSON（与简单模式互斥）"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "object"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "object"
+            },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "versioned_binding",
                   "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "ProcessForecastPopRequest"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "request"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "request"
+              "source": "versioned_parameter_binding",
+              "value": "ProcessForecastPopRequest"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
               "value": false
             },
             "required_when": {
@@ -1946,7 +2005,9 @@
               "value": "string"
             }
           },
-          "property": "request",
+          "interface_description": "ProcessForecastPopRequest",
+          "interface_type": "object",
+          "property": "ProcessForecastPopRequest",
           "required": false,
           "type": "string"
         }
@@ -15599,16 +15660,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --approvers is transformed into an approvers array inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "approvers"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "approvers"
+              "review_reason": "Conditional request wrapper: --approvers is transformed into an approvers array inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -15653,7 +15722,6 @@
               "value": "string"
             }
           },
-          "property": "approvers",
           "required": false,
           "type": "string"
         },
@@ -15684,16 +15752,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --approvers-action-type only configures the generated approvers array inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "approversActionType"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "approversActionType"
+              "review_reason": "Conditional request wrapper: --approvers-action-type only configures the generated approvers array inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -15744,7 +15820,6 @@
               "value": "string"
             }
           },
-          "property": "approversActionType",
           "required": false,
           "type": "string"
         },
@@ -15774,16 +15849,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --cc-list is encoded inside ProcessInstanceCreationPopRequest only when supplied, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "ccList"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "ccList"
+              "review_reason": "Conditional request wrapper: --cc-list is encoded inside ProcessInstanceCreationPopRequest only when supplied, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -15828,7 +15911,6 @@
               "value": "string"
             }
           },
-          "property": "ccList",
           "required": false,
           "type": "string"
         },
@@ -15859,16 +15941,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --cc-position only configures the generated ccList inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "ccPosition"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "ccPosition"
+              "review_reason": "Conditional request wrapper: --cc-position only configures the generated ccList inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -15919,7 +16009,6 @@
               "value": "string"
             }
           },
-          "property": "ccPosition",
           "required": false,
           "type": "string"
         },
@@ -15950,16 +16039,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --dept-id is encoded inside ProcessInstanceCreationPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "deptId"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "deptId"
+              "review_reason": "Conditional request wrapper: --dept-id is encoded inside ProcessInstanceCreationPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -16010,7 +16107,6 @@
               "value": "string"
             }
           },
-          "property": "deptId",
           "required": false,
           "type": "string"
         },
@@ -16040,16 +16136,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --form-values is transformed into formComponentValues inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "formValues"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "formValues"
+              "review_reason": "Conditional request wrapper: --form-values is transformed into formComponentValues inside ProcessInstanceCreationPopRequest, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -16100,7 +16204,6 @@
               "value": "string"
             }
           },
-          "property": "formValues",
           "required": true,
           "type": "string"
         },
@@ -16130,16 +16233,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --originator-user-id is encoded inside ProcessInstanceCreationPopRequest only when supplied, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "originatorUserId"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "originatorUserId"
+              "review_reason": "Conditional request wrapper: --originator-user-id is encoded inside ProcessInstanceCreationPopRequest only when supplied, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -16184,7 +16295,6 @@
               "value": "string"
             }
           },
-          "property": "originatorUserId",
           "required": false,
           "type": "string"
         },
@@ -16214,16 +16324,24 @@
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "reviewed_mapping_exclusion",
+                  "review_reason": "Conditional request wrapper: --process-code is encoded inside ProcessInstanceCreationPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
                   "selected": true,
+                  "source": "reviewed_mapping_exclusion",
+                  "value": ""
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "processCode"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "reviewed_mapping_exclusion",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "processCode"
+              "review_reason": "Conditional request wrapper: --process-code is encoded inside ProcessInstanceCreationPopRequest together with the other simple-mode flags, so it has no independent top-level MCP property.",
+              "source": "reviewed_mapping_exclusion",
+              "value": ""
             },
             "required": {
               "candidates": [
@@ -16274,7 +16392,6 @@
               "value": "string"
             }
           },
-          "property": "processCode",
           "required": true,
           "type": "string"
         },
@@ -16290,6 +16407,12 @@
                   "value": "完整请求 JSON（与简单模式互斥）"
                 },
                 {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "ProcessInstanceCreationPopRequest"
+                },
+                {
                   "precedence": "default",
                   "selected": false,
                   "source": "default",
@@ -16301,32 +16424,64 @@
               "source": "cobra_usage",
               "value": "完整请求 JSON（与简单模式互斥）"
             },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "object"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "object"
+            },
             "property": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "versioned_binding",
                   "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "ProcessInstanceCreationPopRequest"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
                   "source": "flag_name_inference",
                   "value": "request"
                 }
               ],
-              "precedence": "inference",
+              "precedence": "versioned_binding",
               "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "request"
+              "source": "versioned_parameter_binding",
+              "value": "ProcessInstanceCreationPopRequest"
             },
             "required": {
               "candidates": [
                 {
-                  "precedence": "default",
+                  "precedence": "mcp_metadata",
                   "selected": true,
+                  "source": "mcp_metadata",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
               "value": false
             },
             "required_when": {
@@ -16358,7 +16513,9 @@
               "value": "string"
             }
           },
-          "property": "request",
+          "interface_description": "ProcessInstanceCreationPopRequest",
+          "interface_type": "object",
+          "property": "ProcessInstanceCreationPopRequest",
           "required": false,
           "type": "string"
         }
