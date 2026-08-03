@@ -346,14 +346,18 @@ func TestCrossPlatformCoverageContractDeclEmptyReportsEveryAuthoredSection(t *te
 	}
 
 	authored := map[string]ContractDecl{
-		"title":       {Title: "T"},
-		"description": {Description: "D"},
-		"positionals": {Positionals: []contract.RuntimeSchemaPositional{{Name: "id"}}},
-		"parameters":  {Parameters: []contract.ParamDecl{{Name: "mode"}}},
-		"dry_run":     {DryRun: &contract.DryRunSpec{PreviewKind: "request"}},
-		"interface":   {Interface: &contract.InterfaceSpec{Mode: "mcp"}},
-		"selection":   {Selection: contract.SelectionSpec{Tips: []string{"tip"}}},
-		"identity":    {Identity: contract.ToolIdentitySpec{Name: "tool"}},
+		"title":               {Title: "T"},
+		"description":         {Description: "D"},
+		"positionals":         {Positionals: []contract.RuntimeSchemaPositional{{Name: "id"}}},
+		"parameters":          {Parameters: []contract.ParamDecl{{Name: "mode"}}},
+		"dry_run":             {DryRun: &contract.DryRunSpec{PreviewKind: "request"}},
+		"interface":           {Interface: &contract.InterfaceSpec{Mode: "mcp"}},
+		"selection":           {Selection: contract.SelectionSpec{Tips: []string{"tip"}}},
+		"identity.name":       {Identity: contract.ToolIdentitySpec{Name: "tool"}},
+		"identity.group":      {Identity: contract.ToolIdentitySpec{Group: "ops"}},
+		"identity.source":     {Identity: contract.ToolIdentitySpec{Source: "native"}},
+		"identity.cli_name":   {Identity: contract.ToolIdentitySpec{CLIName: "create"}},
+		"identity.source_pid": {Identity: contract.ToolIdentitySpec{SourceProductID: "doc"}},
 	}
 	for name, decl := range authored {
 		if decl.Empty() {

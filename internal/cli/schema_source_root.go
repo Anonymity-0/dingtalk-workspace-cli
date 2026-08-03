@@ -45,12 +45,34 @@ var (
 	runtimeDeliverySchemaCatalogMapsErr   error
 )
 
+// resetDeliverySchemaCatalogState clears the lazy Catalog delivery Once/caches
+// so the next deliverySchemaCatalog() reassembles.
+func resetDeliverySchemaCatalogState() {
+	runtimeDeliverySchemaCatalogOnce = sync.Once{}
+	runtimeDeliverySchemaCatalog = loadedSchemaCatalog{}
+	runtimeDeliverySchemaCatalogErr = nil
+	runtimeDeliverySchemaCatalogLazyCount.Store(0)
+	runtimeDeliverySchemaCatalogMapsOnce = sync.Once{}
+	runtimeDeliverySchemaCatalogMapsErr = nil
+}
+
+// resetSchemaDeliveryState clears ResolveMeta lookup state and Catalog delivery
+// caches. Production registration calls this for idempotent re-register;
+// tests may call the ForTest wrappers that delegate here.
+func resetSchemaDeliveryState() {
+	metaByCLIPathOnce = sync.Once{}
+	metaByCLIPath = nil
+	runtimeDeliverySchemaMetaIndexErr = nil
+	runtimeDeliverySchemaMetaIndexLazyCount.Store(0)
+	resetDeliverySchemaCatalogState()
+}
+
 // RegisterSchemaSourceRoot installs the root factory used by runtime Schema
 // delivery (dws schema / ResolveMeta). Production registers from internal/app.
 // Passing nil clears the factory (tests only) and resets lazy delivery / Meta state.
 func RegisterSchemaSourceRoot(factory func() *cobra.Command) {
 	schemaSourceRootFn = factory
-	resetMetaByCLIPathStateForTest()
+	resetSchemaDeliveryState()
 }
 
 // SchemaSourceRootRegistered reports whether runtime assembly has a root factory.

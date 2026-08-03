@@ -14,11 +14,7 @@
 package cli
 
 import (
-	"sync"
-
 	"github.com/spf13/cobra"
-
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // Test helpers for this package's lazy delivery state. Production code must
@@ -26,20 +22,11 @@ import (
 // the exported ones; in-package tests may use the unexported resetters.
 
 func resetDeliverySchemaCatalogStateForTest() {
-	runtimeDeliverySchemaCatalogOnce = sync.Once{}
-	runtimeDeliverySchemaCatalog = loadedSchemaCatalog{}
-	runtimeDeliverySchemaCatalogErr = nil
-	runtimeDeliverySchemaCatalogLazyCount.Store(0)
-	runtimeDeliverySchemaCatalogMapsOnce = sync.Once{}
-	runtimeDeliverySchemaCatalogMapsErr = nil
+	resetDeliverySchemaCatalogState()
 }
 
 func resetMetaByCLIPathStateForTest() {
-	metaByCLIPathOnce = sync.Once{}
-	metaByCLIPath = nil
-	runtimeDeliverySchemaMetaIndexErr = nil
-	runtimeDeliverySchemaMetaIndexLazyCount.Store(0)
-	resetDeliverySchemaCatalogStateForTest()
+	resetSchemaDeliveryState()
 }
 
 // clearDeclaredDryRunCapabilitiesForTest resets the declared index (tests only).
@@ -51,11 +38,17 @@ func clearDeclaredDryRunCapabilitiesForTest() {
 }
 
 func resetReviewedDryRunCapabilitiesLazyForTest() {
-	reviewedDryRunCapabilitiesLazy = struct {
-		once        sync.Once
-		byCanonical map[string]contract.DryRunSpec
-		err         error
-	}{}
+	resetReviewedDryRunCapabilitiesLazy()
+}
+
+func setReviewedDryRunCapabilityGroupsForTest(groups []dryRunCapabilityGroup) func() {
+	previous := reviewedDryRunCapabilityGroups
+	reviewedDryRunCapabilityGroups = groups
+	resetReviewedDryRunCapabilitiesLazy()
+	return func() {
+		reviewedDryRunCapabilityGroups = previous
+		resetReviewedDryRunCapabilitiesLazy()
+	}
 }
 
 // InstallProductionSchemaAssemblyForTest installs the production
@@ -94,8 +87,7 @@ func RestorePackageCLISchemaDeliveryForTest() {
 	}
 	schemaSourceRootFn = nil
 	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
-	resetDeliverySchemaCatalogStateForTest()
-	resetMetaByCLIPathStateForTest()
+	resetSchemaDeliveryState()
 }
 
 // restorePackageCLISchemaDeliveryHook is installed by package-cli TestMain so

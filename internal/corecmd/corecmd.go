@@ -1302,15 +1302,6 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 	contractfinal.RegisterRuntimeContractFinal(cmd, payload)
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, v := range values {
-		if s := strings.TrimSpace(v); s != "" {
-			return s
-		}
-	}
-	return ""
-}
-
 // schemaSafetyFromDecl copies the single command SafetySpec into the final
 // Schema payload. The zero value keeps the historical read-only default.
 func schemaSafetyFromDecl(safety contract.SafetySpec) *contract.SafetySpec {

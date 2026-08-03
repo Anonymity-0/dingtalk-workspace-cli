@@ -15,6 +15,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 ### Fixed
 
 - **Unified command safety and Shortcut runtime (H0)** — Shortcut leaves now execute through `corecmd.New`, sharing the same typed Safety confirmation gate as Leaf commands. EOF / closed stdin returns `confirmation_required`, and interactive `no` returns the existing non-zero cancellation validation error instead of reporting success for an operation that did not run. Pass `--yes` or `--dry-run` to skip the prompt.
+- **Constraint "provided" for `at_least_one` / `exactly_one` (H0)** — a flag set to an empty string (`--flag ""`) no longer counts as provided; previously bare Cobra `Changed` satisfied the constraint. Pass a non-blank value for a member of the group.
 
 ## [1.0.56-beta.2] - 2026-07-30
 

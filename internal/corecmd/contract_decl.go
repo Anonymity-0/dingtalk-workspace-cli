@@ -157,9 +157,12 @@ func (s ContractDecl) empty() bool {
 		len(s.Selection.WorkflowRefs) > 0 {
 		return false
 	}
-	if strings.TrimSpace(s.Identity.ProductID) != "" || strings.TrimSpace(s.Identity.Name) != "" ||
-		strings.TrimSpace(s.Identity.CanonicalPath) != "" || strings.TrimSpace(s.Identity.CLIPath) != "" ||
-		strings.TrimSpace(s.Identity.PrimaryCLIPath) != "" || len(s.Identity.Aliases) > 0 {
+	if strings.TrimSpace(s.Identity.ProductID) != "" || strings.TrimSpace(s.Identity.SourceProductID) != "" ||
+		strings.TrimSpace(s.Identity.Name) != "" || strings.TrimSpace(s.Identity.CLIName) != "" ||
+		strings.TrimSpace(s.Identity.CanonicalPath) != "" || strings.TrimSpace(s.Identity.Path) != "" ||
+		strings.TrimSpace(s.Identity.CLIPath) != "" || strings.TrimSpace(s.Identity.PrimaryCLIPath) != "" ||
+		strings.TrimSpace(s.Identity.Group) != "" || strings.TrimSpace(s.Identity.Source) != "" ||
+		len(s.Identity.Aliases) > 0 || s.Identity.IsAlias {
 		return false
 	}
 	return true

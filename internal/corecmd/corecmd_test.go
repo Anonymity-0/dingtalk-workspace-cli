@@ -1766,12 +1766,3 @@ func TestCrossPlatformCoverageEmbedContractSkipsBlankAndHiddenFlags(t *testing.T
 		}
 	}
 }
-
-func TestCrossPlatformCoverageFirstNonEmpty(t *testing.T) {
-	if got := firstNonEmpty("", "  ", "value", "later"); got != "value" {
-		t.Fatalf("firstNonEmpty = %q", got)
-	}
-	if got := firstNonEmpty("", "  "); got != "" {
-		t.Fatalf("firstNonEmpty empty = %q", got)
-	}
-}
