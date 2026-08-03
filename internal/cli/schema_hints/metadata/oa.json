@@ -91,6 +91,21 @@
       "reviewed": true,
       "runtime_gate": "confirm_delete"
     },
+    "oa.get_process_schema": {
+      "effect": "read", "risk": "low", "confirmation": "not_required", "idempotency": "idempotent",
+      "interface_mode": "mcp", "availability": "available", "reviewed": true, "runtime_gate": "none",
+      "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+    },
+    "oa.forecast_process": {
+      "effect": "read", "risk": "low", "confirmation": "not_required", "idempotency": "idempotent",
+      "interface_mode": "mcp", "availability": "available", "reviewed": true, "runtime_gate": "none",
+      "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+    },
+    "oa.start_process_instance": {
+      "effect": "write", "risk": "high", "confirmation": "user_required", "idempotency": "non_idempotent",
+      "interface_mode": "mcp", "availability": "available", "reviewed": true, "runtime_gate": "confirm_dangerous",
+      "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+    },
     "oa.shortcut_list_pending": {
       "effect": "read",
       "risk": "low",

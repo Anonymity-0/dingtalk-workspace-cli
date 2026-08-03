@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
-  "source_hash": "sha256:1b4f0e6e6fe49115137ff81717462374b2fdd05ad4ca1bfb1b2dd8272aa6bad8",
+  "surface_hash": "sha256:b25b48bd12d6d2d370d2f1e7176c67d6e3d786e5c2f4508c8fe63ccda052696c",
+  "source_hash": "sha256:e15a5101c05c06ea96e7a902b06c9ab19cc332ccdf1a981c04457ee5329f25ee",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:b513a679eb51b64afa3f31364b45c29bc4590f0568908650f426ac8f4b041b2b",
-      "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
+      "source_hash": "sha256:55bf850adac1db1d673b2a45f954643c0e2f2d6b03bd72ebe3bcd1dbb408230c",
+      "surface_hash": "sha256:b25b48bd12d6d2d370d2f1e7176c67d6e3d786e5c2f4508c8fe63ccda052696c",
       "surface_products": 26,
-      "surface_tools": 846,
-      "tools_with_agent_summary": 846,
-      "tools_with_metadata": 846,
+      "surface_tools": 849,
+      "tools_with_agent_summary": 849,
+      "tools_with_metadata": 849,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -33,7 +33,7 @@
       "source": "mcp-tools-list+cli-registry",
       "source_hash": "sha256:17251f74a4f76142457cc0e87251ecb86c1e3bda0cdf2edc02f351589716ecbc",
       "source_revision": "4574f7022c32cf4c033e9b7b4156e2fec815fed8",
-      "tool_count": 419,
+      "tool_count": 422,
       "version": 1
     },
     "kind": "schema",
@@ -21117,7 +21117,7 @@
         "id": "oa",
         "name": "OA 审批 / 同意 / 拒绝 / 撤销",
         "runtime": true,
-        "tool_count": 22,
+        "tool_count": 25,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -21181,6 +21181,37 @@
             "title": "对审批实例添加评论",
             "use_when": [
               "已知 processInstanceId，需要为审批实例添加评论文本时"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "预测审批流程与自选审批节点",
+            "agent_summary_source": "dws-agent-selection/oa",
+            "availability": "available",
+            "avoid_when": [
+              "需要真正创建审批单时改用 create-instance；未获得字段定义时先用 form-schema"
+            ],
+            "canonical_path": "oa.forecast_process",
+            "cli_name": "forecast-process",
+            "cli_path": "oa approval forecast-process",
+            "confirmation": "not_required",
+            "description": "根据表单值预测审批流程与自选节点",
+            "effect": "read",
+            "group": "approval",
+            "idempotency": "idempotent",
+            "interface_mode": "mcp",
+            "interface_ref": {
+              "product_id": "oa",
+              "rpc_name": "forecast_process"
+            },
+            "metadata_source": "embedded-mcp-metadata",
+            "name": "forecast_process",
+            "primary_cli_path": "oa approval forecast-process",
+            "reviewed": true,
+            "risk": "low",
+            "title": "根据表单值预测审批流程与自选节点",
+            "use_when": [
+              "已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"
             ]
           },
           {
@@ -21309,6 +21340,37 @@
             "title": "获取审批操作记录",
             "use_when": [
               "已知 processInstanceId，需要查看谁做了什么审批操作及结果时"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "查询审批模板的表单 Schema",
+            "agent_summary_source": "dws-agent-selection/oa",
+            "availability": "available",
+            "avoid_when": [
+              "只需列出可用模板时使用 list-forms；不要把返回的 Schema 当作可直接提交的实例请求"
+            ],
+            "canonical_path": "oa.get_process_schema",
+            "cli_name": "form-schema",
+            "cli_path": "oa approval form-schema",
+            "confirmation": "not_required",
+            "description": "查询审批模板的表单 Schema",
+            "effect": "read",
+            "group": "approval",
+            "idempotency": "idempotent",
+            "interface_mode": "mcp",
+            "interface_ref": {
+              "product_id": "oa",
+              "rpc_name": "get_process_schema"
+            },
+            "metadata_source": "embedded-mcp-metadata",
+            "name": "get_process_schema",
+            "primary_cli_path": "oa approval form-schema",
+            "reviewed": true,
+            "risk": "low",
+            "title": "查询审批模板的表单 Schema",
+            "use_when": [
+              "已从 list-forms 或 search-forms 获得 processCode，需要读取字段、选项和必填规则后再填写审批时"
             ]
           },
           {
@@ -21778,6 +21840,37 @@
             "title": "按关键字模糊搜索当前用户可见的审批表单",
             "use_when": [
               "当你已知想找的审批大致名称（如「报销」「请假」）、想快速定位对应表单及其 processCode 时使用，比 +list-forms 全量列举更高效；传入关键字，返回名称或 processCode 匹配的表单，供后续 +list-initiated 按模板查询。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "发起新的审批实例",
+            "agent_summary_source": "dws-agent-selection/oa",
+            "availability": "available",
+            "avoid_when": [
+              "只需预测流程时使用 forecast-process；用户尚未确认或字段未按 Schema 核对时不要发起"
+            ],
+            "canonical_path": "oa.start_process_instance",
+            "cli_name": "create-instance",
+            "cli_path": "oa approval create-instance",
+            "confirmation": "user_required",
+            "description": "发起审批实例（需要 --yes 确认）",
+            "effect": "write",
+            "group": "approval",
+            "idempotency": "non_idempotent",
+            "interface_mode": "mcp",
+            "interface_ref": {
+              "product_id": "oa",
+              "rpc_name": "start_process_instance"
+            },
+            "metadata_source": "embedded-mcp-metadata",
+            "name": "start_process_instance",
+            "primary_cli_path": "oa approval create-instance",
+            "reviewed": true,
+            "risk": "high",
+            "title": "发起审批实例（需要 --yes 确认）",
+            "use_when": [
+              "用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"
             ]
           }
         ],
@@ -26671,6 +26764,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 846
+    "tool_count": 849
   }
 }

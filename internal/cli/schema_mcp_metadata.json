@@ -17,6 +17,30 @@
     "unmatched_tools": 85
   },
   "tools": {
+    "oa.forecast_process": {
+      "title": "forecast_process",
+      "description": "审批流程预测",
+      "parameters": {
+        "ProcessForecastPopRequest": {"type": "object", "description": "ProcessForecastPopRequest", "required": false}
+      },
+      "interface_ref": {"product_id": "oa", "rpc_name": "forecast_process"}
+    },
+    "oa.get_process_schema": {
+      "title": "get_process_schema",
+      "description": "根据表单的processCode，获取该表单的 schema 信息",
+      "parameters": {
+        "processCode": {"type": "string", "description": "需要查询schema信息的表单processCode", "required": true}
+      },
+      "interface_ref": {"product_id": "oa", "rpc_name": "get_process_schema"}
+    },
+    "oa.start_process_instance": {
+      "title": "审批发起表单实例",
+      "description": "根据用户输入审批表单内容、流程、抄送人等信息发起审批",
+      "parameters": {
+        "ProcessInstanceCreationPopRequest": {"type": "object", "description": "ProcessInstanceCreationPopRequest", "required": false}
+      },
+      "interface_ref": {"product_id": "oa", "rpc_name": "start_process_instance"}
+    },
     "aisearch.enterprise_person_search": {
       "title": "enterprise_person_search",
       "description": "企业内找人搜索工具，支持按姓名、部门、职位、技能、工作职责等多维度搜索企业内人员。\\n\\n**适用场景示例**：\\n- 找一下负责智能化的人\\n- 帮我找产品经理\\n- 技术部有哪些人\\n- 张三的领导是谁\\n- 李四手下有哪些人\\n- 帮我找下王芳\\n- 谁在做大模型相关的工作\\n- 公司有哪些架构师\\n- 市场部的同事有谁\\n- 有没有会Java的同事\\n- 研发部的负责人是谁\\n- 帮我找一下跟智能客服有关的人\\n- 做设计的同事有谁\\n- 谁是技术总监\\n- 张三在哪个部门\\n\\n",

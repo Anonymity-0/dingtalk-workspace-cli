@@ -1,20 +1,20 @@
 {
   "version": 1,
-  "source_hash": "sha256:b513a679eb51b64afa3f31364b45c29bc4590f0568908650f426ac8f4b041b2b",
-  "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
+  "source_hash": "sha256:55bf850adac1db1d673b2a45f954643c0e2f2d6b03bd72ebe3bcd1dbb408230c",
+  "surface_hash": "sha256:b25b48bd12d6d2d370d2f1e7176c67d6e3d786e5c2f4508c8fe63ccda052696c",
   "source_files": 160,
   "hint_files": 54,
   "hint_products": 43,
-  "hint_tools": 1844,
+  "hint_tools": 1850,
   "interface_metadata": {
     "source": "mcp-tools-list+cli-registry",
     "revision": "4574f7022c32cf4c033e9b7b4156e2fec815fed8",
     "source_hash": "sha256:17251f74a4f76142457cc0e87251ecb86c1e3bda0cdf2edc02f351589716ecbc",
-    "source_tools": 419,
-    "surface_tools": 414,
-    "eligible_summaries": 413,
+    "source_tools": 422,
+    "surface_tools": 417,
+    "eligible_summaries": 416,
     "applied_summaries": 0,
-    "preserved_summaries": 413,
+    "preserved_summaries": 416,
     "rejected_tools": [
       "chat.unread_message_conversation_list"
     ],
@@ -29,13 +29,13 @@
   "coverage": {
     "surface_products": 26,
     "products_with_metadata": 26,
-    "surface_tools": 846,
-    "tools_with_metadata": 846,
-    "tools_with_agent_summary": 846,
-    "tools_with_use_when": 846,
-    "tools_with_avoid_when": 846,
-    "tools_with_examples": 846,
-    "tools_with_interface_mode": 846,
+    "surface_tools": 849,
+    "tools_with_metadata": 849,
+    "tools_with_agent_summary": 849,
+    "tools_with_use_when": 849,
+    "tools_with_avoid_when": 849,
+    "tools_with_examples": 849,
+    "tools_with_interface_mode": 849,
     "unmatched_skill_tools": 122,
     "unreviewed_skill_tools": 11
   },
@@ -3671,8 +3671,8 @@
       "line": 114,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3685,8 +3685,8 @@
       "line": 115,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3699,8 +3699,8 @@
       "line": 128,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3713,8 +3713,8 @@
       "line": 149,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3727,8 +3727,8 @@
       "line": 164,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3741,8 +3741,8 @@
       "line": 276,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3755,8 +3755,8 @@
       "line": 277,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3769,8 +3769,8 @@
       "line": 297,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3783,8 +3783,8 @@
       "line": 299,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3839,8 +3839,8 @@
       "line": 102,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "group",

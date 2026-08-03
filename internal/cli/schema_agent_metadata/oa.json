@@ -2077,6 +2077,262 @@
         "已知 processInstanceId 与待办 taskId，用户明确要求同意该审批任务时"
       ]
     },
+    "oa approval create-instance": {
+      "agent_summary": "发起新的审批实例",
+      "agent_summary_source": "dws-agent-selection/oa",
+      "availability": "available",
+      "avoid_when": [
+        "只需预测流程时使用 forecast-process；用户尚未确认或字段未按 Schema 核对时不要发起"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "发起新的审批实例",
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "candidates": [
+            {
+              "value": "发起新的审批实例",
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": "available",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "只需预测流程时使用 forecast-process；用户尚未确认或字段未按 Schema 核对时不要发起"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "candidates": [
+            {
+              "value": [
+                "只需预测流程时使用 forecast-process；用户尚未确认或字段未按 Schema 核对时不要发起"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "candidates": [
+            {
+              "value": [
+                "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "non_idempotent",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": "non_idempotent",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "mcp",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": "oa.start_process_instance",
+          "source": "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance.interface_ref",
+          "precedence": "mcp_fallback",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "oa.start_process_instance",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": true
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "high",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "candidates": [
+            {
+              "value": "high",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "candidates": [
+            {
+              "value": [
+                "用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+            }
+          ]
+        }
+      },
+      "idempotency": "non_idempotent",
+      "interface_mode": "mcp",
+      "interface_ref": {
+        "product_id": "oa",
+        "rpc_name": "start_process_instance"
+      },
+      "reviewed": true,
+      "risk": "high",
+      "source_refs": [
+        "CommandRegistry:canonical_path=oa.start_process_instance",
+        "cobra-help:dws oa approval create-instance",
+        "internal/cli/schema_hints/metadata/oa.json",
+        "internal/cli/schema_hints/selection/oa.json",
+        "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance",
+        "live-mcp-tools-list:oa.start_process_instance"
+      ],
+      "use_when": [
+        "用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"
+      ]
+    },
     "oa approval detail": {
       "agent_summary": "获取指定审批实例的详情信息",
       "agent_summary_source": "dws-agent-selection/oa",
@@ -2341,6 +2597,518 @@
       ],
       "use_when": [
         "已知 processInstanceId，需要查看表单内容与当前状态详情时"
+      ]
+    },
+    "oa approval forecast-process": {
+      "agent_summary": "预测审批流程与自选审批节点",
+      "agent_summary_source": "dws-agent-selection/oa",
+      "availability": "available",
+      "avoid_when": [
+        "需要真正创建审批单时改用 create-instance；未获得字段定义时先用 form-schema"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "预测审批流程与自选审批节点",
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "candidates": [
+            {
+              "value": "预测审批流程与自选审批节点",
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            },
+            {
+              "value": "available",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要真正创建审批单时改用 create-instance；未获得字段定义时先用 form-schema"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "candidates": [
+            {
+              "value": [
+                "需要真正创建审批单时改用 create-instance；未获得字段定义时先用 form-schema"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "candidates": [
+            {
+              "value": [
+                "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "mcp",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            },
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": "oa.forecast_process",
+          "source": "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process.interface_ref",
+          "precedence": "mcp_fallback",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "oa.forecast_process",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": true
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，只预测流程而不创建审批实例。"
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "candidates": [
+            {
+              "value": [
+                "已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "mcp",
+      "interface_ref": {
+        "product_id": "oa",
+        "rpc_name": "forecast_process"
+      },
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "CommandRegistry:canonical_path=oa.forecast_process",
+        "cobra-help:dws oa approval forecast-process",
+        "internal/cli/schema_hints/metadata/oa.json",
+        "internal/cli/schema_hints/selection/oa.json",
+        "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process",
+        "live-mcp-tools-list:oa.forecast_process"
+      ],
+      "use_when": [
+        "已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"
+      ]
+    },
+    "oa approval form-schema": {
+      "agent_summary": "查询审批模板的表单 Schema",
+      "agent_summary_source": "dws-agent-selection/oa",
+      "availability": "available",
+      "avoid_when": [
+        "只需列出可用模板时使用 list-forms；不要把返回的 Schema 当作可直接提交的实例请求"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws oa approval form-schema --process-code \u003cprocessCode\u003e"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "查询审批模板的表单 Schema",
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。",
+          "candidates": [
+            {
+              "value": "查询审批模板的表单 Schema",
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            },
+            {
+              "value": "available",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "只需列出可用模板时使用 list-forms；不要把返回的 Schema 当作可直接提交的实例请求"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。",
+          "candidates": [
+            {
+              "value": [
+                "只需列出可用模板时使用 list-forms；不要把返回的 Schema 当作可直接提交的实例请求"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws oa approval form-schema --process-code \u003cprocessCode\u003e"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。",
+          "candidates": [
+            {
+              "value": [
+                "dws oa approval form-schema --process-code \u003cprocessCode\u003e"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "mcp",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            },
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": "oa.get_process_schema",
+          "source": "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema.interface_ref",
+          "precedence": "mcp_fallback",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "oa.get_process_schema",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": true
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "internal/cli/schema_hints/metadata/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "internal/cli/schema_hints/metadata/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，可按 processCode 只读查询表单结构。"
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "已从 list-forms 或 search-forms 获得 processCode，需要读取字段、选项和必填规则后再填写审批时"
+          ],
+          "source": "internal/cli/schema_hints/selection/oa.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。",
+          "candidates": [
+            {
+              "value": [
+                "已从 list-forms 或 search-forms 获得 processCode，需要读取字段、选项和必填规则后再填写审批时"
+              ],
+              "source": "internal/cli/schema_hints/selection/oa.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。"
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "mcp",
+      "interface_ref": {
+        "product_id": "oa",
+        "rpc_name": "get_process_schema"
+      },
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "CommandRegistry:canonical_path=oa.get_process_schema",
+        "cobra-help:dws oa approval form-schema",
+        "internal/cli/schema_hints/metadata/oa.json",
+        "internal/cli/schema_hints/selection/oa.json",
+        "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema",
+        "live-mcp-tools-list:oa.get_process_schema"
+      ],
+      "use_when": [
+        "已从 list-forms 或 search-forms 获得 processCode，需要读取字段、选项和必填规则后再填写审批时"
       ]
     },
     "oa approval list-cc": {

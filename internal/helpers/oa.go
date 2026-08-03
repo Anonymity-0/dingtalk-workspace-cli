@@ -1,12 +1,44 @@
 package helpers
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+func decodeOARequest(raw string) (map[string]any, error) {
+	dec := json.NewDecoder(bytes.NewBufferString(raw))
+	dec.UseNumber()
+	var request map[string]any
+	if err := dec.Decode(&request); err != nil || request == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("JSON 请求不能为 null")
+	}
+	if err := dec.Decode(new(any)); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("JSON 请求包含多余内容")
+	}
+	return request, nil
+}
+
+func oaFormValues(raw string) ([]map[string]string, error) {
+	var values map[string]string
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return nil, err
+	}
+	result := make([]map[string]string, 0, len(values))
+	for name, value := range values {
+		result = append(result, map[string]string{"name": name, "value": value})
+	}
+	return result, nil
+}
 
 // ──────────────────────────────────────────────────────────
 // dws oa — OA 审批
@@ -463,6 +495,79 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 
+	approvalFormSchemaCmd := &cobra.Command{
+		Use: "form-schema", Short: "查询审批模板的表单 Schema",
+		Example: "dws oa approval form-schema --process-code <processCode>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "process-code"); err != nil {
+				return err
+			}
+			return callMCPTool("get_process_schema", map[string]any{"processCode": mustGetFlag(cmd, "process-code")})
+		},
+	}
+	approvalForecastCmd := &cobra.Command{
+		Use: "forecast-process", Short: "根据表单值预测审批流程与自选节点",
+		Example: "dws oa approval forecast-process --process-code <processCode> --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if raw, _ := cmd.Flags().GetString("request"); raw != "" {
+				request, err := decodeOARequest(raw)
+				if err != nil {
+					return fmt.Errorf("--request JSON 解析失败: %w", err)
+				}
+				return callMCPTool("forecast_process", map[string]any{"ProcessForecastPopRequest": request})
+			}
+			if err := validateRequiredFlags(cmd, "process-code", "dept-id", "form-values"); err != nil {
+				return err
+			}
+			deptID, err := strconv.ParseInt(mustGetFlag(cmd, "dept-id"), 10, 64)
+			if err != nil {
+				return fmt.Errorf("--dept-id 必须为整数: %w", err)
+			}
+			values, err := oaFormValues(mustGetFlag(cmd, "form-values"))
+			if err != nil {
+				return fmt.Errorf("--form-values JSON 解析失败: %w", err)
+			}
+			return callMCPTool("forecast_process", map[string]any{"ProcessForecastPopRequest": map[string]any{"processCode": mustGetFlag(cmd, "process-code"), "deptId": deptID, "formComponentValues": [][]map[string]string{values}}})
+		},
+	}
+	approvalCreateCmd := &cobra.Command{
+		Use: "create-instance", Short: "发起审批实例（需要 --yes 确认）",
+		Example: "dws oa approval create-instance --process-code <processCode> --form-values '{\"事由\":\"测试\"}' --yes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !commandDryRun(cmd) {
+				yes, _ := cmd.Flags().GetBool("yes")
+				if !yes {
+					return fmt.Errorf("发起审批实例会创建真实业务数据；请先核对参数，然后添加 --yes 确认执行")
+				}
+			}
+			var request map[string]any
+			if raw, _ := cmd.Flags().GetString("request"); raw != "" {
+				var err error
+				request, err = decodeOARequest(raw)
+				if err != nil {
+					return fmt.Errorf("--request JSON 解析失败: %w", err)
+				}
+			} else {
+				if err := validateRequiredFlags(cmd, "process-code", "form-values"); err != nil {
+					return err
+				}
+				values, err := oaFormValues(mustGetFlag(cmd, "form-values"))
+				if err != nil {
+					return fmt.Errorf("--form-values JSON 解析失败: %w", err)
+				}
+				request = map[string]any{"processCode": mustGetFlag(cmd, "process-code"), "formComponentValues": values}
+				if dept, _ := cmd.Flags().GetString("dept-id"); dept != "" {
+					value, err := strconv.ParseInt(dept, 10, 64)
+					if err != nil {
+						return fmt.Errorf("--dept-id 必须为整数: %w", err)
+					}
+					request["deptId"] = value
+				}
+			}
+			return callMCPTool("start_process_instance", map[string]any{"ProcessInstanceCreationPopRequest": request})
+		},
+	}
+
 	approvalListPendingCmd.Flags().String("start", "", "开始时间 ISO-8601 (如 2026-03-10T00:00:00+08:00) (必填)")
 	approvalListPendingCmd.Flags().String("end", "", "结束时间 ISO-8601 (如 2026-03-10T23:59:59+08:00) (必填)")
 	approvalListPendingCmd.Flags().String("page", "", "分页页码 (可选)")
@@ -533,6 +638,15 @@ func newOaCommand() *cobra.Command {
 	approvalRevertTaskCmd.Flags().String("target-activity-id", "", "退回到的节点 ID（退回发起人固定传 sid-startevent）(必填)")
 	approvalRevertTaskCmd.Flags().String("action", "", "退回方式：REVERT_FOR_APPROVAL（退回到审批人）/ REVERT_FOR_RESUBMIT（退回到发起人）(必填)")
 	approvalRevertTaskCmd.Flags().String("remark", "", "退回说明 (可选)")
+	approvalFormSchemaCmd.Flags().String("process-code", "", "审批模板 processCode (必填)")
+	approvalForecastCmd.Flags().String("process-code", "", "审批模板 processCode（简单模式必填）")
+	approvalForecastCmd.Flags().String("dept-id", "", "发起人部门 ID（简单模式必填）")
+	approvalForecastCmd.Flags().String("form-values", "", "表单值 JSON（简单模式必填）")
+	approvalForecastCmd.Flags().String("request", "", "完整请求 JSON（与简单模式互斥）")
+	approvalCreateCmd.Flags().String("process-code", "", "审批模板 processCode（简单模式必填）")
+	approvalCreateCmd.Flags().String("dept-id", "-1", "发起人部门 ID")
+	approvalCreateCmd.Flags().String("form-values", "", "表单值 JSON（简单模式必填）")
+	approvalCreateCmd.Flags().String("request", "", "完整请求 JSON（与简单模式互斥）")
 
 	approvalCmd.AddCommand(
 		approvalListPendingCmd,
@@ -555,6 +669,9 @@ func newOaCommand() *cobra.Command {
 		approvalAppendTaskCmd,
 		approvalRevertActivitiesCmd,
 		approvalRevertTaskCmd,
+		approvalFormSchemaCmd,
+		approvalForecastCmd,
+		approvalCreateCmd,
 	)
 	root.AddCommand(approvalCmd)
 
