@@ -500,10 +500,10 @@ func normalizeCommandAliases(aliases []string, primary string) []string {
 // Schema hint overlays are retired; every public Schema identity must already
 // exist in the reviewed registry.
 //
-// Parameter mapping audit (schema_parameter_bindings.json — mapping_exclusions /
-// removals; active bindings empty after Track 1 Phase 2) is validated at
-// BindEffectiveCommandRegistry and catalog assembly, not here. Identity
-// registry construction must not hard-depend on active binding rows.
+// Parameter mapping ledger (schema_parameter_mapping_ledger.go —
+// mapping_exclusions / removals; active bindings retired to ParamDecl.Property)
+// is validated at BindEffectiveCommandRegistry and catalog assembly, not here.
+// Identity registry construction must not hard-depend on active binding rows.
 func BuildEffectiveCommandRegistry(root *cobra.Command) (EffectiveCommandRegistry, error) {
 	if root == nil {
 		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")

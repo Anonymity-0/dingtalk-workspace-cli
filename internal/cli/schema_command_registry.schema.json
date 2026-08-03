@@ -97,7 +97,7 @@
             "internal"
           ],
           "default": "public",
-          "description": "Reviewed exposure. Omission is normalized to public. public enters the Agent Schema; compat/internal remain explicit registry entries but are not public delivery tools."
+          "description": "DEPRECATED/dormant reviewed exposure field. Omission is normalized to public. Current product shards do not set this; prefer schema_command_exclusions.go for runnable-but-not-Agent-visible paths. Kept for wire compatibility — do not invent new visibility policy here."
         }
       }
     }

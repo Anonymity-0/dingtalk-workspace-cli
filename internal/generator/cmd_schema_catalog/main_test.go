@@ -286,7 +286,7 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 		"internal/cli/schema_command_registry",
 		"internal/cli/schema_mcp_metadata.json",
 		"internal/cli/schema_mcp_service_review.json",
-		"internal/cli/schema_parameter_bindings.json",
+		"internal/cli/schema_parameter_mapping_ledger.go",
 		"internal/cli/schema_command_exclusions.go",
 	}
 	for _, relative := range files {

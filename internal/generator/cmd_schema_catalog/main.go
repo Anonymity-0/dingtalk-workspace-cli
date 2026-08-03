@@ -84,7 +84,7 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surface
 		{Name: "reviewed CommandRegistry input", Path: "internal/cli/schema_command_registry"},
 		{Name: "pinned MCP metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "reviewed MCP service disposition input", Path: "internal/cli/schema_mcp_service_review.json"},
-		{Name: "reviewed parameter mapping audit input", Path: "internal/cli/schema_parameter_bindings.json"},
+		{Name: "reviewed parameter mapping ledger input", Path: "internal/cli/schema_parameter_mapping_ledger.go"},
 		{Name: "reviewed command exclusion input", Path: "internal/cli/schema_command_exclusions.go"},
 	}
 	if strings.TrimSpace(surfacePath) != "" {

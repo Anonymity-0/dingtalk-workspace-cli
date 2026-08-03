@@ -435,32 +435,19 @@ func TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance(t *
 	}
 }
 
-func TestSchemaParameterBindingCorrectionsAreReviewed(t *testing.T) {
+func TestSchemaParameterBindingActiveBindingsRemainEmpty(t *testing.T) {
 	snapshot, err := runtimeSchemaParameterBindingData()
 	if err != nil {
 		t.Fatalf("runtimeSchemaParameterBindingData() error = %v", err)
 	}
-	// Phase 2 retired every active binding (and the corrections that pinned
-	// their historical remaps) to ParamDecl.Property. Remaining corrections,
-	// if any, must still match an exact active manifest row.
-	flags := finalSchemaCatalogFlagIndex(mustDeliverySchemaCatalogMaps(t).Snapshot.Tools)
-	for key, correction := range snapshot.Corrections {
-		flag, exists := flags[key]
-		if !exists {
-			t.Errorf("correction %q does not reference an exact final Catalog parameter", key)
-			continue
-		}
-		oldProperty := strings.TrimSpace(correction.OldProperty)
-		newProperty := strings.TrimSpace(correction.NewProperty)
-		if oldProperty == "" || newProperty == "" || oldProperty == newProperty {
-			t.Errorf("correction %q has invalid old/new properties: %#v", key, correction)
-		}
-		if strings.TrimSpace(correction.Reason) == "" || !correction.Reviewed {
-			t.Errorf("correction %q is not reviewed with a non-empty reason: %#v", key, correction)
-		}
-		if got := snapshot.Bindings[flag.canonical][flag.flagName]; got != newProperty {
-			t.Errorf("correction %q active binding = %q, want new_property %q", key, got, newProperty)
-		}
+	// Phase 2 retired every active binding (and the corrections ledger) to
+	// ParamDecl.Property. The Go mapping ledger may only carry exclusions /
+	// removals — never a non-empty versioned bindings table.
+	if len(snapshot.Bindings) != 0 {
+		t.Fatalf("active bindings = %d groups, want empty", len(snapshot.Bindings))
+	}
+	if len(snapshot.MappingExclusions) == 0 {
+		t.Fatal("mapping exclusions ledger is empty")
 	}
 }
 

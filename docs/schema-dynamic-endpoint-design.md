@@ -35,7 +35,7 @@ schema_command_registry/               (reviewed CommandRegistry source:
 live Cobra flag facts / typed parameter metadata
   + leaf Contract (Safety / ContractDecl / ParamDecl → contract_final)
   + ProductDecl (product routing prose; production Agent authority)
-  + schema_parameter_bindings.json    (reviewed mapping audit)
+  + schema_parameter_mapping_ledger.go (reviewed mapping exclusions / removals)
   + schema_mcp_metadata.json          (pinned, sanitized interface facts)
   + skills/mono Markdown              (evidence only; not concatenated)
                          |
@@ -118,7 +118,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 | Go/Cobra | Contract 编译后的可执行投影：路径是否真实可执行、Cobra 接受的 flag、DefValue、help 文本 | 稳定 canonical identity、Agent 场景选择、虚构 RPC；**不得**成为与 Contract 平行的第二套 flag 权威 |
 | native Schema identity annotations | implementation-side consistency evidence；存在时必须与 `EffectiveCommandRegistry` 精确一致 | 提供、补全、推断或覆盖 identity |
 | typed parameter metadata / constraints | 由 Contract 约束投影而来的 `require_one_of` / 互斥等；以及仍需 reviewed 的 `required_when` 等 | 命令 identity |
-| `schema_parameter_bindings.json` | 稳定 CLI flag 到 RPC property 的映射 | 命令发现、risk 推断、创建 CLI flag |
+| `schema_parameter_mapping_ledger.go` | CLI flag 无直接 RPC property 的 exclusions / removals | 命令发现、risk 推断、创建 CLI flag；property 交付归 ParamDecl.Property |
 | `schema_mcp_metadata.json` | pinned RPC identity、接口描述和脱敏参数事实（interface 同源） | CLI identity、运行时路由、**创建 CLI flag**、risk 推断 |
 | ProductDecl + leaf `Contract.Selection` | reviewed selection / product routing prose（`contract_final`） | 创建 Cobra 命令或参数、改写 safety；`schema_hints/` 已退役 |
 | Skills/Markdown | 产品路由、工作流和使用建议 | 命令存在性和 flag 事实 |

@@ -65,6 +65,9 @@ organizational family, separate authority; do not merge with
 - Description declare vs delivery: construction requires `ContractDecl.Description` (evidence). Catalog delivery prefers Cobra Long → provenance `cobra_help`; without Long, declared text → `contract_final`. Title: declared first, then Short, then MCP. Do **not** read this as "declare = wire final" or dual authority.
 - **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
 - Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
+- **Do not add** new production `AnnotateRuntimeRisk` / `AnnotateRuntimeGate`
+  (`runtime_gate`) call sites; migrate leaves to declared `Safety` /
+  `ContractDecl` instead. Existing annotate sites may remain until migrated.
 
 ## flag / help / schema homology
 
@@ -90,8 +93,8 @@ The Schema data flow is one way:
 3. Parameter resolution
    Cobra flags
    + contract.ParamDecl.Property / native annotations (primary property authority)
-   + schema_parameter_bindings.json (mapping_exclusions / removals audit only;
-     active bindings empty after Track 1 Phase 2)
+   + schema_parameter_mapping_ledger.go (mapping_exclusions / removals only;
+     active bindings JSON retired after Track 1 Phase 2)
    └─ produces ParameterSpec and constraints
 
 4. Agent and interface semantics
@@ -127,8 +130,22 @@ substitutes. Keep them side-by-side; do **not** fold one into another:
 | Command registry | `schema_command_registry/` (`registry.json` + `products/*.json`) | stable identity, primary CLI path, aliases, navigation |
 | Param concepts | `param_concepts.json` (+ `.schema.json`) | argv synonym / concept dictionary (reduced to `param_aliases_generated.go`) |
 | Exclusions | `schema_command_exclusions.go` | exact reviewed CLI paths excluded from Schema (non-empty reason) |
-| Bindings audit | `schema_parameter_bindings.json` | `mapping_exclusions` / removals audit only (active bindings empty) |
+| Mapping ledger | `schema_parameter_mapping_ledger.go` | `mapping_exclusions` / removals (CLI flags with no direct RPC property); active bindings JSON retired |
 | MCP pin | `schema_mcp_metadata.json` | pinned MCP tool-metadata baseline |
+
+**Aliases are three distinct layers** (do not conflate):
+
+| Layer | Owns |
+|---|---|
+| `FlagSpec.Aliases` / Cobra flag aliases | executable flag synonyms on a leaf |
+| `schema_command_registry` `aliases` | reviewed CLI-path aliases for the same command identity |
+| `param_concepts.json` | argv synonym / concept dictionary (central preparse normalization) |
+
+**Visibility vs exclusions:** registry `visibility` is dormant (all entries default
+`public`); “runnable but not Agent-visible” belongs in
+`schema_command_exclusions.go`, not new `visibility` values. Registry Identity is
+a pin / consistency assertion against Cobra — never a second identity source that
+overrides the reviewed registry.
 
 Leaf declare (`Contract` / `ParamDecl` / `Safety` / `ProductDecl`) and the live
 Cobra tree remain separate from this table: declare owns semantics; Cobra owns

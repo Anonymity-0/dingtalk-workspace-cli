@@ -200,6 +200,9 @@ func AnnotateRuntimeContract(cmd *cobra.Command) {
 // projection. Empty risk is a no-op so write-guard leaves that leave Risk
 // unset keep Contract.Safety / runtime_gate provenance (schema_hints/ is
 // retired and must not be treated as a Safety fallback).
+//
+// Freeze: do not add new production call sites; declare Contract SafetySpec
+// instead. Existing annotate sites may remain until migrated.
 func AnnotateRuntimeRisk(cmd *cobra.Command, risk string) {
 	if cmd == nil {
 		return
@@ -216,6 +219,9 @@ func AnnotateRuntimeRisk(cmd *cobra.Command, risk string) {
 // devAppRequireWriteGuard). Homology rule: every confirmation fact is either
 // Contract-declared (SafetySpec / Risk) or explicitly annotated (this gate).
 // schema_hints/ is retired and must not supply confirmation.
+//
+// Freeze: do not add new production call sites; declare Contract SafetySpec
+// instead. Existing annotate sites may remain until migrated.
 func AnnotateRuntimeGate(cmd *cobra.Command, gate string) {
 	if cmd == nil {
 		return

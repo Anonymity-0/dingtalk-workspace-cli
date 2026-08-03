@@ -175,55 +175,22 @@ if ! jq -e '
 	exit 1
 fi
 
-# Track 1 Phase 2: active bindings must stay empty (ParamDecl.Property owns
-# property delivery). The JSON remains the mapping_exclusions / removals audit.
-binding_count="$(jq '[.bindings[]? | length] | add // 0' internal/cli/schema_parameter_bindings.json)"
-exclusion_count="$(jq '(.mapping_exclusions // {}) | length' internal/cli/schema_parameter_bindings.json)"
-if [ "$binding_count" != "0" ]; then
-	printf 'schema parameter bindings active manifest must be empty after Phase 2, got count=%s\n' "$binding_count" >&2
+# Track 1 Phase 2: active bindings JSON is retired. ParamDecl.Property owns
+# property delivery; mapping exclusions / removals live in the Go ledger.
+if [ -e internal/cli/schema_parameter_bindings.json ]; then
+	printf '%s\n' 'retired schema_parameter_bindings.json must not be present; use schema_parameter_mapping_ledger.go' >&2
 	exit 1
 fi
-if [ "$exclusion_count" -lt 1 ]; then
-	printf 'schema parameter mapping_exclusions ledger must remain non-empty, got count=%s\n' "$exclusion_count" >&2
+if [ ! -f internal/cli/schema_parameter_mapping_ledger.go ]; then
+	printf '%s\n' 'missing reviewed parameter mapping ledger internal/cli/schema_parameter_mapping_ledger.go' >&2
 	exit 1
 fi
-if ! jq -e --slurpfile bindings internal/cli/schema_parameter_bindings.json '
-  . as $catalog |
-  ([$bindings[0].bindings | to_entries[] |
-    .key as $tool | .value | to_entries[] |
-    {tool: $tool, flag: .key, property: .value}
-  ]) as $expected |
-  $bindings[0].version == 3 and
-  $bindings[0].baseline.manifest == "schema-parameter-bindings-v3" and
-  ($bindings[0].baseline.sha256 | test("^sha256:[0-9a-f]{64}$")) and
-  ($bindings[0].baseline.reason | length) > 0 and
-  $bindings[0].baseline.reviewed == true and
-  ($bindings[0].bindings | type) == "object" and
-  ($bindings[0].bindings | length) == 0 and
-  (($bindings[0].mapping_exclusions // {}) | length) > 0 and
-  all(($bindings[0].removals // {} | to_entries)[];
-    (.key | length) > 0 and
-    (.value.reason | length) > 0 and
-    .value.reviewed == true and
-    ((.value.replaced_by // "") | type) == "string"
-  ) and
-  all(($bindings[0].corrections // {} | to_entries)[];
-    (.key | length) > 0 and
-    (.value.old_property | length) > 0 and
-    (.value.new_property | length) > 0 and
-    .value.old_property != .value.new_property and
-    (.value.reason | length) > 0 and
-    .value.reviewed == true
-  ) and
-  all(($bindings[0].mapping_exclusions // {} | to_entries)[];
-    (.key | length) > 0 and (.value | length) > 0
-  ) and
-  all($expected[];
-    . as $binding |
-    $catalog.tools[$binding.tool].parameters[$binding.flag].property == $binding.property
-  )
-' "$catalog" >/dev/null; then
-	printf 'schema parameter binding audit is incomplete or differs from generated catalog: active=%s exclusions=%s\n' "$binding_count" "$exclusion_count" >&2
+if ! grep -q 'var reviewedSchemaParameterMappingExclusions = map' internal/cli/schema_parameter_mapping_ledger.go; then
+	printf '%s\n' 'schema_parameter_mapping_ledger.go must declare reviewedSchemaParameterMappingExclusions' >&2
+	exit 1
+fi
+if ! grep -q 'var reviewedSchemaParameterBindingRemovals = map' internal/cli/schema_parameter_mapping_ledger.go; then
+	printf '%s\n' 'schema_parameter_mapping_ledger.go must declare reviewedSchemaParameterBindingRemovals' >&2
 	exit 1
 fi
 
@@ -241,7 +208,7 @@ if policy_search_paths 'mcp-gw\.dingtalk\.com|mcp\.dingtalk\.com/server|Authoriz
 	"$catalog" \
 	internal/cli/schema_mcp_metadata.json \
 	internal/cli/schema_mcp_service_review.json \
-	internal/cli/schema_parameter_bindings.json; then
+	internal/cli/schema_parameter_mapping_ledger.go; then
 	printf '%s\n' 'schema assets contain endpoint or credential material' >&2
 	exit 1
 fi
@@ -271,7 +238,7 @@ fi
 # is in ./internal/app below; bindings/mapping subset remains in ./internal/cli.
 # Keep TestHomologyCIEntrypointsPinned in sync when adding gate IDs to policy.
 go test ./internal/cli \
-	-run '^(TestDeliverySchemaCatalog.*|TestDeliverySchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteDeliveryLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog|TestDecodeSchemaParameterBindingsFailsClosed|TestSchemaParameterBindingManifestHashIsExactContentNotCount|TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestDeliveryCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingCorrectionsAreReviewed|TestResolveMetaFailsClosedOnUnusableMetaIndex|TestSchemaParameterBindingsPhase2.*)$' \
+	-run '^(TestDeliverySchemaCatalog.*|TestDeliverySchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteDeliveryLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog|TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestDeliveryCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingActiveBindingsRemainEmpty|TestResolveMetaFailsClosedOnUnusableMetaIndex|TestSchemaParameterBindingsPhase2.*)$' \
 	-count=1
 go test ./internal/cli/homology \
 	-run '^(TestUserRequiredSafetyHomologyWithRuntimeGate|TestHomologyDecisionDocPinsPathAAndGateIDs|TestMCPPassthroughAdmissionExcludesLeafAndShortcut|TestHomologyCIEntrypointsPinned)$' \

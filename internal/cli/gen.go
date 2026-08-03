@@ -23,8 +23,8 @@
 //   1. schema_command_registry/             identity (canonical/aliases/navigation)
 //   2. contract.ProductDecl + leaf ContractFinal    Agent routing / selection prose
 //   3. schema_mcp_metadata.json            MCP server tool definitions
-//   4. schema_parameter_bindings.json      mapping exclusions / removals audit
-//                                         (active bindings empty; ParamDecl.Property owns delivery)
+//   4. schema_parameter_mapping_ledger.go  mapping exclusions / removals (Go)
+//                                         (active bindings retired; ParamDecl.Property owns delivery)
 //   5. param_concepts.json + schema       reviewed parameter synonym policy
 //   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //

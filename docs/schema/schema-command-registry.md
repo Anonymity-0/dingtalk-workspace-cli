@@ -18,9 +18,14 @@
 
 Safety / Selection / 参数语义 → 写在叶上 Contract（`ContractDecl` / `ProductDecl`），不进 registry。
 
-同属 `internal/cli` 的 **评审输入**（`param_concepts.json`、exclusions、bindings
-audit、MCP pin）与本目录并列、职责分开——不要合并进 registry，也不要把它们抬成
-Catalog 声明权威。总表见 `AGENTS.md`「Reviewed inputs / 评审输入」。
+同属 `internal/cli` 的 **评审输入**（`param_concepts.json`、exclusions、
+`schema_parameter_mapping_ledger.go`、MCP pin）与本目录并列、职责分开——不要合并进
+registry，也不要把它们抬成 Catalog 声明权威。总表见 `AGENTS.md`「Reviewed inputs /
+评审输入」。
+
+**别名三层消歧**（勿混用）：`FlagSpec.Aliases` = 叶上 flag 同义词；本目录
+`aliases` = 命令路径正式别名；`param_concepts.json` = argv 概念/同义归一。Identity
+是 pin（与 Cobra 对齐），不是第二身份源。
 
 ## 为什么不能删
 
@@ -85,7 +90,7 @@ canonical_path、正式别名表、产品导航、visibility。叶名一改、�
 ```
 
 - 必填：`canonical_path`（`<product>.<name>`，稳定 ID，起盘后不改）、`cli_path`（主路径，指向活 Cobra 叶）
-- 可选：`aliases`（正式别名表，全库现仅 9 条在用）、`visibility`（`public` 默认省略 / `compat` / `internal`；当前 845 条全默认，「可跑但不对 Agent 可见」优先写 exclusions 而不是 visibility）、`source_product_id`（跨产品归源）
+- 可选：`aliases`（正式别名表，全库现仅 9 条在用）、`visibility`（**deprecated / dormant**：`public` 默认省略 / `compat` / `internal`；当前产品分片零显式赋值，「可跑但不对 Agent 可见」写 `schema_command_exclusions.go`，不要新开 visibility 策略）、`source_product_id`（跨产品归源）
 - 未知字段会被 schema 与加载层双重拒绝——只能写这五个字段
 
 **写入步骤**：

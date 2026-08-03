@@ -14,80 +14,29 @@
 package cli
 
 import (
-	"sort"
-	"strings"
+	"os"
 	"testing"
 )
 
-// schemaParameterBindingsPhase2MigratedProducts are product prefixes whose
-// active bindings were retired to leaf ParamDecl.Property in Track 1 Phase 2.
-// The embed path remains for mapping_exclusions / removals audit only.
-var schemaParameterBindingsPhase2MigratedProducts = []string{
-	"aisearch",
-	"aitable",
-	"attendance",
-	"calendar",
-	"chat",
-	"contact",
-	"dev",
-	"devdoc",
-	"ding",
-	"doc",
-	"drive",
-	"mail",
-	"minutes",
-	"oa",
-	"report",
-	"sheet",
-	"todo",
-	"wiki",
-}
-
-func TestSchemaParameterBindingsPhase2MigratedProductsHaveNoActiveRows(t *testing.T) {
-	snapshot, err := loadSchemaParameterBindingSnapshot()
-	if err != nil {
-		t.Fatalf("loadSchemaParameterBindingSnapshot() error = %v", err)
-	}
-	for _, product := range schemaParameterBindingsPhase2MigratedProducts {
-		prefix := product + "."
-		for canonical := range snapshot.Bindings {
-			if strings.HasPrefix(canonical, prefix) {
-				t.Errorf("migrated product %q still has active binding canonical %q", product, canonical)
-			}
-		}
-	}
-}
-
 func TestSchemaParameterBindingsPhase2RemainingInventory(t *testing.T) {
+	bindings, err := LoadSchemaParameterBindings()
+	if err != nil {
+		t.Fatalf("LoadSchemaParameterBindings() error = %v", err)
+	}
+	if len(bindings) != 0 {
+		t.Fatalf("remaining active binding groups = %d, want 0 after ParamDecl.Property retirement", len(bindings))
+	}
 	snapshot, err := loadSchemaParameterBindingSnapshot()
 	if err != nil {
 		t.Fatalf("loadSchemaParameterBindingSnapshot() error = %v", err)
-	}
-	byProduct := map[string]int{}
-	total := 0
-	for canonical, flags := range snapshot.Bindings {
-		product, _, _ := strings.Cut(canonical, ".")
-		n := len(flags)
-		byProduct[product] += n
-		total += n
-	}
-	if total != 0 {
-		products := make([]string, 0, len(byProduct))
-		for product := range byProduct {
-			products = append(products, product)
-		}
-		sort.Slice(products, func(i, j int) bool {
-			if byProduct[products[i]] != byProduct[products[j]] {
-				return byProduct[products[i]] > byProduct[products[j]]
-			}
-			return products[i] < products[j]
-		})
-		t.Fatalf("remaining active binding tuples = %d (%v), want 0 after full ParamDecl.Property retirement", total, products)
 	}
 	if len(snapshot.MappingExclusions) == 0 {
-		t.Fatal("mapping_exclusions ledger is empty; exclusion semantics must remain reviewed in schema_parameter_bindings.json")
+		t.Fatal("mapping exclusions ledger is empty; exclusion semantics must remain reviewed in schema_parameter_mapping_ledger.go")
 	}
-	t.Logf("Phase 2 complete: 0 active tuples; %d mapping_exclusions; %d removals", len(snapshot.MappingExclusions), len(snapshot.Removals))
+	if len(snapshot.Removals) == 0 {
+		t.Fatal("removals ledger is empty; semantic deletions must remain reviewed in schema_parameter_mapping_ledger.go")
+	}
+	t.Logf("Phase 2 complete: 0 active tuples; %d mapping_exclusions; %d removals (Go ledger)", len(snapshot.MappingExclusions), len(snapshot.Removals))
 }
 
 func TestSchemaParameterBindingsPhase2ParamDeclPropertyOutranksBinding(t *testing.T) {
@@ -104,5 +53,12 @@ func TestSchemaParameterBindingsPhase2ParamDeclPropertyOutranksBinding(t *testin
 	}
 	if winner.Source != "native_annotation" || winner.Value != "fromParamDecl" {
 		t.Fatalf("ParamDecl.Property dual-read winner = %#v, want native fromParamDecl", winner)
+	}
+}
+
+func TestSchemaParameterBindingsJSONRetired(t *testing.T) {
+	// Guard: do not reintroduce the empty bindings{} JSON audit table.
+	if _, err := os.Stat("schema_parameter_bindings.json"); err == nil {
+		t.Fatal("schema_parameter_bindings.json must stay deleted; use schema_parameter_mapping_ledger.go")
 	}
 }
