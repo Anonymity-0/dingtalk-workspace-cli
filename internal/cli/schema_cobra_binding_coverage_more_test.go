@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/spf13/cobra"
 )
 
@@ -363,13 +364,13 @@ func TestCrossPlatformCoverageCompatibilityPathAndHelperRemainingEdges(t *testin
 
 	// ContractFinal without Identity fails closed once a Contract is declared.
 	noIdentity := &cobra.Command{Use: "run"}
-	RegisterRuntimeContractFinal(noIdentity, contract.ContractFinalPayload{Description: "x"})
+	contractfinal.RegisterRuntimeContractFinal(noIdentity, contract.ContractFinalPayload{Description: "x"})
 	t.Cleanup(func() { ClearRuntimeContractFinalForTest(noIdentity) })
 	if err := validateCommandRegistryAnnotation(noIdentity, "sample run", spec); err == nil || !strings.Contains(err.Error(), "without Identity") {
 		t.Fatalf("missing Identity error = %v", err)
 	}
 	mismatch := &cobra.Command{Use: "run"}
-	RegisterRuntimeContractFinal(mismatch, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(mismatch, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "other", Name: "run", CanonicalPath: "other.run",
 			CLIPath: "sample run", PrimaryCLIPath: "sample run",
@@ -380,7 +381,7 @@ func TestCrossPlatformCoverageCompatibilityPathAndHelperRemainingEdges(t *testin
 		t.Fatalf("Identity mismatch error = %v", err)
 	}
 	aligned := &cobra.Command{Use: "run"}
-	RegisterRuntimeContractFinal(aligned, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(aligned, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
 			CLIPath: "sample run", PrimaryCLIPath: "sample run",

@@ -283,7 +283,7 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 
 func TestCrossPlatformCoverageSelectionInputExemptsDeclaredTools(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
-	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{})
+	contractfinal.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{})
 	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(declared) })
 
 	registry := commandRegistryProjection{

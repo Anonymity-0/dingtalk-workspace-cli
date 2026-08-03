@@ -34,11 +34,7 @@ import (
 const (
 	ProvenanceEmbeddedSkillMetadata = "embedded-skill-metadata"
 	ProvenanceEmbeddedMCPMetadata   = "embedded-mcp-metadata"
-	// ProvenanceEmbeddedCommandCatalog is a legacy Catalog envelope source
-	// label retained for wire/compat recognition; runtime assembly stamps
-	// SchemaSourceRuntimeAssembled instead.
-	ProvenanceEmbeddedCommandCatalog = "embedded-command-catalog"
-	ProvenanceReviewedManual         = "reviewed_manual"
+	ProvenanceReviewedManual        = "reviewed_manual"
 )
 
 type agentMetadata struct {

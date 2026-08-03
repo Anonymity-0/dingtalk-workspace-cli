@@ -44,7 +44,7 @@ func TestCrossPlatformCoverageContractFinalSkipsWithoutOverlay(t *testing.T) {
 
 func TestCrossPlatformCoverageContractFinalMissingCanonicalProjection(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
-	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
 		Selection: &contract.SelectionSpec{
 			AgentSummary: "Declared",
 			UseWhen:      []string{"use"},
@@ -142,7 +142,7 @@ func TestCrossPlatformCoverageContractFinalProductDeclMergeConflicts(t *testing.
 
 func TestCrossPlatformCoverageContractFinalToolMergeConflict(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
-	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
 		Selection: &contract.SelectionSpec{
 			AgentSummary: "Declared summary",
 			UseWhen:      []string{"use declared"},

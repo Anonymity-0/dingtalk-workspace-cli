@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
@@ -86,7 +87,7 @@ func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
 	}
 
 	leaf := &cobra.Command{Use: "reply"}
-	RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
 			CLIPath: "sample run", PrimaryCLIPath: "sample run",

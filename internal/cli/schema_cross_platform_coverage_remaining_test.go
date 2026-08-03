@@ -51,7 +51,7 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 		leaf := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
 		leaf.Flags().String("name", "", "name")
 		AttachRuntimeSchema(leaf, "sample", "run", "test")
-		RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+		contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
 			Identity: &contract.ToolIdentitySpec{
 				ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
 				CLIPath: "sample run", PrimaryCLIPath: "sample run",
@@ -515,7 +515,7 @@ func crossPlatformAgentSelectionBound(t *testing.T, mutate func(*cobra.Command, 
 	if mutate != nil {
 		mutate(leaf, &payload)
 	}
-	RegisterRuntimeContractFinal(leaf, payload)
+	contractfinal.RegisterRuntimeContractFinal(leaf, payload)
 	t.Cleanup(func() {
 		contractfinal.ClearRuntimeContractFinalForTest(leaf)
 		contract.ClearProductDeclForTest("sample")
@@ -721,7 +721,7 @@ func TestCrossPlatformCoverageSchemaRuntimeRegistryRemainingBranches(t *testing.
 		}})
 		t.Cleanup(func() { contract.ClearProductDeclForTest("doc") })
 		create := root.Commands()[0].Commands()[0]
-		RegisterRuntimeContractFinal(create, contract.ContractFinalPayload{
+		contractfinal.RegisterRuntimeContractFinal(create, contract.ContractFinalPayload{
 			Identity: &contract.ToolIdentitySpec{
 				ProductID: "doc", Name: "create_document", CanonicalPath: "doc.create_document",
 				CLIPath: "doc create", PrimaryCLIPath: "doc create",
@@ -872,7 +872,7 @@ func TestCrossPlatformCoverageAgentExamplePlanAndTokenizerRemaining(t *testing.T
 		leaf := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
 		leaf.Flags().String("name", "", "name")
 		AttachRuntimeSchema(leaf, "sample", "run", "test")
-		RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+		contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
 			Identity: &contract.ToolIdentitySpec{
 				ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
 				CLIPath: "sample run", PrimaryCLIPath: "sample run",

@@ -27,9 +27,8 @@ var contractFinalByCommand sync.Map // *cobra.Command → *contract.ContractFina
 // RegisterRuntimeContractFinal annotates dws.schema.contract then stores the
 // typed final Schema overlay. This is the atomic annotate+store implementation.
 //
-// Ownership lives under the command framework (this package). Product code
-// should call cli.RegisterRuntimeContractFinal (thin re-export);
-// corecmd.AttachContract calls this function directly.
+// Ownership lives under the command framework (this package). All callers —
+// products and corecmd.AttachContract alike — call this function directly.
 func RegisterRuntimeContractFinal(cmd *cobra.Command, payload contract.ContractFinalPayload) {
 	if cmd == nil {
 		return

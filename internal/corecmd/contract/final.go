@@ -20,9 +20,9 @@ package contract
 //
 // The Cobra-keyed runtime store and Register live in
 // internal/corecmd/contractfinal (not this DTO package). AnnotateRuntime*
-// writers live in internal/corecmd/runtimeannotate. Production product code
-// registers through cli.RegisterRuntimeContractFinal (thin re-export);
-// framework code calls contractfinal.RegisterRuntimeContractFinal directly.
+// writers live in internal/corecmd/runtimeannotate. All callers register via
+// contractfinal.RegisterRuntimeContractFinal directly (corecmd.New registers
+// internally).
 type ContractFinalPayload struct {
 	Title       string
 	Description string

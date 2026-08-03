@@ -138,7 +138,7 @@ func TestCrossPlatformCoverageAssembleSchemaRegistryFailClosedMissingProductDecl
 	root := &cobra.Command{Use: "dws"}
 	leaf := &cobra.Command{Use: "run", Short: "Run", Run: func(*cobra.Command, []string) {}}
 	AttachRuntimeSchema(leaf, "orphan", "run", "test")
-	RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "orphan", Name: "run", CanonicalPath: "orphan.run",
 			CLIPath: "orphan run", PrimaryCLIPath: "orphan run",
@@ -193,7 +193,7 @@ func TestAssembleSchemaRegistryRequiresContractFinalAndProductDecl(t *testing.T)
 	root := &cobra.Command{Use: "dws"}
 	leaf := &cobra.Command{Use: "run", Short: "Run sample", Long: "Run the sample tool", Run: func(*cobra.Command, []string) {}}
 	AttachRuntimeSchema(leaf, "sample", "run", "test")
-	RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
 			CLIPath: "sample run", PrimaryCLIPath: "sample run",
@@ -328,7 +328,7 @@ func assembleContractFinalTextTool(t *testing.T, short, long, declaredDescriptio
 		Run:   func(*cobra.Command, []string) {},
 	}
 	AttachRuntimeSchema(leaf, "sample", "run", "test")
-	RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
 			CLIPath: "sample run", PrimaryCLIPath: "sample run",

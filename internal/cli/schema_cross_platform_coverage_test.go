@@ -321,7 +321,7 @@ func crossPlatformAgentExampleFixture(t *testing.T, mutate func(*cobra.Command, 
 	if mutate != nil {
 		mutate(leaf, &payload)
 	}
-	RegisterRuntimeContractFinal(leaf, payload)
+	contractfinal.RegisterRuntimeContractFinal(leaf, payload)
 	t.Cleanup(func() {
 		contractfinal.ClearRuntimeContractFinalForTest(leaf)
 		contract.ClearProductDeclForTest("sample")

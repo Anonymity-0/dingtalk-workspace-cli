@@ -577,7 +577,7 @@ func TestCrossPlatformCoverageMetadataParserConflictEdges(t *testing.T) {
 
 func TestCrossPlatformCoverageContractFinalDeclarationFailureEdges(t *testing.T) {
 	declared := &cobra.Command{Use: "run"}
-	cli.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
+	contractfinal.RegisterRuntimeContractFinal(declared, contract.ContractFinalPayload{
 		Selection: &contract.SelectionSpec{AgentSummary: "declared summary"},
 	})
 	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(declared) })

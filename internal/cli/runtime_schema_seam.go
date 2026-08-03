@@ -58,13 +58,6 @@ var (
 	ApplyParamDecls                     = contractfinal.ApplyParamDecls
 )
 
-// RegisterRuntimeContractFinal is the sole production registration entry for
-// product / helper / shortcut code (annotate + store). Framework code calls
-// corecmd/contractfinal.RegisterRuntimeContractFinal directly.
-func RegisterRuntimeContractFinal(cmd *cobra.Command, payload contract.ContractFinalPayload) {
-	contractfinal.RegisterRuntimeContractFinal(cmd, payload)
-}
-
 func resolvedFieldProvenance(value any, source, sourceRef, precedence, resolution, reviewReason string) contract.FieldProvenance {
 	return contract.ResolvedFieldProvenance(value, source, sourceRef, precedence, resolution, reviewReason)
 }

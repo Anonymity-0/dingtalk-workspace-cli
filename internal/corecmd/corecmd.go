@@ -1211,8 +1211,7 @@ func embedContractDecl(cmd *cobra.Command, spec Spec) {
 //
 // Production registration always goes through contractfinal.RegisterRuntimeContractFinal
 // (annotate + store). Do not call the store/Register APIs except via
-// contractfinal (framework) or the cli.RegisterRuntimeContractFinal re-export
-// (product code).
+// contractfinal — no cli-root wrapper exists.
 //
 // Title/Description stored on the payload are the declared Contract values
 // only. Catalog assembly may prefer Cobra Long for delivered description

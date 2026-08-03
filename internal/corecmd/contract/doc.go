@@ -31,8 +31,7 @@
 //   - AnnotateRuntime* writers → internal/corecmd/runtimeannotate
 //     (framework-owned; cli may thin re-export; corecmd must not import cli).
 //   - ContractFinal cobra store + Register seam → internal/corecmd/contractfinal
-//     (framework calls RegisterRuntimeContractFinal here; product code uses
-//     cli.RegisterRuntimeContractFinal re-export).
+//     (all callers register here directly; corecmd.New registers internally).
 //   - Catalog assembly / ResolveMeta (`RegisterSchemaSourceRoot` →
 //     `ResolveSchemaBuild`); go:embed only for reviewed inputs → internal/cli
 //     (delivery root).

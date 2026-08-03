@@ -38,9 +38,8 @@ func TestAttachContractUsesContractFinalRegisterSeam(t *testing.T) {
 	if !strings.Contains(body, "contractfinal.RegisterRuntimeContractFinal(") {
 		t.Fatal("AttachContract/New must call contractfinal.RegisterRuntimeContractFinal")
 	}
-	if strings.Contains(body, "cli.RegisterRuntimeContractFinal(") {
-		t.Fatal("corecmd must not call cli.RegisterRuntimeContractFinal; use contractfinal seam")
-	}
+	// Registration goes through contractfinal directly; no cli-root wrapper
+	// exists anymore, and the import-prefix check below forbids corecmd → cli.
 	// Build the forbidden import prefix without embedding it as a contiguous
 	// literal in this test file (the walker below must not self-match).
 	forbidden := strings.Join([]string{
