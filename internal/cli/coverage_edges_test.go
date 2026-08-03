@@ -224,13 +224,19 @@ func TestCrossPlatformCoverageStdinCompleteMatrix(t *testing.T) {
 		}
 		os.Stdin = original
 	}()
+	setStdin := func(f *os.File) {
+		if prev := os.Stdin; prev != nil && prev != original {
+			_ = prev.Close()
+		}
+		os.Stdin = f
+	}
 
 	closed, err := os.CreateTemp(t.TempDir(), "closed")
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = closed.Close()
-	os.Stdin = closed
+	setStdin(closed)
 	if StdinIsPipe() {
 		t.Fatal("closed stdin reported as pipe")
 	}
@@ -246,7 +252,7 @@ func TestCrossPlatformCoverageStdinCompleteMatrix(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = stdin.Seek(0, 0)
-	os.Stdin = stdin
+	setStdin(stdin)
 	if !StdinIsPipe() {
 		t.Fatal("regular file stdin did not report pipe")
 	}
@@ -280,7 +286,7 @@ func TestCrossPlatformCoverageStdinCompleteMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.Stdin = largeStdin
+	setStdin(largeStdin)
 	if _, err := readStdinBounded(); err == nil {
 		t.Fatal("oversized stdin accepted")
 	}

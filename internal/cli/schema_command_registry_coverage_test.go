@@ -55,7 +55,7 @@ func TestCrossPlatformCoverageIndexCommandSpecsValidationEdges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid registry error = %v", err)
 	}
-	if got := reg.Commands[0].Source; got != "reviewed_command_registry" {
+	if got := reg.Commands[0].Source; got != CommandSourceContractIdentity {
 		t.Fatalf("default source = %q", got)
 	}
 	if got := reg.Commands[0].Visibility; got != SchemaVisibilityPublic {

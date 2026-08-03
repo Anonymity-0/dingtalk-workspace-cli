@@ -261,29 +261,10 @@ if policy_search_production_go 'loadAgentMetadataFixtureFrom\(' internal/cli; th
 	printf '%s\n' 'Agent metadata fixture loader must stay test-only' >&2
 	exit 1
 fi
-check_schema_loader_references() {
-	loader="$1"
-	allowed="$2"
-	references="$(policy_search_production_go "${loader}\\(" internal/cli || true)"
-	count="$(printf '%s\n' "$references" | awk 'NF { count++ } END { print count + 0 }')"
-	if [ "$count" -ne 2 ]; then
-		printf 'Schema loader %s has %s production references, want exactly declaration + lazy accessor\n' "$loader" "$count" >&2
-		printf '%s\n' "$references" >&2
-		exit 1
-	fi
-	unexpected="$(printf '%s\n' "$references" | grep -Ev "$allowed" || true)"
-	if [ -n "$unexpected" ]; then
-		printf 'Schema loader %s is called outside its lazy accessor:\n%s\n' "$loader" "$unexpected" >&2
-		exit 1
-	fi
-}
 
-check_schema_loader_references \
-	'loadPinnedMCPMetadata' \
-	'^internal/cli/runtime_schema\.go:[0-9]+:(func loadPinnedMCPMetadata\(\) embeddedMCPMetadata \{|[[:space:]]*runtimePinnedMCPMetadataLazy\.metadata = loadPinnedMCPMetadata\(\))$'
-check_schema_loader_references \
-	'loadSchemaParameterBindingSnapshot' \
-	'^internal/cli/schema_parameter_bindings\.go:[0-9]+:(func loadSchemaParameterBindingSnapshot\(\) \(schemaParameterBindingSnapshot, error\) \{|[[:space:]]*runtimeSchemaParameterBindingsLazy\.snapshot, runtimeSchemaParameterBindingsLazy\.err = loadSchemaParameterBindingSnapshot\(\))$'
+# The lazy loaders for the retired MCP pin (loadPinnedMCPMetadata) and the
+# retired bindings snapshot (loadSchemaParameterBindingSnapshot) are gone with
+# their JSON inputs; the bans below keep them from reappearing.
 
 # Catch the common direct eager form statically; the fresh-process tests below
 # additionally catch indirect or multi-line package initializers.
