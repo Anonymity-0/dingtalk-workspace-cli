@@ -115,14 +115,6 @@ func TestCrossPlatformCoverageAssembleSchemaCatalogFromRootAndMaterialize(t *tes
 		t.Fatalf("surface_hash=%q, want EffectiveCommandRegistry hash %q", surfaceHash, resolved.RegistryHash())
 	}
 
-	sourceHash, err := cli.MaterializeDeliverySchemaCatalogMapsForTest()
-	if err != nil {
-		t.Fatalf("MaterializeDeliverySchemaCatalogMapsForTest() error = %v", err)
-	}
-	if sourceHash != catalogHash {
-		t.Fatalf("materialize source_hash=%q, want catalog_hash=%q", sourceHash, catalogHash)
-	}
-
 	wantTypes := map[string]map[string]string{
 		"chat.reply_personal_message": {
 			"ai-tag": "string",

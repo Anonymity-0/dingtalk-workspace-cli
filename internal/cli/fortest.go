@@ -67,16 +67,6 @@ func InstallProductionSchemaAssemblyForTest(factory func() *cobra.Command) {
 	resetDeliverySchemaCatalogStateForTest()
 }
 
-// MaterializeDeliverySchemaCatalogMapsForTest exercises the lazy Catalog/Tools
-// materialize path used by map-based consumers.
-func MaterializeDeliverySchemaCatalogMapsForTest() (sourceHash string, err error) {
-	loaded, err := materializeDeliverySchemaCatalogMaps()
-	if err != nil {
-		return "", err
-	}
-	return loaded.Snapshot.SourceHash, nil
-}
-
 // DeliverySchemaAllPayloadForTest returns schema --all through the installed
 // delivery loader (catalog_hash comes from Snapshot.SourceHash).
 func DeliverySchemaAllPayloadForTest() (map[string]any, error) {

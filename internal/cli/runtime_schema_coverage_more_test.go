@@ -25,20 +25,12 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 
 	cmd := &cobra.Command{Use: "run", Short: "short", Long: "long"}
 	AnnotateRuntimeToolMetadata(cmd, " title ", " description ", " source ")
-	if cmd.Annotations[runtimeSchemaTitleAnnotation] != "title" {
+	if cmd.Annotations[runtimeannotate.AnnotationTitle] != "title" {
 		t.Fatalf("annotations = %#v", cmd.Annotations)
 	}
 	AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{Name: " ", Index: -1})
 	if _, ok := cmd.Annotations[runtimeSchemaArgsAnnotation]; ok {
 		t.Fatal("invalid positional should not be annotated")
-	}
-	if runtimeCommandTitle(nil) != "" || runtimeCommandDescription(nil) != "" {
-		t.Fatal("nil command text should be empty")
-	}
-	cmd.Annotations[runtimeSchemaTitleAnnotation] = " annotated title "
-	cmd.Annotations[runtimeSchemaDescAnnotation] = " annotated description "
-	if runtimeCommandTitle(cmd) != "annotated title" || runtimeCommandDescription(cmd) != "annotated description" {
-		t.Fatalf("annotated text = %q / %q", runtimeCommandTitle(cmd), runtimeCommandDescription(cmd))
 	}
 }
 
@@ -121,28 +113,6 @@ func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
 		if got := schemaProductToolCount(test.value.(map[string]any)); got != test.want {
 			t.Fatalf("tool count = %d, want %d", got, test.want)
 		}
-	}
-
-	originalResolver := resolveRuntimeSchemaField
-	t.Cleanup(func() { resolveRuntimeSchemaField = originalResolver })
-	for _, field := range []string{"title", "description"} {
-		resolveRuntimeSchemaField = func(got string, candidates ...runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, error) {
-			if got == field {
-				return runtimeSchemaFieldCandidate{}, errors.New("forced " + field)
-			}
-			return resolveRuntimeSchemaCandidate(got, candidates...)
-		}
-		_, _, _, _, err := runtimeToolTextMetadataFromMetadata(runtimeSchemaEntry{Title: "title", Description: "description", MetadataSource: "native"}, runtimeSchemaMetadataSources{})
-		if err == nil || !strings.Contains(err.Error(), field) {
-			t.Fatalf("%s error = %v", field, err)
-		}
-	}
-	resolveRuntimeSchemaField = func(field string, candidates ...runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, error) {
-		return runtimeSchemaStringCandidate("selected", "mcp_metadata"), nil
-	}
-	_, _, source, _, err := runtimeToolTextMetadataFromMetadata(runtimeSchemaEntry{}, runtimeSchemaMetadataSources{})
-	if err != nil || source != ProvenanceEmbeddedMCPMetadata {
-		t.Fatalf("MCP metadata source = %q, err = %v", source, err)
 	}
 }
 

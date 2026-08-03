@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
@@ -532,47 +531,38 @@ func crossPlatformAgentSelectionBound(t *testing.T, mutate func(*cobra.Command, 
 }
 
 func TestCrossPlatformCoverageSchemaCatalogRemainingBranches(t *testing.T) {
-	t.Run("materialize maps error paths", func(t *testing.T) {
+	t.Run("delivery catalog assemble error propagation", func(t *testing.T) {
 		RegisterSchemaSourceRoot(func() *cobra.Command { return &cobra.Command{Use: "dws"} })
 		assembleDeliverySchemaCatalogFn = func(*cobra.Command) (loadedSchemaCatalog, error) {
 			return loadedSchemaCatalog{}, fmt.Errorf("catalog load failed")
 		}
 		t.Cleanup(restorePackageCLISchemaDeliveryForTest)
-		if _, err := materializeDeliverySchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "catalog load failed") {
+		if err := deliverySchemaCatalogError(); err == nil || !strings.Contains(err.Error(), "catalog load failed") {
 			t.Fatalf("catalog err = %v", err)
 		}
 	})
 
-	t.Run("assembleTypedSchemaCatalog shard errors", func(t *testing.T) {
-		envelope := []byte(`{"version":1,"source_hash":"x","catalog":{"kind":"schema","level":"catalog","source":"t","count":1,"tool_count":1,"products":[]}}`)
-		missingDir := fstest.MapFS{}
-		if _, _, err := assembleTypedSchemaCatalog(envelope, missingDir, "missing"); err == nil || !strings.Contains(err.Error(), "read schema catalog tools directory") {
-			t.Fatalf("read dir error = %v", err)
-		}
-		shards := shardReadErrFS{MapFS: fstest.MapFS{"tools/bad.json": {Data: []byte(`{"product":"sample","tools":{}}`)}}}
-		if _, _, err := assembleTypedSchemaCatalog(envelope, shards, "tools"); err == nil || !strings.Contains(err.Error(), "read schema catalog shard") {
-			t.Fatalf("read shard error = %v", err)
-		}
-	})
-
-	t.Run("loadTypedSchemaCatalog validation failures", func(t *testing.T) {
-		envelope := schemaCatalogEnvelopeTyped{
+	t.Run("loadSchemaCatalogSnapshot interface validation failure", func(t *testing.T) {
+		testseam.Swap(t, &validateSchemaSnapshotTypedRoundTrip, false)
+		snapshot := SchemaCatalogSnapshot{
 			Version: SchemaCatalogSnapshotVersion, SourceHash: "x",
-			Catalog: schemaCatalogWire{
-				Kind: "schema", Level: "catalog", Source: "t", Count: 1, ToolCount: 1,
-				Products: []schemaProductWire{{
-					ID:    "sample",
-					Tools: []schemaToolWire{{CanonicalPath: "sample.run"}},
+			Catalog: map[string]any{
+				"kind": "schema", "level": "catalog", "source": "t",
+				"count": float64(1), "tool_count": float64(1),
+				"products": []any{map[string]any{
+					"id":    "sample",
+					"tools": []any{map[string]any{"canonical_path": "sample.run"}},
 				}},
 			},
-		}
-		tools := map[string]schemaToolWire{
-			"sample.run": {
-				ProductID: "sample", CanonicalPath: "sample.run", Name: "run",
-				Path: "sample.run", CLIPath: "sample run", PrimaryCLIPath: "sample run",
+			Tools: map[string]map[string]any{
+				"sample.run": {
+					"product_id": "sample", "canonical_path": "sample.run", "name": "run",
+					"path": "sample.run", "cli_path": "sample run", "primary_cli_path": "sample run",
+				},
 			},
 		}
-		if _, err := loadTypedSchemaCatalog(envelope, tools); err == nil || !strings.Contains(err.Error(), "validate final Schema interface disposition") {
+		testseam.Swap(t, &loadCatalogValidateInterfaces, func(SchemaRegistry) error { return fmt.Errorf("interface boom") })
+		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "validate final Schema interface disposition") {
 			t.Fatalf("interface validation error = %v", err)
 		}
 	})
@@ -587,17 +577,6 @@ func TestCrossPlatformCoverageSchemaCatalogRemainingBranches(t *testing.T) {
 			t.Fatalf("source_hash error = %v", err)
 		}
 	})
-}
-
-type shardReadErrFS struct {
-	fstest.MapFS
-}
-
-func (s shardReadErrFS) ReadFile(name string) ([]byte, error) {
-	if strings.HasSuffix(name, "bad.json") {
-		return nil, fmt.Errorf("read failed")
-	}
-	return s.MapFS.ReadFile(name)
 }
 
 func TestCrossPlatformCoverageSchemaDryRunCapabilitiesRemainingBranches(t *testing.T) {
@@ -708,13 +687,10 @@ func TestCrossPlatformCoverageRuntimeSchemaNormalizeGroups(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageSchemaRuntimeRegistryRemainingBranches(t *testing.T) {
-	t.Run("legacy product selection and ContractFinal param decl failure", func(t *testing.T) {
-		entry := runtimeSchemaEntry{ProductID: "legacy", ToolName: "run", Command: &cobra.Command{Use: "run"}}
-		agent := agentMetadata{Products: map[string]agentProductMetadata{
-			"legacy": {AgentSummary: "legacy product"},
-		}}
-		if _, _, err := assembleProductSelection(entry, runtimeSchemaMetadataSources{Agent: agent}, true); err != nil {
-			t.Fatalf("legacy product selection error = %v", err)
+	t.Run("missing ProductDecl selection and ContractFinal param decl failure", func(t *testing.T) {
+		entry := runtimeSchemaEntry{ProductID: "orphan", ToolName: "run", Command: &cobra.Command{Use: "run"}}
+		if _, _, err := assembleProductSelection(entry); err == nil || !strings.Contains(err.Error(), "missing ProductDecl") {
+			t.Fatalf("product selection error = %v", err)
 		}
 		root := buildRuntimeSchemaTestRoot()
 		contract.RegisterProductDecl(contract.ProductDecl{ID: "doc", Selection: contract.ProductSelectionDecl{
@@ -739,7 +715,7 @@ func TestCrossPlatformCoverageSchemaRuntimeRegistryRemainingBranches(t *testing.
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := runtimeToolSpecAllowingLegacy(collectFirstEntry(t, bound), runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "ParamDecl") {
+		if _, err := runtimeToolSpecFromMetadata(collectFirstEntry(t, bound), runtimeSchemaMetadataSources{}); err == nil || !strings.Contains(err.Error(), "ParamDecl") {
 			t.Fatalf("param decl error = %v", err)
 		}
 	})
@@ -826,9 +802,6 @@ func TestCrossPlatformCoverageSchemaAgentMetadataRemainingBranches(t *testing.T)
 	meta := runtimeAgentMetadata()
 	if meta.Products == nil || meta.Tools == nil {
 		t.Fatalf("metadata = %#v", meta)
-	}
-	if _, _, _, _, ok := agentToolContractForPathsFromMetadata(meta, "missing"); ok {
-		t.Fatal("missing tool lookup must fail")
 	}
 }
 

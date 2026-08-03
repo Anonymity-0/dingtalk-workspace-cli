@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -29,9 +28,8 @@ const SchemaCatalogSnapshotVersion = 1
 
 // Schema Catalog delivery is single-track: RegisterSchemaSourceRoot →
 // ResolveSchemaBuild (see schema_source_root.go). There is no committed
-// schema_catalog/ embed and no gob/Catalog fixture fallback. Shard assemble
-// helpers below exist for CI dumps (cmd_schema_catalog) and synthetic unit
-// tests that pass explicit envelope/FS bytes.
+// schema_catalog/ embed and no shard/envelope loading path left in the CLI;
+// cmd_schema_catalog owns shard writing and re-merges its own dumps.
 
 // SchemaCatalogSnapshot is the release-stable Agent contract. Catalog holds
 // the progressive product/tool index; Tools holds full leaf parameter schemas.
@@ -67,140 +65,6 @@ func registryToSnapshotPayload(registry SchemaRegistry) (SchemaCatalogSnapshot, 
 }
 
 var registryToSnapshotPayloadFn = registryToSnapshotPayload
-
-// schemaCatalogEnvelope is the global half of the split release Catalog. It
-// mirrors the generator's envelope struct; the Catalog map and release hashes
-// do not partition by product and stay in one file.
-type schemaCatalogEnvelope struct {
-	Version     int            `json:"version"`
-	SurfaceHash string         `json:"surface_hash,omitempty"`
-	SourceHash  string         `json:"source_hash"`
-	Catalog     map[string]any `json:"catalog"`
-}
-
-// schemaCatalogEnvelopeTyped is the production cold-start envelope: Catalog is
-// decoded straight into wire structs instead of map[string]any.
-type schemaCatalogEnvelopeTyped struct {
-	Version     int               `json:"version"`
-	SurfaceHash string            `json:"surface_hash,omitempty"`
-	SourceHash  string            `json:"source_hash"`
-	Catalog     schemaCatalogWire `json:"catalog"`
-}
-
-// schemaCatalogToolShard mirrors the per-product shard written by the
-// generator. Only the product and its leaf ToolSpecs are stored here.
-type schemaCatalogToolShard struct {
-	Product string                    `json:"product"`
-	Tools   map[string]map[string]any `json:"tools"`
-}
-
-// schemaCatalogToolShardTyped is the production cold-start shard: each ToolSpec
-// decodes directly into schemaToolWire with no map[string]any intermediate.
-type schemaCatalogToolShardTyped struct {
-	Product string                    `json:"product"`
-	Tools   map[string]schemaToolWire `json:"tools"`
-}
-
-// assembleTypedSchemaCatalog decodes the embedded envelope and per-product
-// shards straight into wire structs for the production loader.
-func assembleTypedSchemaCatalog(envelopeJSON []byte, shards fs.FS, dir string) (schemaCatalogEnvelopeTyped, map[string]schemaToolWire, error) {
-	var envelope schemaCatalogEnvelopeTyped
-	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
-		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode schema catalog.json: %w", err)
-	}
-	entries, err := fs.ReadDir(shards, dir)
-	if err != nil {
-		return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read schema catalog tools directory: %w", err)
-	}
-	tools := make(map[string]schemaToolWire, len(entries)*8)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
-		if readErr != nil {
-			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("read schema catalog shard %s: %w", entry.Name(), readErr)
-		}
-		var shard schemaCatalogToolShardTyped
-		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
-			return schemaCatalogEnvelopeTyped{}, nil, fmt.Errorf("decode schema catalog shard %s: %w", entry.Name(), err)
-		}
-		for canonical, spec := range shard.Tools {
-			tools[canonical] = spec
-		}
-	}
-	return envelope, tools, nil
-}
-
-func loadTypedSchemaCatalog(envelope schemaCatalogEnvelopeTyped, tools map[string]schemaToolWire) (loadedSchemaCatalog, error) {
-	if envelope.Version != SchemaCatalogSnapshotVersion {
-		return loadedSchemaCatalog{}, fmt.Errorf("unsupported Schema Catalog snapshot version %d", envelope.Version)
-	}
-	if envelope.Catalog.Kind == "" || len(tools) == 0 {
-		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot is empty")
-	}
-	if envelope.SourceHash == "" {
-		return loadedSchemaCatalog{}, fmt.Errorf("schema Catalog snapshot is missing source_hash")
-	}
-	registry, index, err := schemaRegistryFromTyped(envelope.Catalog, tools)
-	if err != nil {
-		return loadedSchemaCatalog{}, fmt.Errorf("load typed Schema registry: %w", err)
-	}
-	if err := loadCatalogValidateInterfaces(registry); err != nil {
-		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema interface disposition: %w", err)
-	}
-	if err := loadCatalogValidateProvenance(registry); err != nil {
-		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema provenance: %w", err)
-	}
-	return loadedSchemaCatalog{
-		Snapshot: SchemaCatalogSnapshot{
-			Version:     envelope.Version,
-			SurfaceHash: envelope.SurfaceHash,
-			SourceHash:  envelope.SourceHash,
-		},
-		Registry: registry,
-		Index:    index,
-	}, nil
-}
-
-// assembleSchemaCatalogSnapshot merges an envelope document and a directory of
-// per-product tool shards back into the single-document snapshot shape used by
-// ephemeral cmd_schema_catalog dumps. Shard failure modes stay testable against
-// fake filesystems.
-func assembleSchemaCatalogSnapshot(envelopeJSON []byte, shards fs.FS, dir string) (SchemaCatalogSnapshot, error) {
-	var envelope schemaCatalogEnvelope
-	if err := decodeStrictSchemaJSON(envelopeJSON, &envelope); err != nil {
-		return SchemaCatalogSnapshot{}, fmt.Errorf("decode schema catalog.json: %w", err)
-	}
-	entries, err := fs.ReadDir(shards, dir)
-	if err != nil {
-		return SchemaCatalogSnapshot{}, fmt.Errorf("read schema catalog tools directory: %w", err)
-	}
-	tools := make(map[string]map[string]any, len(entries)*8)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
-		if readErr != nil {
-			return SchemaCatalogSnapshot{}, fmt.Errorf("read schema catalog shard %s: %w", entry.Name(), readErr)
-		}
-		var shard schemaCatalogToolShard
-		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
-			return SchemaCatalogSnapshot{}, fmt.Errorf("decode schema catalog shard %s: %w", entry.Name(), err)
-		}
-		for canonical, spec := range shard.Tools {
-			tools[canonical] = spec
-		}
-	}
-	return SchemaCatalogSnapshot{
-		Version:     envelope.Version,
-		SurfaceHash: envelope.SurfaceHash,
-		SourceHash:  envelope.SourceHash,
-		Catalog:     envelope.Catalog,
-		Tools:       tools,
-	}, nil
-}
 
 var (
 	buildCatalogValidateParameterBindings = ValidateSchemaParameterBindingDelivery
@@ -289,9 +153,10 @@ func BuildSchemaCatalogSnapshot(resolved ResolvedSchemaBuild, options SchemaCata
 	return snapshot, nil
 }
 
-// decodeSchemaCatalogSnapshot is the single release and generation-time
-// loading path. Delivery validation round-trips generated JSON through this
-// function so it cannot pass with data that the shipped binary would reject.
+// decodeSchemaCatalogSnapshot decodes a single-document snapshot and loads it
+// through loadSchemaCatalogSnapshot. Delivery validation round-trips generated
+// JSON through this function so it cannot pass with data that the shared
+// loader would reject.
 func decodeSchemaCatalogSnapshot(data []byte) (loadedSchemaCatalog, error) {
 	var snapshot SchemaCatalogSnapshot
 	if err := decodeStrictSchemaJSON(data, &snapshot); err != nil {
@@ -328,7 +193,7 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema interface disposition: %w", err)
 	}
 	// The production loader validates delivered provenance exactly as encoded.
-	// toolSpecFromSnapshot deliberately does not synthesize candidates or
+	// ToolSpecFromRuntime deliberately does not synthesize candidates or
 	// rewrite winners, and this coverage gate applies to every snapshot source.
 	if err := loadCatalogValidateProvenance(registry); err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("validate final Schema provenance: %w", err)

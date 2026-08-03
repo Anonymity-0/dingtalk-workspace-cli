@@ -162,33 +162,6 @@ func TestCrossPlatformCoverageAssembleSchemaRegistryFailClosedMissingProductDecl
 	}
 }
 
-func TestAssembleSchemaRegistryAllowingLegacyIsolatesOverlayPath(t *testing.T) {
-	root := buildRuntimeSchemaTestRoot()
-	bound, err := boundTestCommandRegistry(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, command := range bound.Commands {
-		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
-	}
-	agent := agentMetadata{
-		Version: 1,
-		Products: map[string]agentProductMetadata{
-			"doc": {AgentSummary: "docs", UseWhen: []string{"read docs"}},
-		},
-		Tools: map[string]agentToolMetadata{
-			"doc create": {Effect: "write", InterfaceMode: "local", Availability: "available", InterfaceReason: "test"},
-		},
-	}
-	registry, err := assembleSchemaRegistryFromBoundAllowingLegacy(bound, runtimeSchemaMetadataSources{Agent: agent})
-	if err != nil {
-		t.Fatalf("legacy-isolated assembly: %v", err)
-	}
-	if len(registry.Products) != 1 || registry.Products[0].ID != "doc" {
-		t.Fatalf("legacy-isolated products = %#v", registry.Products)
-	}
-}
-
 func TestAssembleSchemaRegistryRequiresContractFinalAndProductDecl(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	leaf := &cobra.Command{Use: "run", Short: "Run sample", Long: "Run the sample tool", Run: func(*cobra.Command, []string) {}}

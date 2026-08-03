@@ -9,66 +9,8 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/spf13/cobra"
 )
-
-func TestCrossPlatformCoveragePinnedMCPTextAndLegacyMetadataSource(t *testing.T) {
-	mcp := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
-		"sample.run": {
-			Title:       "MCP Title",
-			Description: "MCP Description",
-			Parameters:  map[string]embeddedMCPParamMeta{"name": {Type: "string"}},
-		},
-	}}
-	entry := runtimeSchemaEntry{
-		ProductID:      "sample",
-		ToolName:       "run",
-		PrimaryCLIPath: "sample run",
-		CLIPath:        "sample run",
-		Title:          "Cobra Title",
-		Description:    "Cobra Description",
-	}
-
-	title, description, source, _, err := runtimeToolTextMetadataFromMetadata(entry, runtimeSchemaMetadataSources{MCP: mcp})
-	if err != nil {
-		t.Fatalf("runtimeToolTextMetadataFromMetadata() error = %v", err)
-	}
-	if title == "" || description == "" {
-		t.Fatalf("pinned MCP text candidates must participate: title=%q description=%q source=%q", title, description, source)
-	}
-
-	legacyRoot := buildRuntimeSchemaTestRoot()
-	legacyBound, err := boundTestCommandRegistry(legacyRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, command := range legacyBound.Commands {
-		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
-	}
-	entries, err := collectRuntimeSchemaEntriesFromBound(legacyBound)
-	if err != nil || len(entries) == 0 {
-		t.Fatalf("entries = %#v, %v", entries, err)
-	}
-	legacyEntry := entries[0]
-	legacyEntry.Title = "Legacy Title"
-	legacyEntry.Description = "Legacy Description"
-	tool, err := runtimeToolSpecFromLegacyMetadata(legacyEntry, runtimeSchemaMetadataSources{
-		MCP: embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
-			legacyEntry.ProductID + "." + legacyEntry.ToolName: {
-				Title:       "Pinned",
-				Description: "Pinned desc",
-				Parameters:  map[string]embeddedMCPParamMeta{},
-			},
-		}},
-	})
-	if err != nil {
-		t.Fatalf("runtimeToolSpecFromLegacyMetadata() error = %v", err)
-	}
-	if tool.MetadataSource != ProvenanceEmbeddedMCPMetadata {
-		t.Fatalf("legacy pinned MCP metadata_source = %q, want %q", tool.MetadataSource, ProvenanceEmbeddedMCPMetadata)
-	}
-}
 
 func TestCrossPlatformCoverageCompletenessAndDeliveryErrorBranches(t *testing.T) {
 	prevGroups := reviewedRuntimeSchemaExclusionGroups

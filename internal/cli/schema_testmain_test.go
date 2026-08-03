@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -79,29 +80,57 @@ func installAssembledSchemaDeliveryForPackageCLITests() (func(), error) {
 		cleanup()
 		return noop, err
 	}
-	typed, tools, err := assembleTypedSchemaCatalog(envelope, os.DirFS(outDir), "tools")
+	snapshot, err := mergeSchemaCatalogDump(envelope, filepath.Join(outDir, "tools"))
 	if err != nil {
 		cleanup()
-		return noop, fmt.Errorf("assemble typed catalog dump: %w", err)
+		return noop, fmt.Errorf("merge schema catalog dump: %w", err)
 	}
-	loaded, err := loadTypedSchemaCatalog(typed, tools)
+	loaded, err := loadSchemaCatalogSnapshot(snapshot)
 	if err != nil {
 		cleanup()
-		return noop, fmt.Errorf("load typed catalog dump: %w", err)
-	}
-	if loaded.Snapshot.Tools == nil {
-		payload, err := registryToSnapshotPayload(loaded.Registry)
-		if err != nil {
-			cleanup()
-			return noop, fmt.Errorf("materialize catalog maps: %w", err)
-		}
-		loaded.Snapshot.Catalog = payload.Catalog
-		loaded.Snapshot.Tools = payload.Tools
+		return noop, fmt.Errorf("load schema catalog dump: %w", err)
 	}
 	packageCLIAssembledDelivery = &loaded
 	restorePackageCLISchemaDeliveryHook = restorePackageCLISchemaDeliveryForTest
 	restorePackageCLISchemaDeliveryForTest()
 	return cleanup, nil
+}
+
+// mergeSchemaCatalogDump re-merges a cmd_schema_catalog dump (catalog.json
+// envelope plus per-product tools shards) into the single-document snapshot
+// shape. Test-only: production delivery never reads a dump, and the generator
+// owns the shard writer types.
+func mergeSchemaCatalogDump(envelopeJSON []byte, toolsDir string) (SchemaCatalogSnapshot, error) {
+	var snapshot SchemaCatalogSnapshot
+	if err := decodeStrictSchemaJSON(envelopeJSON, &snapshot); err != nil {
+		return SchemaCatalogSnapshot{}, fmt.Errorf("decode schema catalog.json: %w", err)
+	}
+	entries, err := os.ReadDir(toolsDir)
+	if err != nil {
+		return SchemaCatalogSnapshot{}, fmt.Errorf("read schema catalog tools directory: %w", err)
+	}
+	tools := make(map[string]map[string]any, len(entries)*8)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		data, readErr := os.ReadFile(filepath.Join(toolsDir, entry.Name()))
+		if readErr != nil {
+			return SchemaCatalogSnapshot{}, fmt.Errorf("read schema catalog shard %s: %w", entry.Name(), readErr)
+		}
+		var shard struct {
+			Product string                    `json:"product"`
+			Tools   map[string]map[string]any `json:"tools"`
+		}
+		if err := decodeStrictSchemaJSON(data, &shard); err != nil {
+			return SchemaCatalogSnapshot{}, fmt.Errorf("decode schema catalog shard %s: %w", entry.Name(), err)
+		}
+		for canonical, spec := range shard.Tools {
+			tools[canonical] = spec
+		}
+	}
+	snapshot.Tools = tools
+	return snapshot, nil
 }
 
 func restorePackageCLISchemaDeliveryForTest() {

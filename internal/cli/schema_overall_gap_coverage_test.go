@@ -44,10 +44,10 @@ func TestCrossPlatformCoverageResolveSchemaBuildAndAssembleEdges(t *testing.T) {
 			}},
 		}},
 	}
-	if _, err := runtimeSchemaAllPayloadFromRegistry(registry); err != nil {
-		t.Fatalf("runtimeSchemaAllPayloadFromRegistry() error = %v", err)
+	if _, err := registry.ToPayload(); err != nil {
+		t.Fatalf("registry.ToPayload() error = %v", err)
 	}
-	if _, _, err := assembleTypedSchemaCatalog([]byte("{"), nil, "tools"); err == nil {
+	if _, err := mergeSchemaCatalogDump([]byte("{"), t.TempDir()); err == nil {
 		t.Fatal("bad catalog envelope must fail")
 	}
 }
@@ -408,8 +408,8 @@ func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
 	assembleCollectEntries = func(BoundCommandRegistry) ([]runtimeSchemaEntry, error) {
 		return []runtimeSchemaEntry{{ProductID: "p", ToolName: "t", ProductName: "P", CLIPath: "p t", PrimaryCLIPath: "p t"}}, nil
 	}
-	// assembleRuntimeToolSpec is only consulted on the production (non-legacy)
-	// path; AllowingLegacy calls runtimeToolSpecAllowingLegacy directly.
+	// assembleRuntimeToolSpec is the seam consulted for per-entry tool
+	// resolution during declared assembly.
 	assembleRuntimeToolSpec = func(runtimeSchemaEntry, runtimeSchemaMetadataSources) (ToolSpec, error) {
 		return ToolSpec{}, fmt.Errorf("tool boom")
 	}
@@ -918,19 +918,18 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 	if hasRuntimeSchemaCommand(nil) {
 		t.Fatal("nil command must not report runtime schema")
 	}
-	summary := agentMetadataSummaryFrom(agentMetadata{
-		Version: 1, SourceHash: "h", SurfaceHash: "s",
-		Products: map[string]agentProductMetadata{"p": {}},
-		Tools:    map[string]agentToolMetadata{"t": {}},
-		Coverage: agentMetadataCoverage{
-			SurfaceProducts: 1, SurfaceTools: 2, ToolsWithSummary: 3, UnmatchedSkillTools: 4,
-		},
-	})
-	if summary["version"] != 1 || summary["source_hash"] != "h" || summary["surface_hash"] != "s" ||
+	summary := agentMetadataSummaryFromProducts([]ProductSpec{{
+		ID:        "p",
+		Selection: contract.SelectionSpec{AgentSummary: "P", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
+		Tools: []ToolSpec{{
+			Selection: contract.SelectionSpec{AgentSummary: "T", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws p t"}},
+		}},
+	}})
+	if summary["source"] != ProvenanceEmbeddedSkillMetadata || summary["version"] != 1 ||
 		summary["products_with_metadata"] != 1 || summary["tools_with_metadata"] != 1 ||
-		summary["surface_products"] != 1 || summary["surface_tools"] != 2 ||
-		summary["tools_with_agent_summary"] != 3 || summary["unmatched_skill_tools"] != 4 {
-		t.Fatalf("agentMetadataSummaryFrom = %#v", summary)
+		summary["surface_products"] != 1 || summary["surface_tools"] != 1 ||
+		summary["tools_with_agent_summary"] != 1 {
+		t.Fatalf("agentMetadataSummaryFromProducts = %#v", summary)
 	}
 
 	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
@@ -1062,7 +1061,7 @@ func TestOverallCoverageGapRuntimeParamsAndAgentMetadata(t *testing.T) {
 		{PreviewKind: "bogus", CanonicalPaths: []string{"gap.run"}},
 	})
 	t.Cleanup(restore)
-	if _, err := reviewedDryRunCapability("gap.run"); err == nil {
+	if _, err := ReviewedDryRunCapabilities(); err == nil {
 		t.Fatal("invalid dry-run preview kind must fail capability load")
 	}
 	if err := ValidateReviewedDryRunCapabilityDelivery(SchemaRegistry{}); err == nil {
@@ -1117,19 +1116,6 @@ func TestCrossPlatformCoverageOverallRegressionRecovery(t *testing.T) {
 	walkLeafCommands(root, func(*cobra.Command) { visited++ })
 	if visited != 1 {
 		t.Fatalf("walkLeafCommands visited %d leaves, want 1", visited)
-	}
-
-	provenance := commandRegistryIdentityProvenance(BoundCommandSpec{
-		CommandSpec: CommandSpec{
-			CanonicalPath:  "sample.run",
-			PrimaryCLIPath: "sample run",
-			Source:         "reviewed",
-		},
-		PrimaryCommand: run,
-		AliasCommands:  []BoundAlias{{Path: "sample alias", Command: nil}},
-	})
-	if provenance.Resolution != "registry_identity" {
-		t.Fatalf("identity provenance = %#v", provenance)
 	}
 
 	if _, err := (SchemaRegistry{Products: []ProductSpec{{ID: "", Tools: []ToolSpec{}}}}).ToSnapshotPayload(); err == nil {

@@ -34,7 +34,6 @@ type SchemaRegistry struct {
 	Source        string
 	Products      []ProductSpec
 	AgentMetadata json.RawMessage
-	Extensions    map[string]json.RawMessage
 }
 
 // ProductSpec is one deterministic product grouping in SchemaRegistry.
@@ -46,7 +45,6 @@ type ProductSpec struct {
 	Tools           []ToolSpec
 	Selection       contract.SelectionSpec
 	FieldProvenance map[string]contract.FieldProvenance
-	Extensions      map[string]json.RawMessage
 }
 
 // ToolSpec is the single assembled representation of a command contract.
@@ -66,7 +64,6 @@ type ToolSpec struct {
 	Interface       contract.InterfaceSpec
 	Selection       contract.SelectionSpec
 	FieldProvenance map[string]contract.FieldProvenance
-	Extensions      map[string]json.RawMessage
 }
 
 // ParameterSpec is one resolved CLI flag projection. Name is the CLI flag key
@@ -89,7 +86,6 @@ type ParameterSpec struct {
 	InterfaceDescription string
 	InterfaceType        string
 	FieldProvenance      map[string]contract.FieldProvenance
-	Extensions           map[string]json.RawMessage
 }
 
 // Final provenance coverage is an explicit contract, not a truthiness check.
@@ -141,7 +137,6 @@ type RuntimeToolSpecInput struct {
 	Interface       contract.InterfaceSpec
 	Selection       contract.SelectionSpec
 	FieldProvenance map[string]contract.FieldProvenance
-	Extensions      map[string]json.RawMessage
 }
 
 // SchemaIndex is the immutable navigation view over one normalized registry.
@@ -192,18 +187,10 @@ func SchemaRegistryFromRuntime(source string, products []ProductSpec) (SchemaReg
 
 // ToolSpecFromRuntime validates and normalizes the fully resolved runtime
 // input. It does not choose between sources; that is the resolver's job.
+// Snapshot loading shares this path and validates a delivered winner exactly
+// as serialized: it deliberately does not repair provenance, so a snapshot
+// whose winner differs from the final field must fail closed.
 func ToolSpecFromRuntime(input RuntimeToolSpecInput) (ToolSpec, error) {
-	return toolSpecFromResolvedInput(input)
-}
-
-// toolSpecFromSnapshot validates a delivered winner exactly as serialized. It
-// deliberately does not repair provenance: a snapshot whose winner differs
-// from the final field must fail closed in the production loader.
-func toolSpecFromSnapshot(input RuntimeToolSpecInput) (ToolSpec, error) {
-	return toolSpecFromResolvedInput(input)
-}
-
-func toolSpecFromResolvedInput(input RuntimeToolSpecInput) (ToolSpec, error) {
 	spec := ToolSpec(input).normalized()
 	if err := spec.Validate(); err != nil {
 		return ToolSpec{}, err
@@ -479,22 +466,30 @@ func (r SchemaRegistry) ToSnapshotPayload() (SchemaSnapshotPayload, error) {
 		productPayload["tool_count"] = len(summaries)
 		products = append(products, productPayload)
 	}
-	catalog, err := extensionsPayload(r.Extensions)
+	catalog, err := r.registryEnvelopePayload(products, len(tools))
 	if err != nil {
 		return SchemaSnapshotPayload{}, err
 	}
-	catalog["kind"] = defaultString(r.Kind, "schema")
-	catalog["level"] = defaultString(r.Level, "catalog")
-	catalog["count"] = len(products)
-	catalog["tool_count"] = len(tools)
-	catalog["products"] = products
-	if r.Source != "" {
-		catalog["source"] = r.Source
-	}
-	if err := putRawJSON(catalog, "agent_metadata", r.AgentMetadata); err != nil {
-		return SchemaSnapshotPayload{}, fmt.Errorf("agent_metadata: %w", err)
-	}
 	return SchemaSnapshotPayload{Catalog: catalog, Tools: tools}, nil
+}
+
+// registryEnvelopePayload renders the shared Catalog envelope around prebuilt
+// product payloads. The snapshot catalog and schema --all projection both use
+// it, so the envelope keys cannot drift between the two views.
+func (r SchemaRegistry) registryEnvelopePayload(products []map[string]any, toolCount int) (map[string]any, error) {
+	payload := map[string]any{}
+	payload["kind"] = defaultString(r.Kind, "schema")
+	payload["level"] = defaultString(r.Level, "catalog")
+	payload["count"] = len(products)
+	payload["tool_count"] = toolCount
+	payload["products"] = products
+	if r.Source != "" {
+		payload["source"] = r.Source
+	}
+	if err := putRawJSON(payload, "agent_metadata", r.AgentMetadata); err != nil {
+		return nil, fmt.Errorf("agent_metadata: %w", err)
+	}
+	return payload, nil
 }
 
 // Validate checks structural invariants only. It intentionally does not
@@ -817,22 +812,7 @@ func (r SchemaRegistry) ToPayload() (map[string]any, error) {
 		products = append(products, payload)
 		toolCount += len(product.Tools)
 	}
-	payload, err := extensionsPayload(r.Extensions)
-	if err != nil {
-		return nil, err
-	}
-	payload["kind"] = defaultString(r.Kind, "schema")
-	payload["level"] = defaultString(r.Level, "catalog")
-	payload["count"] = len(products)
-	payload["tool_count"] = toolCount
-	payload["products"] = products
-	if r.Source != "" {
-		payload["source"] = r.Source
-	}
-	if err := putRawJSON(payload, "agent_metadata", r.AgentMetadata); err != nil {
-		return nil, fmt.Errorf("agent_metadata: %w", err)
-	}
-	return payload, nil
+	return r.registryEnvelopePayload(products, toolCount)
 }
 
 // ToOverviewPayload renders the small first-hop product index directly from
@@ -880,55 +860,30 @@ func (r SchemaRegistry) ToOverviewPayload() (map[string]any, error) {
 
 // ToPayload renders one product and its full tools.
 func (p ProductSpec) ToPayload() (map[string]any, error) {
-	p = p.normalized()
-	tools := make([]map[string]any, 0, len(p.Tools))
-	for _, tool := range p.Tools {
-		payload, err := tool.ToPayload()
-		if err != nil {
-			return nil, err
-		}
-		tools = append(tools, payload)
-	}
-	payload, err := extensionsPayload(p.Extensions)
-	if err != nil {
-		return nil, err
-	}
-	payload["id"] = p.ID
-	payload["name"] = p.Name
-	payload["description"] = p.Description
-	payload["tool_count"] = len(tools)
-	payload["tools"] = tools
-	if p.Runtime {
-		payload["runtime"] = true
-	}
-	applySelectionPayload(payload, p.Selection, false)
-	if len(p.FieldProvenance) > 0 {
-		value, valueErr := typedJSONValue(p.FieldProvenance)
-		if valueErr != nil {
-			return nil, valueErr
-		}
-		payload["field_provenance"] = value
-	}
-	return payload, nil
+	return p.envelopePayload(ToolSpec.ToPayload)
 }
 
 // ToSummaryPayload renders one product with progressive tool summaries. Both
 // this view and the full product payload are projections of the same ToolSpec
 // slice; neither re-resolves annotations or metadata.
 func (p ProductSpec) ToSummaryPayload() (map[string]any, error) {
+	return p.envelopePayload(ToolSpec.ToSummaryPayload)
+}
+
+// envelopePayload renders the product envelope around tools rendered by
+// renderTool. The full and summary product payloads differ only in the tool
+// renderer, which keeps the envelope keys byte-identical across projections.
+func (p ProductSpec) envelopePayload(renderTool func(ToolSpec) (map[string]any, error)) (map[string]any, error) {
 	p = p.normalized()
 	tools := make([]map[string]any, 0, len(p.Tools))
 	for _, tool := range p.Tools {
-		payload, err := tool.ToSummaryPayload()
+		payload, err := renderTool(tool)
 		if err != nil {
 			return nil, err
 		}
 		tools = append(tools, payload)
 	}
-	payload, err := extensionsPayload(p.Extensions)
-	if err != nil {
-		return nil, err
-	}
+	payload := map[string]any{}
 	payload["id"] = p.ID
 	payload["name"] = p.Name
 	payload["description"] = p.Description
@@ -954,10 +909,7 @@ func (t ToolSpec) ToPayload() (map[string]any, error) {
 	if err := t.Validate(); err != nil {
 		return nil, err
 	}
-	payload, err := extensionsPayload(t.Extensions)
-	if err != nil {
-		return nil, err
-	}
+	payload := map[string]any{}
 	id := t.Identity
 	payload["name"] = id.Name
 	payload["cli_name"] = id.CLIName
@@ -1034,10 +986,7 @@ func (t ToolSpec) ToSummaryPayload() (map[string]any, error) {
 // ToPayload renders one parameter in the existing parameters.<flag> shape.
 func (p ParameterSpec) ToPayload() (map[string]any, error) {
 	p = p.normalized()
-	payload, err := extensionsPayload(p.Extensions)
-	if err != nil {
-		return nil, err
-	}
+	payload := map[string]any{}
 	payload["type"] = p.Type
 	payload["description"] = p.Description
 	payload["required"] = p.Required
@@ -1126,21 +1075,6 @@ func defaultString(value, fallback string) string {
 		return value
 	}
 	return fallback
-}
-
-func extensionsPayload(extensions map[string]json.RawMessage) (map[string]any, error) {
-	payload := make(map[string]any, len(extensions))
-	keys := make([]string, 0, len(extensions))
-	for key := range extensions {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		if err := putRawJSON(payload, key, extensions[key]); err != nil {
-			return nil, fmt.Errorf("extension %s: %w", key, err)
-		}
-	}
-	return payload, nil
 }
 
 func putRawJSON(payload map[string]any, key string, raw json.RawMessage) error {

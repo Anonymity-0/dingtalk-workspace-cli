@@ -153,18 +153,6 @@ func ReviewedDryRunCapabilities() (map[string]contract.DryRunSpec, error) {
 	return loadReviewedDryRunCapabilities()
 }
 
-func reviewedDryRunCapability(canonical string) (*contract.DryRunSpec, error) {
-	capabilities, err := loadReviewedDryRunCapabilities()
-	if err != nil {
-		return nil, err
-	}
-	spec, ok := capabilities[strings.TrimSpace(canonical)]
-	if !ok {
-		return nil, nil
-	}
-	return &spec, nil
-}
-
 // ValidateReviewedDryRunCapabilityDelivery proves that every positive source
 // entry reaches the final typed registry and no serializer invents one. It
 // deliberately imposes no minimum capability count or all-command coverage.

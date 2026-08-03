@@ -117,7 +117,6 @@ func TestCrossPlatformCoverageSchemaSnapshotRendererDependencyEdges(t *testing.T
 	snapshotProductSummary = oldProductSummary
 
 	for name, candidate := range map[string]SchemaRegistry{
-		"extensions":     {Extensions: map[string]json.RawMessage{"bad": json.RawMessage(`{`)}},
 		"agent metadata": {AgentMetadata: json.RawMessage(`{`)},
 	} {
 		if _, err := candidate.ToSnapshotPayload(); err == nil {
@@ -227,9 +226,7 @@ func TestCrossPlatformCoverageContractModelPayloadErrorEdges(t *testing.T) {
 	}
 	badRaw := json.RawMessage(`{`)
 	for name, registry := range map[string]SchemaRegistry{
-		"product":            {Products: []ProductSpec{{ID: "sample", Extensions: map[string]json.RawMessage{"bad": badRaw}}}},
-		"registry extension": {Extensions: map[string]json.RawMessage{"bad": badRaw}},
-		"agent metadata":     {AgentMetadata: badRaw},
+		"agent metadata": {AgentMetadata: badRaw},
 	} {
 		if _, err := registry.ToPayload(); err == nil {
 			t.Errorf("registry %s ToPayload error was nil", name)
@@ -250,12 +247,6 @@ func TestCrossPlatformCoverageContractModelPayloadErrorEdges(t *testing.T) {
 	if _, err := (ProductSpec{Tools: []ToolSpec{badTool}}).ToSummaryPayload(); err == nil {
 		t.Fatal("product summary with invalid tool rendered")
 	}
-	if _, err := (ProductSpec{Extensions: map[string]json.RawMessage{"bad": badRaw}}).ToPayload(); err == nil {
-		t.Fatal("product invalid extension rendered")
-	}
-	if _, err := (ProductSpec{Extensions: map[string]json.RawMessage{"bad": badRaw}}).ToSummaryPayload(); err == nil {
-		t.Fatal("product summary invalid extension rendered")
-	}
 	badProvenance := map[string]contract.FieldProvenance{"agent_summary": {Value: badRaw}}
 	if _, err := (ProductSpec{FieldProvenance: badProvenance}).ToPayload(); err == nil {
 		t.Fatal("product invalid provenance rendered")
@@ -268,13 +259,8 @@ func TestCrossPlatformCoverageContractModelPayloadErrorEdges(t *testing.T) {
 	if _, err := badTool.ToPayload(); err == nil {
 		t.Fatal("invalid tool rendered")
 	}
-	withExtension := validTool
-	withExtension.Extensions = map[string]json.RawMessage{"bad": badRaw}
-	if _, err := withExtension.ToPayload(); err == nil {
-		t.Fatal("tool invalid extension rendered")
-	}
 	withParameter := validTool
-	withParameter.Parameters = []ParameterSpec{{Name: "id", Extensions: map[string]json.RawMessage{"bad": badRaw}}}
+	withParameter.Parameters = []ParameterSpec{{Name: "id", FieldProvenance: map[string]contract.FieldProvenance{"unknown": {Value: badRaw}}}}
 	if _, err := withParameter.ToPayload(); err == nil || !strings.Contains(err.Error(), "render sample.run parameter id") {
 		t.Fatalf("tool parameter render error = %v", err)
 	}
@@ -295,7 +281,6 @@ func TestCrossPlatformCoverageContractModelPayloadErrorEdges(t *testing.T) {
 	}
 
 	for name, parameter := range map[string]ParameterSpec{
-		"extension":         {Extensions: map[string]json.RawMessage{"bad": badRaw}},
 		"default":           {Default: badRaw},
 		"interface default": {InterfaceDefault: badRaw},
 		"example":           {Example: badRaw},

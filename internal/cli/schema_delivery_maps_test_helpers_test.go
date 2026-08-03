@@ -10,12 +10,12 @@ func mustDeliverySchemaCatalogMaps(t *testing.T) loadedSchemaCatalog {
 	if !SchemaSourceRootRegistered() {
 		t.Fatal("schema source root factory is not registered; package-cli TestMain should install assembly delivery")
 	}
-	loaded, err := materializeDeliverySchemaCatalogMaps()
-	if err != nil {
-		t.Fatalf("materialize delivery Schema Catalog maps: %v", err)
+	if err := deliverySchemaCatalogError(); err != nil {
+		t.Fatalf("load delivery Schema Catalog: %v", err)
 	}
+	loaded := deliverySchemaCatalog()
 	if len(loaded.Snapshot.Tools) == 0 {
-		t.Fatal("delivery Schema Catalog tools maps are empty after materialize")
+		t.Fatal("delivery Schema Catalog tools maps are empty")
 	}
 	return loaded
 }

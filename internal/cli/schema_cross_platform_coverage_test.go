@@ -356,37 +356,25 @@ func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 		}
 	})
 
-	t.Run("assembleTypedSchemaCatalog decode errors", func(t *testing.T) {
-		if _, _, err := assembleTypedSchemaCatalog([]byte("{"), fstest.MapFS{}, "tools"); err == nil {
-			t.Fatal("invalid envelope JSON must fail")
+	t.Run("loadSchemaCatalogSnapshot validation", func(t *testing.T) {
+		snapshot := SchemaCatalogSnapshot{
+			Version: 99,
+			Catalog: map[string]any{"kind": "schema"},
+			Tools:   map[string]map[string]any{"a": {}},
 		}
-		shards := fstest.MapFS{"tools/bad.json": {Data: []byte("{")}}
-		if _, _, err := assembleTypedSchemaCatalog([]byte(`{"version":1,"source_hash":"x","catalog":{"kind":"schema","level":"catalog","source":"t","count":1,"tool_count":1,"products":[]}}`), shards, "tools"); err == nil {
-			t.Fatal("invalid shard JSON must fail")
-		}
-	})
-
-	t.Run("loadTypedSchemaCatalog validation", func(t *testing.T) {
-		envelope := schemaCatalogEnvelopeTyped{Version: 99}
-		if _, err := loadTypedSchemaCatalog(envelope, map[string]schemaToolWire{"x": {}}); err == nil || !strings.Contains(err.Error(), "unsupported") {
+		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "unsupported") {
 			t.Fatalf("version error = %v", err)
 		}
-		envelope = schemaCatalogEnvelopeTyped{Version: SchemaCatalogSnapshotVersion}
-		if _, err := loadTypedSchemaCatalog(envelope, nil); err == nil || !strings.Contains(err.Error(), "empty") {
+		snapshot = SchemaCatalogSnapshot{Version: SchemaCatalogSnapshotVersion}
+		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "empty") {
 			t.Fatalf("empty error = %v", err)
 		}
 	})
 
-	t.Run("assembleSchemaCatalogSnapshot and helpers", func(t *testing.T) {
-		snapshot, err := func() (SchemaCatalogSnapshot, error) {
-			loaded := mustDeliverySchemaCatalogMaps(t)
-			return loaded.Snapshot, nil
-		}()
-		if err != nil {
-			t.Fatalf("assembleSchemaCatalogSnapshot() error = %v", err)
-		}
+	t.Run("delivery snapshot and helpers", func(t *testing.T) {
+		snapshot := mustDeliverySchemaCatalogMaps(t).Snapshot
 		if len(snapshot.Tools) == 0 {
-			t.Fatal("assembled snapshot tools are empty")
+			t.Fatal("delivery snapshot tools are empty")
 		}
 		if got := schemaMap(map[string]any{"a": map[string]any{"b": "c"}}); got["a"]["b"] != "c" {
 			t.Fatalf("schemaMap = %#v", got)
@@ -492,34 +480,25 @@ func TestCrossPlatformCoverageSchemaMetaIndexAndCommandMeta(t *testing.T) {
 
 func TestCrossPlatformCoverageSchemaRuntimeRegistryLegacyAndPayload(t *testing.T) {
 	root := buildRuntimeSchemaTestRoot()
-	bound, err := boundTestCommandRegistry(root)
+	declareRuntimeSchemaTestRootDoc(t, root, nil)
+	registry, err := schemaRegistryForTest(root)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("declared assembly: %v", err)
 	}
-	for _, command := range bound.Commands {
-		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
-	}
-	agent := agentMetadata{
-		Version:  1,
-		Products: map[string]agentProductMetadata{"doc": {AgentSummary: "docs", UseWhen: []string{"read docs"}}},
-		Tools: map[string]agentToolMetadata{
-			"doc create": {Effect: "write", InterfaceMode: "local", Availability: "available", InterfaceReason: "test", AgentSummary: "create"},
-		},
-	}
-	registry, err := assembleSchemaRegistryFromBoundAllowingLegacy(bound, runtimeSchemaMetadataSources{Agent: agent})
+	loaded, err := loadedSchemaCatalogForTestRegistry(registry)
 	if err != nil {
-		t.Fatalf("legacy assembly: %v", err)
+		t.Fatalf("loaded test catalog: %v", err)
 	}
-	payload, err := runtimeSchemaPayloadFromRegistry(registry, []string{"doc create"})
+	payload, err := schemaPayloadFromLoadedCatalog(loaded, []string{"doc create"})
 	if err != nil {
-		t.Fatalf("runtimeSchemaPayloadFromRegistry() error = %v", err)
+		t.Fatalf("schemaPayloadFromLoadedCatalog() error = %v", err)
 	}
 	if payload["canonical_path"] != "doc.create_document" {
 		t.Fatalf("payload = %#v", payload)
 	}
-	all, err := runtimeSchemaAllPayloadFromRegistry(registry)
+	all, err := registry.ToPayload()
 	if err != nil || len(all) == 0 {
-		t.Fatalf("runtimeSchemaAllPayloadFromRegistry() = %#v, %v", all, err)
+		t.Fatalf("registry.ToPayload() = %#v, %v", all, err)
 	}
 
 	t.Run("runtimeToolSpecFromMetadata missing ContractFinal", func(t *testing.T) {
@@ -531,56 +510,8 @@ func TestCrossPlatformCoverageSchemaRuntimeRegistryLegacyAndPayload(t *testing.T
 
 	t.Run("assembleProductSelection missing ProductDecl", func(t *testing.T) {
 		entry := runtimeSchemaEntry{ProductID: "orphan", ToolName: "run"}
-		if _, _, err := assembleProductSelection(entry, runtimeSchemaMetadataSources{}, false); err == nil || !strings.Contains(err.Error(), "missing ProductDecl") {
+		if _, _, err := assembleProductSelection(entry); err == nil || !strings.Contains(err.Error(), "missing ProductDecl") {
 			t.Fatalf("error = %v", err)
-		}
-	})
-
-	t.Run("legacy metadata with risk annotation", func(t *testing.T) {
-		legacyRoot := buildRuntimeSchemaTestRoot()
-		legacyBound, err := boundTestCommandRegistry(legacyRoot)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, command := range legacyBound.Commands {
-			contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
-		}
-		entries, err := collectRuntimeSchemaEntriesFromBound(legacyBound)
-		if err != nil || len(entries) == 0 {
-			t.Fatalf("entries = %#v, %v", entries, err)
-		}
-		entry := entries[0]
-		AnnotateRuntimeRisk(entry.Command, "destructive")
-		tool, err := runtimeToolSpecFromLegacyMetadata(entry, runtimeSchemaMetadataSources{Agent: agent})
-		if err != nil {
-			t.Fatalf("runtimeToolSpecFromLegacyMetadata() error = %v", err)
-		}
-		if tool.FieldProvenance["risk"].Resolution != "contract_risk_annotation" {
-			t.Fatalf("risk provenance = %#v", tool.FieldProvenance["risk"])
-		}
-	})
-
-	t.Run("legacy metadata with gate annotation", func(t *testing.T) {
-		legacyRoot := buildRuntimeSchemaTestRoot()
-		legacyBound, err := boundTestCommandRegistry(legacyRoot)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, command := range legacyBound.Commands {
-			contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
-		}
-		entries, err := collectRuntimeSchemaEntriesFromBound(legacyBound)
-		if err != nil || len(entries) == 0 {
-			t.Fatalf("entries = %#v, %v", entries, err)
-		}
-		entry := entries[0]
-		AnnotateRuntimeGate(entry.Command, "confirm_delete")
-		tool, err := runtimeToolSpecFromLegacyMetadata(entry, runtimeSchemaMetadataSources{Agent: agent})
-		if err != nil {
-			t.Fatalf("gate runtimeToolSpecFromLegacyMetadata() error = %v", err)
-		}
-		if tool.FieldProvenance["runtime_gate"].Resolution != "contract_runtime_gate_annotation" {
-			t.Fatalf("gate provenance = %#v", tool.FieldProvenance["runtime_gate"])
 		}
 	})
 }
@@ -609,19 +540,6 @@ func TestCrossPlatformCoverageSchemaAgentMetadataInstallAndLoad(t *testing.T) {
 	}
 	if err := InstallBuildTimeAgentMetadataJSON([]byte("{")); err == nil {
 		t.Fatal("invalid JSON must fail install")
-	}
-
-	safety, iface, selection, prov, ok := agentToolContractForPathsFromMetadata(meta, "p.run")
-	if !ok || selection.AgentSummary != "T" {
-		t.Fatalf("contract = %#v %#v ok=%v", safety, selection, ok)
-	}
-	_ = iface
-	_ = prov
-	if _, ok := agentProductSelectionForIDsFromMetadata(meta, "p"); !ok {
-		t.Fatal("agentProductSelectionForIDsFromMetadata failed")
-	}
-	if summary := agentMetadataSummaryFrom(meta); summary["tools_with_metadata"] != 1 {
-		t.Fatalf("summary = %#v", summary)
 	}
 }
 
@@ -652,10 +570,6 @@ func TestCrossPlatformCoverageSchemaAgentSelectionBinding(t *testing.T) {
 func TestCrossPlatformCoverageSchemaDryRunCapabilities(t *testing.T) {
 	t.Cleanup(clearDeclaredDryRunCapabilitiesForTest)
 	recordDeclaredDryRunCapability("sample.run", contract.DryRunSpec{PreviewKind: "plan"})
-	spec, err := reviewedDryRunCapability("sample.run")
-	if err != nil || spec == nil || spec.PreviewKind != "plan" {
-		t.Fatalf("reviewedDryRunCapability() = %#v, %v", spec, err)
-	}
 	caps, err := ReviewedDryRunCapabilities()
 	if err != nil || caps["sample.run"].PreviewKind != "plan" {
 		t.Fatalf("ReviewedDryRunCapabilities() = %#v, %v", caps, err)
@@ -806,34 +720,27 @@ func TestCrossPlatformCoverageSchemaCatalogSnapshotLoadRoundTrip(t *testing.T) {
 
 func TestCrossPlatformCoverageRuntimeSchemaPayloadGroupAndProduct(t *testing.T) {
 	root := buildRuntimeSchemaTestRoot()
-	bound, err := boundTestCommandRegistry(root)
+	declareRuntimeSchemaTestRootDoc(t, root, nil)
+	registry, err := schemaRegistryForTest(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range bound.Commands {
-		contractfinal.ClearRuntimeContractFinalForTest(command.PrimaryCommand)
-	}
-	agent := agentMetadata{
-		Tools: map[string]agentToolMetadata{
-			"doc create": {Effect: "write", InterfaceMode: "local", Availability: "available", InterfaceReason: "test", AgentSummary: "create"},
-		},
-	}
-	registry, err := assembleSchemaRegistryFromBoundAllowingLegacy(bound, runtimeSchemaMetadataSources{Agent: agent})
+	loaded, err := loadedSchemaCatalogForTestRegistry(registry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	productPayload, err := runtimeSchemaPayloadFromRegistry(registry, []string{"doc"})
+	productPayload, err := schemaPayloadFromLoadedCatalog(loaded, []string{"doc"})
 	if err != nil || productPayload["level"] != "product" {
 		t.Fatalf("product payload = %#v, %v", productPayload, err)
 	}
-	if _, err := runtimeSchemaPayloadFromRegistry(registry, []string{"doc create"}); err != nil {
+	if _, err := schemaPayloadFromLoadedCatalog(loaded, []string{"doc create"}); err != nil {
 		t.Fatalf("leaf payload error = %v", err)
 	}
-	loaded := deliverySchemaCatalog()
-	if groupPayload, err := runtimeSchemaPayloadFromRegistry(loaded.Registry, []string{"calendar.event"}); err != nil || groupPayload["level"] != "group" {
+	deliveryLoaded := deliverySchemaCatalog()
+	if groupPayload, err := schemaPayloadFromLoadedCatalog(deliveryLoaded, []string{"calendar.event"}); err != nil || groupPayload["level"] != "group" {
 		t.Fatalf("embedded group payload = %#v, %v", groupPayload, err)
 	}
-	if _, err := runtimeSchemaPayloadFromRegistry(registry, []string{"missing path"}); err == nil {
+	if _, err := schemaPayloadFromLoadedCatalog(loaded, []string{"missing path"}); err == nil {
 		t.Fatal("unknown path must fail")
 	}
 }

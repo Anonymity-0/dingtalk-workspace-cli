@@ -11,7 +11,6 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -30,14 +29,7 @@ var (
 	assembleRuntimeToolSpec          = runtimeToolSpecFromMetadata
 	assembleTypedRegistry            = SchemaRegistryFromRuntime
 	assembleMarshalRaw               = marshalSchemaRaw
-	resolveReviewedDryRun            = reviewedDryRunCapability
-	resolveRuntimeToolText           = runtimeToolTextMetadataFromMetadata
 	resolveRuntimeParameters         = runtimeCommandParameterSpecs
-	renderRegistrySnapshot           = SchemaRegistry.ToSnapshotPayload
-	renderRegistryPayload            = SchemaRegistry.ToPayload
-	renderRegistryProductSummary     = ProductSpec.ToSummaryPayload
-	renderRegistryToolPayload        = ToolSpec.ToPayload
-	renderRegistryToolSummary        = ToolSpec.ToSummaryPayload
 	finalSchemaAgentMetadata         = runtimeAgentMetadata
 )
 
@@ -129,44 +121,23 @@ func AssembleSchemaRegistryFromBound(bound BoundCommandRegistry) (SchemaRegistry
 	return assembleSchemaRegistryFromBound(bound, pinnedRuntimeSchemaMetadataSources())
 }
 
-// assembleSchemaOptions controls production vs test-isolated assembly.
-// allowLegacyMetadata is never set on the production Catalog path: missing
-// ContractFinal / ProductDecl must fail closed rather than reopen skill/MCP
-// /agent-inject overlays.
-type assembleSchemaOptions struct {
-	allowLegacyMetadata bool
-}
-
+// assembleSchemaRegistryFromBound resolves every entry through the
+// ContractFinal / ProductDecl production path. Missing declarations fail
+// closed; retired skill/MCP/agent-inject overlays are never reopened.
 func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources) (SchemaRegistry, error) {
-	return assembleSchemaRegistryFromBoundWithOptions(bound, metadata, assembleSchemaOptions{})
-}
-
-// assembleSchemaRegistryFromBoundAllowingLegacy is test-only isolation for the
-// retired skill/MCP/agent-metadata overlay path. Production assembly must never
-// call this entry.
-func assembleSchemaRegistryFromBoundAllowingLegacy(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources) (SchemaRegistry, error) {
-	return assembleSchemaRegistryFromBoundWithOptions(bound, metadata, assembleSchemaOptions{allowLegacyMetadata: true})
-}
-
-func assembleSchemaRegistryFromBoundWithOptions(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources, opts assembleSchemaOptions) (SchemaRegistry, error) {
 	entries, err := assembleCollectEntries(bound)
 	if err != nil {
 		return SchemaRegistry{}, err
 	}
 	byProduct := make(map[string]*ProductSpec)
 	for _, entry := range entries {
-		var tool ToolSpec
-		if opts.allowLegacyMetadata {
-			tool, err = runtimeToolSpecAllowingLegacy(entry, metadata)
-		} else {
-			tool, err = assembleRuntimeToolSpec(entry, metadata)
-		}
+		tool, err := assembleRuntimeToolSpec(entry, metadata)
 		if err != nil {
 			return SchemaRegistry{}, err
 		}
 		product := byProduct[entry.ProductID]
 		if product == nil {
-			selection, provenance, err := assembleProductSelection(entry, metadata, opts.allowLegacyMetadata)
+			selection, provenance, err := assembleProductSelection(entry)
 			if err != nil {
 				return SchemaRegistry{}, err
 			}
@@ -214,38 +185,30 @@ func runtimeToolSpecFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchem
 	return ToolSpec{}, fmt.Errorf("assemble Schema tool %s: missing RuntimeContractFinal (legacy skill/MCP/agent-metadata assembly is retired)", canonicalPath)
 }
 
-// assembleProductSelection requires ProductDecl on the production path.
-// Legacy agent-product JSON overlay is test-isolation only.
-func assembleProductSelection(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources, allowLegacy bool) (contract.SelectionSpec, map[string]contract.FieldProvenance, error) {
+// assembleProductSelection requires ProductDecl: the legacy agent-product
+// JSON overlay is retired, so a missing declaration fails closed.
+func assembleProductSelection(entry runtimeSchemaEntry) (contract.SelectionSpec, map[string]contract.FieldProvenance, error) {
 	if decl, ok := contract.LookupProductDecl(entry.ProductID); ok {
 		selection, provenance := contract.ProductSelectionFromDecl(decl)
-		return selection, provenance, nil
-	}
-	if allowLegacy {
-		selection, provenance, _ := agentProductContractForIDsFromMetadata(metadata.Agent, entry.ProductID, entry.SourceProductID)
 		return selection, provenance, nil
 	}
 	return contract.SelectionSpec{}, nil, fmt.Errorf("assemble Schema product %q: missing ProductDecl (legacy agent-metadata product selection is retired)", entry.ProductID)
 }
 
-// runtimeToolSpecAllowingLegacy is the test-isolated overlay path. Prefer
-// ContractFinal when present; otherwise reopen retired skill/MCP/agent inject.
-func runtimeToolSpecAllowingLegacy(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
-	if final, ok := contractfinal.RuntimeContractFinal(entry.Command); ok {
-		return runtimeToolSpecFromContractFinal(entry, final, metadata)
-	}
-	return runtimeToolSpecFromLegacyMetadata(entry, metadata)
-}
-
 // runtimeToolSpecFromContractFinal pass-throughs Contract-authored Schema fields.
 // Declared values are the final data source; hints/registry text does not merge.
-// Production MCP pin is empty; interface_type / interface_* facts come from
-// ParamDecl / native annotations. Optional fixture maps may still participate
-// via pinnedMCPMetadataForEntryFrom for tests.
+// Production MCP pin is empty, so assembly skips MCP-metadata lookups entirely;
+// interface_type / interface_* facts come from ParamDecl / native annotations.
+// Tests may still inject a non-empty MCP fixture map, which participates through
+// pinnedMCPMetadataForEntryFrom.
 func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)
-	pinnedMeta, _ := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
+	var pinnedParams map[string]embeddedMCPParamMeta
+	if len(metadata.MCP.Tools) > 0 {
+		pinnedMeta, _ := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
+		pinnedParams = pinnedMeta.Parameters
+	}
 	// Apply parameter declarations from the contract.ContractFinalPayload before the
 	// resolver reads them. The decls were put there by AttachContract at
 	// DeclareLeafMetadata time; now that all flags exist on the fully-built
@@ -253,7 +216,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 	if err := ApplyParamDecls(entry.Command, final.Parameters); err != nil {
 		return ToolSpec{}, fmt.Errorf("apply Contract Schema ParamDecls for %s: %w", canonicalPath, err)
 	}
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, pinnedMeta.Parameters, constraints)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, pinnedParams, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
 	}
@@ -555,209 +518,12 @@ func stringSetsEqual(a, b []string) bool {
 	return true
 }
 
-// runtimeToolSpecFromLegacyMetadata rebuilds a ToolSpec from skill/MCP/agent
-// inject overlays. Production assembly never calls this; only
-// assembleSchemaRegistryFromBoundAllowingLegacy (tests) may.
-func runtimeToolSpecFromLegacyMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
-	canonicalPath := entry.ProductID + "." + entry.ToolName
-	dryRun, err := resolveReviewedDryRun(canonicalPath)
-	if err != nil {
-		return ToolSpec{}, fmt.Errorf("resolve reviewed dry-run capability for %s: %w", canonicalPath, err)
-	}
-	pinnedMeta, hasPinnedMeta := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
-	title, description, metadataSource, textProvenance, err := resolveRuntimeToolText(entry, metadata)
-	if err != nil {
-		return ToolSpec{}, fmt.Errorf("resolve Schema text metadata for %s: %w", canonicalPath, err)
-	}
-	constraints := runtimeCommandConstraints(entry.Command)
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, pinnedMeta.Parameters, constraints)
-	if err != nil {
-		return ToolSpec{}, fmt.Errorf("resolve Schema parameters for %s: %w", canonicalPath, err)
-	}
-
-	paths := []string{entry.PrimaryCLIPath, entry.CLIPath, canonicalPath}
-	paths = append(paths, entry.Aliases...)
-	safety, interfaceSpec, selection, provenance, _ := agentToolContractForPathsFromMetadata(metadata.Agent, paths...)
-	if contractRisk, ok := RuntimeContractRisk(entry.Command); ok {
-		safety = applyContractRiskToSafety(safety, contractRisk)
-	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
-		safety = applyContractGateToSafety(safety, gate)
-	}
-	if metadataSource == "" && hasPinnedMeta {
-		metadataSource = ProvenanceEmbeddedMCPMetadata
-		textProvenance["metadata_source"] = runtimeSchemaFieldProvenance(
-			runtimeSchemaStringCandidate(metadataSource, "metadata_source_resolution"),
-		)
-	}
-	if provenance == nil {
-		provenance = map[string]contract.FieldProvenance{}
-	}
-	for field, fieldProvenance := range textProvenance {
-		provenance[field] = fieldProvenance
-	}
-	if contractRisk, ok := RuntimeContractRisk(entry.Command); ok {
-		provenance["risk"] = resolvedFieldProvenance(
-			safety.Risk,
-			"corecmd.contract",
-			"dws.schema.risk",
-			"reviewed_explicit",
-			"contract_risk_annotation",
-			"Contract Risk embedded on Cobra leaf ("+contractRisk+")",
-		)
-		provenance["confirmation"] = resolvedFieldProvenance(
-			safety.Confirmation,
-			"corecmd.contract",
-			"dws.schema.risk",
-			"reviewed_explicit",
-			"contract_risk_annotation",
-			"Contract Risk embedded on Cobra leaf ("+contractRisk+")",
-		)
-		provenance["effect"] = resolvedFieldProvenance(
-			safety.Effect,
-			"corecmd.contract",
-			"dws.schema.risk",
-			"reviewed_explicit",
-			"contract_risk_annotation",
-			"Contract Risk embedded on Cobra leaf ("+contractRisk+")",
-		)
-	} else if gate, ok := RuntimeContractGate(entry.Command); ok {
-		provenance["runtime_gate"] = resolvedFieldProvenance(
-			gate,
-			"corecmd.contract",
-			"dws.schema.runtime_gate",
-			"reviewed_explicit",
-			"contract_runtime_gate_annotation",
-			"Confirmation path annotated on Cobra leaf ("+gate+")",
-		)
-		provenance["confirmation"] = resolvedFieldProvenance(
-			safety.Confirmation,
-			"corecmd.contract",
-			"dws.schema.runtime_gate",
-			"reviewed_explicit",
-			"contract_runtime_gate_annotation",
-			"Confirmation path annotated on Cobra leaf ("+gate+")",
-		)
-	}
-	provenance["canonical_path"] = entry.IdentityField
-	if dryRun != nil {
-		provenance["dry_run"] = resolvedFieldProvenance(
-			*dryRun,
-			"reviewed_dry_run_registry",
-			"internal/cli/schema_dry_run_capabilities.go",
-			"reviewed_explicit",
-			"exact_canonical_lookup",
-			"reviewed positive dry-run capability",
-		)
-	}
-
-	sourceProductID := strings.TrimSpace(entry.SourceProductID)
-	if sourceProductID == entry.ProductID {
-		sourceProductID = ""
-	}
-	return ToolSpecFromRuntime(RuntimeToolSpecInput{
-		Identity: contract.ToolIdentitySpec{
-			ProductID:       entry.ProductID,
-			SourceProductID: sourceProductID,
-			Name:            entry.ToolName,
-			CLIName:         entry.CLIName,
-			CanonicalPath:   canonicalPath,
-			Path:            canonicalPath,
-			CLIPath:         entry.CLIPath,
-			PrimaryCLIPath:  entry.PrimaryCLIPath,
-			Group:           entry.Group,
-			Aliases:         append([]string(nil), entry.Aliases...),
-			IsAlias:         false,
-			Source:          entry.Source,
-		},
-		Display:         entry.ProductName,
-		Title:           title,
-		Description:     description,
-		MetadataSource:  metadataSource,
-		Parameters:      parameters,
-		Constraints:     constraints,
-		Positionals:     runtimeCommandPositionals(entry.Command),
-		DryRun:          dryRun,
-		Safety:          safety,
-		Interface:       interfaceSpec,
-		Selection:       selection,
-		FieldProvenance: provenance,
-	})
-}
-
 func marshalSchemaRaw(value any) (json.RawMessage, error) {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return nil, err
 	}
 	return json.RawMessage(data), nil
-}
-
-func runtimeSchemaPayloadFromRegistry(registry SchemaRegistry, args []string) (map[string]any, error) {
-	index, err := registry.Index()
-	if err != nil {
-		return nil, err
-	}
-	registry = index.Registry()
-	if len(args) == 0 {
-		snapshot, err := renderRegistrySnapshot(registry)
-		if err != nil {
-			return nil, err
-		}
-		return snapshot.Catalog, nil
-	}
-
-	raw := strings.TrimSpace(args[0])
-	if tool, ok := index.ResolveQuery(raw); ok {
-		tool = schemaToolForResolvedPath(tool, raw)
-		return renderRegistryToolPayload(tool)
-	}
-	tokens := splitSchemaPathTokens(raw)
-	if len(tokens) == 1 {
-		if product, ok := index.Product(tokens[0]); ok {
-			payload, err := renderRegistryProductSummary(product)
-			if err != nil {
-				return nil, err
-			}
-			return map[string]any{
-				"kind":    "schema",
-				"level":   "product",
-				"count":   len(product.Tools),
-				"product": payload,
-				"source":  registry.Source,
-			}, nil
-		}
-	}
-	if len(tokens) > 1 {
-		path := strings.Join(tokens, " ")
-		if product, ok := index.Product(tokens[0]); ok {
-			tools := make([]map[string]any, 0)
-			for _, tool := range product.Tools {
-				if !schemaToolUnderGroup(tool, path) {
-					continue
-				}
-				summary, summaryErr := renderRegistryToolSummary(tool)
-				if summaryErr != nil {
-					return nil, summaryErr
-				}
-				tools = append(tools, summary)
-			}
-			if len(tools) > 0 {
-				return map[string]any{
-					"kind":   "schema",
-					"level":  "group",
-					"path":   path,
-					"count":  len(tools),
-					"tools":  tools,
-					"source": registry.Source,
-				}, nil
-			}
-		}
-	}
-	return nil, apperrors.NewValidation("unknown runtime schema path " + strconvQuote(raw))
-}
-
-func runtimeSchemaAllPayloadFromRegistry(registry SchemaRegistry) (map[string]any, error) {
-	return renderRegistryPayload(registry)
 }
 
 func schemaToolForResolvedPath(tool ToolSpec, raw string) ToolSpec {

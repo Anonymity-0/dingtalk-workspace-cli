@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
@@ -70,13 +69,17 @@ func TestCrossPlatformCoverageAssembleSchemaCatalogFromRootSuccess(t *testing.T)
 	}
 	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 	resetDeliverySchemaCatalogStateForTest()
-	sourceHash, err := MaterializeDeliverySchemaCatalogMapsForTest()
-	if err != nil || sourceHash == "" {
-		t.Fatalf("materialize success = %q err=%v", sourceHash, err)
+	if err := deliverySchemaCatalogError(); err != nil {
+		t.Fatalf("delivery assemble error = %v", err)
 	}
-	// Second materialize hits Tools-already-set short circuit.
-	if again, err := MaterializeDeliverySchemaCatalogMapsForTest(); err != nil || again != sourceHash {
-		t.Fatalf("rematerialize = %q err=%v", again, err)
+	// Snapshot maps are populated eagerly during assembly; repeated reads hit
+	// the cached delivery catalog and must keep the same source hash.
+	first := deliverySchemaCatalog()
+	if first.Snapshot.SourceHash == "" || len(first.Snapshot.Tools) == 0 {
+		t.Fatalf("delivery snapshot maps/hash missing: %#v", first.Snapshot)
+	}
+	if again := deliverySchemaCatalog(); again.Snapshot.SourceHash != first.Snapshot.SourceHash {
+		t.Fatalf("cached delivery source_hash = %q, want %q", again.Snapshot.SourceHash, first.Snapshot.SourceHash)
 	}
 	payload, err := DeliverySchemaAllPayloadForTest()
 	if err != nil || payload == nil {
@@ -176,8 +179,8 @@ func TestCrossPlatformCoverageSchemaSourceRootErrorBranchesAndRestoreFallback(t 
 		return loadedSchemaCatalog{}, fmt.Errorf("forced assemble failure")
 	}
 	resetDeliverySchemaCatalogStateForTest()
-	if _, err := MaterializeDeliverySchemaCatalogMapsForTest(); err == nil || !strings.Contains(err.Error(), "forced assemble failure") {
-		t.Fatalf("materialize assemble error = %v", err)
+	if err := deliverySchemaCatalogError(); err == nil || !strings.Contains(err.Error(), "forced assemble failure") {
+		t.Fatalf("delivery assemble error = %v", err)
 	}
 
 	testseam.Swap(t, &restorePackageCLISchemaDeliveryHook, nil)
@@ -292,24 +295,6 @@ func TestCrossPlatformCoverageMCPMetadataInterfaceRefEdges(t *testing.T) {
 	}, agent, mcp)
 	if !ok || got.Parameters["clawType"].Type != "string" {
 		t.Fatalf("agent InterfaceRef remap = %#v ok=%v", got, ok)
-	}
-}
-
-func TestCrossPlatformCoverageAssembleSchemaCatalogSnapshotErrors(t *testing.T) {
-	if _, err := assembleSchemaCatalogSnapshot([]byte("{"), fstest.MapFS{}, "tools"); err == nil {
-		t.Fatal("bad envelope must fail")
-	}
-	envelope := []byte(`{"version":1,"source_hash":"x","catalog":{}}`)
-	if _, err := assembleSchemaCatalogSnapshot(envelope, fstest.MapFS{}, "missing"); err == nil || !strings.Contains(err.Error(), "read schema catalog tools directory") {
-		t.Fatalf("missing dir error = %v", err)
-	}
-	shards := shardReadErrFS{MapFS: fstest.MapFS{"tools/bad.json": {Data: []byte(`{"product":"sample","tools":{}}`)}}}
-	if _, err := assembleSchemaCatalogSnapshot(envelope, shards, "tools"); err == nil || !strings.Contains(err.Error(), "read schema catalog shard") {
-		t.Fatalf("read shard error = %v", err)
-	}
-	badJSON := fstest.MapFS{"tools/bad.json": {Data: []byte(`{`)}}
-	if _, err := assembleSchemaCatalogSnapshot(envelope, badJSON, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog shard") {
-		t.Fatalf("decode shard error = %v", err)
 	}
 }
 

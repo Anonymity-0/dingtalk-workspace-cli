@@ -18,67 +18,6 @@ func TestCrossPlatformCoverageCanonicalCommandsAndFlags(t *testing.T) {
 	if err := mcp.Execute(); err != nil {
 		t.Fatal(err)
 	}
-
-	schema := map[string]any{"properties": map[string]any{
-		"str":     map[string]any{"type": "string", "description": " text "},
-		"enum":    map[string]any{"enum": []any{"a"}},
-		"int":     map[string]any{"type": "integer"},
-		"num":     map[string]any{"type": "number"},
-		"bool":    map[string]any{"type": "boolean"},
-		"object":  map[string]any{"type": "object"},
-		"strings": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-		"enums":   map[string]any{"type": "array", "items": map[string]any{"enum": []any{"x"}}},
-		"ints":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
-		"nums":    map[string]any{"type": "array", "items": map[string]any{"type": "number"}},
-		"bools":   map[string]any{"type": "array", "items": map[string]any{"type": "boolean"}},
-		"objects": map[string]any{"type": "array", "items": map[string]any{"type": "object"}},
-		"unknown": map[string]any{"type": "future"},
-		"array":   map[string]any{"type": "array"},
-		"invalid": "not schema",
-	}}
-	specs := BuildFlagSpecs(schema, map[string]CLIFlagHint{
-		"str":  {Alias: "string-alias", Shorthand: "s"},
-		"int":  {Alias: "int-alias", Shorthand: "i"},
-		"num":  {Alias: "num-alias", Shorthand: "n"},
-		"bool": {Alias: "bool-alias", Shorthand: "b"},
-	})
-	if len(specs) != 13 {
-		t.Fatalf("flag specs = %d, want 13", len(specs))
-	}
-	if BuildFlagSpecs(nil, nil) != nil || BuildFlagSpecs(map[string]any{}, nil) != nil {
-		t.Fatal("missing properties produced flag specs")
-	}
-	cmd := &cobra.Command{Use: "flags"}
-	cmd.Flags().String("occupied", "", "")
-	cmd.Flags().StringP("short", "s", "", "")
-	specs = append(specs,
-		FlagSpec{PropertyName: "skip", FlagName: "json", Kind: flagString},
-		FlagSpec{PropertyName: "same", FlagName: "same", Alias: "same", Kind: flagString},
-		FlagSpec{PropertyName: "occupied", FlagName: "occupied", Kind: flagString},
-		FlagSpec{PropertyName: "default", FlagName: "default", Kind: flagString},
-	)
-	applyFlagSpecs(cmd, specs)
-	applyFlagSpecs(cmd, []FlagSpec{{PropertyName: "array-alias", FlagName: "array-alias", Alias: "array-hidden", Kind: flagStringArray}})
-	for _, name := range []string{"str", "string-alias", "int", "int-alias", "num", "num-alias", "bool", "bool-alias", "strings", "ints", "nums", "bools", "objects", "array", "default"} {
-		if cmd.Flags().Lookup(name) == nil {
-			t.Fatalf("flag %q not registered", name)
-		}
-	}
-	if nested, ok := nestedMap(map[string]any{"x": map[string]any{"y": true}}, "x"); !ok || !nested["y"].(bool) {
-		t.Fatal("nested map lookup failed")
-	}
-	if _, ok := nestedMap(nil, "x"); ok {
-		t.Fatal("nil nested map matched")
-	}
-	if _, ok := nestedMap(map[string]any{}, "x"); ok {
-		t.Fatal("missing nested map matched")
-	}
-	if _, ok := nestedMap(map[string]any{"x": 1}, "x"); ok {
-		t.Fatal("non-map nested value matched")
-	}
-	if schemaDescription(map[string]any{"description": 1}) != "" {
-		t.Fatal("non-string description rendered")
-	}
 }
 
 func TestCrossPlatformCoveragePriorityEdges(t *testing.T) {

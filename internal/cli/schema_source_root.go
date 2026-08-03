@@ -49,8 +49,6 @@ var (
 	runtimeDeliverySchemaCatalog          loadedSchemaCatalog
 	runtimeDeliverySchemaCatalogErr       error
 	runtimeDeliverySchemaCatalogLazyCount atomic.Uint64
-	runtimeDeliverySchemaCatalogMapsOnce  sync.Once
-	runtimeDeliverySchemaCatalogMapsErr   error
 )
 
 func loadSchemaSourceRootFn() func() *cobra.Command {
@@ -71,8 +69,6 @@ func resetDeliverySchemaCatalogState() {
 	runtimeDeliverySchemaCatalog = loadedSchemaCatalog{}
 	runtimeDeliverySchemaCatalogErr = nil
 	runtimeDeliverySchemaCatalogLazyCount.Store(0)
-	runtimeDeliverySchemaCatalogMapsOnce = sync.Once{}
-	runtimeDeliverySchemaCatalogMapsErr = nil
 }
 
 // resetSchemaDeliveryState clears ResolveMeta lookup state and Catalog delivery
@@ -130,23 +126,21 @@ func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, er
 	}
 	surfaceHash := resolved.RegistryHash()
 	// Content source_hash must match BuildSchemaCatalogSnapshot / CI dump.
-	// Catalog/Tools maps stay lazy (materializeDeliverySchemaCatalogMaps).
+	// The payload computed here seeds both the hash and the eagerly populated
+	// Snapshot.Catalog/Tools maps, so map-based consumers never re-serialize.
 	payload, err := registryToSnapshotPayloadFn(registry)
 	if err != nil {
 		return loadedSchemaCatalog{}, fmt.Errorf("serialize Schema Catalog snapshot: %w", err)
 	}
-	sourceHash := schemaCatalogSnapshotHash(SchemaCatalogSnapshot{
+	snapshot := SchemaCatalogSnapshot{
 		Version:     SchemaCatalogSnapshotVersion,
 		SurfaceHash: surfaceHash,
 		Catalog:     payload.Catalog,
 		Tools:       payload.Tools,
-	})
+	}
+	snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
 	return loadedSchemaCatalog{
-		Snapshot: SchemaCatalogSnapshot{
-			Version:     SchemaCatalogSnapshotVersion,
-			SurfaceHash: surfaceHash,
-			SourceHash:  sourceHash,
-		},
+		Snapshot: snapshot,
 		Registry: registry,
 		Index:    index,
 	}, nil
@@ -183,35 +177,4 @@ func deliverySchemaCatalog() loadedSchemaCatalog {
 func deliverySchemaCatalogError() error {
 	_ = deliverySchemaCatalog()
 	return runtimeDeliverySchemaCatalogErr
-}
-
-// materializeDeliverySchemaCatalogMaps fills Snapshot.Catalog/Tools when a
-// caller still needs untyped maps.
-func materializeDeliverySchemaCatalogMaps() (loadedSchemaCatalog, error) {
-	_ = deliverySchemaCatalog()
-	if runtimeDeliverySchemaCatalogErr != nil {
-		return loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr
-	}
-	runtimeDeliverySchemaCatalogMapsOnce.Do(func() {
-		if runtimeDeliverySchemaCatalog.Snapshot.Tools != nil {
-			return
-		}
-		payload, err := registryToSnapshotPayloadFn(runtimeDeliverySchemaCatalog.Registry)
-		if err != nil {
-			runtimeDeliverySchemaCatalogMapsErr = fmt.Errorf("materialize Schema Catalog maps: %w", err)
-			return
-		}
-		runtimeDeliverySchemaCatalog.Snapshot.Catalog = payload.Catalog
-		runtimeDeliverySchemaCatalog.Snapshot.Tools = payload.Tools
-		runtimeDeliverySchemaCatalog.Snapshot.SourceHash = schemaCatalogSnapshotHash(SchemaCatalogSnapshot{
-			Version:     runtimeDeliverySchemaCatalog.Snapshot.Version,
-			SurfaceHash: runtimeDeliverySchemaCatalog.Snapshot.SurfaceHash,
-			Catalog:     payload.Catalog,
-			Tools:       payload.Tools,
-		})
-	})
-	if runtimeDeliverySchemaCatalogMapsErr != nil {
-		return loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogMapsErr
-	}
-	return runtimeDeliverySchemaCatalog, nil
 }

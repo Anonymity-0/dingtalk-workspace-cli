@@ -7,10 +7,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/fs"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
@@ -52,80 +50,42 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		}
 	})
 
-	t.Run("assembleTypedSchemaCatalog skips non-json entries", func(t *testing.T) {
-		envelope := []byte(`{"version":1,"source_hash":"x","catalog":{"kind":"schema","level":"catalog","source":"t","count":0,"tool_count":0,"products":[]}}`)
-		shards := fstest.MapFS{
-			"tools/readme.txt": {Data: []byte("skip")},
-			"tools/nested/x":   {Data: []byte("dir marker")},
-			"tools/ok.json":    {Data: []byte(`{"product":"sample","tools":{}}`)},
-		}
-		// Force a directory entry via a custom FS wrapper.
-		dirFS := dirSkipFS{MapFS: shards}
-		if _, tools, err := assembleTypedSchemaCatalog(envelope, dirFS, "tools"); err != nil || tools == nil {
-			t.Fatalf("assembleTypedSchemaCatalog = %#v, %v", tools, err)
-		}
-	})
-
-	t.Run("loadTypedSchemaCatalog missing source_hash and provenance failures", func(t *testing.T) {
-		base := schemaCatalogEnvelopeTyped{
+	t.Run("loadSchemaCatalogSnapshot missing source_hash and provenance failures", func(t *testing.T) {
+		testseam.Swap(t, &validateSchemaSnapshotTypedRoundTrip, false)
+		snapshot := SchemaCatalogSnapshot{
 			Version: SchemaCatalogSnapshotVersion,
-			Catalog: schemaCatalogWire{
-				Kind: "schema", Level: "catalog", Source: "t", Count: 1, ToolCount: 1,
-				Products: []schemaProductWire{{
-					ID: "sample", Tools: []schemaToolWire{{CanonicalPath: "sample.run"}},
+			Catalog: map[string]any{
+				"kind": "schema", "level": "catalog", "source": "t",
+				"count": float64(1), "tool_count": float64(1),
+				"products": []any{map[string]any{
+					"id":    "sample",
+					"tools": []any{map[string]any{"canonical_path": "sample.run"}},
 				}},
 			},
-		}
-		tools := map[string]schemaToolWire{
-			"sample.run": {
-				ProductID: "sample", CanonicalPath: "sample.run", Name: "run",
-				Path: "sample.run", CLIPath: "sample run", PrimaryCLIPath: "sample run",
+			Tools: map[string]map[string]any{
+				"sample.run": {
+					"product_id": "sample", "canonical_path": "sample.run", "name": "run",
+					"path": "sample.run", "cli_path": "sample run", "primary_cli_path": "sample run",
+				},
 			},
 		}
-		if _, err := loadTypedSchemaCatalog(base, tools); err == nil || !strings.Contains(err.Error(), "missing source_hash") {
+		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "missing source_hash") {
 			t.Fatalf("missing source_hash error = %v", err)
 		}
-		base.SourceHash = "hash"
-		prevIface := loadCatalogValidateInterfaces
-		prevProv := loadCatalogValidateProvenance
-		loadCatalogValidateInterfaces = func(SchemaRegistry) error { return nil }
-		loadCatalogValidateProvenance = func(SchemaRegistry) error { return fmt.Errorf("provenance boom") }
-		t.Cleanup(func() {
-			loadCatalogValidateInterfaces = prevIface
-			loadCatalogValidateProvenance = prevProv
-		})
-		if _, err := loadTypedSchemaCatalog(base, tools); err == nil || !strings.Contains(err.Error(), "provenance boom") {
+		snapshot.SourceHash = "hash"
+		testseam.Swap(t, &loadCatalogValidateInterfaces, func(SchemaRegistry) error { return nil })
+		testseam.Swap(t, &loadCatalogValidateProvenance, func(SchemaRegistry) error { return fmt.Errorf("provenance boom") })
+		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "provenance boom") {
 			t.Fatalf("provenance error = %v", err)
 		}
-		loadCatalogValidateProvenance = func(SchemaRegistry) error { return nil }
+		testseam.Swap(t, &loadCatalogValidateProvenance, func(SchemaRegistry) error { return nil })
 		// Product references a tool that is absent from the tools map.
-		base.Catalog.Products = []schemaProductWire{{
-			ID: "sample", Tools: []schemaToolWire{{CanonicalPath: "missing.run"}},
+		snapshot.Catalog["products"] = []any{map[string]any{
+			"id":    "sample",
+			"tools": []any{map[string]any{"canonical_path": "missing.run"}},
 		}}
-		if _, err := loadTypedSchemaCatalog(base, tools); err == nil || !strings.Contains(err.Error(), "load typed Schema registry") {
+		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "load typed Schema registry") {
 			t.Fatalf("typed registry error = %v", err)
-		}
-	})
-
-	t.Run("registryToSnapshotPayloadFn error body via materialize", func(t *testing.T) {
-		restorePackageCLISchemaDeliveryForTest()
-		RegisterSchemaSourceRoot(func() *cobra.Command { return &cobra.Command{Use: "dws"} })
-		assembleDeliverySchemaCatalogFn = func(*cobra.Command) (loadedSchemaCatalog, error) {
-			return loadedSchemaCatalog{
-				Registry: SchemaRegistry{},
-				Snapshot: SchemaCatalogSnapshot{Version: SchemaCatalogSnapshotVersion, SourceHash: "x"},
-			}, nil
-		}
-		prev := registryToSnapshotPayloadFn
-		registryToSnapshotPayloadFn = func(SchemaRegistry) (SchemaCatalogSnapshot, error) {
-			return SchemaCatalogSnapshot{}, fmt.Errorf("payload boom")
-		}
-		t.Cleanup(func() {
-			registryToSnapshotPayloadFn = prev
-			restorePackageCLISchemaDeliveryForTest()
-		})
-		if _, err := materializeDeliverySchemaCatalogMaps(); err == nil || !strings.Contains(err.Error(), "materialize") {
-			t.Fatalf("materialize error = %v", err)
 		}
 	})
 
@@ -234,15 +194,6 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		}
 	})
 
-	t.Run("assembleProductSelection allowLegacy without ProductDecl succeeds empty", func(t *testing.T) {
-		entry := runtimeSchemaEntry{ProductID: "orphan-final", ToolName: "run"}
-		selection, _, err := assembleProductSelection(entry, runtimeSchemaMetadataSources{}, true)
-		if err != nil {
-			t.Fatalf("allowLegacy path error = %v", err)
-		}
-		_ = selection
-	})
-
 	t.Run("registryToSnapshotPayload named helper success and error", func(t *testing.T) {
 		got, err := registryToSnapshotPayload(SchemaRegistry{})
 		if err != nil {
@@ -279,12 +230,6 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		bound.ByCanonical[spec.CanonicalPath] = bad
 		if _, _, err := BuildAgentSelectionEvalFixture(bound); err == nil || !strings.Contains(err.Error(), "no bound primary") {
 			t.Fatalf("binding error = %v", err)
-		}
-	})
-
-	t.Run("assembleTypedSchemaCatalog error passthrough", func(t *testing.T) {
-		if _, _, err := assembleTypedSchemaCatalog([]byte("{bad"), nil, "tools"); err == nil || !strings.Contains(err.Error(), "decode schema catalog.json") {
-			t.Fatalf("assembly error = %v", err)
 		}
 	})
 
@@ -457,21 +402,3 @@ func TestCrossPlatformCoverageSchemaMetaIndexGobJSONDeliveryGaps(t *testing.T) {
 		}
 	})
 }
-
-// dirSkipFS reports one directory entry alongside MapFS files so IsDir skip is covered.
-type dirSkipFS struct{ fstest.MapFS }
-
-func (d dirSkipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	entries, err := d.MapFS.ReadDir(name)
-	if err != nil {
-		return nil, err
-	}
-	return append([]fs.DirEntry{dirOnlyEntry{name: "subdir"}}, entries...), nil
-}
-
-type dirOnlyEntry struct{ name string }
-
-func (d dirOnlyEntry) Name() string               { return d.name }
-func (d dirOnlyEntry) IsDir() bool                { return true }
-func (d dirOnlyEntry) Type() fs.FileMode          { return fs.ModeDir }
-func (d dirOnlyEntry) Info() (fs.FileInfo, error) { return nil, fmt.Errorf("unused") }

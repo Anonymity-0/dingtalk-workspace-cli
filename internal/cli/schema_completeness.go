@@ -312,7 +312,7 @@ func schemaRegistryProjectionErrors(loaded loadedSchemaCatalog) []string {
 
 	groupPaths := map[string]bool{}
 	for _, product := range loaded.Registry.Products {
-		expectedProduct, renderErr := renderRegistryProductSummary(product)
+		expectedProduct, renderErr := product.ToSummaryPayload()
 		if renderErr != nil {
 			problems = append(problems, fmt.Sprintf("render product %s summary: %v", product.ID, renderErr))
 		} else if actual, queryErr := deliverySchemaPayload(loaded, []string{product.ID}); queryErr != nil {

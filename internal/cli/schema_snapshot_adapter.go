@@ -142,8 +142,8 @@ func schemaRegistryFromSnapshot(snapshot SchemaCatalogSnapshot) (SchemaRegistry,
 }
 
 // schemaRegistryFromTyped builds SchemaRegistry/SchemaIndex from already-decoded
-// wire structs. The production embed path uses this to avoid per-tool
-// map[string]any → json.Marshal → Unmarshal round trips.
+// wire structs. Snapshot decoding uses it after decoding catalog/tools into
+// wire types, keeping map[string]any off the typed construction path.
 func schemaRegistryFromTyped(catalog schemaCatalogWire, tools map[string]schemaToolWire) (SchemaRegistry, SchemaIndex, error) {
 	products := make([]ProductSpec, 0, len(catalog.Products))
 	seen := make(map[string]bool, len(tools))
@@ -252,7 +252,7 @@ func schemaToolSpecFromWire(wire schemaToolWire) (ToolSpec, error) {
 			FieldProvenance:      parameter.FieldProvenance,
 		})
 	}
-	return toolSpecFromSnapshot(RuntimeToolSpecInput{
+	return ToolSpecFromRuntime(RuntimeToolSpecInput{
 		Identity: contract.ToolIdentitySpec{
 			ProductID:       wire.ProductID,
 			SourceProductID: wire.SourceProductID,

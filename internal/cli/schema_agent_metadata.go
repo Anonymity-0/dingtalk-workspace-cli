@@ -33,7 +33,6 @@ import (
 // Const identifiers may be renamed; the string values must not change.
 const (
 	ProvenanceEmbeddedSkillMetadata = "embedded-skill-metadata"
-	ProvenanceEmbeddedMCPMetadata   = "embedded-mcp-metadata"
 	ProvenanceReviewedManual        = "reviewed_manual"
 )
 
@@ -160,124 +159,6 @@ func emptyAgentMetadata() agentMetadata {
 	}
 }
 
-// agentToolContractForPathsFromMetadata is the sole typed adapter from generated Agent
-// metadata to runtime contract assembly. Path resolution happens once; all
-// consumers receive the same resolved safety, interface, selection and
-// provenance values without performing downstream map merges.
-func agentToolContractForPathsFromMetadata(source agentMetadata, paths ...string) (contract.SafetySpec, contract.InterfaceSpec, contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
-	metadata, ok := lookupAgentToolMetadataFrom(source, paths...)
-	if !ok {
-		return contract.SafetySpec{}, contract.InterfaceSpec{}, contract.SelectionSpec{}, nil, false
-	}
-	safety := contract.SafetySpec{
-		Effect:       strings.TrimSpace(metadata.Effect),
-		EffectSource: strings.TrimSpace(metadata.EffectSource),
-		Risk:         strings.TrimSpace(metadata.Risk),
-		Confirmation: strings.TrimSpace(metadata.Confirmation),
-		Idempotency:  strings.TrimSpace(metadata.Idempotency),
-	}
-	interfaceSpec := contract.InterfaceSpec{
-		Mode:         strings.TrimSpace(metadata.InterfaceMode),
-		Availability: strings.TrimSpace(metadata.Availability),
-		Reason:       strings.TrimSpace(metadata.InterfaceReason),
-	}
-	if metadata.InterfaceRef != nil {
-		interfaceSpec.Ref = &contract.InterfaceRefSpec{
-			ProductID: strings.TrimSpace(metadata.InterfaceRef.ProductID),
-			RPCName:   strings.TrimSpace(metadata.InterfaceRef.RPCName),
-		}
-	}
-	selection := agentToolSelection(metadata)
-	provenance := resolvedAgentToolProvenance(metadata.FieldProvenance, interfaceSpec, selection)
-	return safety, interfaceSpec, selection, provenance, true
-}
-
-// resolvedAgentToolProvenance is the typed source adapter for generated Agent
-// metadata. The generator stores concrete interface refs in its compact
-// "product.rpc" identity form and stores reviewed no-ref dispositions as JSON
-// null. The final typed contract stores an object or JSON null, so project the
-// concrete compact identity here. Missing provenance is never synthesized:
-// constructors and snapshot loaders remain validate-only and fail closed.
-func resolvedAgentToolProvenance(source map[string]contract.FieldProvenance, interfaceSpec contract.InterfaceSpec, selection contract.SelectionSpec) map[string]contract.FieldProvenance {
-	out := cloneFieldProvenance(source)
-	if provenance, ok := out["interface_ref"]; ok {
-		out["interface_ref"] = projectAgentInterfaceRefProvenance(provenance, interfaceSpec.Ref)
-	}
-	return out
-}
-
-func projectAgentInterfaceRefProvenance(provenance contract.FieldProvenance, ref *contract.InterfaceRefSpec) contract.FieldProvenance {
-	finalValue, _ := json.Marshal(ref)
-	legacy := "<none>"
-	if ref != nil {
-		legacy = strings.TrimSpace(ref.ProductID) + "." + strings.TrimSpace(ref.RPCName)
-	}
-	legacyValue, _ := json.Marshal(legacy)
-	project := func(value json.RawMessage) json.RawMessage {
-		if string(value) == string(legacyValue) || string(value) == string(finalValue) {
-			return append(json.RawMessage(nil), finalValue...)
-		}
-		// Keep a disagreeing source value untouched. ToolSpec validation will
-		// then fail instead of this adapter laundering a resolver conflict.
-		return value
-	}
-	provenance.Value = project(provenance.Value)
-	for index := range provenance.Candidates {
-		candidate := &provenance.Candidates[index]
-		if candidate.Selected != nil && *candidate.Selected {
-			candidate.Value = project(candidate.Value)
-		}
-	}
-	return provenance
-}
-
-// agentProductSelectionForIDsFromMetadata exposes generated product routing
-// through the same typed contract.SelectionSpec used by ToolSpec.
-func agentProductSelectionForIDsFromMetadata(source agentMetadata, ids ...string) (contract.SelectionSpec, bool) {
-	selection, _, ok := agentProductContractForIDsFromMetadata(source, ids...)
-	return selection, ok
-}
-
-func agentProductContractForIDsFromMetadata(source agentMetadata, ids ...string) (contract.SelectionSpec, map[string]contract.FieldProvenance, bool) {
-	for _, id := range ids {
-		metadata, ok := source.Products[strings.TrimSpace(id)]
-		if !ok {
-			continue
-		}
-		selection := contract.SelectionSpec{
-			AgentSummary:       strings.TrimSpace(metadata.AgentSummary),
-			AgentSummarySource: strings.TrimSpace(metadata.AgentSummarySource),
-			UseWhen:            cloneOptionalStrings(metadata.UseWhen),
-			AvoidWhen:          cloneOptionalStrings(metadata.AvoidWhen),
-			SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
-			MetadataSource:     ProvenanceEmbeddedSkillMetadata,
-		}.Normalized()
-		return selection, cloneFieldProvenance(metadata.FieldProvenance), true
-	}
-	return contract.SelectionSpec{}, nil, false
-}
-
-func agentToolSelection(metadata agentToolMetadata) contract.SelectionSpec {
-	var reviewed *bool
-	if metadata.Reviewed != nil {
-		value := *metadata.Reviewed
-		reviewed = &value
-	}
-	return contract.SelectionSpec{
-		AgentSummary:       strings.TrimSpace(metadata.AgentSummary),
-		AgentSummarySource: strings.TrimSpace(metadata.AgentSummarySource),
-		UseWhen:            cloneOptionalStrings(metadata.UseWhen),
-		AvoidWhen:          cloneOptionalStrings(metadata.AvoidWhen),
-		Prerequisites:      cloneOptionalStrings(metadata.Prerequisites),
-		Tips:               cloneOptionalStrings(metadata.Tips),
-		WorkflowRefs:       cloneOptionalStrings(metadata.WorkflowRefs),
-		Examples:           cloneOptionalStrings(metadata.Examples),
-		Reviewed:           reviewed,
-		SourceRefs:         cloneOptionalStrings(metadata.SourceRefs),
-		MetadataSource:     ProvenanceEmbeddedSkillMetadata,
-	}.Normalized()
-}
-
 func cloneFieldProvenance(source map[string]contract.FieldProvenance) map[string]contract.FieldProvenance {
 	if len(source) == 0 {
 		return nil
@@ -325,33 +206,6 @@ func lookupAgentToolMetadataFrom(source agentMetadata, paths ...string) (agentTo
 		}
 	}
 	return agentToolMetadata{}, false
-}
-
-func agentMetadataSummaryFrom(metadata agentMetadata) map[string]any {
-	summary := map[string]any{
-		"source":                 ProvenanceEmbeddedSkillMetadata,
-		"version":                metadata.Version,
-		"source_hash":            strings.TrimSpace(metadata.SourceHash),
-		"products_with_metadata": len(metadata.Products),
-		"tools_with_metadata":    len(metadata.Tools),
-	}
-	if metadata.SurfaceHash != "" {
-		summary["surface_hash"] = metadata.SurfaceHash
-	}
-	coverage := metadata.Coverage
-	if coverage.SurfaceProducts > 0 {
-		summary["surface_products"] = coverage.SurfaceProducts
-	}
-	if coverage.SurfaceTools > 0 {
-		summary["surface_tools"] = coverage.SurfaceTools
-	}
-	if coverage.ToolsWithSummary > 0 {
-		summary["tools_with_agent_summary"] = coverage.ToolsWithSummary
-	}
-	if coverage.UnmatchedSkillTools > 0 {
-		summary["unmatched_skill_tools"] = coverage.UnmatchedSkillTools
-	}
-	return summary
 }
 
 // agentMetadataSummaryFromProducts publishes Catalog-level Agent coverage from
