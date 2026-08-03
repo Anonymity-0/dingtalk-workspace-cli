@@ -537,6 +537,27 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Error("full race shards must retain enough package-level time for internal/app")
 	}
 
+	darwinStart := strings.Index(admission, "\n  test-darwin:\n")
+	darwinEnd := strings.Index(admission, "\n  test-windows:\n")
+	if darwinStart < 0 || darwinEnd <= darwinStart {
+		t.Fatal("Code Admission workflow missing macOS test job boundaries")
+	}
+	darwinJob := admission[darwinStart:darwinEnd]
+	for _, want := range []string{
+		`go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth`,
+		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^TestAuth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch)'`,
+	} {
+		if !strings.Contains(darwinJob, want) {
+			t.Errorf("macOS native test job missing focused auth contract %q", want)
+		}
+	}
+	if strings.Contains(darwinJob, "./internal/keychain ./internal/auth ./internal/app") {
+		t.Error("macOS native test job must not repeat the complete internal/app race shard")
+	}
+	if count := strings.Count(darwinJob, "./internal/app"); count != 1 {
+		t.Errorf("macOS native test job internal/app invocation count = %d, want 1 focused invocation", count)
+	}
+
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
 	coverageEnd := strings.Index(admission, "\n  policy:\n")
 	if coverageStart < 0 || coverageEnd <= coverageStart {

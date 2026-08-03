@@ -693,8 +693,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Test macOS auth and Keychain paths with Race Detection
-        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth ./internal/app
+      - name: Test macOS auth and Keychain packages with Race Detection
+        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth
+
+      - name: Test macOS auth migration and Keychain diagnostics with Race Detection
+        run: go test -v -race -count=1 -timeout=5m ./internal/app -run '^TestAuth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch)'
 
   test-windows:
     name: Test (Windows)
