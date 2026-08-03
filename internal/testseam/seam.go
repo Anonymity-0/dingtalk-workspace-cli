@@ -27,8 +27,9 @@ import "testing"
 //	testseam.Swap(t, &somePackageFn, func(args) (ret, error) { ... })
 //
 // Prefer it over the manual `prev := fn; t.Cleanup(...); fn = stub` trio:
-// Swap cannot forget the restore, and parallel-safe call sites read the seam
-// after the swap through the same pointer.
+// Swap cannot forget the restore. Like the manual pattern it replaces, Swap
+// mutates process-global state and is therefore NOT safe for t.Parallel tests
+// — sequential tests only.
 func Swap[T any](t *testing.T, ptr *T, next T) {
 	t.Helper()
 	prev := *ptr
