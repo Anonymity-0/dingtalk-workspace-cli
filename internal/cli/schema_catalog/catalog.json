@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
-  "source_hash": "sha256:862734fb976a4c9c78d010b7391c74822f37805f5acc650551f4ac60f701c13a",
+  "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
+  "source_hash": "sha256:1b4f0e6e6fe49115137ff81717462374b2fdd05ad4ca1bfb1b2dd8272aa6bad8",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:670ca810a83bf2aa6f387a18c3af746393d5ea9de24570cbcebbcf994eb7b613",
-      "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
+      "source_hash": "sha256:b513a679eb51b64afa3f31364b45c29bc4590f0568908650f426ac8f4b041b2b",
+      "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
       "surface_products": 26,
-      "surface_tools": 845,
-      "tools_with_agent_summary": 845,
-      "tools_with_metadata": 845,
+      "surface_tools": 846,
+      "tools_with_agent_summary": 846,
+      "tools_with_metadata": 846,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -288,7 +288,7 @@
         "id": "aitable",
         "name": "AI 表格操作",
         "runtime": true,
-        "tool_count": 145,
+        "tool_count": 146,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -4447,6 +4447,33 @@
             "title": "禁用指定工作流（高危）",
             "use_when": [
               "用户明确要求停止某自动化工作流时"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。",
+            "agent_summary_source": "dws-agent-selection/aitable",
+            "availability": "available",
+            "avoid_when": [
+              "实际创建工作流用 workflow create；修改已有工作流用 workflow update；查询已发布定义用 workflow get"
+            ],
+            "canonical_path": "aitable.workflow_edit_example",
+            "cli_name": "edit-example",
+            "cli_path": "aitable workflow edit-example",
+            "confirmation": "not_required",
+            "description": "返回服务端提供的 AI 表格工作流编辑文档与示例。\n可作为 workflow create / workflow update 的 workflow-dsl/v1 结构参考；此命令不需要 Base ID 或其他参数。",
+            "effect": "read",
+            "group": "workflow",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+            "name": "workflow_edit_example",
+            "primary_cli_path": "aitable workflow edit-example",
+            "reviewed": true,
+            "risk": "low",
+            "title": "获取工作流编辑文档与示例",
+            "use_when": [
+              "创建或更新工作流前，需要确认最新 workflow-dsl/v1 结构、节点写法或完整示例时"
             ]
           },
           {
@@ -26644,6 +26671,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 845
+    "tool_count": 846
   }
 }

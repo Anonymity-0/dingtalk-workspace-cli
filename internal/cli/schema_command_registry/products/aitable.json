@@ -453,6 +453,10 @@
       "cli_path": "aitable workflow disable"
     },
     {
+      "canonical_path": "aitable.workflow_edit_example",
+      "cli_path": "aitable workflow edit-example"
+    },
+    {
       "canonical_path": "aitable.workflow_enable",
       "cli_path": "aitable workflow enable"
     },
