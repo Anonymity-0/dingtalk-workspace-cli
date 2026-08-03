@@ -84,7 +84,7 @@ v4 的变更，全部来自第一轮独立评审并经过代码级验证：
 - 本 RFC 不改变用户拒绝时的退出码。
 - 不在同一个项目内迁移所有手写命令。
 - 不要求用一个 Go 结构体同时承载 CLI、后端、发现和经评审的语义元数据。
-- 不移除经评审的 CommandRegistry 或 schema 评审层。
+- 不移除经评审的 CommandRegistry 或 schema 评审层。（后续演进已超越该非目标：reviewed `schema_command_registry/` 已退役，稳定 identity 切换为 identity collector 收集 `ContractFinal.Identity` 声明；schema 评审层以 reviewed exclusions、参数映射 ledger、MCP pin 等形式保留。）
 - 不主张「生成的 catalog 字节一致」就能证明运行时等价。
 - 不在 `LeafSpec` 或 `PostMount` 的真实能力获得具名替代之前删除它们。
 
@@ -276,7 +276,7 @@ Definition（仅声明；不可编译）
 | **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段**（声明证据；交付见下） | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（DTO：`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`；**无** Cobra store） |
 | **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `corecmd/contractfinal.RegisterRuntimeContractFinal`（annotate + store；全部调用方直调，`corecmd.New` 内部注册） |
 | **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/corecmd/runtimeannotate.AnnotateRuntime*`（框架侧；`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/runtimeannotate` 垫片包已删，一律直引 corecmd） |
-| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`（`ResolveMeta` 自同一组装投影）；go:embed 仅限 reviewed 输入（`schema_command_registry/` / MCP meta 等），映射排除走 Go ledger（`schema_parameter_mapping_ledger.go`），不得 embed Catalog | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/contractfinal` 垫片包已删） |
+| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`（`ResolveMeta` 自同一组装投影）；go:embed 仅限 reviewed 输入（MCP meta / `param_concepts` 等；reviewed `schema_command_registry/` 已退役，identity 由 collector 收集），映射排除走 Go ledger（`schema_parameter_mapping_ledger.go`），不得 embed Catalog | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/contractfinal` 垫片包已删） |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
 
 依赖方向硬规则：`internal/corecmd`（含子包）**不得** import 任何 `internal/cli` 包；annotate 与 ContractFinal store 归属框架侧。
@@ -286,7 +286,7 @@ Definition（仅声明；不可编译）
 1. 声明体系**不含评审并行字段**；hooks 不算声明。声明载荷携带 reviewed 字段（如 `Selection.Reviewed`）组装直接报错——`Reviewed` 是旧路径（hints/registry）专用标记。
 2. 不得把声明序列化成 JSON 再解析；框架自己做 `ContractDecl` → `ContractFinalPayload` → `ToolSpec`。
 3. 已声明字段不得被 hints/registry 盖写。迁移期未声明叶可走旧路径。
-4. 受管（已绑定）叶上声明的 `Identity` 必须与绑定 entry 一致（`product_id`/`name`/`canonical_path`/`cli_path`/`aliases` 等）；不一致组装报错（`validateContractFinalIdentity`）。声明 identity 是钉扎与自描述，不是改写 registry 身份的通道。
+4. 受管（已绑定）叶上声明的 `Identity` 必须与绑定 entry 一致（`product_id`/`name`/`canonical_path`/`cli_path`/`aliases` 等）；不一致组装报错（`validateContractFinalIdentity`）。后续演进中声明 identity 已成为唯一 identity 来源（identity collector 直接收集 `ContractFinal.Identity`，reviewed `schema_command_registry/` 已退役），不再是平行钉扎通道。
 
 #### 5.0.2 今日契约字段（`corecmd.Spec` / `LeafSpec`）
 
@@ -347,8 +347,8 @@ Definition（仅声明；不可编译）
 
 | Schema 字段组 | 子字段 / 内容 | 权威类 | 今日写入面 | 框架声明？ |
 |---|---|---|---|---|
-| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（registry 绑定结果） | `schema_command_registry`（+ reviewed manual additions）；`ContractDecl.Identity` 可声明但**必须与绑定一致**，不一致组装报错 | 可声明（钉扎/自描述），**不得改绑** |
-| **Display / Title / Description** | 产品展示名；工具 title/description | **title**：ContractDecl 声明优先，否则 Cobra Short，再 MCP；**description**：**构造期** `ContractDecl.Description` **必填**（声明证据）；**Catalog 交付** Cobra Long 优先（provenance `cobra_help` / `cobra_help_preferred`），无 Long 用声明（`contract_final`） | registry 产品名；`ContractDecl` + Cobra Short/Long；组装 stamp 真实 winner | 非「declare = wire 最终值」、非双权威：声明必填 + 交付 Long 可赢；**canonical 文案不以 Contract 胜 identity** |
+| **Identity** | `product_id`, `name`, `cli_name`, `canonical_path` / `cli_path` / `primary_cli_path`, `group`, `aliases`, `source`, `source_product_id` | 绑定树 entry（identity collector 收集结果） | `ContractDecl.Identity` 声明（identity collector 收集；reviewed `schema_command_registry/` 已退役）；组装仍经 `validateContractFinalIdentity` 校验声明与绑定一致 | **是**（identity 即声明） |
+| **Display / Title / Description** | 产品展示名；工具 title/description | **title**：ContractDecl 声明优先，否则 Cobra Short，再 MCP；**description**：**构造期** `ContractDecl.Description` **必填**（声明证据）；**Catalog 交付** Cobra Long 优先（provenance `cobra_help` / `cobra_help_preferred`），无 Long 用声明（`contract_final`） | 命令树产品名（registry 产品 shard 已退役）；`ContractDecl` + Cobra Short/Long；组装 stamp 真实 winner | 非「declare = wire 最终值」、非双权威：声明必填 + 交付 Long 可赢；**canonical 文案不以 Contract 胜 identity** |
 | **Parameters** | `name`, `type`, `required` / `cli_required`, `default` | **声明**（或手写 annotate 同形） | `Flags` → `embedContractIntoSchema` / cobra | **是** |
 | | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
@@ -366,7 +366,7 @@ Definition（仅声明；不可编译）
 | **Extensions / MetadataSource** | 扩展袋；元数据来源标记 | 评审源或组装标记 | embedded MCP / resolver（禁止 hints 回潮） | 不构成 CLI 表面 |
 | **ConstParams**（框架有、Schema parameters 无） | 固定 toolArgs | **声明**（载荷） | `ConstParams` | **是**（故意不上 parameter 表） |
 
-产品级 Schema（`ProductSpec` 的 description / selection）权威在 registry + `ProductDecl`，**不在**单命令 Contract。
+产品级 Schema（`ProductSpec` 的 description / selection）权威在 `ProductDecl`（reviewed registry 的产品维度已随 `schema_command_registry/` 退役），**不在**单命令 Contract。
 
 冲突规则（路径 A）：
 
@@ -1160,20 +1160,20 @@ cmd.RunE = func(cmd *cobra.Command, args []string) error {
 
 | 字段组 | 权威 | 必需的一致性检查 |
 |---|---|---|
-| 稳定规范身份、导航与精确排除 | 经评审的 CommandRegistry | 每个注册表项绑定一次；每个公开 Shortcut 有一个绑定或一个经评审的排除 |
+| 稳定规范身份、导航与精确排除 | identity collector（`ContractFinal.Identity` 声明；reviewed `schema_command_registry/` 已退役） | 每条收集的 identity 绑定一次；每个公开 Shortcut 有一个绑定或一个经评审的排除 |
 | 活 CLI 名称、kind、默认值、帮助、required、enum、约束与位置参数 | 可执行 Contract | 挂载的 Cobra 表面与 Runtime Schema 调用事实匹配 |
 | Flag 级 Hidden | 可执行 Contract | 挂载的 flag 可见性与感知隐藏的 Schema 投影匹配 |
 | Shortcut 定义的 Cobra 命令 Hidden | 经评审的 Shortcut 可见性解析器：语义 catalog 优先，签入的公开 catalog 回落 | 解析器在 Contract 编译前应用可见性；Contract 携带解析值但不能覆盖它 |
 | 非 Shortcut 受管定义的 Cobra 命令 Hidden | 可执行 Contract | 挂载的命令可见性与声明匹配 |
 | Shortcut 列表成员资格与语义 disposition | 经评审的 Shortcut 可见性解析器 | public/all 列表成员资格与经评审决策匹配 |
-| Runtime Schema / Agent 暴露 | 经评审的 CommandRegistry 加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
+| Runtime Schema / Agent 暴露 | identity collector 收集结果加精确排除 | 每个暴露叶子解析到活 Contract；排除显式且不重叠 |
 | Safety 与运行时确认 | 可执行 Contract 的完整 `contract.SafetySpec`，或迁移期显式 annotate（如 `runtime_gate`）；见 §5.0 | `confirmation` 单独驱动运行时门，`effect` / `risk` / `idempotency` 原样发布，禁止跨字段机械推导；任一 Safety 字段非空时四字段必须齐全，否则构造期 panic；`ConfirmFirst` 只在 `confirmation=user_required` 时合法 |
 | 后端 product/tool/载荷绑定 | mcpbind + 后端元数据 | 每个绑定引用真实的 flag/属性 |
 | Agent 选择文案（`use_when`、`avoid_when`、摘要） | 声明：`ContractDecl.Selection` / `ProductDecl`（交付 provenance `contract_final`）；`schema_hints/` 已退役，禁止回潮 | 身份解析到活契约；选择文案不得创建 CLI 表面 |
 
 冲突在 CI 中失败闭合。Selection / Safety / 参数事实须声明在 ProductDecl 或 owning leaf 的 ContractFinal 上；不得用 hints overlay 静默覆盖可执行 CLI 行为，也不得把 hints 写成 selection 权威。
 
-该权威表不取代现有的多源 Schema 解析器。它使每个字段组的优先级显式：Contract / ProductDecl 供给可执行与 Agent 选择层，而经评审的 registry、版本化绑定、排除与后端元数据保留其声明职责。
+该权威表不取代现有的多源 Schema 解析器。它使每个字段组的优先级显式：Contract / ProductDecl 供给可执行与 Agent 选择层，而 identity collector（原经评审 registry 的继任者）、版本化绑定、排除与后端元数据保留其声明职责。
 
 ### 5.11 声明式 dry-run 计划
 

@@ -82,7 +82,7 @@ command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 | `Constraints[]` | 跨 flag 关系：`at_least_one` / `exactly_one` / `mutually_exclusive`；`custom` 记录钩子校验 | 通用关系由 `ValidateConstraints` 执行；`custom` 由 `Validate` 执行 | `dws.schema.constraints`；`--help`「参数约束」 |
 | `Safety`（`contract.SafetySpec`） | effect/risk/confirmation/idempotency 四个独立事实 | `confirmation=user_required` 时 `ConfirmSafety`；`--yes` / `--dry-run` 跳过 | 同一个 SafetySpec 原样进入 Contract Final（`HOM-S1`） |
 | `ConstParams` | 固定载荷（不上 flag 表） | 并入 toolArgs；不满足 Required | **不**投影为用户 parameter |
-| `Use` / `Short` / `Long` / `Example` | 命令身份文案与示例 | cobra 自身 | help；identity 仍以 registry 为准 |
+| `Use` / `Short` / `Long` / `Example` | 命令身份文案与示例 | cobra 自身 | help；identity 以 collector 收集的 `ContractFinal.Identity` 声明为准（reviewed registry 已退役） |
 
 `FlagSpec` 子字段（声明细节）：
 
@@ -162,7 +162,7 @@ NewLeafCommand(LeafSpec{
 
 | ToolSpec 组 | 权威类 | 框架声明字段 / 其它源 |
 |---|---|---|
-| Identity | 评审源 | `schema_command_registry` |
+| Identity | 声明源（identity collector 收集 `ContractFinal.Identity`；reviewed `schema_command_registry` 已退役） | `ContractDecl.Identity` 声明 |
 | Display / Title / Description | 声明证据 + 交付偏好（非双权威） | **title**：ContractDecl 优先，否则 Cobra Short，再 MCP；**description**：构造期 Description 必填；Catalog 交付 Long→`cobra_help`，无 Long→`contract_final`；**Short 不进 description**（RFC §5.0.4） |
 | Parameters.`name/type/required/default/property` | **声明**（或同形 annotate） | `Flags` / `Bind` |
 | Parameters.`description` | 声明 usage（`FlagSpec.Usage` / ParamDecl） | `schema_hints/` 已退役；不得用 overlay 改 type/required/default |
@@ -184,7 +184,7 @@ NewLeafCommand(LeafSpec{
 |---|---|---|
 | flags / defaults / required / enum / 关系约束 / 运行时 Risk | Contract（LeafSpec / `corecmd.Spec` 门面） | cobra、`--help`、Schema `parameters` / constraints / confirmation |
 | ConstParams、Bind、OmitEmpty、Transform | 同上（载荷声明，不上 flag 表） | toolArgs；Schema 不把 ConstParams 伪装成用户 flag |
-| canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
+| canonical path / aliases / navigation / exposure | identity collector 收集的 `ContractFinal.Identity` 声明（reviewed `schema_command_registry` 已退役） | Schema identity |
 | use_when / avoid_when / examples / agent_summary 文案 | `ContractDecl.Selection` / `ProductDecl` | Schema selection |
 | RPC tool 形状、`interface_ref`、interface 描述 | leaf `Contract.Interface` + `ParamDecl`（`schema_parameter_mapping_ledger.go` 仅 mapping_exclusions / removals；`schema_mcp_metadata` 已退役） | Schema `interface_*` 字段；**不得创建 flag** |
 | 参数描述 overlay（可选） | 生产 metadata 壳为空；参数事实走 ParamDecl / FlagSpec | **Contract/cobra 胜** |
@@ -193,7 +193,7 @@ NewLeafCommand(LeafSpec{
 | positionals | Contract Args / 显式 annotate | Schema `positionals` |
 | FieldProvenance | 组装派生 | Schema provenance（与值一致） |
 
-Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 设计硬规则）。**完整无空洞表见 RFC §5.0.4。**
+Selection **刻意不**由单命令 Contract 取代（RFC 决策 8 / schema 设计硬规则）；identity 的历史决策是不进 Contract、归 reviewed `CommandRegistry`，该 registry 已退役，现由 identity collector 收集 `ContractFinal.Identity` 声明（声明即 identity）。**完整无空洞表见 RFC §5.0.4。**
 
 ## 3. 当前缺口与目标闭环
 
@@ -253,7 +253,7 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 2. 无不在 MCP input schema 中的 CLI 特有 flag（含 guard 专用语义 flag 除外的全局 `--yes`/`--dry-run`）；
 3. 无 ConstParams / Transform / 跨 flag 约束 / Call 内业务逻辑；
 4. Risk/confirmation 在 meta 或并列 reviewed Safety 中有显式来源，不靠生成器猜测；
-5. 在 registry 中标记 `surface_kind=mcp_passthrough`（名称可调整），且 **不得**与 LeafSpec/Shortcut 手写定义双注册同一 `cli_path`；
+5. 在 identity 声明面标记 `surface_kind=mcp_passthrough`（名称可调整；原计划标在 reviewed registry，该 registry 已退役），且 **不得**与 LeafSpec/Shortcut 手写定义双注册同一 `cli_path`；
 6. 文档与门禁写明：该通道是子集优化，失败时回退/禁止扩张到产品 CLI。
 
 显式排除（永远走路径 A / Shortcut）：
@@ -264,6 +264,6 @@ Identity 与 selection **刻意不**由 Contract 取代（RFC 决策 8 / schema 
 
 ## 6. 非目标
 
-- 不把 canonical identity / 导航塞进 Contract（仍归 reviewed `CommandRegistry`）；selection 文案已由 `ContractDecl.Selection` / `ProductDecl` 声明（非 hints）。
+- ~~不把 canonical identity / 导航塞进 Contract（仍归 reviewed `CommandRegistry`）~~ —— 该非目标已被后续演进取代：reviewed `CommandRegistry` 已退役，identity 现由 collector 收集 `ContractFinal.Identity` 声明（声明即 identity，不再是独立评审文件）。selection 文案已由 `ContractDecl.Selection` / `ProductDecl` 声明（非 hints）。
 - 不要求删除 LeafSpec 门面。
 - 不把「生成 catalog 字节一致」当作运行时同源的充分条件（仍需 `HOM-*` 与差分门禁）。

@@ -736,12 +736,12 @@ func TestToolSpecFromRuntimeDoesNotRepairResolvedProvenance(t *testing.T) {
 			FieldProvenance: map[string]contract.FieldProvenance{
 				"canonical_path": {
 					Value:      json.RawMessage(`"sample.run"`),
-					Source:     "reviewed_command_registry",
+					Source:     "contract_identity",
 					Precedence: "command_registry",
 					Resolution: "registry_identity",
 					Candidates: []contract.FieldCandidateProvenance{{
 						Value:      json.RawMessage(`"sample.run"`),
-						Source:     "reviewed_command_registry",
+						Source:     "contract_identity",
 						Precedence: "command_registry",
 						Selected:   &selected,
 					}},

@@ -88,7 +88,7 @@ func TestProjectEffectiveCommandRegistryKeepsManualOnlyCommand(t *testing.T) {
 			CanonicalPath:  "base.get_item",
 			PrimaryCLIPath: "base item get",
 			Visibility:     cli.SchemaVisibilityPublic,
-			Source:         "reviewed_command_registry",
+			Source:         "contract_identity",
 		},
 		{
 			CanonicalPath:  "helper.add_item",
