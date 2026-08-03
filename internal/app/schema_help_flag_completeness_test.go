@@ -19,11 +19,11 @@ import (
 
 // TestFinalSchemaParametersMatchExecutableHelpFlags is the fast, in-process
 // Help <-> Schema parameter completeness gate. It deliberately starts from the
-// reviewed registry and its exact Cobra bindings, then compares every public
-// primary leaf with the final delivered ToolSpec projection. The binder has
-// already proved that reviewed compatibility leaves have the same executable
-// contract as their primary, so aliases do not create a second parameter
-// source here.
+// collected command identity and its exact Cobra bindings, then compares
+// every public primary leaf with the final delivered ToolSpec projection. The
+// binder has already proved that compatibility aliases of a leaf share the
+// same executable contract as their primary, so aliases do not create a
+// second parameter source here.
 func TestFinalSchemaParametersMatchExecutableHelpFlags(t *testing.T) {
 	root := NewRootCommand()
 	bound := boundSchemaCommandsForHelpFlagTest(t, root)

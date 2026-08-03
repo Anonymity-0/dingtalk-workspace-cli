@@ -706,9 +706,14 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 			failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed %s", toolPath, name, field.name))
 		}
 	}
-	// Clearing interface_type is compatible after pinned MCP metadata retirement:
-	// production no longer projects MCP-sourced types unless ParamDecl declares them.
-	// Changing to a different non-empty value remains a contract break.
+	// Clearing interface_type is accepted as compatible: a deliberate,
+	// wire-visible policy decision taken with the pinned MCP metadata
+	// retirement. Production no longer projects MCP-sourced types unless
+	// ParamDecl declares them, so unverifiable pinned values are dropped
+	// rather than kept. Consumers that used interface_type for coercion must
+	// treat a missing value as "unknown" — re-populating a value requires an
+	// explicit ParamDecl declaration, not a new pin. Changing to a different
+	// non-empty value remains a contract break.
 	if oldParameter.InterfaceType != newParameter.InterfaceType &&
 		!(oldParameter.InterfaceType != "" && newParameter.InterfaceType == "") {
 		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed interface_type", toolPath, name))

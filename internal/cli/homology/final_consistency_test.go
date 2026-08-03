@@ -118,7 +118,7 @@ func TestAllCommandsContractFinalConsistentWithLiveCatalog(t *testing.T) {
 		t.Fatalf("per-command consistency failed: %d/%d", failCount, len(rows))
 	}
 	if checked != 847 {
-		t.Fatalf("checked = %d, want 847 reviewed tools", checked)
+		t.Fatalf("checked = %d, want 847 collected tools; an intentional identity change (add/remove/rename a Schema-visible command) must bump this tripwire in internal/cli/homology/final_consistency_test.go after review", checked)
 	}
 	if err := cli.ValidateRuntimeSchemaCompleteness(app.NewSchemaSourceRootCommand()); err != nil {
 		t.Fatalf("ValidateRuntimeSchemaCompleteness() error = %v", err)

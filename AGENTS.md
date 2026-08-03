@@ -132,7 +132,11 @@ substitutes. Keep them side-by-side; do **not** fold one into another:
 
 `schema_mcp_metadata.json` is retired and must not reappear. Interface facts
 (`interface_ref`, `interface_type`, …) declare on leaf `Contract` /
-`contract.ParamDecl`.
+`contract.ParamDecl`. Retiring the pin cleared MCP-sourced `interface_type`
+values from the wire; schema-compat deliberately accepts clearing (missing =
+unknown for consumers) while still rejecting any change to a different
+non-empty value. Re-populating a value requires an explicit `ParamDecl`
+declaration, not a new pin.
 
 **Aliases are three distinct layers** (do not conflate):
 

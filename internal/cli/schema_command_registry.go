@@ -20,8 +20,10 @@ import (
 // schema_command_registry/ was retired together with that switchover; the
 // collector is the single source of stable command identity and navigation.
 // Catalog and generated metadata are downstream views and must never be read
-// back here. Peer reviewed inputs (param_concepts, exclusions, bindings
-// audit, MCP pin) stay separate — see AGENTS.md "Reviewed inputs".
+// back here. Peer reviewed inputs (param_concepts, exclusions, mapping
+// ledger) stay separate — see AGENTS.md "Reviewed inputs". The bindings
+// audit JSON and the MCP metadata/service-review pins are retired and must
+// not reappear.
 
 var (
 	commandRegistryProductIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)

@@ -1163,9 +1163,9 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 			if len(flag.Enum) > 0 {
 				runtimeannotate.AnnotateRuntimeFlagEnum(cmd, name, flag.Enum...)
 			}
-			// Same class as Enum: a declared rule the reviewed registry cannot
-			// derive. Without it a credential that is mandatory under one
-			// identity is published as plainly optional.
+			// Same class as Enum: a declared rule the collected identity
+			// cannot derive. Without it a credential that is mandatory under
+			// one identity is published as plainly optional.
 			if flag.RequiredWhen != "" {
 				runtimeannotate.AnnotateRuntimeFlagRequiredWhen(cmd, name, flag.RequiredWhen)
 			}

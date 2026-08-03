@@ -884,8 +884,14 @@ func validateCommandRegistryAnnotation(command *cobra.Command, path string, spec
 			return fmt.Errorf("schema command registry %s path %q conflicts with native annotation %s", spec.CanonicalPath, path, nativeCanonical)
 		}
 	}
-	// ContractFinal.Identity is a pin against the reviewed registry entry.
-	// Registry remains authoritative; disagreement fails closed at bind time.
+	// ContractFinal.Identity is the collected CommandSpec's own source: the
+	// reviewed registry is retired and the collector synthesises spec from
+	// this declaration, so the check below is a defensive self-consistency
+	// assertion (it catches stale specs and assembly bugs, not a second
+	// authority). The real cross-source drift anchors are the native
+	// annotation assertion above, the collector uniqueness/alias-conflict
+	// self-validation, the reviewed tool-count tripwire in homology, and the
+	// surface/catalog hash baselines. Disagreement still fails closed.
 	if final, ok := contractfinal.RuntimeContractFinal(command); ok {
 		if final.Identity == nil {
 			return fmt.Errorf("schema command registry %s path %q has ContractFinal without Identity", spec.CanonicalPath, path)
@@ -898,9 +904,11 @@ func validateCommandRegistryAnnotation(command *cobra.Command, path string, spec
 }
 
 // validateContractIdentityAgainstCommandSpec requires declared Identity fields
-// that map to the reviewed CommandRegistry entry to match exactly. Empty
-// optional fields (cli_name/group/source) are allowed and filled from the
-// bound entry at assembly; authored identity keys may not drift.
+// to match the collected CommandSpec exactly. Since the spec is collected from
+// the same declaration, this is a self-consistency assertion, not a
+// cross-source pin. Empty optional fields (cli_name/group/source) are allowed
+// and filled from the bound entry at assembly; authored identity keys may not
+// drift.
 func validateContractIdentityAgainstCommandSpec(id contract.ToolIdentitySpec, spec CommandSpec, path string) error {
 	productID, toolName, ok := splitManualSchemaCanonicalPath(spec.CanonicalPath)
 	if !ok {
@@ -911,7 +919,7 @@ func validateContractIdentityAgainstCommandSpec(id contract.ToolIdentitySpec, sp
 		declared = strings.TrimSpace(declared)
 		bound = strings.TrimSpace(bound)
 		if declared != bound {
-			mismatches = append(mismatches, fmt.Sprintf("%s: declared %q, registry %q", field, declared, bound))
+			mismatches = append(mismatches, fmt.Sprintf("%s: declared %q, collected %q", field, declared, bound))
 		}
 	}
 	check("product_id", id.ProductID, productID)
