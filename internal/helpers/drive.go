@@ -509,7 +509,7 @@ func newDriveCommand() *cobra.Command {
 				return nil
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			// Step 1: 获取下载 URL 和签名请求头
 			deps.Out.PrintInfo("[1/2] 获取下载链接...")
@@ -600,7 +600,7 @@ func newDriveCommand() *cobra.Command {
 				return nil
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			deps.Out.PrintInfo("[1/2] 获取历史版本下载链接...")
 			dlArgsMap := map[string]any{
 				"nodeId":  fileID,
