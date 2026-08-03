@@ -53,6 +53,19 @@ const (
 // 整流路径仍走可注入的 httpGetFile，保持既有测试注入点不变。
 var driveRangeClient = &http.Client{Timeout: 10 * time.Minute}
 
+// errCredentialRefreshVersionUnknown 凭证刷新后无法验证文件版本一致性（双方之一
+// version=0），激进策略要求清空已完成分片从头下载。
+var errCredentialRefreshVersionUnknown = errors.New("凭证刷新后无法验证文件版本一致性，需从头下载")
+
+// Testable OS operation hooks (package-level for coverage injection).
+var (
+	driveJsonMarshal  = json.Marshal
+	driveOsRename     = os.Rename
+	driveFileTruncate = (*os.File).Truncate
+	driveFileSync     = (*os.File).Sync
+	driveFileStat     = (*os.File).Stat
+)
+
 // ──────────────────────────────────────────────────────────
 // HTTP 状态错误
 // ──────────────────────────────────────────────────────────
@@ -203,14 +216,15 @@ func parseDownloadFileVersion(text string) int {
 // ──────────────────────────────────────────────────────────
 
 // driveCredentialFetcher 重新调用 MCP 获取下载 URL + headers（含 dentry-token）。
-type driveCredentialFetcher func(ctx context.Context) (string, map[string]string, error)
+type driveCredentialFetcher func(ctx context.Context) (url string, headers map[string]string, version int, err error)
 
 type driveCredentialState struct {
-	mu      sync.Mutex
-	fetch   driveCredentialFetcher
-	url     string
-	headers map[string]string
-	gen     int
+	mu             sync.Mutex
+	fetch          driveCredentialFetcher
+	url            string
+	headers        map[string]string
+	gen            int
+	initialVersion int // 首次获取的文件版本号；0 表示未知（兼容旧 MCP）
 }
 
 func (cs *driveCredentialState) current() (string, map[string]string, int) {
@@ -230,9 +244,23 @@ func (cs *driveCredentialState) refresh(ctx context.Context, gen int) error {
 	if cs.fetch == nil {
 		return fmt.Errorf("下载凭证已过期且无法自动刷新")
 	}
-	url, headers, err := cs.fetch(ctx)
+	url, headers, version, err := cs.fetch(ctx)
 	if err != nil {
 		return err
+	}
+	// 版本校验
+	if cs.initialVersion > 0 && version > 0 {
+		if version != cs.initialVersion {
+			// 双方版本已知且不同 → 文件已被覆盖，终止下载防止数据不一致
+			return fmt.Errorf("下载凭证刷新后文件版本已变更（%d → %d），终止下载以防数据不一致", cs.initialVersion, version)
+		}
+		// 版本一致，正常继续
+	} else {
+		// 激进策略：版本不可验证（至少一方为 0），更新凭证但返回特殊错误
+		// 让上层清空已完成分片从头下载
+		cs.url, cs.headers = url, headers
+		cs.gen++
+		return errCredentialRefreshVersionUnknown
 	}
 	cs.url, cs.headers = url, headers
 	cs.gen++
@@ -262,7 +290,7 @@ func driveTransferDownload(ctx context.Context, fetch driveCredentialFetcher, ra
 		return downloadSingleWithAuthRetry(ctx, fetch, rawURL, headers, destPath)
 	}
 
-	creds := &driveCredentialState{fetch: fetch, url: rawURL, headers: headers}
+	creds := &driveCredentialState{fetch: fetch, url: rawURL, headers: headers, initialVersion: opts.version}
 	totalSize, fullResp, err := probeRangeSupport(ctx, creds)
 	if err != nil {
 		return err
@@ -275,9 +303,9 @@ func driveTransferDownload(ctx context.Context, fetch driveCredentialFetcher, ra
 	curURL, curHeaders, _ := creds.current()
 	if totalSize <= 0 || totalSize < threshold {
 		// 总长未知（Content-Range 异常）或小于阈值：整流下载
-		return downloadSingleWithAuthRetry(ctx, func(fctx context.Context) (string, map[string]string, error) {
+		return downloadSingleWithAuthRetry(ctx, func(fctx context.Context) (string, map[string]string, int, error) {
 			if fetch == nil {
-				return "", nil, fmt.Errorf("下载凭证已过期且无法自动刷新")
+				return "", nil, 0, fmt.Errorf("下载凭证已过期且无法自动刷新")
 			}
 			return fetch(fctx)
 		}, curURL, curHeaders, destPath)
@@ -292,7 +320,7 @@ func downloadSingleWithAuthRetry(ctx context.Context, fetch driveCredentialFetch
 	if err == nil || !isAuthStatusError(err) || fetch == nil {
 		return err
 	}
-	newURL, newHeaders, ferr := fetch(ctx)
+	newURL, newHeaders, _, ferr := fetch(ctx)
 	if ferr != nil {
 		return err
 	}
@@ -304,7 +332,7 @@ func downloadSingleWithAuthRetry(ctx context.Context, fetch driveCredentialFetch
 // 返回 (0, resp, nil) 表示服务端忽略 Range 返回 200 全量响应（调用方直接消费）；
 // 401/403 时刷新凭证重试一次。
 func probeRangeSupport(ctx context.Context, creds *driveCredentialState) (int64, *http.Response, error) {
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := 0; ; attempt++ {
 		urlStr, headers, gen := creds.current()
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
 		if err != nil {
@@ -329,20 +357,24 @@ func probeRangeSupport(ctx context.Context, creds *driveCredentialState) (int64,
 			return total, nil, nil
 		case resp.StatusCode == http.StatusOK:
 			return 0, resp, nil
-		case (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) && attempt == 0:
+		case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, driveTransferBodyErrCap))
 			resp.Body.Close()
-			if rerr := creds.refresh(ctx, gen); rerr != nil {
+			if attempt > 0 {
+				return 0, nil, fmt.Errorf("下载凭证刷新后仍鉴权失败")
+			}
+			if rerr := creds.refresh(ctx, gen); rerr != nil && !errors.Is(rerr, errCredentialRefreshVersionUnknown) {
 				return 0, nil, fmt.Errorf("重新获取下载凭证失败: %w (原错误: %v)",
 					rerr, &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)})
 			}
+			// errCredentialRefreshVersionUnknown 在探测阶段无需处理（尚无已完成分片）,
+			// 凭证已更新，循环继续用新凭证重试探测。
 		default:
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, driveTransferBodyErrCap))
 			resp.Body.Close()
 			return 0, nil, &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)}
 		}
 	}
-	return 0, nil, fmt.Errorf("下载凭证刷新后仍鉴权失败")
 }
 
 // parseContentRangeTotal 从 "bytes 0-0/12345" 解析总长；"*" 视为未知。
@@ -455,18 +487,25 @@ type driveDownloadCheckpoint struct {
 	Completed   []bool `json:"completed"`
 }
 
-// driveDownloadFingerprint 基于节点 ID + 版本号 + 文件总长 + 首次资源 URL path 计算指纹。
-// resourceURL 的 path 包含文件存储版本信息，覆盖上传后会分配新存储位置导致 path 变化，
-// 防止最新版下载（version=0）在文件被同大小内容覆盖后错误复用旧 checkpoint。
+// driveDownloadFingerprint 基于节点 ID + 版本号 + 文件总长 + 资源 URL 计算指纹。
+// version>0 时只取 URL path（重签名不影响 checkpoint 复用）；version==0（最新版）时
+// 取完整 path+query——中心协议相同 path 可能对应不同实际版本，query 中的签名/token
+// 标识了具体资源快照，防止错误复用旧 checkpoint。
 // resourceURL 为空时不影响其他字段的指纹计算（安全降级）。
 func driveDownloadFingerprint(nodeID string, version int, totalSize int64, resourceURL string) string {
-	urlPath := ""
+	urlComponent := ""
 	if resourceURL != "" {
 		if u, err := url.Parse(resourceURL); err == nil && u != nil {
-			urlPath = u.Path
+			if version == 0 {
+				// 最新版：含 query 以区分不同签名（不同实际版本）
+				urlComponent = u.RequestURI()
+			} else {
+				// 指定版本：只取 path，重签名不应废弃 checkpoint
+				urlComponent = u.Path
+			}
 		}
 	}
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d|%s", nodeID, version, totalSize, urlPath)))
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d|%s", nodeID, version, totalSize, urlComponent)))
 	return hex.EncodeToString(sum[:])
 }
 
@@ -489,7 +528,7 @@ func loadDriveDownloadCheckpoint(metaPath, fingerprint string, totalSize, partSi
 
 // save 原子写入（临时文件 + rename），避免中断产生半截 checkpoint。
 func (cp *driveDownloadCheckpoint) save(metaPath string) error {
-	data, err := json.Marshal(cp)
+	data, err := driveJsonMarshal(cp)
 	if err != nil {
 		return err
 	}
@@ -497,7 +536,7 @@ func (cp *driveDownloadCheckpoint) save(metaPath string) error {
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, metaPath)
+	return driveOsRename(tmp, metaPath)
 }
 
 // ──────────────────────────────────────────────────────────
@@ -542,7 +581,7 @@ func downloadRangedParts(ctx context.Context, creds *driveCredentialState, destP
 	if err != nil {
 		return fmt.Errorf("创建分片临时文件失败: %w", err)
 	}
-	if err := f.Truncate(totalSize); err != nil {
+	if err := driveFileTruncate(f, totalSize); err != nil {
 		f.Close()
 		return fmt.Errorf("预分配分片临时文件失败: %w", err)
 	}
@@ -593,7 +632,7 @@ func downloadRangedParts(ctx context.Context, creds *driveCredentialState, destP
 				if runCtx.Err() != nil {
 					return
 				}
-				if err := downloadOnePart(runCtx, creds, f, part); err != nil {
+				if err := downloadOnePart(runCtx, creds, f, part, totalSize); err != nil {
 					fail(fmt.Errorf("分片 %d/%d 下载失败: %w", part.index+1, len(parts), err))
 					return
 				}
@@ -628,13 +667,19 @@ dispatch:
 
 	if firstErr != nil {
 		f.Close()
-		return firstErr // 保留 .dwspart 与 checkpoint，重跑同一命令自动续传
+		if errors.Is(firstErr, errCredentialRefreshVersionUnknown) {
+			// 激进策略：版本不可验证，清空 checkpoint 和分片文件防止错误续传；
+			// 用户重跑时将自然从头下载。
+			_ = os.Remove(metaPath)
+			_ = os.Remove(partPath)
+		}
+		return firstErr // 其他错误保留 .dwspart 与 checkpoint，重跑同一命令自动续传
 	}
-	if err := f.Sync(); err != nil {
+	if err := driveFileSync(f); err != nil {
 		f.Close()
 		return err
 	}
-	fi, statErr := f.Stat()
+	fi, statErr := driveFileStat(f)
 	f.Close()
 	if statErr != nil {
 		return statErr
@@ -642,7 +687,7 @@ dispatch:
 	if fi.Size() != totalSize {
 		return fmt.Errorf("下载完成但文件长度不符: got %d, want %d", fi.Size(), totalSize)
 	}
-	if err := os.Rename(partPath, destPath); err != nil {
+	if err := driveOsRename(partPath, destPath); err != nil {
 		return fmt.Errorf("重命名下载文件失败: %w", err)
 	}
 	_ = os.Remove(metaPath)
@@ -652,13 +697,13 @@ dispatch:
 // downloadOnePart 下载单个分片：常规失败指数退避重试 driveDownloadPartRetries 次；
 // 401/403 触发凭证 single-flight 刷新（不计入常规重试，上限 driveDownloadPartAuthRetries），
 // 刷新后用新凭证续传，不重下其他已完成分片。
-func downloadOnePart(ctx context.Context, creds *driveCredentialState, f *os.File, part driveDownloadPart) error {
+func downloadOnePart(ctx context.Context, creds *driveCredentialState, f *os.File, part driveDownloadPart, totalSize int64) error {
 	attempt := 0
 	authRetries := 0
 	backoff := 500 * time.Millisecond
 	for {
 		urlStr, headers, gen := creds.current()
-		err := fetchRangeInto(ctx, urlStr, headers, f, part)
+		err := fetchRangeInto(ctx, urlStr, headers, f, part, totalSize)
 		if err == nil {
 			return nil
 		}
@@ -686,7 +731,7 @@ func downloadOnePart(ctx context.Context, creds *driveCredentialState, f *os.Fil
 }
 
 // fetchRangeInto 拉取 [offset, offset+length) 区间并写入文件对应偏移。
-func fetchRangeInto(ctx context.Context, urlStr string, headers map[string]string, f *os.File, part driveDownloadPart) error {
+func fetchRangeInto(ctx context.Context, urlStr string, headers map[string]string, f *os.File, part driveDownloadPart, expectedTotal int64) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
 	if err != nil {
 		return err
@@ -705,8 +750,12 @@ func fetchRangeInto(ctx context.Context, urlStr string, headers map[string]strin
 		return &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 	// 校验 Content-Range 响应区间与请求分片一致，防止代理/服务端返回错位数据
-	if cr := resp.Header.Get("Content-Range"); cr != "" {
-		crStart, crEnd, _, crErr := parseContentRange(cr)
+	cr := resp.Header.Get("Content-Range")
+	if cr == "" {
+		return fmt.Errorf("分片响应缺少 Content-Range 头，无法验证数据偏移一致性")
+	}
+	{
+		crStart, crEnd, crTotal, crErr := parseContentRange(cr)
 		if crErr != nil {
 			return fmt.Errorf("Content-Range 解析失败: %w", crErr)
 		}
@@ -716,8 +765,10 @@ func fetchRangeInto(ctx context.Context, urlStr string, headers map[string]strin
 			return fmt.Errorf("Content-Range 区间不匹配: 响应 %d-%d, 期望 %d-%d",
 				crStart, crEnd, wantStart, wantEnd)
 		}
+		if crTotal > 0 && expectedTotal > 0 && crTotal != expectedTotal {
+			return fmt.Errorf("Content-Range 总长不匹配: 响应 %d, 期望 %d", crTotal, expectedTotal)
+		}
 	}
-	// Content-Range 缺失时不阻断（兼容不规范服务端），仅依赖读取长度校验
 	n, err := io.Copy(io.NewOffsetWriter(f, part.offset), io.LimitReader(resp.Body, part.length))
 	if err != nil {
 		return err

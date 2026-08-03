@@ -518,7 +518,7 @@ func newDriveCommand() *cobra.Command {
 				return err
 			}
 
-			resourceURL, dlHeaders, err := parseDownloadInfo(text)
+			resourceURL, dlHeaders, err := parseDriveDownloadInfo(text)
 			if err != nil {
 				return err
 			}
@@ -537,14 +537,30 @@ func newDriveCommand() *cobra.Command {
 			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
 			dlOpts.knownSize = parseDownloadFileSize(text)
 			dlOpts.nodeID = fileID
-			fetchCred := func(fctx context.Context) (string, map[string]string, error) {
+			dlOpts.version = parseDownloadFileVersion(text)
+			fetchCred := func(fctx context.Context) (string, map[string]string, int, error) {
 				t, ferr := callMCPToolReturnText(fctx, "download_file", argsMap)
 				if ferr != nil {
-					return "", nil, ferr
+					return "", nil, 0, ferr
 				}
-				return parseDownloadInfo(t)
+				u, h, perr := parseDriveDownloadInfo(t)
+				if perr != nil {
+					return "", nil, 0, perr
+				}
+				return u, h, parseDownloadFileVersion(t), nil
 			}
 			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
+				if errors.Is(err, context.Canceled) || ctx.Err() == context.Canceled {
+					partSize, _ := cmd.Flags().GetString("part-size")
+					noResume, _ := cmd.Flags().GetBool("no-resume")
+					if partSize != "" && !noResume {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断，已保存断点（可重新执行相同命令续传）\n")
+					} else {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断\n")
+					}
+					cmd.SilenceErrors = true
+					return err
+				}
 				return err
 			}
 
@@ -610,7 +626,7 @@ func newDriveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			resourceURL, dlHeaders, err := parseDownloadInfo(text)
+			resourceURL, dlHeaders, err := parseDriveDownloadInfo(text)
 			if err != nil {
 				return err
 			}
@@ -625,14 +641,29 @@ func newDriveCommand() *cobra.Command {
 			dlOpts.knownSize = parseDownloadFileSize(text)
 			dlOpts.nodeID = fileID
 			dlOpts.version = versionNum
-			fetchCred := func(fctx context.Context) (string, map[string]string, error) {
+			fetchCred := func(fctx context.Context) (string, map[string]string, int, error) {
 				t, ferr := callMCPToolReturnTextOnServer(fctx, "drive", "download_file_version", dlArgsMap)
 				if ferr != nil {
-					return "", nil, ferr
+					return "", nil, 0, ferr
 				}
-				return parseDownloadInfo(t)
+				u, h, perr := parseDriveDownloadInfo(t)
+				if perr != nil {
+					return "", nil, 0, perr
+				}
+				return u, h, parseDownloadFileVersion(t), nil
 			}
 			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
+				if errors.Is(err, context.Canceled) || ctx.Err() == context.Canceled {
+					partSize, _ := cmd.Flags().GetString("part-size")
+					noResume, _ := cmd.Flags().GetBool("no-resume")
+					if partSize != "" && !noResume {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断，已保存断点（可重新执行相同命令续传）\n")
+					} else {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断\n")
+					}
+					cmd.SilenceErrors = true
+					return err
+				}
 				return err
 			}
 			deps.Out.PrintInfo(fmt.Sprintf("下载完成: %s", outputPath))

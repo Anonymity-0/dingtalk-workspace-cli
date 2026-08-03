@@ -2,7 +2,9 @@ package helpers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,13 +12,14 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // ──────────────────────────────────────────────────────────
 // parsePartSize / formatByteSize
 // ──────────────────────────────────────────────────────────
 
-func TestParsePartSize(t *testing.T) {
+func TestCrossPlatformCoverageParsePartSize(t *testing.T) {
 	cases := []struct {
 		in      string
 		want    int64
@@ -55,7 +58,7 @@ func TestParsePartSize(t *testing.T) {
 	}
 }
 
-func TestFormatByteSize(t *testing.T) {
+func TestCrossPlatformCoverageFormatByteSize(t *testing.T) {
 	cases := map[int64]string{
 		16 << 20: "16MB",
 		1 << 30:  "1GB",
@@ -73,7 +76,7 @@ func TestFormatByteSize(t *testing.T) {
 // splitDownloadParts
 // ──────────────────────────────────────────────────────────
 
-func TestSplitDownloadParts(t *testing.T) {
+func TestCrossPlatformCoverageSplitDownloadParts(t *testing.T) {
 	// 整除
 	parts := splitDownloadParts(32, 16)
 	if len(parts) != 2 || parts[0].offset != 0 || parts[0].length != 16 || parts[1].offset != 16 || parts[1].length != 16 {
@@ -111,7 +114,7 @@ func TestSplitDownloadParts(t *testing.T) {
 // checkpoint 读写与恢复
 // ──────────────────────────────────────────────────────────
 
-func TestCheckpointSaveLoadRoundtrip(t *testing.T) {
+func TestCrossPlatformCoverageCheckpointSaveLoadRoundtrip(t *testing.T) {
 	dir := t.TempDir()
 	metaPath := filepath.Join(dir, "f.bin.dwspart.meta")
 	fp := driveDownloadFingerprint("test-node-1", 0, 100, "")
@@ -134,7 +137,7 @@ func TestCheckpointSaveLoadRoundtrip(t *testing.T) {
 	}
 }
 
-func TestCheckpointLoadRejectsMismatch(t *testing.T) {
+func TestCrossPlatformCoverageCheckpointLoadRejectsMismatch(t *testing.T) {
 	dir := t.TempDir()
 	metaPath := filepath.Join(dir, "f.meta")
 	fp := driveDownloadFingerprint("test-node-2", 0, 100, "")
@@ -167,7 +170,7 @@ func TestCheckpointLoadRejectsMismatch(t *testing.T) {
 }
 
 // 指纹基于 nodeID + version + totalSize，不同 nodeID / version / size 产生不同指纹。
-func TestFingerprintNodeIDBased(t *testing.T) {
+func TestCrossPlatformCoverageFingerprintNodeIDBased(t *testing.T) {
 	a := driveDownloadFingerprint("node-aaa", 0, 500, "")
 	b := driveDownloadFingerprint("node-aaa", 0, 500, "")
 	if a != b {
@@ -188,7 +191,7 @@ func TestFingerprintNodeIDBased(t *testing.T) {
 }
 
 // checkpoint 指纹碰撞防护：相同输出路径、相同大小、不同 nodeID 不复用 checkpoint。
-func TestCheckpointNotReusedDifferentNodeID(t *testing.T) {
+func TestCrossPlatformCoverageCheckpointNotReusedDifferentNodeID(t *testing.T) {
 	dir := t.TempDir()
 	metaPath := filepath.Join(dir, "f.meta")
 	const totalSize int64 = 1000
@@ -217,7 +220,7 @@ func TestCheckpointNotReusedDifferentNodeID(t *testing.T) {
 }
 
 // checkpoint 指纹碰撞防护：相同 nodeID、不同大小不复用 checkpoint。
-func TestCheckpointNotReusedDifferentSize(t *testing.T) {
+func TestCrossPlatformCoverageCheckpointNotReusedDifferentSize(t *testing.T) {
 	dir := t.TempDir()
 	metaPath := filepath.Join(dir, "f.meta")
 	const partSize int64 = 300
@@ -245,7 +248,7 @@ func TestCheckpointNotReusedDifferentSize(t *testing.T) {
 }
 
 // checkpoint 正常续传：相同 nodeID + 相同大小复用 checkpoint。
-func TestCheckpointReusedSameNodeIDAndSize(t *testing.T) {
+func TestCrossPlatformCoverageCheckpointReusedSameNodeIDAndSize(t *testing.T) {
 	dir := t.TempDir()
 	metaPath := filepath.Join(dir, "f.meta")
 	const totalSize int64 = 1000
@@ -278,7 +281,7 @@ func TestCheckpointReusedSameNodeIDAndSize(t *testing.T) {
 
 // checkpoint 指纹碰撞防护：同 nodeID、同大小、version=0 但不同 resourceURL 不复用 checkpoint。
 // 模拟最新版下载场景：文件被相同大小内容覆盖后 URL path 变化，旧 checkpoint 应作废。
-func TestCheckpointNotReusedDifferentResourceURL(t *testing.T) {
+func TestCrossPlatformCoverageCheckpointNotReusedDifferentResourceURL(t *testing.T) {
 	dir := t.TempDir()
 	metaPath := filepath.Join(dir, "f.meta")
 	const totalSize int64 = 1000
@@ -316,7 +319,7 @@ func TestCheckpointNotReusedDifferentResourceURL(t *testing.T) {
 }
 
 // 验证 resourceURL 为空时的安全降级：不影响其他字段的指纹计算。
-func TestFingerprintEmptyResourceURLFallback(t *testing.T) {
+func TestCrossPlatformCoverageFingerprintEmptyResourceURLFallback(t *testing.T) {
 	// 空 URL 应产生确定性指纹
 	a := driveDownloadFingerprint("node-x", 0, 500, "")
 	b := driveDownloadFingerprint("node-x", 0, 500, "")
@@ -330,11 +333,18 @@ func TestFingerprintEmptyResourceURLFallback(t *testing.T) {
 		t.Error("空 URL 与有 URL 应产生不同指纹")
 	}
 
-	// 仅 query 不同、path 相同的 URL 应产生相同指纹（只取 path）
+	// version=0 时，仅 query 不同的 URL 应产生不同指纹（中心协议区分实际版本）
 	d := driveDownloadFingerprint("node-x", 0, 500, "https://example.com/path/to/file?token=aaa")
 	e := driveDownloadFingerprint("node-x", 0, 500, "https://example.com/path/to/file?token=bbb")
-	if d != e {
-		t.Error("仅 query 不同时应产生相同指纹（只取 path）")
+	if d == e {
+		t.Error("version=0 时仅 query 不同应产生不同指纹")
+	}
+
+	// version>0 时，仅 query 不同的 URL 应产生相同指纹（只取 path）
+	f := driveDownloadFingerprint("node-x", 3, 500, "https://example.com/path/to/file?token=aaa")
+	g := driveDownloadFingerprint("node-x", 3, 500, "https://example.com/path/to/file?token=bbb")
+	if f != g {
+		t.Error("version>0 时仅 query 不同应产生相同指纹（只取 path）")
 	}
 }
 
@@ -342,7 +352,7 @@ func TestFingerprintEmptyResourceURLFallback(t *testing.T) {
 // parseContentRangeTotal / parseDownloadFileSize / parseDriveUploadType
 // ──────────────────────────────────────────────────────────
 
-func TestParseContentRangeTotal(t *testing.T) {
+func TestCrossPlatformCoverageParseContentRangeTotal(t *testing.T) {
 	if n, err := parseContentRangeTotal("bytes 0-0/12345"); err != nil || n != 12345 {
 		t.Errorf("got %d, %v", n, err)
 	}
@@ -353,7 +363,7 @@ func TestParseContentRangeTotal(t *testing.T) {
 	}
 }
 
-func TestParseContentRange(t *testing.T) {
+func TestCrossPlatformCoverageParseContentRange(t *testing.T) {
 	cases := []struct {
 		in                            string
 		wantStart, wantEnd, wantTotal int64
@@ -390,7 +400,7 @@ func TestParseContentRange(t *testing.T) {
 	}
 }
 
-func TestParseDownloadFileSize(t *testing.T) {
+func TestCrossPlatformCoverageParseDownloadFileSize(t *testing.T) {
 	if n := parseDownloadFileSize(`{"result":{"fileSize":1048576,"downloadUrl":"u"}}`); n != 1048576 {
 		t.Errorf("number: got %d", n)
 	}
@@ -405,7 +415,7 @@ func TestParseDownloadFileSize(t *testing.T) {
 	}
 }
 
-func TestParseDownloadFileVersion(t *testing.T) {
+func TestCrossPlatformCoverageParseDownloadFileVersion(t *testing.T) {
 	// 数值类型
 	if n := parseDownloadFileVersion(`{"result":{"version":3,"downloadUrl":"u"}}`); n != 3 {
 		t.Errorf("number: got %d, want 3", n)
@@ -428,7 +438,7 @@ func TestParseDownloadFileVersion(t *testing.T) {
 	}
 }
 
-func TestParseDriveUploadType(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveUploadType(t *testing.T) {
 	if got := parseDriveUploadType(`{"result":{"uploadType":"httpToCenterWithToken","resourceUrl":"u"}}`); got != uploadTypeCenterToken {
 		t.Errorf("got %q", got)
 	}
@@ -444,7 +454,7 @@ func TestParseDriveUploadType(t *testing.T) {
 // isAuthStatusError / decorateUploadSizeError
 // ──────────────────────────────────────────────────────────
 
-func TestIsAuthStatusError(t *testing.T) {
+func TestCrossPlatformCoverageIsAuthStatusError(t *testing.T) {
 	if !isAuthStatusError(&httpStatusError{StatusCode: 401}) || !isAuthStatusError(&httpStatusError{StatusCode: 403}) {
 		t.Error("typed 401/403 应命中")
 	}
@@ -462,7 +472,7 @@ func TestIsAuthStatusError(t *testing.T) {
 	}
 }
 
-func TestDecorateUploadSizeError(t *testing.T) {
+func TestCrossPlatformCoverageDecorateUploadSizeError(t *testing.T) {
 	// 413 → 补充可读提示
 	err := decorateUploadSizeError(&httpStatusError{StatusCode: 413, Body: "too large"}, "")
 	if !strings.Contains(err.Error(), "提示") {
@@ -552,7 +562,7 @@ func smallPartOpts(partSize int64, parallel int) driveDownloadOptions {
 	return driveDownloadOptions{partSize: partSize, parallel: parallel, resume: true}
 }
 
-func TestDriveTransferDownload_RangedParts(t *testing.T) {
+func TestCrossPlatformCoverageDriveTransferDownload_RangedParts(t *testing.T) {
 	content := makeTestContent(1000)
 	srv := rangeTestServer(t, content, "", nil)
 	defer srv.Close()
@@ -574,7 +584,7 @@ func TestDriveTransferDownload_RangedParts(t *testing.T) {
 }
 
 // knownSize 小于阈值 → 直接整流（走可注入 httpGetFile）。
-func TestDriveTransferDownload_SmallFileSingleStream(t *testing.T) {
+func TestCrossPlatformCoverageDriveTransferDownload_SmallFileSingleStream(t *testing.T) {
 	var calls atomic.Int32
 	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
 		calls.Add(1)
@@ -595,7 +605,7 @@ func TestDriveTransferDownload_SmallFileSingleStream(t *testing.T) {
 }
 
 // 整流 401 → 重取凭证重试一次。
-func TestDownloadSingleWithAuthRetry(t *testing.T) {
+func TestCrossPlatformCoverageDownloadSingleWithAuthRetry(t *testing.T) {
 	var calls atomic.Int32
 	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
 		if calls.Add(1) == 1 {
@@ -609,9 +619,9 @@ func TestDownloadSingleWithAuthRetry(t *testing.T) {
 	defer SetHTTPGetFile(nil)
 
 	fetched := false
-	fetch := func(ctx context.Context) (string, map[string]string, error) {
+	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
 		fetched = true
-		return "https://new.example.com/f", map[string]string{"dentry-token": "new-token"}, nil
+		return "https://new.example.com/f", map[string]string{"dentry-token": "new-token"}, 0, nil
 	}
 	dest := filepath.Join(t.TempDir(), "auth.bin")
 	if err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, dest); err != nil {
@@ -624,13 +634,13 @@ func TestDownloadSingleWithAuthRetry(t *testing.T) {
 }
 
 // 整流重取凭证后仍失败 → 走既有错误路径（返回错误）。
-func TestDownloadSingleWithAuthRetry_StillFails(t *testing.T) {
+func TestCrossPlatformCoverageDownloadSingleWithAuthRetry_StillFails(t *testing.T) {
 	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
 		return &httpStatusError{StatusCode: 403, Body: "denied"}
 	})
 	defer SetHTTPGetFile(nil)
-	fetch := func(ctx context.Context) (string, map[string]string, error) {
-		return "https://new.example.com/f", nil, nil
+	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
+		return "https://new.example.com/f", nil, 0, nil
 	}
 	err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"))
 	if err == nil || !isAuthStatusError(err) {
@@ -639,7 +649,7 @@ func TestDownloadSingleWithAuthRetry_StillFails(t *testing.T) {
 }
 
 // 服务端不支持 Range（探测返回 200）→ 自动回退整流。
-func TestDriveTransferDownload_FallbackWhenNoRangeSupport(t *testing.T) {
+func TestCrossPlatformCoverageDriveTransferDownload_FallbackWhenNoRangeSupport(t *testing.T) {
 	content := makeTestContent(900)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 忽略 Range 头，始终 200 全量
@@ -658,7 +668,7 @@ func TestDriveTransferDownload_FallbackWhenNoRangeSupport(t *testing.T) {
 }
 
 // Content-Range 校验：正常匹配、区间错位、header 缺失
-func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
+func TestCrossPlatformCoverageFetchRangeInto_ContentRangeValidation(t *testing.T) {
 	content := makeTestContent(1000)
 
 	// 正常情况：Content-Range 区间匹配
@@ -681,7 +691,7 @@ func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		part := driveDownloadPart{index: 1, offset: 300, length: 300}
-		if err := fetchRangeInto(context.Background(), srv.URL, nil, f, part); err != nil {
+		if err := fetchRangeInto(context.Background(), srv.URL, nil, f, part, 0); err != nil {
 			t.Fatalf("正常匹配不应报错: %v", err)
 		}
 	})
@@ -705,7 +715,7 @@ func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		part := driveDownloadPart{index: 1, offset: 300, length: 300}
-		err = fetchRangeInto(context.Background(), srv.URL, nil, f, part)
+		err = fetchRangeInto(context.Background(), srv.URL, nil, f, part, 0)
 		if err == nil {
 			t.Fatal("Content-Range 错位应返回错误")
 		}
@@ -714,7 +724,7 @@ func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
 		}
 	})
 
-	// Content-Range header 缺失 → 不阻断，正常下载
+	// Content-Range header 缺失 → 强制报错，拒绝无法验证偏移一致性的分片
 	t.Run("missing_header", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var start, end int64
@@ -734,8 +744,12 @@ func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		part := driveDownloadPart{index: 0, offset: 0, length: 300}
-		if err := fetchRangeInto(context.Background(), srv.URL, nil, f, part); err != nil {
-			t.Fatalf("Content-Range 缺失不应阻断下载: %v", err)
+		err = fetchRangeInto(context.Background(), srv.URL, nil, f, part, 0)
+		if err == nil {
+			t.Fatal("Content-Range 缺失应返回错误")
+		}
+		if !strings.Contains(err.Error(), "缺少 Content-Range") {
+			t.Errorf("错误信息应包含'缺少 Content-Range': %v", err)
 		}
 	})
 
@@ -757,7 +771,7 @@ func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		part := driveDownloadPart{index: 0, offset: 0, length: 300}
-		err = fetchRangeInto(context.Background(), srv.URL, nil, f, part)
+		err = fetchRangeInto(context.Background(), srv.URL, nil, f, part, 0)
 		if err == nil {
 			t.Fatal("Content-Range 格式异常应返回错误")
 		}
@@ -768,20 +782,21 @@ func TestFetchRangeInto_ContentRangeValidation(t *testing.T) {
 }
 
 // 分片过程 401 → single-flight 刷新凭证后续传（不重下已完成分片）。
-func TestDriveTransferDownload_AuthRefreshDuringParts(t *testing.T) {
+func TestCrossPlatformCoverageDriveTransferDownload_AuthRefreshDuringParts(t *testing.T) {
 	content := makeTestContent(1200)
 	var tokenGen atomic.Int32 // 服务端当前有效 token 代数
 	srv := rangeTestServer(t, content, "tok", &tokenGen)
 	defer srv.Close()
 
 	var fetchCalls atomic.Int32
-	fetch := func(ctx context.Context) (string, map[string]string, error) {
+	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
 		fetchCalls.Add(1)
-		return srv.URL, map[string]string{"dentry-token": fmt.Sprintf("tok-%d", tokenGen.Load())}, nil
+		return srv.URL, map[string]string{"dentry-token": fmt.Sprintf("tok-%d", tokenGen.Load())}, 5, nil
 	}
 	dest := filepath.Join(t.TempDir(), "auth-parts.bin")
 	opts := smallPartOpts(300, 2)
 	opts.knownSize = 1200
+	opts.version = 5
 
 	// 初始凭证是第 0 代；探测后服务端轮换到第 1 代，分片请求将收到 401
 	initial := map[string]string{"dentry-token": "tok-0"}
@@ -796,7 +811,7 @@ func TestDriveTransferDownload_AuthRefreshDuringParts(t *testing.T) {
 }
 
 // 断点续传：模拟部分分片完成后中断，重跑跳过已完成分片。
-func TestDriveTransferDownload_ResumeSkipsCompletedParts(t *testing.T) {
+func TestCrossPlatformCoverageDriveTransferDownload_ResumeSkipsCompletedParts(t *testing.T) {
 	content := makeTestContent(1000)
 	partSize := int64(300)
 	dest := filepath.Join(t.TempDir(), "resume.bin")
@@ -858,7 +873,7 @@ func TestDriveTransferDownload_ResumeSkipsCompletedParts(t *testing.T) {
 }
 
 // --no-resume：清理历史断点从头下载，且过程中不写 checkpoint。
-func TestDriveTransferDownload_NoResume(t *testing.T) {
+func TestCrossPlatformCoverageDriveTransferDownload_NoResume(t *testing.T) {
 	content := makeTestContent(1000)
 	srv := rangeTestServer(t, content, "", nil)
 	defer srv.Close()
@@ -890,7 +905,7 @@ func TestDriveTransferDownload_NoResume(t *testing.T) {
 }
 
 // 分片失败重试后成功（指数退避路径）。
-func TestDownloadOnePart_RetryOnTransientError(t *testing.T) {
+func TestCrossPlatformCoverageDownloadOnePart_RetryOnTransientError(t *testing.T) {
 	content := makeTestContent(600)
 	var hits atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -917,7 +932,7 @@ func TestDownloadOnePart_RetryOnTransientError(t *testing.T) {
 		t.Fatal(err)
 	}
 	creds := &driveCredentialState{url: srv.URL}
-	if err := downloadOnePart(context.Background(), creds, f, driveDownloadPart{index: 0, offset: 0, length: 600}); err != nil {
+	if err := downloadOnePart(context.Background(), creds, f, driveDownloadPart{index: 0, offset: 0, length: 600}, 0); err != nil {
 		t.Fatalf("瞬时错误重试后应成功: %v", err)
 	}
 	if hits.Load() != 3 {
@@ -926,7 +941,7 @@ func TestDownloadOnePart_RetryOnTransientError(t *testing.T) {
 }
 
 // 分片持续失败超过重试上限 → 返回错误。
-func TestDownloadOnePart_ExhaustsRetries(t *testing.T) {
+func TestCrossPlatformCoverageDownloadOnePart_ExhaustsRetries(t *testing.T) {
 	var hits atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
@@ -940,7 +955,7 @@ func TestDownloadOnePart_ExhaustsRetries(t *testing.T) {
 	}
 	defer f.Close()
 	creds := &driveCredentialState{url: srv.URL}
-	err = downloadOnePart(context.Background(), creds, f, driveDownloadPart{index: 0, offset: 0, length: 10})
+	err = downloadOnePart(context.Background(), creds, f, driveDownloadPart{index: 0, offset: 0, length: 10}, 0)
 	if err == nil {
 		t.Fatal("超过重试上限应失败")
 	}
@@ -953,7 +968,7 @@ func TestDownloadOnePart_ExhaustsRetries(t *testing.T) {
 // driveUploadPut：中心协议 PUT + 401 重取凭证重试
 // ──────────────────────────────────────────────────────────
 
-func TestDriveUploadPut_Success(t *testing.T) {
+func TestCrossPlatformCoverageDriveUploadPut_Success(t *testing.T) {
 	var gotURL string
 	var gotHeaders map[string]string
 	SetHTTPPutFile(func(ctx context.Context, url string, headers map[string]string, filePath string, fileSize int64) error {
@@ -978,7 +993,7 @@ func TestDriveUploadPut_Success(t *testing.T) {
 	}
 }
 
-func TestDriveUploadPut_AuthRetryWithNewCredential(t *testing.T) {
+func TestCrossPlatformCoverageDriveUploadPut_AuthRetryWithNewCredential(t *testing.T) {
 	var calls atomic.Int32
 	SetHTTPPutFile(func(ctx context.Context, url string, headers map[string]string, filePath string, fileSize int64) error {
 		if calls.Add(1) == 1 {
@@ -1007,7 +1022,7 @@ func TestDriveUploadPut_AuthRetryWithNewCredential(t *testing.T) {
 	}
 }
 
-func TestDriveUploadPut_AuthRetryStillFails(t *testing.T) {
+func TestCrossPlatformCoverageDriveUploadPut_AuthRetryStillFails(t *testing.T) {
 	SetHTTPPutFile(func(ctx context.Context, url string, headers map[string]string, filePath string, fileSize int64) error {
 		return &httpStatusError{StatusCode: 403, Body: "denied"}
 	})
@@ -1020,7 +1035,7 @@ func TestDriveUploadPut_AuthRetryStillFails(t *testing.T) {
 	}
 }
 
-func TestDriveUploadPut_SizeLimitHint(t *testing.T) {
+func TestCrossPlatformCoverageDriveUploadPut_SizeLimitHint(t *testing.T) {
 	SetHTTPPutFile(func(ctx context.Context, url string, headers map[string]string, filePath string, fileSize int64) error {
 		return &httpStatusError{StatusCode: 413, Body: "request entity too large"}
 	})
@@ -1037,7 +1052,7 @@ func TestDriveUploadPut_SizeLimitHint(t *testing.T) {
 // parseDriveDownloadInfo：中心协议 headers 透传（新增行为）
 // ──────────────────────────────────────────────────────────
 
-func TestParseDriveDownloadInfo_CenterProtocolHeaders(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveDownloadInfo_CenterProtocolHeaders(t *testing.T) {
 	text := `{"result":{"downloadType":"httpToCenterWithToken","downloadUrl":"https://c.example.com/attachment/token/mdown?k=v","headers":{"dentry-token":"tk"},"fileName":"a.bin"},"success":true}`
 	url, headers, err := parseDriveDownloadInfo(text)
 	if err != nil {
@@ -1055,13 +1070,14 @@ func TestParseDriveDownloadInfo_CenterProtocolHeaders(t *testing.T) {
 // driveCredentialState：single-flight 刷新
 // ──────────────────────────────────────────────────────────
 
-func TestDriveCredentialStateSingleFlightRefresh(t *testing.T) {
+func TestCrossPlatformCoverageDriveCredentialStateSingleFlightRefresh(t *testing.T) {
 	var fetches atomic.Int32
 	cs := &driveCredentialState{
-		url: "u0",
-		fetch: func(ctx context.Context) (string, map[string]string, error) {
+		url:            "u0",
+		initialVersion: 5,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
 			n := fetches.Add(1)
-			return fmt.Sprintf("u%d", n), nil, nil
+			return fmt.Sprintf("u%d", n), nil, 5, nil
 		},
 	}
 	_, _, gen0 := cs.current()
@@ -1085,5 +1101,2275 @@ func TestDriveCredentialStateSingleFlightRefresh(t *testing.T) {
 	}
 	if fetches.Load() != 2 {
 		t.Errorf("新代刷新应真正执行, fetch 次数 = %d", fetches.Load())
+	}
+}
+
+// refresh 无 fetcher → 返回错误
+func TestCrossPlatformCoverageDriveCredentialStateRefreshNilFetch(t *testing.T) {
+	cs := &driveCredentialState{url: "u0", fetch: nil}
+	_, _, gen := cs.current()
+	err := cs.refresh(context.Background(), gen)
+	if err == nil || !strings.Contains(err.Error(), "无法自动刷新") {
+		t.Errorf("fetch==nil 应报错, got %v", err)
+	}
+}
+
+// refresh fetcher 返回 error → 传播给调用方
+func TestCrossPlatformCoverageDriveCredentialStateRefreshFetchError(t *testing.T) {
+	cs := &driveCredentialState{
+		url: "u0",
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "", nil, 0, fmt.Errorf("network")
+		},
+	}
+	_, _, gen := cs.current()
+	err := cs.refresh(context.Background(), gen)
+	if err == nil || !strings.Contains(err.Error(), "network") {
+		t.Errorf("fetch 报错应传播, got %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// parsePartSize 补充分支
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageParsePartSize_ExtraSuffixes(t *testing.T) {
+	// "K" 后缀
+	if got, err := parsePartSize("1024K"); err != nil || got != 1<<20 {
+		t.Errorf("1024K: got %d, err=%v", got, err)
+	}
+	// 裸 "B" 后缀（去 B 后当纯数字）
+	if got, err := parsePartSize("16777216B"); err != nil || got != 16<<20 {
+		t.Errorf("16777216B: got %d, err=%v", got, err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// parseContentRange 补充：负 start
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageParseContentRange_NegativeStart(t *testing.T) {
+	_, _, _, err := parseContentRange("bytes -1-100/200")
+	if err == nil {
+		t.Error("负 start 应报错")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// likelySizeLimitBody 补充中文关键词和 "size"+"over"/"size"+"limit"
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageLikelySizeLimitBody(t *testing.T) {
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"文件超限", true},
+		{"超出配额", true},
+		{"容量不足", true},
+		{"file size over limit", true},
+		{"Size Limit Exceeded", true},
+		{"no error", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		if got := likelySizeLimitBody(c.in); got != c.want {
+			t.Errorf("likelySizeLimitBody(%q) = %v, want %v", c.in, got, c.want)
+		}
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// driveTransferDownload 默认 opts 和 probe 错误路径
+// ──────────────────────────────────────────────────────────
+
+// opts.partSize/parallel 为 0 时使用默认值
+func TestCrossPlatformCoverageDriveTransferDownload_DefaultOpts(t *testing.T) {
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		return os.WriteFile(destPath, []byte("ok"), 0o644)
+	})
+	defer SetHTTPGetFile(nil)
+
+	dest := filepath.Join(t.TempDir(), "default.bin")
+	// knownSize < 2*defaultPartSize → 整流; partSize=0, parallel=0 用默认值
+	opts := driveDownloadOptions{knownSize: 100}
+	if err := driveTransferDownload(context.Background(), nil, "https://x.example.com/f", nil, dest, opts); err != nil {
+		t.Fatalf("默认 opts 应正常: %v", err)
+	}
+}
+
+// probeRangeSupport 返回 error → driveTransferDownload 传播
+func TestCrossPlatformCoverageDriveTransferDownload_ProbeError(t *testing.T) {
+	// 使用无效 URL 触发 probeRangeSupport 错误
+	opts := driveDownloadOptions{partSize: 10, parallel: 2, knownSize: 100}
+	err := driveTransferDownload(context.Background(), nil, "://invalid-url", nil, filepath.Join(t.TempDir(), "x"), opts)
+	if err == nil {
+		t.Fatal("无效 URL 的 probe 应失败")
+	}
+}
+
+// probeRangeSupport 返回 totalSize 小于阈值 → 回退整流
+func TestCrossPlatformCoverageDriveTransferDownload_ProbeTotalBelowThreshold(t *testing.T) {
+	// 服务端返回 206 但 Content-Range 中的 total 很小
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-0/5") // total=5 < 2*partSize=20
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte{0})
+	}))
+	defer srv.Close()
+
+	var called atomic.Int32
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		called.Add(1)
+		return os.WriteFile(destPath, []byte("small"), 0o644)
+	})
+	defer SetHTTPGetFile(nil)
+
+	dest := filepath.Join(t.TempDir(), "small-probe.bin")
+	opts := driveDownloadOptions{partSize: 10, parallel: 2, knownSize: 100}
+	if err := driveTransferDownload(context.Background(), nil, srv.URL, nil, dest, opts); err != nil {
+		t.Fatalf("totalSize < threshold 应回退整流: %v", err)
+	}
+	if called.Load() == 0 {
+		t.Error("应走整流路径（httpGetFile）")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// downloadSingleWithAuthRetry: fetch==nil、fetch 报错
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDownloadSingleWithAuthRetry_NilFetch(t *testing.T) {
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		return &httpStatusError{StatusCode: 401, Body: "expired"}
+	})
+	defer SetHTTPGetFile(nil)
+	// fetch==nil → 不重试，直接返回原始错误
+	err := downloadSingleWithAuthRetry(context.Background(), nil, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"))
+	if err == nil || !isAuthStatusError(err) {
+		t.Fatalf("fetch==nil 应直接返回鉴权错误: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDownloadSingleWithAuthRetry_FetchError(t *testing.T) {
+	var calls atomic.Int32
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		calls.Add(1)
+		return &httpStatusError{StatusCode: 401, Body: "expired"}
+	})
+	defer SetHTTPGetFile(nil)
+	// fetch 返回 error → 返回原始 httpGetFile 错误（非 fetch 错误）
+	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
+		return "", nil, 0, fmt.Errorf("fetch failed")
+	}
+	err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"))
+	if err == nil || !isAuthStatusError(err) {
+		t.Fatalf("fetch 报错应返回原始鉴权错误: %v", err)
+	}
+	if calls.Load() != 1 {
+		t.Errorf("httpGetFile 应只调用一次, got %d", calls.Load())
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// probeRangeSupport: 401 刷新失败、default 非 2xx、循环耗尽
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageProbeRangeSupport_AuthRefreshFail(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "expired")
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{
+		url: srv.URL,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "", nil, 0, fmt.Errorf("refresh-fail")
+		},
+	}
+	_, _, err := probeRangeSupport(context.Background(), creds)
+	if err == nil || !strings.Contains(err.Error(), "重新获取下载凭证失败") {
+		t.Fatalf("401+refresh 失败应报凭证错误: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageProbeRangeSupport_NonRetryableError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "not found")
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	_, _, err := probeRangeSupport(context.Background(), creds)
+	if err == nil {
+		t.Fatal("404 应返回错误")
+	}
+	var se *httpStatusError
+	if !errors.As(err, &se) || se.StatusCode != 404 {
+		t.Errorf("应返回 httpStatusError(404): %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageProbeRangeSupport_AuthExhausted(t *testing.T) {
+	// 第一次 403 → refresh 成功 → 第二次仍 403 → attempt>0 返回 "下载凭证刷新后仍鉴权失败"
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "denied")
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{
+		url:   srv.URL,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) { return srv.URL, nil, 0, nil },
+	}
+	_, _, err := probeRangeSupport(context.Background(), creds)
+	if err == nil {
+		t.Fatal("持续 403 应报错")
+	}
+	if !strings.Contains(err.Error(), "下载凭证刷新后仍鉴权失败") {
+		t.Fatalf("应返回凭证刷新失败错误: %v", err)
+	}
+	if hits.Load() != 2 {
+		t.Errorf("应请求 2 次, got %d", hits.Load())
+	}
+}
+
+func TestCrossPlatformCoverageProbeRangeSupport_InvalidURL(t *testing.T) {
+	creds := &driveCredentialState{url: "://bad"}
+	_, _, err := probeRangeSupport(context.Background(), creds)
+	if err == nil {
+		t.Fatal("无效 URL 应报错")
+	}
+}
+
+func TestCrossPlatformCoverageProbeRangeSupport_NetworkError(t *testing.T) {
+	// 使用已关闭的服务端模拟网络错误
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	_, _, err := probeRangeSupport(context.Background(), creds)
+	if err == nil {
+		t.Fatal("网络错误应传播")
+	}
+}
+
+func TestCrossPlatformCoverageProbeRangeSupport_ContentRangeParseError(t *testing.T) {
+	// 返回 206 但 Content-Range 无法解析 total → 返回 0, nil, nil
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-0/*") // total 未知
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte{0})
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	total, resp, err := probeRangeSupport(context.Background(), creds)
+	if err != nil {
+		t.Fatalf("Content-Range 异常不应报 error: %v", err)
+	}
+	if resp != nil {
+		t.Error("不应返回 resp")
+	}
+	if total != 0 {
+		t.Errorf("total 应为 0, got %d", total)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// writeStreamToFile 错误路径
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageWriteStreamToFile_CreateError(t *testing.T) {
+	// 写入不存在目录下的文件 → os.Create 失败
+	err := writeStreamToFile(strings.NewReader("data"), "/no-such-dir/sub/file.bin")
+	if err == nil {
+		t.Fatal("不存在路径应失败")
+	}
+}
+
+func TestCrossPlatformCoverageWriteStreamToFile_CopyError(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "copy-err.bin")
+	errReader := &errReaderHelper{err: fmt.Errorf("read broken")}
+	err := writeStreamToFile(errReader, dest)
+	if err == nil || !strings.Contains(err.Error(), "read broken") {
+		t.Fatalf("io.Copy 错误应传播: %v", err)
+	}
+}
+
+type errReaderHelper struct{ err error }
+
+func (r *errReaderHelper) Read(p []byte) (int, error) { return 0, r.err }
+
+// ──────────────────────────────────────────────────────────
+// checkpoint save 错误路径
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageCheckpointSave_WriteError(t *testing.T) {
+	cp := &driveDownloadCheckpoint{
+		Version: driveCheckpointVersion, Fingerprint: "fp", TotalSize: 100, PartSize: 30, Completed: []bool{true},
+	}
+	// 写入不存在的目录 → 失败
+	err := cp.save("/no-such-dir/sub/meta.json")
+	if err == nil {
+		t.Fatal("不存在路径应失败")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// downloadRangedParts: 文件操作失败、上下文取消、logf 分支
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDownloadRangedParts_OpenFileError(t *testing.T) {
+	creds := &driveCredentialState{url: "http://x.example.com"}
+	// destPath 指向不存在的目录 → OpenFile 失败
+	dest := "/no-such-dir/sub/out.bin"
+	opts := driveDownloadOptions{partSize: 10, parallel: 1, resume: false}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "分片临时文件失败") {
+		t.Fatalf("OpenFile 失败应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDownloadRangedParts_ContextCancelDuringDispatch(t *testing.T) {
+	started := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		// 阻塞直到请求上下文被取消
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "cancel-dispatch.bin")
+	// 多分片、parallel=1 → worker 卡在第一个请求，dispatch 第二个时 select 触发 ctx.Done
+	opts := driveDownloadOptions{partSize: 10, parallel: 1, resume: false, knownSize: 100}
+
+	go func() {
+		<-started // 确保第一个 HTTP 请求已发出
+		cancel()
+	}()
+
+	err := downloadRangedParts(ctx, creds, dest, 100, opts)
+	if err == nil {
+		t.Fatal("context cancel 应返回错误")
+	}
+}
+
+func TestCrossPlatformCoverageDownloadRangedParts_LogfBranches(t *testing.T) {
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	var logs []string
+	dest := filepath.Join(t.TempDir(), "logf.bin")
+	creds := &driveCredentialState{url: srv.URL}
+	opts := driveDownloadOptions{
+		partSize: 30, parallel: 2, resume: true, knownSize: 100,
+		logf: func(format string, args ...any) {
+			logs = append(logs, fmt.Sprintf(format, args...))
+		},
+	}
+	if err := downloadRangedParts(context.Background(), creds, dest, 100, opts); err != nil {
+		t.Fatalf("logf 测试下载失败: %v", err)
+	}
+	if len(logs) == 0 {
+		t.Error("应有日志输出")
+	}
+	// 应包含"分片下载"字样（全新下载）
+	found := false
+	for _, l := range logs {
+		if strings.Contains(l, "分片下载") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("全新下载应有'分片下载'日志, got %v", logs)
+	}
+}
+
+func TestCrossPlatformCoverageDownloadRangedParts_ResumeLogf(t *testing.T) {
+	// 模拟断点续传场景的 logf 输出
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "resume-logf.bin")
+	partPath := dest + drivePartFileSuffix
+	metaPath := dest + drivePartMetaSuffix
+
+	// 预置分片数据文件和 checkpoint（分片 0 已完成）
+	pre := make([]byte, 100)
+	copy(pre[0:30], content[0:30])
+	if err := os.WriteFile(partPath, pre, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fp := driveDownloadFingerprint("", 0, 100, srv.URL)
+	cp := &driveDownloadCheckpoint{
+		Version: driveCheckpointVersion, Fingerprint: fp,
+		TotalSize: 100, PartSize: 30, Completed: []bool{true, false, false, false},
+	}
+	if err := cp.save(metaPath); err != nil {
+		t.Fatal(err)
+	}
+
+	var logs []string
+	creds := &driveCredentialState{url: srv.URL}
+	opts := driveDownloadOptions{
+		partSize: 30, parallel: 2, resume: true, knownSize: 100,
+		logf: func(format string, args ...any) {
+			logs = append(logs, fmt.Sprintf(format, args...))
+		},
+	}
+	if err := downloadRangedParts(context.Background(), creds, dest, 100, opts); err != nil {
+		t.Fatalf("续传 logf 失败: %v", err)
+	}
+	// 应包含"断点续传"字样
+	found := false
+	for _, l := range logs {
+		if strings.Contains(l, "断点续传") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("续传应有'断点续传'日志, got %v", logs)
+	}
+}
+
+// checkpoint 存在但分片文件缺失 → 重新从头下载
+func TestCrossPlatformCoverageDownloadRangedParts_CheckpointPartFileMissing(t *testing.T) {
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "cp-missing.bin")
+	metaPath := dest + drivePartMetaSuffix
+
+	// 只有 checkpoint 没有 partPath → cp 作废
+	fp := driveDownloadFingerprint("", 0, 100, srv.URL)
+	cp := &driveDownloadCheckpoint{
+		Version: driveCheckpointVersion, Fingerprint: fp,
+		TotalSize: 100, PartSize: 30, Completed: []bool{true, true, true, true},
+	}
+	if err := cp.save(metaPath); err != nil {
+		t.Fatal(err)
+	}
+
+	creds := &driveCredentialState{url: srv.URL}
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: true, knownSize: 100}
+	if err := downloadRangedParts(context.Background(), creds, dest, 100, opts); err != nil {
+		t.Fatalf("checkpoint 无分片文件应从头下载: %v", err)
+	}
+	verifyFile(t, dest, content)
+}
+
+// checkpoint 存在但分片文件大小不符 → 重新从头下载
+func TestCrossPlatformCoverageDownloadRangedParts_CheckpointPartFileSizeMismatch(t *testing.T) {
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "cp-size.bin")
+	partPath := dest + drivePartFileSuffix
+	metaPath := dest + drivePartMetaSuffix
+
+	// partPath 大小错误（50 != 100）
+	if err := os.WriteFile(partPath, make([]byte, 50), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fp := driveDownloadFingerprint("", 0, 100, srv.URL)
+	cp := &driveDownloadCheckpoint{
+		Version: driveCheckpointVersion, Fingerprint: fp,
+		TotalSize: 100, PartSize: 30, Completed: []bool{true, false, false, false},
+	}
+	if err := cp.save(metaPath); err != nil {
+		t.Fatal(err)
+	}
+
+	creds := &driveCredentialState{url: srv.URL}
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: true, knownSize: 100}
+	if err := downloadRangedParts(context.Background(), creds, dest, 100, opts); err != nil {
+		t.Fatalf("分片大小不符应从头下载: %v", err)
+	}
+	verifyFile(t, dest, content)
+}
+
+// ──────────────────────────────────────────────────────────
+// downloadOnePart: context 取消、auth retry 失败
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDownloadOnePart_ContextCanceled(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	f, _ := os.Create(filepath.Join(t.TempDir(), "ctx-cancel.tmp"))
+	defer f.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // 立即取消
+
+	creds := &driveCredentialState{url: srv.URL}
+	err := downloadOnePart(ctx, creds, f, driveDownloadPart{index: 0, offset: 0, length: 10}, 0)
+	if err == nil {
+		t.Fatal("context 已取消应返回错误")
+	}
+}
+
+func TestCrossPlatformCoverageDownloadOnePart_AuthRefreshFail(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "expired")
+	}))
+	defer srv.Close()
+
+	f, _ := os.Create(filepath.Join(t.TempDir(), "auth-fail.tmp"))
+	defer f.Close()
+
+	creds := &driveCredentialState{
+		url: srv.URL,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "", nil, 0, fmt.Errorf("refresh-fail")
+		},
+	}
+	err := downloadOnePart(context.Background(), creds, f, driveDownloadPart{index: 0, offset: 0, length: 10}, 0)
+	if err == nil || !strings.Contains(err.Error(), "重新获取下载凭证失败") {
+		t.Fatalf("auth refresh 失败应报凭证错误: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// fetchRangeInto: 网络错误、io.Copy 错误、短读
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageFetchRangeInto_InvalidURL(t *testing.T) {
+	f, _ := os.Create(filepath.Join(t.TempDir(), "inv.tmp"))
+	defer f.Close()
+	err := fetchRangeInto(context.Background(), "://bad", nil, f, driveDownloadPart{offset: 0, length: 10}, 0)
+	if err == nil {
+		t.Fatal("无效 URL 应报错")
+	}
+}
+
+func TestCrossPlatformCoverageFetchRangeInto_NetworkError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close() // 关闭模拟网络错误
+
+	f, _ := os.Create(filepath.Join(t.TempDir(), "net.tmp"))
+	defer f.Close()
+	err := fetchRangeInto(context.Background(), srv.URL, nil, f, driveDownloadPart{offset: 0, length: 10}, 0)
+	if err == nil {
+		t.Fatal("网络错误应传播")
+	}
+}
+
+func TestCrossPlatformCoverageFetchRangeInto_ShortRead(t *testing.T) {
+	// 服务端只返回 5 字节但分片期望 10 字节 → 短读错误
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-9/100")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte("short")) // 只有 5 字节
+	}))
+	defer srv.Close()
+
+	f, _ := os.CreateTemp(t.TempDir(), "short-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+	err := fetchRangeInto(context.Background(), srv.URL, nil, f, driveDownloadPart{offset: 0, length: 10}, 0)
+	if err == nil || !strings.Contains(err.Error(), "分片长度不符") {
+		t.Fatalf("短读应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageFetchRangeInto_CopyError(t *testing.T) {
+	// 服务端在部分传输后关闭连接 → io.Copy 报错
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-99/100")
+		w.Header().Set("Content-Length", "100")
+		w.WriteHeader(http.StatusPartialContent)
+		// 只写入一部分然后 panic 来中断连接
+		_, _ = w.Write([]byte("partial"))
+		panic(http.ErrAbortHandler)
+	}))
+	defer srv.Close()
+
+	f, _ := os.CreateTemp(t.TempDir(), "copy-err-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+	err := fetchRangeInto(context.Background(), srv.URL, nil, f, driveDownloadPart{offset: 0, length: 100}, 0)
+	// 应有 error（io.Copy 失败或短读）
+	if err == nil {
+		t.Fatal("连接中断应报错")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// parseDriveDownloadInfo: 各种 fallback 路径
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageParseDriveDownloadInfo_InvalidJSON(t *testing.T) {
+	_, _, err := parseDriveDownloadInfo("not json")
+	if err == nil || !strings.Contains(err.Error(), "解析") {
+		t.Fatalf("非法 JSON 应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageParseDriveDownloadInfo_ResourceUrlFallback(t *testing.T) {
+	// downloadUrl 缺失，走 resourceUrl fallback
+	text := `{"result":{"resourceUrl":"https://oss.example.com/signed"}}`
+	url, headers, err := parseDriveDownloadInfo(text)
+	if err != nil {
+		t.Fatalf("resourceUrl fallback 应成功: %v", err)
+	}
+	if url != "https://oss.example.com/signed" {
+		t.Errorf("url = %q", url)
+	}
+	if len(headers) != 0 {
+		t.Errorf("无 headers 应为空 map: %v", headers)
+	}
+}
+
+func TestCrossPlatformCoverageParseDriveDownloadInfo_ResourceUrlsFallback(t *testing.T) {
+	// downloadUrl 和 resourceUrl 都缺失，走 resourceUrls 数组 fallback
+	text := `{"result":{"resourceUrls":[{"url":"https://cdn.example.com/file","headers":{"x-custom":"val"}}]}}`
+	url, headers, err := parseDriveDownloadInfo(text)
+	if err != nil {
+		t.Fatalf("resourceUrls fallback 应成功: %v", err)
+	}
+	if url != "https://cdn.example.com/file" {
+		t.Errorf("url = %q", url)
+	}
+	if headers["x-custom"] != "val" {
+		t.Errorf("headers 应包含 x-custom: %v", headers)
+	}
+}
+
+func TestCrossPlatformCoverageParseDriveDownloadInfo_EmptyURL(t *testing.T) {
+	// 所有 URL 字段都为空
+	text := `{"result":{"fileName":"a.bin"}}`
+	_, _, err := parseDriveDownloadInfo(text)
+	if err == nil || !strings.Contains(err.Error(), "downloadUrl 为空") {
+		t.Fatalf("所有 URL 缺失应报错: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// P1-1/P1-2 补充测试：中心协议解析与指纹唯一性
+// ──────────────────────────────────────────────────────────
+
+// TestCrossPlatformCoverageParseDriveDownloadInfo_ResourceUrlsPerURLHeaders
+// 验证 resourceUrls[].headers 中的 dentry-token 被正确透传到最终 headers。
+func TestCrossPlatformCoverageParseDriveDownloadInfo_ResourceUrlsPerURLHeaders(t *testing.T) {
+	text := `{"result":{"resourceUrls":[{"url":"https://center.example.com/download/path","headers":{"dentry-token":"dt-abc123","x-oss-security":"sig"}}]}}`
+	url, headers, err := parseDriveDownloadInfo(text)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if url != "https://center.example.com/download/path" {
+		t.Errorf("url = %q, want center URL", url)
+	}
+	if headers["dentry-token"] != "dt-abc123" {
+		t.Errorf("dentry-token 未正确透传: got %v", headers)
+	}
+	if headers["x-oss-security"] != "sig" {
+		t.Errorf("x-oss-security 未正确透传: got %v", headers)
+	}
+}
+
+// TestCrossPlatformCoverageParseDriveDownloadInfo_TopLevelAndPerURLHeadersMerge
+// 验证顶层 headers 与 resourceUrls[].headers 合并（per-URL 覆盖顶层同名 key）。
+func TestCrossPlatformCoverageParseDriveDownloadInfo_TopLevelAndPerURLHeadersMerge(t *testing.T) {
+	text := `{"result":{"headers":{"x-top":"top-val","dentry-token":"old"},"resourceUrls":[{"url":"https://center.example.com/dl","headers":{"dentry-token":"new"}}]}}`
+	_, headers, err := parseDriveDownloadInfo(text)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// 顶层 headers 应被读入
+	if headers["x-top"] != "top-val" {
+		t.Errorf("顶层 x-top 应保留: got %v", headers)
+	}
+	// per-URL headers 覆盖同名 key
+	if headers["dentry-token"] != "new" {
+		t.Errorf("per-URL dentry-token 应覆盖顶层: got %q", headers["dentry-token"])
+	}
+}
+
+// TestCrossPlatformCoverageFingerprintVersion0DifferentURLs
+// 验证 version=0 时不同完整 URL（含 query）产生不同指纹。
+func TestCrossPlatformCoverageFingerprintVersion0DifferentURLs(t *testing.T) {
+	urlA := "https://center.example.com/download/file?sign=aaa&expire=100"
+	urlB := "https://center.example.com/download/file?sign=bbb&expire=200"
+	urlC := "https://center.example.com/download/other-file?sign=aaa&expire=100"
+
+	fpA := driveDownloadFingerprint("node-1", 0, 1024, urlA)
+	fpB := driveDownloadFingerprint("node-1", 0, 1024, urlB)
+	fpC := driveDownloadFingerprint("node-1", 0, 1024, urlC)
+
+	// 同 path 不同 query → 不同指纹
+	if fpA == fpB {
+		t.Error("version=0: 同 path 不同 query 应产生不同指纹")
+	}
+	// 不同 path → 不同指纹
+	if fpA == fpC {
+		t.Error("version=0: 不同 path 应产生不同指纹")
+	}
+	// 相同 URL → 相同指纹
+	fpA2 := driveDownloadFingerprint("node-1", 0, 1024, urlA)
+	if fpA != fpA2 {
+		t.Error("version=0: 相同 URL 应产生相同指纹")
+	}
+}
+
+// TestCrossPlatformCoverageFingerprintVersionedStableAcrossResign
+// 验证 version>0 时重签名（仅 query 变化）不影响指纹。
+func TestCrossPlatformCoverageFingerprintVersionedStableAcrossResign(t *testing.T) {
+	urlOld := "https://oss.example.com/files/abc/content?Signature=old&Expires=1"
+	urlNew := "https://oss.example.com/files/abc/content?Signature=new&Expires=2"
+
+	fpOld := driveDownloadFingerprint("node-2", 5, 2048, urlOld)
+	fpNew := driveDownloadFingerprint("node-2", 5, 2048, urlNew)
+
+	if fpOld != fpNew {
+		t.Error("version>0: 重签名不应改变指纹（只取 path）")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// driveTransferDownload: 整合 fetch 在 totalSize<threshold 路径
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveTransferDownload_ProbeTotalBelowThreshold_WithFetchNil(t *testing.T) {
+	// 服务端返回 206 + total < threshold → 回退整流且 fetch lambda 中 fetch==nil
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-0/5")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte{0})
+	}))
+	defer srv.Close()
+
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		return os.WriteFile(destPath, []byte("tiny"), 0o644)
+	})
+	defer SetHTTPGetFile(nil)
+
+	dest := filepath.Join(t.TempDir(), "nil-fetch-threshold.bin")
+	opts := driveDownloadOptions{partSize: 10, parallel: 2, knownSize: 100}
+	// fetch=nil: 当 totalSize<threshold 整流时，401/403 不会再重取凭证
+	if err := driveTransferDownload(context.Background(), nil, srv.URL, nil, dest, opts); err != nil {
+		t.Fatalf("fetch==nil totalSize<threshold 应正常整流: %v", err)
+	}
+}
+
+// 测试 unused import io
+func TestCrossPlatformCoverageFetchRangeInto_HeadersPassThrough(t *testing.T) {
+	content := makeTestContent(100)
+	var gotHeaders http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHeaders = r.Header
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	f, _ := os.CreateTemp(t.TempDir(), "hdr-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+	headers := map[string]string{"dentry-token": "tk123", "x-custom": "val"}
+	err := fetchRangeInto(context.Background(), srv.URL, headers, f, driveDownloadPart{offset: 0, length: 50}, 0)
+	if err != nil {
+		t.Fatalf("headers 透传测试失败: %v", err)
+	}
+	if gotHeaders.Get("dentry-token") != "tk123" || gotHeaders.Get("x-custom") != "val" {
+		t.Errorf("headers 应透传: %v", gotHeaders)
+	}
+}
+
+// 确保 io 和 errors 包的使用
+var _ = io.Discard
+var _ = errors.New
+
+// ──────────────────────────────────────────────────────────
+// downloadOnePart: auth retry 成功后 continue、backoff 期间 ctx 取消
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDownloadOnePart_AuthRefreshSuccess(t *testing.T) {
+	// 第一次 401 → refresh 成功 → 第二次成功
+	content := makeTestContent(100)
+	var tokenGen atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("dentry-token") != fmt.Sprintf("tok-%d", tokenGen.Load()) {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, "expired")
+			return
+		}
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		if end >= int64(len(content)) {
+			end = int64(len(content)) - 1
+		}
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	// 初始 token 无效（gen=0），refresh 后更新为 gen=1
+	tokenGen.Store(1)
+	creds := &driveCredentialState{
+		url:            srv.URL,
+		headers:        map[string]string{"dentry-token": "tok-0"},
+		initialVersion: 3,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return srv.URL, map[string]string{"dentry-token": fmt.Sprintf("tok-%d", tokenGen.Load())}, 3, nil
+		},
+	}
+
+	f, _ := os.CreateTemp(t.TempDir(), "auth-success-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+
+	err := downloadOnePart(context.Background(), creds, f, driveDownloadPart{index: 0, offset: 0, length: 50}, 0)
+	if err != nil {
+		t.Fatalf("auth refresh 成功后应下载成功: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDownloadOnePart_ContextCancelDuringBackoff(t *testing.T) {
+	// 模拟：第一次非 auth 错误（500）→ 进入退避等待（500ms）→ ctx 超时取消
+	// 用短 context timeout 确保在退避期间触发 ctx.Done
+	responded := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "server error")
+		select {
+		case responded <- struct{}{}:
+		default:
+		}
+	}))
+	defer srv.Close()
+
+	f, _ := os.Create(filepath.Join(t.TempDir(), "backoff-cancel.tmp"))
+	defer f.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	creds := &driveCredentialState{url: srv.URL}
+
+	go func() {
+		<-responded // 等待第一次 HTTP 响应完成
+		// 小延迟确保 client 已收到响应并进入 backoff select
+		cancel()
+	}()
+
+	err := downloadOnePart(ctx, creds, f, driveDownloadPart{index: 0, offset: 0, length: 10}, 0)
+	if err == nil {
+		t.Fatal("退避期间 ctx 取消应返回错误")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// downloadRangedParts: Truncate 失败、f.Sync 失败、workers 边界
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDownloadRangedParts_WorkersCapToRemaining(t *testing.T) {
+	// 预置 checkpoint 让大部分分片已完成 → remaining < parallel → workers 被限制
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "cap-workers.bin")
+	partPath := dest + drivePartFileSuffix
+	metaPath := dest + drivePartMetaSuffix
+
+	// 4 个分片中只剩 1 个未完成 → workers=min(4,1)=1
+	pre := make([]byte, 100)
+	copy(pre[0:30], content[0:30])
+	copy(pre[30:60], content[30:60])
+	copy(pre[60:90], content[60:90])
+	if err := os.WriteFile(partPath, pre, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fp := driveDownloadFingerprint("", 0, 100, srv.URL)
+	cp := &driveDownloadCheckpoint{
+		Version: driveCheckpointVersion, Fingerprint: fp,
+		TotalSize: 100, PartSize: 30, Completed: []bool{true, true, true, false},
+	}
+	if err := cp.save(metaPath); err != nil {
+		t.Fatal(err)
+	}
+
+	creds := &driveCredentialState{url: srv.URL}
+	opts := driveDownloadOptions{partSize: 30, parallel: 4, resume: true, knownSize: 100}
+	if err := downloadRangedParts(context.Background(), creds, dest, 100, opts); err != nil {
+		t.Fatalf("workers cap 测试失败: %v", err)
+	}
+	verifyFile(t, dest, content)
+}
+
+// 所有分片已完成（remaining==0）→ workers clamped to 1、无分片下载、直接完成
+func TestCrossPlatformCoverageDownloadRangedParts_AllCompleted(t *testing.T) {
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "all-done.bin")
+	partPath := dest + drivePartFileSuffix
+	metaPath := dest + drivePartMetaSuffix
+
+	// 预置完整的分片文件和全部完成的 checkpoint
+	if err := os.WriteFile(partPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fp := driveDownloadFingerprint("", 0, 100, srv.URL)
+	cp := &driveDownloadCheckpoint{
+		Version: driveCheckpointVersion, Fingerprint: fp,
+		TotalSize: 100, PartSize: 30, Completed: []bool{true, true, true, true},
+	}
+	if err := cp.save(metaPath); err != nil {
+		t.Fatal(err)
+	}
+
+	creds := &driveCredentialState{url: srv.URL}
+	opts := driveDownloadOptions{partSize: 30, parallel: 4, resume: true, knownSize: 100}
+	if err := downloadRangedParts(context.Background(), creds, dest, 100, opts); err != nil {
+		t.Fatalf("全部完成应直接成功: %v", err)
+	}
+	verifyFile(t, dest, content)
+}
+
+// driveTransferDownload 中 totalSize<threshold 路径触发 401 重取凭证（fetch!=nil）
+func TestCrossPlatformCoverageDriveTransferDownload_ProbeTotalBelowThreshold_FetchCalled(t *testing.T) {
+	// 服务端返回 206 + total < threshold
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-0/5")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte{0})
+	}))
+	defer srv.Close()
+
+	var getCalls atomic.Int32
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		if getCalls.Add(1) == 1 {
+			return &httpStatusError{StatusCode: 401, Body: "expired"}
+		}
+		return os.WriteFile(destPath, []byte("ok"), 0o644)
+	})
+	defer SetHTTPGetFile(nil)
+
+	var fetchCalls atomic.Int32
+	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
+		fetchCalls.Add(1)
+		return srv.URL, map[string]string{"x-tok": "new"}, 0, nil
+	}
+
+	dest := filepath.Join(t.TempDir(), "threshold-fetch.bin")
+	opts := driveDownloadOptions{partSize: 10, parallel: 2, knownSize: 100}
+	if err := driveTransferDownload(context.Background(), fetch, srv.URL, nil, dest, opts); err != nil {
+		t.Fatalf("totalSize<threshold + 401 重取应成功: %v", err)
+	}
+	if fetchCalls.Load() == 0 {
+		t.Error("应调用 fetch 重取凭证")
+	}
+}
+
+// driveTransferDownload 中 totalSize<threshold 路径 fetch==nil 时 401 应直接报错
+func TestCrossPlatformCoverageDriveTransferDownload_ProbeTotalBelowThreshold_FetchNilAuth(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-0/5")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte{0})
+	}))
+	defer srv.Close()
+
+	SetHTTPGetFile(func(ctx context.Context, url string, headers map[string]string, destPath string) error {
+		return &httpStatusError{StatusCode: 401, Body: "expired"}
+	})
+	defer SetHTTPGetFile(nil)
+
+	dest := filepath.Join(t.TempDir(), "nil-fetch-auth.bin")
+	opts := driveDownloadOptions{partSize: 10, parallel: 2, knownSize: 100}
+	// fetch=nil → 401 时内部 lambda 中 fetch==nil 返回 "无法自动刷新" → downloadSingleWithAuthRetry 返回原始错误
+	err := driveTransferDownload(context.Background(), nil, srv.URL, nil, dest, opts)
+	if err == nil || !isAuthStatusError(err) {
+		t.Fatalf("fetch==nil + 401 应返回鉴权错误: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// Cross-platform coverage: OS operation hook injection tests
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveTransferSaveJsonMarshalFailure(t *testing.T) {
+	origMarshal := driveJsonMarshal
+	t.Cleanup(func() { driveJsonMarshal = origMarshal })
+	driveJsonMarshal = func(v any) ([]byte, error) { return nil, errors.New("injected marshal failure") }
+
+	cp := &driveDownloadCheckpoint{Version: 1, TotalSize: 100, PartSize: 10, Completed: []bool{true}}
+	err := cp.save(filepath.Join(t.TempDir(), "test.meta"))
+	if err == nil || !strings.Contains(err.Error(), "injected marshal failure") {
+		t.Fatalf("json.Marshal 失败应传播: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferSaveRenameFailure(t *testing.T) {
+	origRename := driveOsRename
+	t.Cleanup(func() { driveOsRename = origRename })
+	driveOsRename = func(string, string) error { return errors.New("injected rename failure") }
+
+	cp := &driveDownloadCheckpoint{Version: 1, TotalSize: 100, PartSize: 10, Completed: []bool{true}}
+	err := cp.save(filepath.Join(t.TempDir(), "test.meta"))
+	if err == nil || !strings.Contains(err.Error(), "injected rename failure") {
+		t.Fatalf("rename 失败应传播: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferTruncateFailure(t *testing.T) {
+	origTruncate := driveFileTruncate
+	t.Cleanup(func() { driveFileTruncate = origTruncate })
+	driveFileTruncate = func(f *os.File, size int64) error { return errors.New("injected truncate failure") }
+
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "truncate-fail.bin")
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "预分配分片临时文件失败") {
+		t.Fatalf("Truncate 失败应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferSyncFailure(t *testing.T) {
+	origSync := driveFileSync
+	t.Cleanup(func() { driveFileSync = origSync })
+	driveFileSync = func(f *os.File) error { return errors.New("injected sync failure") }
+
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "sync-fail.bin")
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "injected sync failure") {
+		t.Fatalf("Sync 失败应传播: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferStatFailure(t *testing.T) {
+	origStat := driveFileStat
+	t.Cleanup(func() { driveFileStat = origStat })
+	driveFileStat = func(f *os.File) (os.FileInfo, error) { return nil, errors.New("injected stat failure") }
+
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "stat-fail.bin")
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "injected stat failure") {
+		t.Fatalf("Stat 失败应传播: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferSizeMismatch(t *testing.T) {
+	origStat := driveFileStat
+	t.Cleanup(func() { driveFileStat = origStat })
+	// 返回与 totalSize 不一致的文件信息
+	driveFileStat = func(f *os.File) (os.FileInfo, error) {
+		// 返回真实 stat，但我们在调用前先 truncate 文件为不同大小
+		return f.Stat()
+	}
+	// 注入 Sync 后将文件 truncate 为不同大小
+	origSync := driveFileSync
+	driveFileSync = func(f *os.File) error {
+		// Sync 成功后破坏文件大小
+		if err := origSync(f); err != nil {
+			return err
+		}
+		return f.Truncate(50) // 破坏大小，让 Stat 返回 50 != 100
+	}
+	t.Cleanup(func() { driveFileSync = origSync })
+
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "size-mismatch.bin")
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "下载完成但文件长度不符") {
+		t.Fatalf("文件大小不符应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferFinalRenameFailure(t *testing.T) {
+	origRename := driveOsRename
+	t.Cleanup(func() { driveOsRename = origRename })
+	// 只在最终重命名时失败（checkpoint save 也用 driveOsRename，所以禁用 resume 跳过）
+	driveOsRename = func(src, dst string) error {
+		if strings.HasSuffix(src, drivePartFileSuffix) {
+			return errors.New("injected final rename failure")
+		}
+		return origRename(src, dst)
+	}
+
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "rename-fail.bin")
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "重命名下载文件失败") {
+		t.Fatalf("最终 rename 失败应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferCheckpointSaveFailure(t *testing.T) {
+	origRename := driveOsRename
+	t.Cleanup(func() { driveOsRename = origRename })
+	// checkpoint save 的 rename 失败（.tmp → .dwspart.meta）
+	driveOsRename = func(src, dst string) error {
+		if strings.HasSuffix(dst, drivePartMetaSuffix) {
+			return errors.New("injected checkpoint rename failure")
+		}
+		return origRename(src, dst)
+	}
+
+	content := makeTestContent(100)
+	srv := rangeTestServer(t, content, "", nil)
+	defer srv.Close()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "cp-save-fail.bin")
+	// resume=true 才会在分片完成后调用 cp.save
+	opts := driveDownloadOptions{partSize: 30, parallel: 1, resume: true, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil || !strings.Contains(err.Error(), "写入下载断点信息失败") {
+		t.Fatalf("checkpoint save 失败应报错: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferProbeAuthExhausted(t *testing.T) {
+	// 服务端永远返回 401，刷新成功但第二次仍 401 → "下载凭证刷新后仍鉴权失败"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "always-unauthorized")
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{
+		url: srv.URL,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			// 刷新成功但服务端仍拒绝
+			return srv.URL, nil, 0, nil
+		},
+	}
+	_, _, err := probeRangeSupport(context.Background(), creds)
+	if err == nil || !strings.Contains(err.Error(), "下载凭证刷新后仍鉴权失败") {
+		t.Fatalf("连续 401 应报凭证刷新后失败: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferParseContentRangeNoDash(t *testing.T) {
+	// range 部分没有 dash → "非法 Content-Range 区间"
+	_, _, _, err := parseContentRange("bytes 12345/67890")
+	if err == nil || !strings.Contains(err.Error(), "非法 Content-Range 区间") {
+		t.Fatalf("无 dash 应报区间错误: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferDownloadOnePartBackoffCtxDone(t *testing.T) {
+	// 服务端返回 500，触发重试退避；在退避等待中取消 context
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "server error")
+	}))
+	defer srv.Close()
+
+	f, _ := os.CreateTemp(t.TempDir(), "backoff-ctx-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// 第一次失败后，在退避 sleep 中取消
+	go func() {
+		for hits.Load() < 1 {
+			// spin-wait
+		}
+		cancel()
+	}()
+
+	creds := &driveCredentialState{url: srv.URL}
+	err := downloadOnePart(ctx, creds, f, driveDownloadPart{index: 0, offset: 0, length: 10}, 0)
+	if err == nil {
+		t.Fatal("退避中 ctx 取消应返回错误")
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferFetchRangeIntoCopyError(t *testing.T) {
+	// 服务端返回 206 但中断 body → io.Copy 错误
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 0-9/100")
+		w.Header().Set("Content-Length", "10")
+		w.WriteHeader(http.StatusPartialContent)
+		// 写入部分数据后立即关闭连接（触发 io.Copy 中 unexpected EOF）
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			// 回退：写入少于期望的数据量，触发短读而非 io.Copy err
+			_, _ = w.Write([]byte("par"))
+			return
+		}
+		conn, buf, _ := hj.Hijack()
+		_, _ = buf.WriteString("par")
+		_ = buf.Flush()
+		_ = conn.Close()
+	}))
+	defer srv.Close()
+
+	f, _ := os.CreateTemp(t.TempDir(), "copy-err-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+
+	err := fetchRangeInto(context.Background(), srv.URL, nil, f, driveDownloadPart{offset: 0, length: 10}, 0)
+	// 应产生 io.Copy 错误或短读错误
+	if err == nil {
+		t.Fatal("中断的 body 应产生错误")
+	}
+}
+
+func TestCrossPlatformCoverageDriveTransferWorkerCtxAlreadyCancelled(t *testing.T) {
+	// 多 worker 场景：一个 worker 失败后 cancel，其他 worker 取到 part 时 runCtx 已取消
+	var reqCount atomic.Int32
+	blockFirst := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := reqCount.Add(1)
+		if n == 1 {
+			// 第一个请求阻塞一下，让其他 worker 有机会拿到 part
+			<-blockFirst
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "error")
+	}))
+	defer srv.Close()
+
+	// 在短暂延迟后释放第一个请求
+	go func() {
+		for reqCount.Load() < 2 {
+			// spin-wait 直到有第二个请求进来
+		}
+		close(blockFirst)
+	}()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "worker-ctx.bin")
+	// 大量分片，多 worker：确保某个 worker 失败后其他 worker 在取 part 时触发 runCtx.Err()
+	opts := driveDownloadOptions{partSize: 5, parallel: 4, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil {
+		t.Fatal("分片失败应报错")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// drive_transfer.go 覆盖率补全：downloadOnePart select ctx.Done 分支
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveTransferDownloadOnePartSelectCtxDone(t *testing.T) {
+	// 目标：覆盖 downloadOnePart 中 select { case <-ctx.Done(): return err } 分支。
+	// 策略：server 返回 500（非 auth）→ 代码通过 ctx.Err() 检查（此时 ctx 未取消）
+	//        → 进入 select 等待 backoff(500ms)，此时 goroutine 延迟 50ms 后 cancel ctx
+	//        → select 收到 ctx.Done() → 返回 err
+
+	var responded atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		responded.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "server error")
+	}))
+	defer srv.Close()
+
+	f, _ := os.CreateTemp(t.TempDir(), "select-ctx-done-*")
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	creds := &driveCredentialState{url: srv.URL}
+
+	// 等第一次 HTTP 响应返回，然后延迟 50ms 确保代码已通过 ctx.Err() 检查并进入 select
+	go func() {
+		for responded.Load() < 1 {
+			time.Sleep(time.Millisecond)
+		}
+		// 关键延迟：确保代码已经通过 line 676 的 ctx.Err() 检查（此时返回 nil）
+		// 并进入 select 等待 time.After(500ms)
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	err := downloadOnePart(ctx, creds, f, driveDownloadPart{index: 0, offset: 0, length: 10}, 0)
+	if err == nil {
+		t.Fatal("select 中 ctx 取消应返回错误")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// drive_transfer.go 覆盖率补全：worker 取到 part 后 runCtx 已取消
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveTransferWorkerRunCtxAlreadyCancelled(t *testing.T) {
+	// 目标：覆盖 downloadRangedParts worker 中 runCtx.Err() != nil → return 分支。
+	// 策略：2 workers + 多个分片；server 第一次请求成功，第二次返回 500 触发 fail()+cancel；
+	//        第一个 worker 完成后循环取下一个 part，此时 runCtx 已 cancelled。
+	content := makeTestContent(100)
+	var reqCount atomic.Int32
+	gate := make(chan struct{}) // 控制第一个请求的时序
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := reqCount.Add(1)
+		if n == 1 {
+			// 第一个请求：正常返回分片数据
+			var start, end int64
+			fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+			if end >= int64(len(content)) {
+				end = int64(len(content)) - 1
+			}
+			// 等待 gate 信号，确保第二个 worker 已拿到 part 并发起请求
+			<-gate
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write(content[start : end+1])
+		} else if n == 2 {
+			// 第二个请求：失败，触发 fail() 取消 runCtx
+			close(gate) // 释放第一个请求
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "error")
+		} else {
+			// 后续请求（第一个 worker 循环后用已取消的 ctx 发起）立即返回错误
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "cancelled")
+		}
+	}))
+	defer srv.Close()
+
+	// 释放 gate 以防第二个请求没按预期到达
+	go func() {
+		time.Sleep(2 * time.Second)
+		select {
+		case <-gate:
+		default:
+			close(gate)
+		}
+	}()
+
+	creds := &driveCredentialState{url: srv.URL}
+	dest := filepath.Join(t.TempDir(), "worker-runctx.bin")
+	// 10 分片 * 10 bytes = 100 bytes；parallel=2
+	opts := driveDownloadOptions{partSize: 10, parallel: 2, resume: false, knownSize: 100}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil {
+		t.Fatal("worker 失败应报错")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// drive.go 覆盖率补全：download 命令 logf 回调、fetchCred 回调、非 Canceled 错误路径
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveDownloadRangedPathLogfAndFetchCred(t *testing.T) {
+	// 目标：覆盖 drive.go download 命令中的：
+	//   - dlOpts.logf 回调（line 501-503）
+	//   - fetchCred 回调（line 540-545）
+	//   - return err 非 Canceled 路径（line 552）
+	// 策略：
+	//   MCP step1: 返回 download info 带 fileSize=100, resourceUrl 指向 test server
+	//   Test server: probe 返回 401 → 触发 fetchCred
+	//   MCP step2: fetchCred 调用 → 返回错误（覆盖 ferr != nil 分支 line 542-544）
+	//   由于 fetchCred 失败，probeRangeSupport 返回错误，driveTransferDownload 返回该错误
+	//   该错误不是 context.Canceled → 走 line 552 的 return err
+
+	// 保存并替换 driveRangeClient 以控制 probe 行为
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	driveRangeClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// 始终返回 401 触发凭证刷新
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader("token expired")),
+			}, nil
+		}),
+	}
+
+	dest := filepath.Join(t.TempDir(), "ranged-logf.bin")
+	// MCP responses: step1 返回带 fileSize 的下载信息（需 >= 2*partSize=2MB 才走 ranged 路径）
+	// step2 fetchCred 返回错误
+	mcpResp := `{"resourceUrl":"https://fake.invalid/file.bin","fileSize":3000000}`
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp},                     // step1: download_file 成功
+		{err: errors.New("refresh failed")}, // step2: fetchCred 调用失败
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download", "--node", "node-1", "--output", dest, "--part-size", "1MB", "--parallel", "1")
+	if err == nil {
+		t.Fatal("fetchCred 失败应导致错误")
+	}
+	// 确保不是 context.Canceled 错误（覆盖 line 552）
+	if errors.Is(err, context.Canceled) {
+		t.Fatal("错误不应是 context.Canceled")
+	}
+}
+
+func TestCrossPlatformCoverageDriveDownloadRangedFetchCredSuccess(t *testing.T) {
+	// 目标：覆盖 fetchCred 的成功路径（line 545: return parseDownloadInfo(t)）
+	// 策略：probe 第一次 401 → fetchCred 成功返回新凭证 → probe 第二次成功 →
+	//       进入 ranged download → 完成下载
+
+	content := makeTestContent(100)
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	var probeAttempt atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := probeAttempt.Add(1)
+		if n == 1 {
+			// 第一次 probe → 401 触发 fetchCred
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, "expired")
+			return
+		}
+		// 后续请求正常处理 range
+		var start, end int64
+		if _, err := fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end); err != nil {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(content)
+			return
+		}
+		if end >= int64(len(content)) {
+			end = int64(len(content)) - 1
+		}
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	driveRangeClient = srv.Client()
+
+	dest := filepath.Join(t.TempDir(), "ranged-fetchcred-ok.bin")
+	// MCP step1: download info with fileSize >= 2*partSize (2MB) to trigger ranged path
+	// MCP step2: fetchCred returns new valid info (same server URL)
+	mcpResp1 := fmt.Sprintf(`{"resourceUrl":"%s/file.bin","fileSize":3000000}`, srv.URL)
+	mcpResp2 := fmt.Sprintf(`{"resourceUrl":"%s/file.bin","fileSize":3000000}`, srv.URL)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp1}, // step1: download_file
+		{text: mcpResp2}, // step2: fetchCred (refresh)
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download", "--node", "node-1", "--output", dest, "--part-size", "1MB", "--parallel", "1", "--no-resume")
+	if err != nil {
+		t.Fatalf("ranged download 应成功: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// drive.go 覆盖率补全：download-version 命令的对称路径
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveDownloadVersionRangedPathLogfAndFetchCred(t *testing.T) {
+	// 覆盖 download-version 中的 logf（line 595-597）、fetchCred（line 632-637）、
+	// 和 return err（line 644）
+
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	driveRangeClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader("token expired")),
+			}, nil
+		}),
+	}
+
+	dest := filepath.Join(t.TempDir(), "version-ranged.bin")
+	mcpResp := `{"downloadUrl":"https://fake.invalid/file.bin","fileSize":3000000}`
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp},                     // step1: download_file_version
+		{err: errors.New("refresh failed")}, // step2: fetchCred 失败
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download-version", "--node", "node-1", "--version", "3", "--output", dest,
+		"--part-size", "1MB", "--parallel", "1")
+	if err == nil {
+		t.Fatal("download-version fetchCred 失败应报错")
+	}
+	if errors.Is(err, context.Canceled) {
+		t.Fatal("错误不应是 context.Canceled")
+	}
+}
+
+func TestCrossPlatformCoverageDriveDownloadVersionRangedFetchCredSuccess(t *testing.T) {
+	// 覆盖 download-version 的 fetchCred 成功路径（line 637）
+
+	totalSize := int64(3000000)
+	content := makeTestContent(int(totalSize))
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	var probeAttempt atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := probeAttempt.Add(1)
+		if n == 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, "expired")
+			return
+		}
+		var start, end int64
+		if _, err := fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end); err != nil {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(content)
+			return
+		}
+		if end >= int64(len(content)) {
+			end = int64(len(content)) - 1
+		}
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	driveRangeClient = srv.Client()
+
+	dest := filepath.Join(t.TempDir(), "version-fetchcred-ok.bin")
+	mcpResp1 := fmt.Sprintf(`{"downloadUrl":"%s/file.bin","fileSize":3000000}`, srv.URL)
+	mcpResp2 := fmt.Sprintf(`{"downloadUrl":"%s/file.bin","fileSize":3000000}`, srv.URL)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp1},
+		{text: mcpResp2},
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download-version", "--node", "node-1", "--version", "3", "--output", dest,
+		"--part-size", "1MB", "--parallel", "1", "--no-resume")
+	if err != nil {
+		t.Fatalf("download-version ranged 应成功: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// drive.go 覆盖率补全：uploadToDrive refetch lambda
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveUploadRefetchLambda(t *testing.T) {
+	// 目标：覆盖 drive.go uploadToDrive 中 refetch lambda（line 2063-2065）
+	// 策略：httpPutFile 第一次返回 401 → 触发 refetch → callMCPToolReturnTextOnServer
+	//        → scriptedCaller step2 返回新凭证 → 第二次 PUT 成功
+
+	oldPut := httpPutFile
+	putCalls := 0
+	httpPutFile = func(ctx context.Context, url string, headers map[string]string, filePath string, fileSize int64) error {
+		putCalls++
+		if putCalls == 1 {
+			return &httpStatusError{StatusCode: 401, Body: "token expired"}
+		}
+		return nil
+	}
+	t.Cleanup(func() { httpPutFile = oldPut })
+
+	file := filepath.Join(t.TempDir(), "upload.txt")
+	_ = os.WriteFile(file, []byte("content"), 0o600)
+
+	// step1: get_upload_info 成功
+	// step2: refetch (第二次 get_upload_info) 成功
+	// step3: commit_upload 成功
+	payload1 := `{"uploadId":"u1","resourceUrl":"https://upload.invalid/put1"}`
+	payload2 := `{"uploadId":"u2","resourceUrl":"https://upload.invalid/put2"}`
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: payload1},
+		{text: payload2},
+		{text: `{}`},
+	}}
+
+	err := executeDriveEdge(t, caller, "upload", "--file", file, "--folder", "folder-1")
+	if err != nil {
+		t.Fatalf("upload with refetch 应成功: %v", err)
+	}
+	if putCalls != 2 {
+		t.Fatalf("PUT 应被调用 2 次（首次 401 + 重试），实际: %d", putCalls)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// 覆盖率补全：drive.go:501-503 logf 闭包体（通过命令路径触发分片下载）
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveDownloadCmdLogfInvocation(t *testing.T) {
+	// 目标：覆盖 drive.go download 命令中 dlOpts.logf 闭包体（line 501-503）。
+	// 策略：通过 executeDriveEdge 走完整命令路径，MCP 返回 fileSize >= 2*partSize(2MB)，
+	//        server 正确支持 Range，使 driveTransferDownload 走入 downloadRangedParts，
+	//        logf 在分片启动时被调用。
+
+	totalSize := 2200000 // > 2*1MB threshold
+	content := makeTestContent(totalSize)
+
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rng := r.Header.Get("Range")
+		if rng == "" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(content)
+			return
+		}
+		var start, end int64
+		if _, err := fmt.Sscanf(rng, "bytes=%d-%d", &start, &end); err != nil || start >= int64(len(content)) {
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		if end >= int64(len(content)) {
+			end = int64(len(content)) - 1
+		}
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	driveRangeClient = srv.Client()
+
+	dest := filepath.Join(t.TempDir(), "cmd-logf.bin")
+	mcpResp := fmt.Sprintf(`{"resourceUrl":"%s/file.bin","fileSize":%d}`, srv.URL, totalSize)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp},
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download", "--node", "node-1", "--output", dest, "--part-size", "1MB", "--parallel", "2", "--no-resume")
+	if err != nil {
+		t.Fatalf("ranged download via cmd 应成功: %v", err)
+	}
+	// 验证文件内容正确
+	got, _ := os.ReadFile(dest)
+	if len(got) != totalSize {
+		t.Fatalf("产物大小 %d != %d", len(got), totalSize)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// 覆盖率补全：drive.go:553 download 命令 cancel + --no-resume else 分支
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveDownloadCancelNoResume(t *testing.T) {
+	// 目标：覆盖 download 命令中 context.Canceled + noResume=true 的 else 分支（line 553）。
+	// 条件：driveTransferDownload 返回 context.Canceled + --no-resume 已设置。
+	// 由于 fileSize 很小（< 2*16MB），走 downloadSingleWithAuthRetry → httpGetFile。
+	// mock httpGetFile 返回 context.Canceled。
+
+	oldGet := httpGetFile
+	httpGetFile = func(_ context.Context, _ string, _ map[string]string, _ string) error {
+		return context.Canceled
+	}
+	t.Cleanup(func() { httpGetFile = oldGet })
+
+	dest := filepath.Join(t.TempDir(), "cancel-noresume.bin")
+	mcpResp := `{"resourceUrl":"https://fake.invalid/f.bin","fileSize":100}`
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp},
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download", "--node", "node-1", "--output", dest, "--no-resume")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("应返回 context.Canceled, got: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// 覆盖率补全：drive.go:652 download-version 命令 cancel + --no-resume else 分支
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveDownloadVersionCancelNoResume(t *testing.T) {
+	// 目标：覆盖 download-version 命令中 context.Canceled + noResume=true 的 else 分支（line 652）。
+
+	oldGet := httpGetFile
+	httpGetFile = func(_ context.Context, _ string, _ map[string]string, _ string) error {
+		return context.Canceled
+	}
+	t.Cleanup(func() { httpGetFile = oldGet })
+
+	dest := filepath.Join(t.TempDir(), "ver-cancel-noresume.bin")
+	mcpResp := `{"downloadUrl":"https://fake.invalid/f.bin","fileSize":100}`
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: mcpResp},
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download-version", "--node", "node-1", "--version", "3", "--output", dest, "--no-resume")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("应返回 context.Canceled, got: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// 覆盖率补全：drive_transfer.go:604 worker goroutine ctx cancel early return
+// ──────────────────────────────────────────────────────────
+
+func TestCrossPlatformCoverageDriveTransferWorkerCtxCancelBeforeProcess(t *testing.T) {
+	// 目标：覆盖 downloadRangedParts worker 中 "if runCtx.Err() != nil { return }"。
+	// 策略：让 workers 正常处理分片，通过 context timeout 在处理过程中过期。
+	//        当 worker 完成某个分片后循环回来收到新 job 时，发现 runCtx 已取消。
+	//        transport 每次请求加 50μs 延迟，使总处理时间接近 timeout，最大化命中率。
+
+	totalSize := int64(200)
+	content := makeTestContent(int(totalSize))
+
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	driveRangeClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// 每次请求加小延迟，让总处理时间接近 deadline
+			time.Sleep(50 * time.Microsecond)
+			var start, end int64
+			if _, err := fmt.Sscanf(req.Header.Get("Range"), "bytes=%d-%d", &start, &end); err != nil {
+				return &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader("bad"))}, nil
+			}
+			if end >= int64(len(content)) {
+				end = int64(len(content)) - 1
+			}
+			resp := &http.Response{
+				StatusCode: http.StatusPartialContent,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(string(content[start : end+1]))),
+			}
+			resp.Header.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+			return resp, nil
+		}),
+	}
+
+	// 多次尝试以确保覆盖（goroutine 调度非确定性）
+	for attempt := 0; attempt < 50; attempt++ {
+		// timeout 设为约为总处理时间的50%，确保在处理过程中过期
+		// 40分片/4workers=10轮*50μs=500μs，timeout设300μs使其在中间过期
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Microsecond)
+
+		creds := &driveCredentialState{url: "http://127.0.0.1:1/fake"}
+		dest := filepath.Join(t.TempDir(), fmt.Sprintf("wkr-%d.bin", attempt))
+		opts := driveDownloadOptions{partSize: 5, parallel: 4, resume: false, knownSize: totalSize}
+		_ = downloadRangedParts(ctx, creds, dest, totalSize, opts)
+		cancel()
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// driveCredentialState.refresh: 版本校验（P1 修复验证）
+// ──────────────────────────────────────────────────────────
+
+// 刷新后版本一致 → 正常继续
+func TestCrossPlatformCoverageRefreshVersionMatch(t *testing.T) {
+	cs := &driveCredentialState{
+		url:            "u0",
+		initialVersion: 5,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "u1", nil, 5, nil
+		},
+	}
+	_, _, gen := cs.current()
+	if err := cs.refresh(context.Background(), gen); err != nil {
+		t.Fatalf("版本一致应成功: %v", err)
+	}
+	url, _, _ := cs.current()
+	if url != "u1" {
+		t.Errorf("刷新后 URL 应更新, got %q", url)
+	}
+}
+
+// 刷新后版本变化 → 返回错误终止
+func TestCrossPlatformCoverageRefreshVersionMismatch(t *testing.T) {
+	cs := &driveCredentialState{
+		url:            "u0",
+		initialVersion: 5,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "u1", nil, 8, nil
+		},
+	}
+	_, _, gen := cs.current()
+	err := cs.refresh(context.Background(), gen)
+	if err == nil {
+		t.Fatal("版本变更应返回错误")
+	}
+	if !strings.Contains(err.Error(), "文件版本已变更") {
+		t.Fatalf("错误信息应包含版本变更提示, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "5") || !strings.Contains(err.Error(), "8") {
+		t.Fatalf("错误信息应包含新旧版本号, got: %v", err)
+	}
+	// URL 不应更新（拒绝了变更）
+	url, _, _ := cs.current()
+	if url != "u0" {
+		t.Errorf("版本变更时 URL 不应更新, got %q", url)
+	}
+}
+
+// initialVersion=0（旧 MCP 不返回 version）→ 激进策略：返回 sentinel error
+func TestCrossPlatformCoverageRefreshVersionZeroInitial(t *testing.T) {
+	cs := &driveCredentialState{
+		url:            "u0",
+		initialVersion: 0, // 未知初始版本
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "u1", nil, 99, nil // 刷新返回任意版本
+		},
+	}
+	_, _, gen := cs.current()
+	err := cs.refresh(context.Background(), gen)
+	if !errors.Is(err, errCredentialRefreshVersionUnknown) {
+		t.Fatalf("initialVersion=0 应返回 errCredentialRefreshVersionUnknown, got: %v", err)
+	}
+	// 凭证应已更新
+	url, _, _ := cs.current()
+	if url != "u1" {
+		t.Errorf("凭证应已更新, got url=%q", url)
+	}
+}
+
+// 刷新返回 version=0（MCP 不返回 version）→ 激进策略：返回 sentinel error
+func TestCrossPlatformCoverageRefreshVersionZeroReturned(t *testing.T) {
+	cs := &driveCredentialState{
+		url:            "u0",
+		initialVersion: 5,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "u1", nil, 0, nil // 刷新未返回版本
+		},
+	}
+	_, _, gen := cs.current()
+	err := cs.refresh(context.Background(), gen)
+	if !errors.Is(err, errCredentialRefreshVersionUnknown) {
+		t.Fatalf("version=0 应返回 errCredentialRefreshVersionUnknown, got: %v", err)
+	}
+	// 凭证应已更新
+	url, _, _ := cs.current()
+	if url != "u1" {
+		t.Errorf("凭证应已更新, got url=%q", url)
+	}
+}
+
+// 分片下载中 refresh 触发版本变更检测 → 下载终止
+func TestCrossPlatformCoverageDownloadRangedParts_VersionMismatchAbort(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		if n == 1 {
+			// 第一次（probeRangeSupport 不经此路径）/首分片请求 → 401
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, "expired")
+			return
+		}
+		// 不应走到这里
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{
+		url:            srv.URL,
+		initialVersion: 3,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			// 刷新时版本变了
+			return srv.URL, nil, 7, nil
+		},
+	}
+	dest := filepath.Join(t.TempDir(), "version-abort.bin")
+	opts := driveDownloadOptions{partSize: 50, parallel: 1, resume: false}
+	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
+	if err == nil {
+		t.Fatal("版本变更应导致下载失败")
+	}
+	if !strings.Contains(err.Error(), "文件版本已变更") {
+		t.Fatalf("应包含版本变更错误, got: %v", err)
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// fetchRangeInto: Content-Range total 校验（P1 修复验证）
+// ──────────────────────────────────────────────────────────
+
+// Content-Range total 与 expectedTotal 一致 → 正常通过
+func TestCrossPlatformCoverageFetchRangeInto_ContentRangeTotalMatch(t *testing.T) {
+	content := makeTestContent(200)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	f, err := os.CreateTemp(t.TempDir(), "total-match-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Truncate(200); err != nil {
+		t.Fatal(err)
+	}
+	part := driveDownloadPart{index: 0, offset: 0, length: 50}
+	if err := fetchRangeInto(context.Background(), srv.URL, nil, f, part, 200); err != nil {
+		t.Fatalf("total 一致不应报错: %v", err)
+	}
+}
+
+// Content-Range total 与 expectedTotal 不一致 → 返回错误
+func TestCrossPlatformCoverageFetchRangeInto_ContentRangeTotalMismatch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		// 服务端声称 total=500，但调用方期望 200
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/500", start, end))
+		w.WriteHeader(http.StatusPartialContent)
+		data := make([]byte, end-start+1)
+		_, _ = w.Write(data)
+	}))
+	defer srv.Close()
+
+	f, err := os.CreateTemp(t.TempDir(), "total-mismatch-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Truncate(200); err != nil {
+		t.Fatal(err)
+	}
+	part := driveDownloadPart{index: 0, offset: 0, length: 50}
+	err = fetchRangeInto(context.Background(), srv.URL, nil, f, part, 200)
+	if err == nil {
+		t.Fatal("total 不匹配应返回错误")
+	}
+	if !strings.Contains(err.Error(), "总长不匹配") {
+		t.Fatalf("错误信息应包含'总长不匹配': %v", err)
+	}
+	if !strings.Contains(err.Error(), "500") || !strings.Contains(err.Error(), "200") {
+		t.Fatalf("错误信息应包含实际和期望值: %v", err)
+	}
+}
+
+// expectedTotal=0（调用方不知道总长）→ 跳过校验
+func TestCrossPlatformCoverageFetchRangeInto_ContentRangeTotalSkipWhenZeroExpected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/9999", start, end))
+		w.WriteHeader(http.StatusPartialContent)
+		data := make([]byte, end-start+1)
+		_, _ = w.Write(data)
+	}))
+	defer srv.Close()
+
+	f, err := os.CreateTemp(t.TempDir(), "total-skip-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+	part := driveDownloadPart{index: 0, offset: 0, length: 50}
+	// expectedTotal=0 → 不校验 total
+	if err := fetchRangeInto(context.Background(), srv.URL, nil, f, part, 0); err != nil {
+		t.Fatalf("expectedTotal=0 应跳过 total 校验: %v", err)
+	}
+}
+
+// Content-Range total=-1（"*" 未知）→ crTotal<0 → 跳过校验
+func TestCrossPlatformCoverageFetchRangeInto_ContentRangeTotalUnknown(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		// total="*" → parseContentRange 返回 total=-1
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/*", start, end))
+		w.WriteHeader(http.StatusPartialContent)
+		data := make([]byte, end-start+1)
+		_, _ = w.Write(data)
+	}))
+	defer srv.Close()
+
+	f, err := os.CreateTemp(t.TempDir(), "total-unknown-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Truncate(100); err != nil {
+		t.Fatal(err)
+	}
+	part := driveDownloadPart{index: 0, offset: 0, length: 50}
+	// crTotal=-1 (不 > 0) → 跳过 total 校验
+	if err := fetchRangeInto(context.Background(), srv.URL, nil, f, part, 200); err != nil {
+		t.Fatalf("total=* 应跳过校验: %v", err)
+	}
+}
+
+// TestCrossPlatformCoverageFetchRangeIntoMissingContentRange 验证 fetchRangeInto 在
+// 206 响应缺少 Content-Range 头时返回明确错误，拒绝无法验证偏移一致性的分片。
+func TestCrossPlatformCoverageFetchRangeIntoMissingContentRange(t *testing.T) {
+	content := makeTestContent(1024)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var start, end int64
+		fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &start, &end)
+		// 返回 206 但不带 Content-Range
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(content[start : end+1])
+	}))
+	defer srv.Close()
+
+	f, err := os.CreateTemp(t.TempDir(), "missing-cr-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Truncate(1024); err != nil {
+		t.Fatal(err)
+	}
+
+	part := driveDownloadPart{index: 0, offset: 0, length: 512}
+	err = fetchRangeInto(context.Background(), srv.URL, nil, f, part, 1024)
+	if err == nil {
+		t.Fatal("应当返回错误：分片响应缺少 Content-Range")
+	}
+	if !strings.Contains(err.Error(), "缺少 Content-Range") {
+		t.Fatalf("错误信息应包含'缺少 Content-Range': %v", err)
+	}
+}
+
+// TestCrossPlatformCoverageDriveDownloadFetchCredParseError 覆盖 drive.go download 命令
+// fetchCred 闭包中 parseDriveDownloadInfo 返回 error 的路径（line 547-549）。
+func TestCrossPlatformCoverageDriveDownloadFetchCredParseError(t *testing.T) {
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	driveRangeClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader("expired")),
+			}, nil
+		}),
+	}
+
+	dest := filepath.Join(t.TempDir(), "parse-err.bin")
+	// step1: 正常返回（进入分片路径）；step2: fetchCred 返回可解析但无 URL 的 JSON
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"resourceUrl":"https://fake.invalid/f","fileSize":3000000}`},
+		{text: `{"result":{}}`}, // parseDriveDownloadInfo 会返回 "downloadUrl 为空" 错误
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download", "--node", "n1", "--output", dest, "--part-size", "1MB", "--parallel", "1")
+	if err == nil {
+		t.Fatal("parseDriveDownloadInfo 失败应导致错误")
+	}
+	if !strings.Contains(err.Error(), "downloadUrl") && !strings.Contains(err.Error(), "下载链接") {
+		t.Fatalf("错误应包含解析失败信息: %v", err)
+	}
+}
+
+// TestCrossPlatformCoverageDriveDownloadVersionFetchCredParseError 覆盖 download-version
+// fetchCred 闭包中 parseDriveDownloadInfo 返回 error 的路径（line 650-652）。
+func TestCrossPlatformCoverageDriveDownloadVersionFetchCredParseError(t *testing.T) {
+	origClient := driveRangeClient
+	t.Cleanup(func() { driveRangeClient = origClient })
+
+	driveRangeClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader("expired")),
+			}, nil
+		}),
+	}
+
+	dest := filepath.Join(t.TempDir(), "ver-parse-err.bin")
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"resourceUrl":"https://fake.invalid/f","fileSize":3000000}`},
+		{text: `{"result":{}}`},
+	}}
+
+	err := executeDriveEdge(t, caller,
+		"download-version", "--node", "n1", "--version", "3", "--output", dest, "--part-size", "1MB", "--parallel", "1")
+	if err == nil {
+		t.Fatal("parseDriveDownloadInfo 失败应导致错误")
+	}
+}
+
+// ──────────────────────────────────────────────────────────
+// 激进策略：version=0 时凭证刷新后清空分片从头下载
+// ──────────────────────────────────────────────────────────
+
+// TestCrossPlatformCoverageRefreshVersionBothZero 双方 version=0 → 返回 sentinel error，凭证已更新
+func TestCrossPlatformCoverageRefreshVersionBothZero(t *testing.T) {
+	cs := &driveCredentialState{
+		url:            "u0",
+		initialVersion: 0,
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return "u1", map[string]string{"k": "v"}, 0, nil
+		},
+	}
+	_, _, gen := cs.current()
+	err := cs.refresh(context.Background(), gen)
+	if !errors.Is(err, errCredentialRefreshVersionUnknown) {
+		t.Fatalf("双方 version=0 应返回 sentinel error, got: %v", err)
+	}
+	// 凭证应已更新
+	url, headers, newGen := cs.current()
+	if url != "u1" {
+		t.Errorf("URL 应已更新, got %q", url)
+	}
+	if headers["k"] != "v" {
+		t.Errorf("headers 应已更新, got %v", headers)
+	}
+	if newGen != gen+1 {
+		t.Errorf("gen 应递增, got %d (was %d)", newGen, gen)
+	}
+}
+
+// TestCrossPlatformCoverageDownloadRangedParts_VersionUnknownCleansCheckpoint
+// version=0 的凭证刷新导致分片下载中止，checkpoint 和临时文件被清理。
+func TestCrossPlatformCoverageDownloadRangedParts_VersionUnknownCleansCheckpoint(t *testing.T) {
+	content := makeTestContent(100)
+	// 服务端：第一次请求正常（probe），后续分片请求返回 401 触发 refresh
+	var probeCount atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rng := r.Header.Get("Range")
+		if rng == "bytes=0-0" && probeCount.Add(1) == 1 {
+			// probe 请求正常
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes 0-0/%d", len(content)))
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write(content[0:1])
+			return
+		}
+		// 分片请求全部返回 401 触发 credential refresh
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "expired")
+	}))
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "version-unknown-clean.bin")
+	partPath := dest + drivePartFileSuffix
+	metaPath := dest + drivePartMetaSuffix
+
+	// fetch 返回 version=0（旧 MCP），initialVersion=0（opts.version 未设置）
+	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
+		return srv.URL, nil, 0, nil // version=0
+	}
+	opts := driveDownloadOptions{partSize: 30, parallel: 1, resume: true, knownSize: 100}
+	// initialVersion 来自 opts.version（默认 0）
+
+	err := driveTransferDownload(context.Background(), fetch, srv.URL, nil, dest, opts)
+	if err == nil {
+		t.Fatal("version=0 刷新应导致下载失败")
+	}
+	if !errors.Is(err, errCredentialRefreshVersionUnknown) {
+		t.Fatalf("应包含 sentinel error, got: %v", err)
+	}
+	// 验证 checkpoint 和临时文件被清理
+	if _, statErr := os.Stat(metaPath); !os.IsNotExist(statErr) {
+		t.Error("checkpoint 应被清理")
+	}
+	if _, statErr := os.Stat(partPath); !os.IsNotExist(statErr) {
+		t.Error("分片临时文件应被清理")
+	}
+}
+
+// TestCrossPlatformCoverageProbeRangeSupport_VersionUnknownNonFatal
+// 探测阶段 version=0 的 refresh 不应阻断探测（无已完成分片需保护）。
+func TestCrossPlatformCoverageProbeRangeSupport_VersionUnknownNonFatal(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := attempts.Add(1)
+		if n == 1 {
+			// 第一次：401 触发 refresh
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, "expired")
+			return
+		}
+		// 第二次（refresh 后重试）：正常 206
+		w.Header().Set("Content-Range", "bytes 0-0/500")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte{0})
+	}))
+	defer srv.Close()
+
+	creds := &driveCredentialState{
+		url:            srv.URL,
+		initialVersion: 0, // version 未知
+		fetch: func(ctx context.Context) (string, map[string]string, int, error) {
+			return srv.URL, nil, 0, nil // 仍然未知
+		},
+	}
+	total, resp, err := probeRangeSupport(context.Background(), creds)
+	if err != nil {
+		t.Fatalf("探测阶段 version=0 不应报错: %v", err)
+	}
+	if resp != nil {
+		t.Error("不应返回全量 resp")
+	}
+	if total != 500 {
+		t.Errorf("应返回正确 total=500, got %d", total)
+	}
+	if attempts.Load() != 2 {
+		t.Errorf("应请求 2 次（401→refresh→retry 成功）, got %d", attempts.Load())
 	}
 }
