@@ -476,7 +476,8 @@ func newDriveCommand() *cobra.Command {
 --output 指定本地保存路径，可以是文件路径或目录。
 如果指定目录，文件名从下载 URL 中自动推断。`,
 		Example: `  dws drive download --node <dentryUuid> --output ./report.pdf
-  dws drive download --node <dentryUuid> --output ~/downloads/`,
+  dws drive download --node <dentryUuid> --output ~/downloads/
+  dws drive download --node <dentryUuid> --output ./big.zip --part-size 32MB --parallel 8`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fileID := flagOrFallback(cmd, "node", "file-id")
 			if fileID == "" {
@@ -490,6 +491,15 @@ func newDriveCommand() *cobra.Command {
 			argsMap := map[string]any{"fileId": fileID}
 			if v, _ := cmd.Flags().GetString("space-id"); v != "" {
 				argsMap["spaceId"] = v
+			}
+
+			// fail-fast：分片下载参数校验
+			dlOpts, err := driveDownloadOptionsFromFlags(cmd)
+			if err != nil {
+				return err
+			}
+			dlOpts.logf = func(format string, a ...any) {
+				deps.Out.PrintInfo(fmt.Sprintf(format, a...))
 			}
 
 			if deps.Caller.DryRun() {
@@ -523,9 +533,18 @@ func newDriveCommand() *cobra.Command {
 				outputPath = filepath.Join(outputPath, filename)
 			}
 
-			// Step 2: HTTP GET 下载文件
+			// Step 2: 分片下载（自动分派 + 401/403 凭证刷新重试）
 			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
-			if err := httpGetFile(ctx, resourceURL, dlHeaders, outputPath); err != nil {
+			dlOpts.knownSize = parseDownloadFileSize(text)
+			dlOpts.nodeID = fileID
+			fetchCred := func(fctx context.Context) (string, map[string]string, error) {
+				t, ferr := callMCPToolReturnText(fctx, "download_file", argsMap)
+				if ferr != nil {
+					return "", nil, ferr
+				}
+				return parseDownloadInfo(t)
+			}
+			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
 				return err
 			}
 
@@ -564,6 +583,15 @@ func newDriveCommand() *cobra.Command {
 				return fmt.Errorf("flag --output is required")
 			}
 
+			// fail-fast：分片下载参数校验
+			dlOpts, err := driveDownloadOptionsFromFlags(cmd)
+			if err != nil {
+				return err
+			}
+			dlOpts.logf = func(format string, a ...any) {
+				deps.Out.PrintInfo(fmt.Sprintf(format, a...))
+			}
+
 			if deps.Caller.DryRun() {
 				deps.Out.PrintKeyValue("操作", "下载文件历史版本")
 				deps.Out.PrintKeyValue("节点ID", fileID)
@@ -574,10 +602,11 @@ func newDriveCommand() *cobra.Command {
 
 			ctx := context.Background()
 			deps.Out.PrintInfo("[1/2] 获取历史版本下载链接...")
-			text, err := callMCPToolReturnTextOnServer(ctx, "drive", "download_file_version", map[string]any{
+			dlArgsMap := map[string]any{
 				"nodeId":  fileID,
 				"version": versionNum,
-			})
+			}
+			text, err := callMCPToolReturnTextOnServer(ctx, "drive", "download_file_version", dlArgsMap)
 			if err != nil {
 				return err
 			}
@@ -593,7 +622,17 @@ func newDriveCommand() *cobra.Command {
 				outputPath = filepath.Join(outputPath, filename)
 			}
 			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
-			if err := httpGetFile(ctx, resourceURL, dlHeaders, outputPath); err != nil {
+			dlOpts.knownSize = parseDownloadFileSize(text)
+			dlOpts.nodeID = fileID
+			dlOpts.version = versionNum
+			fetchCred := func(fctx context.Context) (string, map[string]string, error) {
+				t, ferr := callMCPToolReturnTextOnServer(fctx, "drive", "download_file_version", dlArgsMap)
+				if ferr != nil {
+					return "", nil, ferr
+				}
+				return parseDownloadInfo(t)
+			}
+			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
 				return err
 			}
 			deps.Out.PrintInfo(fmt.Sprintf("下载完成: %s", outputPath))
@@ -709,10 +748,16 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
+	driveDownloadCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
+	driveDownloadCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")
 
 	driveDownloadVersionCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
 	driveDownloadVersionCmd.Flags().Int("version", 0, "历史版本号 (必填，正整数，从 drive list --versions 获取)")
 	driveDownloadVersionCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadVersionCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
+	driveDownloadVersionCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
+	driveDownloadVersionCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")
 	for _, alias := range []string{"url", "id", "node-id", "doc-id", "file-id"} {
 		driveDownloadVersionCmd.Flags().String(alias, "", "")
 		_ = driveDownloadVersionCmd.Flags().MarkHidden(alias)
@@ -2006,11 +2051,11 @@ func uploadToDrive(ctx context.Context, filePath, fileName string, fileSize int6
 	if err != nil {
 		return err
 	}
-	resourceURL, uploadID, headers, err := parseDriveUploadInfo(text)
+	// HTTP PUT 上传文件（OSS 与中心协议同路径；headers 透传，401/403 重取凭证重试一次）
+	uploadID, err := driveUploadPut(ctx, text, func(rctx context.Context) (string, error) {
+		return callMCPToolReturnTextOnServer(rctx, "drive", "get_upload_info", step1Args)
+	}, filePath, fileSize)
 	if err != nil {
-		return err
-	}
-	if err := httpPutFile(ctx, resourceURL, headers, filePath, fileSize); err != nil {
 		return err
 	}
 
@@ -2218,4 +2263,50 @@ func isPermissionCLIError(err error) bool {
 	}
 	var patErr *PATError
 	return errors.As(err, &patErr)
+}
+
+// parseDriveDownloadInfo 从 drive 的 download_file 返回里取下载 URL 与请求头。
+// drive 返回形如 {"result":{"downloadUrl":"https://..."}}；OSS 预签名 URL 自带签名参数、
+// 无额外请求头；中心协议（httpToCenterWithToken）返回的 headers 含 dentry-token，
+// 需原样透传。对历史字段名（resourceUrl / resourceUrls[].url）做 fallback。
+func parseDriveDownloadInfo(text string) (string, map[string]string, error) {
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text), &data); err != nil {
+		return "", nil, fmt.Errorf("解析 download_file 返回失败: %w", err)
+	}
+	if result, ok := data["result"].(map[string]any); ok {
+		data = result
+	}
+
+	headers := make(map[string]string)
+	if h, ok := data["headers"].(map[string]any); ok {
+		for k, v := range h {
+			if s, ok := v.(string); ok {
+				headers[k] = s
+			}
+		}
+	}
+
+	dlURL, _ := data["downloadUrl"].(string)
+	if dlURL == "" {
+		dlURL, _ = data["resourceUrl"].(string)
+	}
+	if dlURL == "" {
+		if arr, ok := data["resourceUrls"].([]any); ok && len(arr) > 0 {
+			if first, ok := arr[0].(map[string]any); ok {
+				dlURL, _ = first["url"].(string)
+				if h, ok := first["headers"].(map[string]any); ok {
+					for k, v := range h {
+						if s, ok := v.(string); ok {
+							headers[k] = s
+						}
+					}
+				}
+			}
+		}
+	}
+	if dlURL == "" {
+		return "", nil, fmt.Errorf("download_file 未返回下载链接（downloadUrl 为空）")
+	}
+	return dlURL, headers, nil
 }

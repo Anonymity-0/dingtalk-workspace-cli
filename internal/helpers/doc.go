@@ -276,7 +276,8 @@ func defaultHTTPPutFile(ctx context.Context, url string, headers map[string]stri
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("OSS upload failed: HTTP %d: %s", resp.StatusCode, string(body))
+		// typed httpStatusError 供上层按 401/403 分支重取凭证
+		return fmt.Errorf("OSS upload failed: %w", &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)})
 	}
 
 	return nil
@@ -434,7 +435,8 @@ func defaultHTTPGetFile(ctx context.Context, url string, headers map[string]stri
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		// typed httpStatusError 供上层按 401/403 分支重取凭证
+		return &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 
 	outFile, err := docCreateDestination(destPath)
