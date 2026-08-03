@@ -953,6 +953,7 @@ func newAitableCommand() *cobra.Command {
   dws aitable form       [list|delete|update]                                           表单管理
   dws aitable form field [list|update|hide]                                             表单字段管理
   dws aitable form share [get|update|notify]                                            表单分享管理
+  dws aitable workflow   [edit-example|create|update|enable|disable|get|list]           自动化工作流管理
   dws aitable dashboard  [get|create|update|delete|config-example]                      仪表盘管理
   dws aitable chart      [get|create|update|delete|widgets-example]                     图表管理
   dws aitable export     data                                                           数据导出
@@ -4860,6 +4861,37 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 		},
 	})
 
+	workflowEditExampleCmd := &cobra.Command{
+		Use:   "edit-example",
+		Short: "获取工作流编辑文档与示例",
+		Long: `返回服务端提供的 AI 表格工作流编辑文档与示例。
+可作为 workflow create / workflow update 的 workflow-dsl/v1 结构参考；此命令不需要 Base ID 或其他参数。`,
+		Example: `  dws aitable workflow edit-example`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return callAitableTool("edit_workflow_example", map[string]any{})
+		},
+	}
+	DeclareLeafMetadata(workflowEditExampleCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_edit_example",
+				CanonicalPath:  "aitable.workflow_edit_example",
+				CLIPath:        "aitable workflow edit-example",
+				PrimaryCLIPath: "aitable workflow edit-example",
+			},
+			Description: "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。",
+			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls aitable/edit_workflow_example, which is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。",
+				UseWhen:      []string{"创建或更新工作流前需要服务端提供的编辑文档与 workflow-dsl/v1 示例时"},
+				AvoidWhen:    []string{"实际创建工作流用 workflow create；修改已有工作流用 workflow update；查询已发布定义用 workflow get"},
+				Examples:     []string{"dws aitable workflow edit-example"},
+			},
+		},
+	})
+
 	workflowUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "更新并发布已有自动化工作流",
@@ -7305,7 +7337,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	workflowListCmd.Flags().Int("limit", 0, "分页大小 [1, 100]，不传走服务端默认 20")
 	workflowListCmd.Flags().Int("offset", 0, "分页偏移量，>= 0，不传走服务端默认 0")
 	workflowCmd.AddCommand(
-		workflowCreateCmd, workflowUpdateCmd,
+		workflowEditExampleCmd, workflowCreateCmd, workflowUpdateCmd,
 		workflowEnableCmd, workflowDisableCmd,
 		workflowGetCmd, workflowListCmd,
 	)
