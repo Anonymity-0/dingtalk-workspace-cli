@@ -50,10 +50,37 @@ func TestBuildInterfaceRegistryRejectsCanonicalConflict(t *testing.T) {
 	}
 }
 
-func TestRuntimeEmbeddedMCPMetadataBuildsInterfaceRegistry(t *testing.T) {
+func TestCrossPlatformCoverageRuntimeEmbeddedMCPMetadataBuildsInterfaceRegistry(t *testing.T) {
 	// Production pin is empty; empty Tools must build a valid empty registry.
 	if _, err := buildInterfaceRegistry(runtimeMCPMetadata().Tools); err != nil {
 		t.Fatalf("buildInterfaceRegistry(empty production MCP) error = %v", err)
+	}
+	if err := validateSchemaRegistryInterfaces(SchemaRegistry{Products: []ProductSpec{{
+		Tools: []ToolSpec{{
+			Identity:  contract.ToolIdentitySpec{CanonicalPath: "doc.create", ProductID: "doc", Name: "create"},
+			Interface: contract.InterfaceSpec{Mode: contract.InterfaceModeLocal, Availability: contract.InterfaceAvailable},
+		}},
+	}}}); err != nil {
+		t.Fatalf("validateSchemaRegistryInterfaces(empty pin) error = %v", err)
+	}
+	if err := validateSchemaRegistryInterfacesWithMetadata(SchemaRegistry{Products: []ProductSpec{{
+		Tools: []ToolSpec{{
+			Identity: contract.ToolIdentitySpec{CanonicalPath: "doc.copy", ProductID: "doc", Name: "copy"},
+			Interface: contract.InterfaceSpec{
+				Mode:         contract.InterfaceModeMCP,
+				Availability: contract.InterfaceAvailable,
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "copy_document"},
+			},
+		}},
+	}}}, embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
+		"doc.copy_document": {InterfaceRef: &embeddedMCPInterfaceRef{ProductID: "doc", RPCName: "copy_document"}},
+	}}); err != nil {
+		t.Fatalf("validateSchemaRegistryInterfacesWithMetadata(fixture) error = %v", err)
+	}
+	if err := validateSchemaRegistryInterfacesWithMetadata(SchemaRegistry{}, embeddedMCPMetadata{
+		Tools: map[string]embeddedMCPToolMetadata{"": {}},
+	}); err == nil {
+		t.Fatal("malformed fixture registry must fail closed")
 	}
 }
 

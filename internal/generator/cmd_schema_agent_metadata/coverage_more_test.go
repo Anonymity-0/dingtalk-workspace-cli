@@ -80,8 +80,15 @@ func TestCrossPlatformCoverageMetadataMainReportsEveryStageFailure(t *testing.T)
 	invoke([]string{"-output", temporaryOutput}, func() {
 		validateMetadataAllowlist = func(string, string, string, string) error { return errors.New("allowlist") }
 	})
-	// The retired -surface valve rejects before isolation runs.
+	// The retired -surface / -registry valves reject before isolation runs.
 	invoke([]string{"-output", temporaryOutput, "-surface", "legacy.json"}, func() {})
+	invoke([]string{"-output", temporaryOutput, "-registry", "legacy-registry.json"}, func() {})
+	invoke([]string{"-interface-metadata", "internal/cli/schema_mcp_metadata.json"}, func() {})
+	invoke([]string{"-interface-metadata", filepath.Join(t.TempDir(), "diagnostic.json"), "-output", temporaryOutput}, func() {
+		validateMetadataIsolation = func(string, []outputguard.Input, string, string, string) error {
+			return errors.New("isolation after diagnostic metadata")
+		}
+	})
 	invoke([]string{"-output", temporaryOutput, "-validate-surface=false"}, func() {
 		loadMetadataRegistryProjection = func(bool) (commandRegistryProjection, error) {
 			return commandRegistryProjection{}, errors.New("registry disabled")
@@ -232,6 +239,10 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 		buildEffectiveMetadata = originalBuild
 		bindEffectiveMetadata = originalBind
 	})
+
+	if _, err := loadEffectiveCommandRegistryProjection(false); err == nil || !strings.Contains(err.Error(), "validation cannot be disabled") {
+		t.Fatalf("disabled validation error = %v", err)
+	}
 
 	newMetadataRoot = func(...context.Context) *cobra.Command { return &cobra.Command{Use: "dws"} }
 	buildEffectiveMetadata = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {

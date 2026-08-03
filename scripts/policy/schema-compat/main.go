@@ -491,7 +491,8 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 		}
 	}
 	if oldTool.Constraints != newTool.Constraints &&
-		!compatibleHiddenSiblingConstraintExpansion(oldTool, newTool) {
+		!compatibleHiddenSiblingConstraintExpansion(oldTool, newTool) &&
+		!compatibleConstraintMemberExpansion(oldTool.Constraints, newTool.Constraints) {
 		failures = append(failures, fmt.Sprintf("schema tool %q changed constraints", toolPath))
 	}
 	if !compatiblePositionals(oldTool.Positionals, newTool.Positionals) {
@@ -573,6 +574,82 @@ func compatibleHiddenSiblingConstraintExpansion(oldTool, newTool toolSchema) boo
 	return true
 }
 
+// compatibleConstraintMemberExpansion allows declare≡execute / alias-surface
+// repairs that only add members to existing constraint groups. Removing a
+// member, dropping a group, or adding a new group remains incompatible.
+func compatibleConstraintMemberExpansion(oldConstraints, newConstraints string) bool {
+	oldGroups, okOld := parseConstraintGroups(oldConstraints)
+	newGroups, okNew := parseConstraintGroups(newConstraints)
+	if !okOld || !okNew {
+		return false
+	}
+	for _, key := range []string{"mutually_exclusive", "require_one_of", "require_together"} {
+		if !constraintGroupsAreMemberExpansions(oldGroups[key], newGroups[key]) {
+			return false
+		}
+	}
+	return true
+}
+
+func parseConstraintGroups(raw string) (map[string][][]string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return map[string][][]string{}, true
+	}
+	var projected struct {
+		MutuallyExclusive [][]string `json:"mutually_exclusive"`
+		RequireOneOf      [][]string `json:"require_one_of"`
+		RequireTogether   [][]string `json:"require_together"`
+	}
+	if err := json.Unmarshal([]byte(raw), &projected); err != nil {
+		return nil, false
+	}
+	return map[string][][]string{
+		"mutually_exclusive": projected.MutuallyExclusive,
+		"require_one_of":     projected.RequireOneOf,
+		"require_together":   projected.RequireTogether,
+	}, true
+}
+
+func constraintGroupsAreMemberExpansions(oldGroups, newGroups [][]string) bool {
+	if len(oldGroups) != len(newGroups) {
+		return false
+	}
+	used := make([]bool, len(newGroups))
+	for _, oldGroup := range oldGroups {
+		oldSet := stringSet(oldGroup)
+		if len(oldSet) == 0 {
+			return false
+		}
+		matched := false
+		for index, newGroup := range newGroups {
+			if used[index] {
+				continue
+			}
+			newSet := stringSet(newGroup)
+			if !stringSetContainsAll(newSet, oldSet) {
+				continue
+			}
+			used[index] = true
+			matched = true
+			break
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSetContainsAll(superset, subset map[string]bool) bool {
+	for value := range subset {
+		if !superset[value] {
+			return false
+		}
+	}
+	return true
+}
+
 func compatiblePositionals(oldPositionals, newPositionals []positionalSchema) bool {
 	if len(newPositionals) < len(oldPositionals) {
 		return false
@@ -621,7 +698,6 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 	}{
 		{name: "type", old: oldParameter.Type, new: newParameter.Type},
 		{name: "property", old: oldParameter.Property, new: newParameter.Property},
-		{name: "interface_type", old: oldParameter.InterfaceType, new: newParameter.InterfaceType},
 		{name: "default", old: oldParameter.Default, new: newParameter.Default},
 		{name: "interface_default", old: oldParameter.InterfaceDefault, new: newParameter.InterfaceDefault},
 		{name: "format", old: oldParameter.Format, new: newParameter.Format},
@@ -629,6 +705,13 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 		if field.old != field.new {
 			failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed %s", toolPath, name, field.name))
 		}
+	}
+	// Clearing interface_type is compatible after pinned MCP metadata retirement:
+	// production no longer projects MCP-sourced types unless ParamDecl declares them.
+	// Changing to a different non-empty value remains a contract break.
+	if oldParameter.InterfaceType != newParameter.InterfaceType &&
+		!(oldParameter.InterfaceType != "" && newParameter.InterfaceType == "") {
+		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed interface_type", toolPath, name))
 	}
 	if !oldParameter.Required && newParameter.Required {
 		failures = append(failures, fmt.Sprintf("schema tool %q made parameter %q newly required", toolPath, name))

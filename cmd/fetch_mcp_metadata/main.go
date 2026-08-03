@@ -40,14 +40,15 @@ type toolLister interface {
 
 // Injection points so run() is fully testable without network/keychain/exit.
 var (
-	osExit           = os.Exit
-	getenv           = os.Getenv
-	loadTokenData    = auth.LoadTokenDataKeychain
-	staticServers    = syncdata.StaticServers
-	registrySource   = collectedIdentityInterfaceRefs
-	listToolsTimeout = 30 * time.Second
-	gitHeadPath      = ".git/HEAD"
-	newToolLister    = func(token string) toolLister {
+	osExit               = os.Exit
+	getenv               = os.Getenv
+	loadTokenData        = auth.LoadTokenDataKeychain
+	staticServers        = syncdata.StaticServers
+	registrySource       = collectedIdentityInterfaceRefs
+	collectIdentitySpecs = cli.CollectIdentitySpecs
+	listToolsTimeout     = 30 * time.Second
+	gitHeadPath          = ".git/HEAD"
+	newToolLister        = func(token string) toolLister {
 		return transport.NewClient(&http.Client{Timeout: 60 * time.Second}).WithAuth(token, nil)
 	}
 )
@@ -322,7 +323,7 @@ func buildCrossServerRefs(prevTools map[string]map[string]any, registryMap map[s
 // interface_ref injection.
 func collectedIdentityInterfaceRefs() (map[string]map[string]string, error) {
 	root := app.NewSchemaSourceRootCommand()
-	specs, _, err := cli.CollectIdentitySpecs(root)
+	specs, _, err := collectIdentitySpecs(root)
 	if err != nil {
 		return nil, fmt.Errorf("collect command identity: %w", err)
 	}

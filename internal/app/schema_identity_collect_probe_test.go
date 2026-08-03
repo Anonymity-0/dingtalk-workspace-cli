@@ -25,7 +25,7 @@ import (
 // EffectiveCommandRegistry assembly. It asserts the collector returns a
 // non-empty spec set with no missing primaries, builds an effective registry
 // from it, and produces a stable SourceHash across repeated collection walks.
-func TestCollectedIdentityIsValidSingleSource(t *testing.T) {
+func TestCrossPlatformCoverageCollectedIdentityIsValidSingleSource(t *testing.T) {
 	root := NewRootCommand()
 	collected, report, err := cli.CollectIdentitySpecs(root)
 	if err != nil {

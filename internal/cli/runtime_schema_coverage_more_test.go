@@ -254,6 +254,34 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 	if required, present := runtimeFlagRequiredState(flag); !required || !present {
 		t.Fatalf("required annotation = %v/%v", required, present)
 	}
+
+	// Fixture MCP-shaped maps still participate when explicitly injected.
+	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
+		return schemaParameterBindingSnapshot{
+			Bindings: map[string]map[string]string{"sample.run": {"value": "clawType"}},
+		}, nil
+	})
+	requiredTrue := true
+	specs, err := runtimeCommandParameterSpecs(cmd, "sample.run", map[string]embeddedMCPParamMeta{
+		"clawType": {
+			Type:        "string",
+			Description: "fixture description",
+			Required:    &requiredTrue,
+			Default:     "fixture-default",
+		},
+	}, RuntimeSchemaConstraints{})
+	if err != nil {
+		t.Fatalf("fixture pinned parameter specs error = %v", err)
+	}
+	if len(specs) != 1 || specs[0].Property != "clawType" || specs[0].InterfaceDescription != "fixture description" {
+		t.Fatalf("fixture pinned parameter specs = %#v", specs)
+	}
+	if len(specs[0].InterfaceDefault) == 0 {
+		t.Fatalf("fixture interface_default missing: %#v", specs[0])
+	}
+	if prov := specs[0].FieldProvenance["required"]; prov.Source == "" {
+		t.Fatalf("fixture required provenance missing: %#v", specs[0].FieldProvenance)
+	}
 }
 
 func TestCrossPlatformCoverageRuntimeSchemaPureHelperEdges(t *testing.T) {

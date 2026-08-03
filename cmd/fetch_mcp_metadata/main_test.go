@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -17,11 +16,13 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/syncdata"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
+	"github.com/spf13/cobra"
 )
 
-func TestLoadRegistryInterfaceRefsCollectsIdentity(t *testing.T) {
+func TestCrossPlatformCoverageLoadRegistryInterfaceRefsCollectsIdentity(t *testing.T) {
 	var stderr bytes.Buffer
 	refs := loadRegistryInterfaceRefs(&stderr)
 	if len(refs) == 0 {
@@ -34,6 +35,46 @@ func TestLoadRegistryInterfaceRefsCollectsIdentity(t *testing.T) {
 	}
 	if got["product_id"] != "calendar" || got["rpc_name"] != "list_calendars" {
 		t.Fatalf("calendar.list_calendars ref = %#v", got)
+	}
+
+	direct, err := collectedIdentityInterfaceRefs()
+	if err != nil {
+		t.Fatalf("collectedIdentityInterfaceRefs() error = %v", err)
+	}
+	if len(direct) == 0 || direct["calendar.list_calendars"]["rpc_name"] != "list_calendars" {
+		t.Fatalf("collectedIdentityInterfaceRefs() = %#v", direct["calendar.list_calendars"])
+	}
+
+	prevRegistry := registrySource
+	prevCollect := collectIdentitySpecs
+	t.Cleanup(func() {
+		registrySource = prevRegistry
+		collectIdentitySpecs = prevCollect
+	})
+	registrySource = func() (map[string]map[string]string, error) {
+		return nil, errors.New("collect boom")
+	}
+	stderr.Reset()
+	if got := loadRegistryInterfaceRefs(&stderr); len(got) != 0 || !strings.Contains(stderr.String(), "cannot collect command identity") {
+		t.Fatalf("loadRegistryInterfaceRefs error path = %#v stderr=%q", got, stderr.String())
+	}
+
+	collectIdentitySpecs = func(*cobra.Command) ([]cli.CommandSpec, cli.IdentityCollectionReport, error) {
+		return nil, cli.IdentityCollectionReport{}, errors.New("walk boom")
+	}
+	if _, err := collectedIdentityInterfaceRefs(); err == nil || !strings.Contains(err.Error(), "collect command identity") {
+		t.Fatalf("collectedIdentityInterfaceRefs wrap error = %v", err)
+	}
+	collectIdentitySpecs = func(*cobra.Command) ([]cli.CommandSpec, cli.IdentityCollectionReport, error) {
+		return []cli.CommandSpec{
+			{CanonicalPath: ""},
+			{CanonicalPath: "nodot"},
+			{CanonicalPath: "doc.create"},
+		}, cli.IdentityCollectionReport{}, nil
+	}
+	gotRefs, err := collectedIdentityInterfaceRefs()
+	if err != nil || len(gotRefs) != 1 || gotRefs["doc.create"]["rpc_name"] != "create" {
+		t.Fatalf("collectedIdentityInterfaceRefs skip = %#v err=%v", gotRefs, err)
 	}
 }
 
@@ -329,11 +370,20 @@ func testRegistryRefs() (map[string]map[string]string, error) {
 	}, nil
 }
 
-func TestRunRefusesRetiredPinnedMCPMetadataPath(t *testing.T) {
+func TestCrossPlatformCoverageRunRefusesRetiredPinnedMCPMetadataPath(t *testing.T) {
 	stubDeps(t, "env-token", nil, nil, &fakeLister{}, testRegistryRefs)
-	code := run([]string{"--output", "internal/cli/schema_mcp_metadata.json"}, io.Discard)
+	var stderr bytes.Buffer
+	code := run([]string{"--output", "internal/cli/schema_mcp_metadata.json"}, &stderr)
 	if code != 2 {
 		t.Fatalf("run(retired pin) = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "refusing to write retired Schema pin") {
+		t.Fatalf("stderr = %q, want retired-pin refusal", stderr.String())
+	}
+	if !retiredPinnedMCPMetadataPath("internal/cli/schema_mcp_metadata.json") ||
+		!retiredPinnedMCPMetadataPath("/tmp/repo/internal/cli/schema_mcp_metadata.json") ||
+		retiredPinnedMCPMetadataPath("artifacts/mcp_metadata_diagnostic.json") {
+		t.Fatal("retiredPinnedMCPMetadataPath classification is incorrect")
 	}
 }
 
@@ -377,7 +427,7 @@ func TestResolveTokenEmptyKeychainToken(t *testing.T) {
 	}
 }
 
-func TestRunWritesSnapshotWithHonestCoverage(t *testing.T) {
+func TestCrossPlatformCoverageRunWritesSnapshotWithHonestCoverage(t *testing.T) {
 	servers := []syncdata.ServerInfo{
 		{ID: "doc", Endpoint: "https://doc.example"},
 		{ID: "sheet", Endpoint: "https://sheet.example"},
@@ -474,7 +524,7 @@ func TestRunIgnoresCorruptPreviousSnapshot(t *testing.T) {
 	}
 }
 
-func TestRunRegistryLoadFailureStillWritesStublessSnapshot(t *testing.T) {
+func TestCrossPlatformCoverageRunRegistryLoadFailureStillWritesStublessSnapshot(t *testing.T) {
 	stubDeps(t, "env-token", nil, nil, &fakeLister{}, func() (map[string]map[string]string, error) { return nil, errors.New("no identity") })
 	output := filepath.Join(t.TempDir(), "snapshot.json")
 	var stderr bytes.Buffer
@@ -524,7 +574,7 @@ func TestExtractParamsNilAndNonObjectSchemas(t *testing.T) {
 	}
 }
 
-func TestNewToolListerBuildsAuthedClient(t *testing.T) {
+func TestCrossPlatformCoverageNewToolListerBuildsAuthedClient(t *testing.T) {
 	if lister := newToolLister("tok"); lister == nil {
 		t.Fatal("newToolLister returned nil")
 	}

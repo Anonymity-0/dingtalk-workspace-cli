@@ -810,6 +810,16 @@ func TestCrossPlatformCoverageAnnotateConstraints(t *testing.T) {
 	if len(got) != 1 || got[0] != "true" {
 		t.Fatalf("solo-flag required annotation = %#v", solo.Flags().Lookup("solo").Annotations)
 	}
+
+	// ExactlyOne with a sole published member also collapses to required.
+	exactSolo := newTestCommand()
+	exactSolo.Flags().String("pick", "", "")
+	AnnotateConstraints(exactSolo, []Constraint{
+		{Kind: ExactlyOne, Flags: []string{"pick"}},
+	})
+	if got := exactSolo.Flags().Lookup("pick").Annotations[runtimeannotate.AnnotationFlagRequired]; len(got) != 1 || got[0] != "true" {
+		t.Fatalf("exactly-one solo required annotation = %#v", exactSolo.Flags().Lookup("pick").Annotations)
+	}
 }
 
 func TestAnnotateConstraintsHiddenSiblingRuntimeHomology(t *testing.T) {
@@ -1255,7 +1265,7 @@ func TestNewCommandEmbedsContractFlagsWithoutLegacyRiskAnnotation(t *testing.T) 
 	}
 }
 
-func TestRegisterFlagTypedDefaults(t *testing.T) {
+func TestCrossPlatformCoverageRegisterFlagTypedDefaults(t *testing.T) {
 	cmd := newTestCommand()
 	RegisterFlag(cmd, KindInt, "page-size", "20", "page")
 	RegisterFlag(cmd, KindBool, "flag", "true", "bool")
@@ -1274,7 +1284,7 @@ func TestRegisterFlagTypedDefaults(t *testing.T) {
 	}
 }
 
-func TestRegisterFlagMalformedDefaultPanics(t *testing.T) {
+func TestCrossPlatformCoverageRegisterFlagMalformedDefaultPanics(t *testing.T) {
 	mustPanic := func(name string, kind FlagKind, def, needle string) {
 		t.Helper()
 		defer func() {
