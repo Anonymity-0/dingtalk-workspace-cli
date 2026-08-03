@@ -129,7 +129,6 @@ substitutes. Keep them side-by-side; do **not** fold one into another:
 | Param concepts | `param_concepts.json` (+ `.schema.json`) | argv synonym / concept dictionary (reduced to `param_aliases_generated.go`) |
 | Exclusions | `schema_command_exclusions.go` | exact reviewed CLI paths excluded from Schema (non-empty reason) |
 | Mapping ledger | `schema_parameter_mapping_ledger.go` | `mapping_exclusions` / removals (CLI flags with no direct RPC property); active bindings JSON retired |
-| MCP service disposition | `schema_mcp_service_review_ledger.go` | reviewed missing-service dispositions (e.g. `notify` → `out_of_surface`) + snapshot hash pin; JSON retired |
 | MCP pin | `schema_mcp_metadata.json` | pinned MCP tool-metadata baseline |
 
 **Aliases are three distinct layers** (do not conflate):
@@ -171,8 +170,8 @@ records, or use a previous Catalog JSON as a source.
   it is **not** a `//go:generate` or committed delivery step.
 - `gen.go` only generates `param_aliases_generated.go`.
 - Inputs: **reviewed inputs** (param_concepts / exclusions / bindings audit /
-  MCP service disposition / MCP pin — see table above) + ProductDecl/ContractFinal
-  (identity is collected from `ContractFinal.Identity`) + live Cobra tree.
+  MCP pin — see table above) + ProductDecl/ContractFinal (identity is
+  collected from `ContractFinal.Identity`) + live Cobra tree.
   `schema_hints/`, `schema_agent_metadata/`, and `schema_command_registry/`
   must not reappear.
 - Gates: `make generate-schema` (param aliases + assembly determinism),

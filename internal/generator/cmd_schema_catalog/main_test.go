@@ -261,7 +261,6 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 		"skills/mono/SKILL.md",
 		"skills/mono/references/intent-guide.md",
 		"internal/cli/schema_mcp_metadata.json",
-		"internal/cli/schema_mcp_service_review_ledger.go",
 		"internal/cli/schema_parameter_mapping_ledger.go",
 		"internal/cli/schema_command_exclusions.go",
 	}

@@ -136,24 +136,11 @@ if ! jq -e 'all(.tools[];
 	exit 1
 fi
 
-# MCP service disposition lives in the Go ledger. The retired JSON must not
-# reappear; snapshot_source_hash ↔ schema_mcp_metadata.json alignment and the
-# notify/out_of_surface disposition are enforced by
-# TestSchemaMCPServiceReviewLedgerMatchesPinnedSnapshot below.
-if [ -e internal/cli/schema_mcp_service_review.json ]; then
-	printf '%s\n' 'retired schema_mcp_service_review.json must not be present; use schema_mcp_service_review_ledger.go' >&2
-	exit 1
-fi
-if [ ! -f internal/cli/schema_mcp_service_review_ledger.go ]; then
-	printf '%s\n' 'missing reviewed MCP service disposition ledger internal/cli/schema_mcp_service_review_ledger.go' >&2
-	exit 1
-fi
-if ! grep -q 'var reviewedMCPMissingServices = map' internal/cli/schema_mcp_service_review_ledger.go; then
-	printf '%s\n' 'schema_mcp_service_review_ledger.go must declare reviewedMCPMissingServices' >&2
-	exit 1
-fi
-if ! grep -q 'reviewedMCPServiceReviewSnapshotSourceHash' internal/cli/schema_mcp_service_review_ledger.go; then
-	printf '%s\n' 'schema_mcp_service_review_ledger.go must declare reviewedMCPServiceReviewSnapshotSourceHash' >&2
+# MCP service review (schema_mcp_service_review.json and any ledger) is
+# retired: no snapshot_source_hash / missing_services disposition gate.
+if [ -e internal/cli/schema_mcp_service_review.json ] ||
+	[ -e internal/cli/schema_mcp_service_review_ledger.go ]; then
+	printf '%s\n' 'retired MCP service review artifact must not be present' >&2
 	exit 1
 fi
 
@@ -223,7 +210,6 @@ fi
 if policy_search_paths 'mcp-gw\.dingtalk\.com|mcp\.dingtalk\.com/server|Authorization[^[:alnum:]]*:|Bearer [A-Za-z0-9]|access[_-]?token|client[_-]?secret' \
 	"$catalog" \
 	internal/cli/schema_mcp_metadata.json \
-	internal/cli/schema_mcp_service_review_ledger.go \
 	internal/cli/schema_parameter_mapping_ledger.go; then
 	printf '%s\n' 'schema assets contain endpoint or credential material' >&2
 	exit 1
@@ -254,7 +240,7 @@ fi
 # is in ./internal/app below; bindings/mapping subset remains in ./internal/cli.
 # Keep TestHomologyCIEntrypointsPinned in sync when adding gate IDs to policy.
 go test ./internal/cli \
-	-run '^(TestDeliverySchemaCatalog.*|TestDeliverySchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteDeliveryLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog|TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestDeliveryCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingActiveBindingsRemainEmpty|TestResolveMetaFailsClosedOnUnusableMetaIndex|TestSchemaParameterBindingsPhase2.*|TestSchemaMCPServiceReview.*)$' \
+	-run '^(TestDeliverySchemaCatalog.*|TestDeliverySchemaAllPayload.*|TestRuntimeSchemaAllPayload.*|TestSchemaAllReturnsCompleteDeliveryLeafSchemas|TestSchemaCatalogDeliveryCompleteness.*|TestValidateSchemaDeliveryInvariants.*|TestSchemaAliasViewProblem.*|TestSchemaDeliveryToolsByCanonical.*|TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad|TestWalkLeafCommandsTraversesAnnotatedHiddenSubtree|TestSchemaParameterBindingsMatchReviewedBaselineAndDeliveryCatalog|TestBindEffectiveCommandRegistryFailsClosedOnInvalidParameterBindingSource|TestValidateSchemaParameterBindingDeliveryRejectsStaleReviewedKeys|TestDeliveryCatalogMCPParameterMappingsAreComplete|TestSchemaParameterMappingAuditExclusionRules|TestRuntimeSchemaReviewedMappingExclusionSelectsEmptyProperty|TestRuntimeCommandParameterSpecsPreserveReviewedEmptyPropertyProvenance|TestSchemaParameterBindingActiveBindingsRemainEmpty|TestResolveMetaFailsClosedOnUnusableMetaIndex|TestSchemaParameterBindingsPhase2.*)$' \
 	-count=1
 go test ./internal/cli/homology \
 	-run '^(TestUserRequiredSafetyHomologyWithRuntimeGate|TestHomologyDecisionDocPinsPathAAndGateIDs|TestMCPPassthroughAdmissionExcludesLeafAndShortcut|TestHomologyCIEntrypointsPinned)$' \

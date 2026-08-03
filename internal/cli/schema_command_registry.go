@@ -21,8 +21,7 @@ import (
 // collector is the single source of stable command identity and navigation.
 // Catalog and generated metadata are downstream views and must never be read
 // back here. Peer reviewed inputs (param_concepts, exclusions, bindings
-// audit, MCP service disposition, MCP pin) stay separate — see AGENTS.md
-// "Reviewed inputs".
+// audit, MCP pin) stay separate — see AGENTS.md "Reviewed inputs".
 
 var (
 	commandRegistryProductIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)

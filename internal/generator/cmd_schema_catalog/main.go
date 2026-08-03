@@ -82,7 +82,6 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath string) 
 		{Name: "product Skill metadata source directory", Path: "skills/mono/references/products"},
 		{Name: "intent guide metadata source", Path: "skills/mono/references/intent-guide.md"},
 		{Name: "pinned MCP metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
-		{Name: "reviewed MCP service disposition ledger input", Path: "internal/cli/schema_mcp_service_review_ledger.go"},
 		{Name: "reviewed parameter mapping ledger input", Path: "internal/cli/schema_parameter_mapping_ledger.go"},
 		{Name: "reviewed command exclusion input", Path: "internal/cli/schema_command_exclusions.go"},
 	}
