@@ -144,7 +144,7 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageSchemaConstraintCollapsesHiddenAliases(t *testing.T) {
+func TestCrossPlatformCoverageSchemaConstraintKeepsHiddenSiblingGroups(t *testing.T) {
 	cmd := mount(Shortcut{
 		Service: "chat",
 		Command: "+search",
@@ -165,16 +165,19 @@ func TestCrossPlatformCoverageSchemaConstraintCollapsesHiddenAliases(t *testing.
 			},
 		},
 	})
+	// declare≡execute: hidden siblings still satisfy ValidateConstraints, so Schema
+	// must project the full group instead of collapsing the visible flag to required.
 	query := cmd.Flags().Lookup("query")
-	if got := query.Annotations["dws.schema.required"]; len(got) != 1 || got[0] != "true" {
-		t.Fatalf("collapsed public requirement annotation = %#v", got)
+	if got := query.Annotations["dws.schema.required"]; len(got) > 0 {
+		t.Fatalf("visible flag must not collapse to required with hidden sibling: %#v", got)
 	}
 	id := cmd.Flags().Lookup("id")
-	if got := id.Annotations["dws.schema.required"]; len(got) != 1 || got[0] != "true" {
-		t.Fatalf("collapsed exact-one requirement annotation = %#v", got)
+	if got := id.Annotations["dws.schema.required"]; len(got) > 0 {
+		t.Fatalf("visible exact-one flag must not collapse to required with hidden sibling: %#v", got)
 	}
-	if raw := cmd.Annotations["dws.schema.constraints"]; raw != "" {
-		t.Fatalf("hidden compatibility alias leaked into public Schema constraints: %q", raw)
+	want := `{"mutually_exclusive":[["id","legacy-id"]],"require_one_of":[["query","keyword"],["id","legacy-id"]]}`
+	if raw := cmd.Annotations["dws.schema.constraints"]; raw != want {
+		t.Fatalf("constraints annotation = %q, want %q", raw, want)
 	}
 }
 

@@ -16,8 +16,12 @@ import (
 )
 
 const (
-	publicShortcutCount          = 266
-	schemaPublishedShortcutCount = 215
+	publicShortcutCount = 266
+	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
+	// including hidden leaves such as minutes.shortcut_minutes_search.
+	schemaPublishedShortcutCount = 216
+	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
+	publiclyDeliveredShortcutCount = 215
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -75,7 +79,7 @@ func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *tes
 			assertDeliveryShortcutConstraints(t, tool, declared, canonical)
 		})
 	}
-	if got, want := excludedShortcuts, publicShortcutCount-schemaPublishedShortcutCount; got != want {
+	if got, want := excludedShortcuts, publicShortcutCount-publiclyDeliveredShortcutCount; got != want {
 		t.Fatalf("exactly excluded public shortcuts = %d, want %d", got, want)
 	}
 }
@@ -89,11 +93,15 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 		t.Fatalf("shortcut leaf confirmation = %q, want %q", got, want)
 	}
 	conversationID := schemaContractMap(leaf["parameters"])["conversation-id"]
-	if required, _ := conversationID["required"].(bool); !required {
-		t.Fatal("public --conversation-id must become required after hidden compatibility aliases are removed from Schema")
+	if required, _ := conversationID["required"].(bool); required {
+		t.Fatal("public --conversation-id must stay optional when hidden siblings still satisfy the declared exactly_one group")
 	}
-	if got := leaf["constraints"]; got != nil {
-		t.Fatalf("shortcut leaf constraints = %#v, want omitted after hidden compatibility aliases collapse", got)
+	wantMessagesConstraints := map[string]any{
+		"require_one_of":     [][]string{{"conversation-id", "group", "id"}},
+		"mutually_exclusive": [][]string{{"conversation-id", "group", "id"}},
+	}
+	if got := leaf["constraints"]; !schemaContractJSONEqual(got, wantMessagesConstraints) {
+		t.Fatalf("shortcut leaf constraints = %#v, want %#v", got, wantMessagesConstraints)
 	}
 
 	constrainedLeaf := executeShortcutSchemaQuery(t, "--cli-path", "calendar +freebusy")
@@ -308,7 +316,13 @@ func shortcutSchemaRequired(declared shortcut.Shortcut, flagName string) bool {
 				visible = append(visible, constrained)
 			}
 		}
-		if len(visible) == 1 && visible[0] == flagName {
+		// Match AnnotateConstraints: only collapse to required when the projected
+		// group has a single member (no remaining hidden siblings).
+		flags := visible
+		if len(visible) < len(constraint.Flags) {
+			flags = append([]string(nil), constraint.Flags...)
+		}
+		if len(flags) == 1 && flags[0] == flagName {
 			return true
 		}
 	}
@@ -330,11 +344,17 @@ func assertDeliveryShortcutConstraints(
 	}
 	want := map[string][][]string{}
 	for _, constraint := range declared.Constraints {
-		flags := make([]string, 0, len(constraint.Flags))
+		visible := make([]string, 0, len(constraint.Flags))
 		for _, flagName := range constraint.Flags {
 			if public[flagName] {
-				flags = append(flags, flagName)
+				visible = append(visible, flagName)
 			}
+		}
+		// Match AnnotateConstraints declare≡execute projection: keep the full
+		// declared group when any hidden sibling remains.
+		flags := visible
+		if len(visible) < len(constraint.Flags) {
+			flags = append([]string(nil), constraint.Flags...)
 		}
 		switch constraint.Kind {
 		case shortcut.ConstraintAtLeastOne:

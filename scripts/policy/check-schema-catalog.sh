@@ -161,14 +161,21 @@ if ! jq -e '
 	exit 1
 fi
 
+# declare≡execute may project hidden execute-side siblings into constraint
+# groups. Require every group to touch at least one published parameter/positional;
+# unpublished members are allowed as hidden companions.
 if ! jq -e '
   [.tools[] | select(.constraints != null)] as $tools |
   ($tools | length) >= 21 and
   all($tools[];
     (((.parameters // {}) | keys) + ((.positionals // []) | map(.name))) as $names |
-    all((.constraints.mutually_exclusive // [])[]; length > 1 and all(.[]; IN($names[]))) and
-    all((.constraints.require_one_of // [])[]; length > 1 and all(.[]; IN($names[]))) and
-    all((.constraints.require_together // [])[]; length > 1 and all(.[]; IN($names[])))
+    def ok_group:
+      length > 1 and
+      all(.[]; type == "string" and length > 0) and
+      any(.[]; IN($names[]));
+    all((.constraints.mutually_exclusive // [])[]; ok_group) and
+    all((.constraints.require_one_of // [])[]; ok_group) and
+    all((.constraints.require_together // [])[]; ok_group)
   )
 ' "$catalog" >/dev/null; then
 	printf '%s\n' 'schema command constraints are incomplete or reference unknown parameters' >&2
