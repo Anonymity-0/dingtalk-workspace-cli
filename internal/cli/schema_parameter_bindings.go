@@ -27,7 +27,7 @@ import (
 
 const runtimeSchemaFlagBindingPropertyAnnotation = "dws.schema.binding.property"
 
-// Track 1 Phase 2 complete (active bindings → ParamDecl.Property):
+// Property delivery has migrated from active bindings to ParamDecl.Property:
 //
 //   - Property delivery is owned by leaf Contract.Parameters (ParamDecl.Property
 //     → dws.schema.property / native_annotation). There is no committed
@@ -53,7 +53,7 @@ type schemaParameterBindingSnapshot struct {
 
 // schemaParameterBindingRemoval records a semantically meaningful deletion
 // from a previous reviewed baseline. ReplacedBy, when present, must name an
-// exact active binding key (none remain after Phase 2).
+// exact active binding key (no active bindings remain).
 type schemaParameterBindingRemoval struct {
 	Reason     string
 	ReplacedBy string
@@ -326,8 +326,8 @@ func applyRuntimeSchemaParameterBindingsFrom(cmd *cobra.Command, canonical strin
 }
 
 // LoadSchemaParameterBindings returns a defensive copy of the reviewed
-// active public flag-to-interface bindings. After Track 1 Phase 2 this map is
-// always empty; property delivery comes from ParamDecl.Property. Mapping
+// active public flag-to-interface bindings. Active bindings are empty;
+// property delivery comes from ParamDecl.Property. Mapping
 // exclusions and removals remain on the Go mapping ledger (not returned here).
 func LoadSchemaParameterBindings() (map[string]map[string]string, error) {
 	snapshot, err := schemaParameterBindingData()

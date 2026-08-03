@@ -375,7 +375,7 @@ func (r SchemaRegistry) Index() (SchemaIndex, error) {
 // validateCanonicalToolIdentity applies only to ToolSpecs stored in the
 // registry. Alias lookup creates a detached query view later, where cli_path
 // and is_alias intentionally change; that projection is never allowed back
-// into SchemaRegistry, --all, or the embedded Catalog.
+// into SchemaRegistry, --all, or the delivered Catalog.
 func validateCanonicalToolIdentity(tool ToolSpec) error {
 	id := tool.Identity
 	canonical := strings.TrimSpace(id.CanonicalPath)

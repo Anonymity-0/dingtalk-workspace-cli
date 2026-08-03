@@ -225,7 +225,7 @@ var (
 
 // BuildSchemaCatalogSnapshot renders a deterministic Catalog from one
 // resolved source-to-delivery hand-off. It deliberately accepts no Cobra root:
-// reapplying manual hints or rebuilding SchemaRegistry at this boundary would
+// rebuilding SchemaRegistry or re-deriving identity at this boundary would
 // allow generation gates to validate one candidate while publishing another.
 func BuildSchemaCatalogSnapshot(resolved ResolvedSchemaBuild, options SchemaCatalogBuildOptions) (SchemaCatalogSnapshot, error) {
 	if resolved.root == nil {

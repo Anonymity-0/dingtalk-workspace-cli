@@ -17,7 +17,7 @@ package cli
 //
 // Migrated from the retired schema_parameter_bindings.json audit table.
 // Active bindings{} are gone: ParamDecl.Property owns property delivery.
-// Do not reintroduce a committed empty bindings JSON as a Phase 2 gate.
+// Do not reintroduce a committed empty bindings JSON as a completion gate.
 
 // reviewedSchemaParameterMappingExclusions is the reviewed ledger of CLI flags
 // that must not deliver a direct interface property (provenance

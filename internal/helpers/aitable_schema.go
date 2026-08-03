@@ -19,7 +19,7 @@ import (
 
 // aitable_schema.go holds shared Safety / Interface factories for aitable's
 // DeclareLeafMetadata declarations (metadata-only mode). Selection prose and
-// per-command payloads live in aitable_schema_decls_generated.go.
+// per-command payloads live in aitable.go alongside their leaf definitions.
 
 func aitableSafetyRead() contract.SafetySpec {
 	return contract.SafetySpec{
