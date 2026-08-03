@@ -781,8 +781,9 @@ func TestCrossPlatformCoverageAnnotateConstraints(t *testing.T) {
 		t.Fatalf("unexpected annotation %q", bare.Annotations["dws.schema.constraints"])
 	}
 
-	// Single-flag AtLeastOne/ExactlyOne collapse to required-flag annotations
-	// (hidden companions are filtered out before projection).
+	// Single *visible* flag with a hidden sibling must NOT collapse to
+	// unconditionally required: runtime ValidateConstraints still accepts the
+	// hidden member, so Schema must keep the full declared group.
 	single := newTestCommand()
 	single.Flags().String("only", "", "")
 	single.Flags().String("hidden", "", "")
@@ -791,9 +792,41 @@ func TestCrossPlatformCoverageAnnotateConstraints(t *testing.T) {
 		{Kind: AtLeastOne, Flags: []string{"only", "hidden"}},
 		{Kind: ExactlyOne, Flags: []string{"only", "hidden"}},
 	})
-	got := single.Flags().Lookup("only").Annotations[runtimeannotate.AnnotationFlagRequired]
+	if got := single.Flags().Lookup("only").Annotations[runtimeannotate.AnnotationFlagRequired]; len(got) > 0 {
+		t.Fatalf("visible flag must not be marked required when hidden sibling exists: %#v", got)
+	}
+	encodedSingle := single.Annotations["dws.schema.constraints"]
+	if !strings.Contains(encodedSingle, `["only","hidden"]`) {
+		t.Fatalf("hidden-sibling group must project full require_one_of, got %s", encodedSingle)
+	}
+
+	// A true single-flag group (no hidden siblings) may still collapse to required.
+	solo := newTestCommand()
+	solo.Flags().String("solo", "", "")
+	AnnotateConstraints(solo, []Constraint{
+		{Kind: AtLeastOne, Flags: []string{"solo"}},
+	})
+	got := solo.Flags().Lookup("solo").Annotations[runtimeannotate.AnnotationFlagRequired]
 	if len(got) != 1 || got[0] != "true" {
-		t.Fatalf("single-flag required annotation = %#v", single.Flags().Lookup("only").Annotations)
+		t.Fatalf("solo-flag required annotation = %#v", solo.Flags().Lookup("solo").Annotations)
+	}
+}
+
+func TestAnnotateConstraintsHiddenSiblingRuntimeHomology(t *testing.T) {
+	flags := []FlagSpec{
+		{Name: "only", Usage: "visible"},
+		{Name: "hidden", Usage: "hidden sibling", Hidden: true},
+	}
+	constraints := []Constraint{{Kind: AtLeastOne, Flags: []string{"only", "hidden"}}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	AnnotateConstraints(cmd, constraints)
+	if got := cmd.Flags().Lookup("only").Annotations[runtimeannotate.AnnotationFlagRequired]; len(got) > 0 {
+		t.Fatalf("Schema must not mark visible flag required: %#v", got)
+	}
+	_ = cmd.Flags().Set("hidden", "v")
+	if err := ValidateConstraints(cmd, flags, constraints); err != nil {
+		t.Fatalf("runtime must still accept hidden sibling alone: %v", err)
 	}
 }
 
@@ -1226,15 +1259,39 @@ func TestRegisterFlagTypedDefaults(t *testing.T) {
 	cmd := newTestCommand()
 	RegisterFlag(cmd, KindInt, "page-size", "20", "page")
 	RegisterFlag(cmd, KindBool, "flag", "true", "bool")
+	RegisterFlag(cmd, KindBool, "off", "false", "bool off")
 	if def, _ := cmd.Flags().GetInt("page-size"); def != 20 {
 		t.Fatalf("int default = %d, want 20", def)
 	}
 	if def, _ := cmd.Flags().GetBool("flag"); !def {
 		t.Fatal("bool default = false, want true")
 	}
+	if def, _ := cmd.Flags().GetBool("off"); def {
+		t.Fatal("bool default = true, want false")
+	}
 	if got := cmd.Flags().Lookup("page-size").DefValue; got != "20" {
 		t.Fatalf("page-size DefValue = %q, want 20", got)
 	}
+}
+
+func TestRegisterFlagMalformedDefaultPanics(t *testing.T) {
+	mustPanic := func(name string, kind FlagKind, def, needle string) {
+		t.Helper()
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("%s: expected panic", name)
+			}
+			if msg, _ := r.(string); !strings.Contains(msg, needle) {
+				t.Fatalf("%s: panic = %v, want %q", name, r, needle)
+			}
+		}()
+		RegisterFlag(newTestCommand(), kind, "x", def, "usage")
+	}
+	mustPanic("bad int", KindInt, "abc", "invalid KindInt Default")
+	mustPanic("bool TRUE", KindBool, "TRUE", "invalid KindBool Default")
+	mustPanic("bool 1", KindBool, "1", "invalid KindBool Default")
+	mustPanic("bool yes", KindBool, "yes", "invalid KindBool Default")
 }
 
 func TestCrossPlatformCoverageBuildArgsIntArgDefaultFloor(t *testing.T) {

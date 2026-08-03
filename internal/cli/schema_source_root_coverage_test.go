@@ -190,12 +190,12 @@ func TestCrossPlatformCoverageSchemaSourceRootErrorBranchesAndRestoreFallback(t 
 }
 
 func TestCrossPlatformCoverageSafetyForCLIPathUnregisteredFactory(t *testing.T) {
-	prev := schemaSourceRootFn
+	prev := loadSchemaSourceRootFn()
 	t.Cleanup(func() {
-		schemaSourceRootFn = prev
+		storeSchemaSourceRootFn(prev)
 		restorePackageCLISchemaDeliveryForTest()
 	})
-	schemaSourceRootFn = nil
+	storeSchemaSourceRootFn(nil)
 	if _, ok := SafetyForCLIPath("dev app delete"); ok {
 		t.Fatal("SafetyForCLIPath without factory must return ok=false")
 	}
@@ -205,6 +205,31 @@ func TestCrossPlatformCoverageSafetyForCLIPathUnregisteredFactory(t *testing.T) 
 	RenderSafetyAnnotation(safetyCmd)
 	if safetyOut.Len() != 0 {
 		t.Fatalf("RenderSafetyAnnotation without factory must stay silent, got %q", safetyOut.String())
+	}
+}
+
+func TestSchemaSourceRootFnAtomicStoreLoad(t *testing.T) {
+	prev := loadSchemaSourceRootFn()
+	t.Cleanup(func() {
+		storeSchemaSourceRootFn(prev)
+		restorePackageCLISchemaDeliveryForTest()
+	})
+
+	storeSchemaSourceRootFn(nil)
+	if SchemaSourceRootRegistered() || loadSchemaSourceRootFn() != nil {
+		t.Fatal("nil factory must clear registration")
+	}
+	factory := func() *cobra.Command { return &cobra.Command{Use: "atomic-root"} }
+	RegisterSchemaSourceRoot(factory)
+	got := loadSchemaSourceRootFn()
+	if got == nil {
+		t.Fatal("RegisterSchemaSourceRoot store/load returned nil")
+	}
+	if root := got(); root == nil || root.Use != "atomic-root" {
+		t.Fatalf("RegisterSchemaSourceRoot factory root = %#v", root)
+	}
+	if !SchemaSourceRootRegistered() {
+		t.Fatal("registered factory must report true")
 	}
 }
 
@@ -324,7 +349,7 @@ func TestCrossPlatformCoverageDeliverySchemaOverviewAndQueryBranches(t *testing.
 		t.Fatalf("deliverySchemaAllPayload() error = %v", err)
 	}
 
-	schemaSourceRootFn = nil
+	storeSchemaSourceRootFn(nil)
 	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 	resetDeliverySchemaCatalogStateForTest()
 	t.Cleanup(restorePackageCLISchemaDeliveryForTest)

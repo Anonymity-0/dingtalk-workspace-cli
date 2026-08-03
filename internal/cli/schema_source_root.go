@@ -31,10 +31,18 @@ var errSchemaSourceRootNotRegistered = fmt.Errorf(
 	"schema source root factory is not registered; call RegisterSchemaSourceRoot (app.NewRootCommand or test helper)",
 )
 
-// schemaSourceRootFn builds the distribution-owned Cobra tree used to assemble
-// Schema at runtime (声明即 Catalog). Without a factory, delivery fails closed
-// — there is no committed Catalog/gob fallback.
-var schemaSourceRootFn func() *cobra.Command
+// schemaSourceRootHolder wraps the root factory so atomic.Value can store a
+// typed nil factory without Store(nil).
+type schemaSourceRootHolder struct {
+	fn func() *cobra.Command
+}
+
+// schemaSourceRoot stores the distribution-owned Cobra tree factory used to
+// assemble Schema at runtime (声明即 Catalog). Without a factory, delivery
+// fails closed — there is no committed Catalog/gob fallback. Access only via
+// loadSchemaSourceRootFn / storeSchemaSourceRootFn (or RegisterSchemaSourceRoot);
+// never bare-write the atomic.
+var schemaSourceRoot atomic.Value // *schemaSourceRootHolder
 
 var (
 	runtimeDeliverySchemaCatalogOnce      sync.Once
@@ -44,6 +52,17 @@ var (
 	runtimeDeliverySchemaCatalogMapsOnce  sync.Once
 	runtimeDeliverySchemaCatalogMapsErr   error
 )
+
+func loadSchemaSourceRootFn() func() *cobra.Command {
+	if v := schemaSourceRoot.Load(); v != nil {
+		return v.(*schemaSourceRootHolder).fn
+	}
+	return nil
+}
+
+func storeSchemaSourceRootFn(fn func() *cobra.Command) {
+	schemaSourceRoot.Store(&schemaSourceRootHolder{fn: fn})
+}
 
 // resetDeliverySchemaCatalogState clears the lazy Catalog delivery Once/caches
 // so the next deliverySchemaCatalog() reassembles.
@@ -71,13 +90,13 @@ func resetSchemaDeliveryState() {
 // delivery (dws schema / ResolveMeta). Production registers from internal/app.
 // Passing nil clears the factory (tests only) and resets lazy delivery / Meta state.
 func RegisterSchemaSourceRoot(factory func() *cobra.Command) {
-	schemaSourceRootFn = factory
+	storeSchemaSourceRootFn(factory)
 	resetSchemaDeliveryState()
 }
 
 // SchemaSourceRootRegistered reports whether runtime assembly has a root factory.
 func SchemaSourceRootRegistered() bool {
-	return schemaSourceRootFn != nil
+	return loadSchemaSourceRootFn() != nil
 }
 
 var (
@@ -139,12 +158,13 @@ func assembleSchemaCatalogFromRoot(root *cobra.Command) (loadedSchemaCatalog, er
 func deliverySchemaCatalog() loadedSchemaCatalog {
 	runtimeDeliverySchemaCatalogOnce.Do(func() {
 		runtimeDeliverySchemaCatalogLazyCount.Add(1)
-		if schemaSourceRootFn == nil {
+		factory := loadSchemaSourceRootFn()
+		if factory == nil {
 			runtimeDeliverySchemaCatalogErr = errSchemaSourceRootNotRegistered
 			installDeliveryCommandMeta(loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr)
 			return
 		}
-		root := schemaSourceRootFn()
+		root := factory()
 		if root == nil {
 			runtimeDeliverySchemaCatalogErr = fmt.Errorf("schema source root factory returned nil")
 			installDeliveryCommandMeta(loadedSchemaCatalog{}, runtimeDeliverySchemaCatalogErr)

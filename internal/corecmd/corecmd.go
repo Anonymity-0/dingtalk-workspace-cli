@@ -562,18 +562,33 @@ func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {
 
 // RegisterFlag registers one flag by Kind. Default is applied at registration
 // for every kind so --help DefValue matches the declared fallback.
+// Malformed KindInt / KindBool Default values panic at registration (fail-closed)
+// instead of silently degrading to 0 / false.
 func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 	switch kind {
 	case KindInt:
 		defInt := 0
 		if def != "" {
-			if v, err := strconv.Atoi(def); err == nil {
-				defInt = v
+			v, err := strconv.Atoi(def)
+			if err != nil {
+				panic(fmt.Sprintf("flag %q: invalid KindInt Default %q", name, def))
 			}
+			defInt = v
 		}
 		cmd.Flags().Int(name, defInt, usage)
 	case KindBool:
-		cmd.Flags().Bool(name, def == "true", usage)
+		defBool := false
+		if def != "" {
+			switch def {
+			case "true":
+				defBool = true
+			case "false":
+				defBool = false
+			default:
+				panic(fmt.Sprintf("flag %q: invalid KindBool Default %q (want \"true\" or \"false\")", name, def))
+			}
+		}
+		cmd.Flags().Bool(name, defBool, usage)
 	case KindStringSlice:
 		var defaults []string
 		if value := strings.TrimSpace(def); value != "" {
@@ -1342,16 +1357,25 @@ func flagKindSchemaType(kind FlagKind) string {
 // AnnotateConstraints projects the relationship constraints into the Agent
 // Runtime Schema: exactly_one decomposes into require_one_of + mutually_exclusive
 // (matching the handwritten commands' use of AnnotateRuntimeConstraints).
+//
+// When a group still has hidden siblings, the full declared flag list is
+// projected (not collapsed to a single visible "required"). ValidateConstraints
+// accepts any member of the declared group — including hidden — so marking the
+// sole visible flag required would falsely claim declare ≡ execute.
 func AnnotateConstraints(cmd *cobra.Command, constraints []Constraint) {
 	var projected runtimeannotate.RuntimeSchemaConstraints
 	var required []string
 	for _, constraint := range constraints {
-		flags := make([]string, 0, len(constraint.Flags))
+		visible := make([]string, 0, len(constraint.Flags))
 		for _, name := range constraint.Flags {
 			flag := cmd.Flags().Lookup(name)
 			if flag != nil && !flag.Hidden {
-				flags = append(flags, name)
+				visible = append(visible, name)
 			}
+		}
+		flags := visible
+		if len(visible) < len(constraint.Flags) {
+			flags = append([]string(nil), constraint.Flags...)
 		}
 		switch constraint.Kind {
 		case AtLeastOne:

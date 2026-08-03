@@ -306,7 +306,7 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 
 func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *testing.T) {
 	t.Run("delivery payload helpers without factory fail closed", func(t *testing.T) {
-		schemaSourceRootFn = nil
+		storeSchemaSourceRootFn(nil)
 		assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 		resetMetaByCLIPathStateForTest()
 		t.Cleanup(restorePackageCLISchemaDeliveryForTest)

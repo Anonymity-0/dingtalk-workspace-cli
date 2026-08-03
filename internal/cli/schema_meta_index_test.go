@@ -81,7 +81,7 @@ func TestResolveMetaLazilyAssemblesRegisteredSourceRoot(t *testing.T) {
 
 func TestResolveMetaFailsClosedWithoutSourceRoot(t *testing.T) {
 	resetMetaByCLIPathStateForTest()
-	schemaSourceRootFn = nil
+	storeSchemaSourceRootFn(nil)
 	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 	t.Cleanup(restorePackageCLISchemaDeliveryForTest)
 

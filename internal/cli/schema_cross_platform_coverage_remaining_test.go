@@ -776,7 +776,7 @@ func collectFirstEntry(t *testing.T, bound BoundCommandRegistry) runtimeSchemaEn
 
 func TestCrossPlatformCoverageCommandMetaRemainingBranches(t *testing.T) {
 	t.Run("missing factory fail-closed panic guard", func(t *testing.T) {
-		schemaSourceRootFn = nil
+		storeSchemaSourceRootFn(nil)
 		assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 		resetMetaByCLIPathStateForTest()
 		t.Cleanup(restorePackageCLISchemaDeliveryForTest)

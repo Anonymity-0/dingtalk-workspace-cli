@@ -109,9 +109,9 @@ func restorePackageCLISchemaDeliveryForTest() {
 		return
 	}
 	loaded := *packageCLIAssembledDelivery
-	schemaSourceRootFn = func() *cobra.Command {
+	storeSchemaSourceRootFn(func() *cobra.Command {
 		return &cobra.Command{Use: "dws"}
-	}
+	})
 	assembleDeliverySchemaCatalogFn = func(*cobra.Command) (loadedSchemaCatalog, error) {
 		return loaded, nil
 	}

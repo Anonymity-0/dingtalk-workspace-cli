@@ -85,7 +85,7 @@ func RestorePackageCLISchemaDeliveryForTest() {
 		restorePackageCLISchemaDeliveryHook()
 		return
 	}
-	schemaSourceRootFn = nil
+	storeSchemaSourceRootFn(nil)
 	assembleDeliverySchemaCatalogFn = assembleSchemaCatalogFromRoot
 	resetSchemaDeliveryState()
 }
