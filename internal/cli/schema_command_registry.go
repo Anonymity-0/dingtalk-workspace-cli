@@ -25,7 +25,8 @@ const commandRegistrySchemaRef = "./schema_command_registry.schema.json"
 // schema_command_registry/ (registry.json + products/*.json) is the reviewed,
 // typed command registry and the sole source of stable command identity and
 // navigation. Catalog and generated metadata are downstream views and must
-// never be read back here.
+// never be read back here. Peer reviewed inputs (param_concepts, exclusions,
+// bindings audit, MCP pin) stay separate — see AGENTS.md "Reviewed inputs".
 
 //go:embed schema_command_registry/registry.json
 var embeddedSchemaCommandRegistryEnvelopeJSON []byte

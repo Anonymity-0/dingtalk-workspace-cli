@@ -18,6 +18,10 @@
 
 Safety / Selection / 参数语义 → 写在叶上 Contract（`ContractDecl` / `ProductDecl`），不进 registry。
 
+同属 `internal/cli` 的 **评审输入**（`param_concepts.json`、exclusions、bindings
+audit、MCP pin）与本目录并列、职责分开——不要合并进 registry，也不要把它们抬成
+Catalog 声明权威。总表见 `AGENTS.md`「Reviewed inputs / 评审输入」。
+
 ## 为什么不能删
 
 **Cobra 不够当身份源。** Cobra 只保证「现在能不能跑、有哪些 flag」。它不负责稳定的

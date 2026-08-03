@@ -38,7 +38,10 @@ snapshot. It is the single reviewed source of stable canonical identity,
 primary paths, aliases, and navigation. Edit it only when reviewed exposure,
 identity, primary path, or aliases change; parameter, Skill, and metadata-only
 changes must not rewrite it mechanically. Rationale and day-to-day management
-rules: `docs/schema/schema-command-registry.md`.
+rules: `docs/schema/schema-command-registry.md`. It sits beside other
+**reviewed inputs** under `internal/cli` (see Agent Schema contract) — same
+organizational family, separate authority; do not merge with
+`param_concepts.json` or promote any of them into Catalog declaration.
 
 ## Command framework declaration
 
@@ -114,6 +117,23 @@ The Schema data flow is one way:
    └─ CI may dump Catalog via cmd_schema_catalog for jq gates / determinism
 ```
 
+**Reviewed inputs / 评审输入** (organizational family under `internal/cli`;
+parallel peers, not one merged authority). These are assembly inputs only —
+never Catalog declaration authority, never leaf `Contract` / `ProductDecl`
+substitutes. Keep them side-by-side; do **not** fold one into another:
+
+| Input | Path | Owns |
+|---|---|---|
+| Command registry | `schema_command_registry/` (`registry.json` + `products/*.json`) | stable identity, primary CLI path, aliases, navigation |
+| Param concepts | `param_concepts.json` (+ `.schema.json`) | argv synonym / concept dictionary (reduced to `param_aliases_generated.go`) |
+| Exclusions | `schema_command_exclusions.go` | exact reviewed CLI paths excluded from Schema (non-empty reason) |
+| Bindings audit | `schema_parameter_bindings.json` | `mapping_exclusions` / removals audit only (active bindings empty) |
+| MCP pin | `schema_mcp_metadata.json` | pinned MCP tool-metadata baseline |
+
+Leaf declare (`Contract` / `ParamDecl` / `Safety` / `ProductDecl`) and the live
+Cobra tree remain separate from this table: declare owns semantics; Cobra owns
+executability and flags.
+
 After binding there is no second identity source and no identity precedence
 winner. The binder must reject a missing/non-runnable Cobra path, an alias
 collision, and any native identity annotation that disagrees with the effective
@@ -134,10 +154,9 @@ records, or use a previous Catalog JSON as a source.
 - CI tool: `cmd_schema_catalog` dumps an assembled Catalog for jq/determinism;
   it is **not** a `//go:generate` or committed delivery step.
 - `gen.go` only generates `param_aliases_generated.go`.
-- Inputs: authored source groups (registry + ProductDecl/ContractFinal + MCP
-  metadata + parameter mapping audit (`schema_parameter_bindings.json`:
-  mapping_exclusions / removals; active bindings empty) + reviewed parameter
-  concepts + cobra tree). `schema_hints/` / `schema_agent_metadata/` must not
+- Inputs: **reviewed inputs** (registry / param_concepts / exclusions /
+  bindings audit / MCP pin — see table above) + ProductDecl/ContractFinal +
+  live Cobra tree. `schema_hints/` / `schema_agent_metadata/` must not
   reappear.
 - Gates: `make generate-schema` (param aliases + assembly determinism),
   `check-generated-drift.sh`, `check-schema-catalog.sh`.
