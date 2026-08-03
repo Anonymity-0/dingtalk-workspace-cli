@@ -21,7 +21,6 @@ import (
 	"time"
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	eventbus "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
@@ -465,11 +464,6 @@ func TestCrossPlatformCoverageDirectRuntimeCoverage(t *testing.T) {
 		t.Fatalf("direct runtime IDs = %#v", ids)
 	}
 
-	t.Setenv(cli.CatalogFixtureEnv, "fixture")
-	if shouldUseDirectRuntime(executor.Invocation{Kind: "helper_invocation"}) {
-		t.Fatal("fixture should disable direct runtime")
-	}
-	t.Setenv(cli.CatalogFixtureEnv, "")
 	if !shouldUseDirectRuntime(executor.Invocation{Kind: "helper_invocation"}) || !shouldUseDirectRuntime(executor.Invocation{Kind: "compat_invocation"}) || shouldUseDirectRuntime(executor.Invocation{}) {
 		t.Fatal("direct runtime kind mismatch")
 	}

@@ -14,7 +14,6 @@
 package cli
 
 const (
-	CatalogFixtureEnv    = "DWS_CATALOG_FIXTURE"
 	CacheDirEnv          = "DWS_CACHE_DIR"
 	PluginColdTimeoutEnv = "DWS_PLUGIN_COLD_TIMEOUT"
 )

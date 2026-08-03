@@ -70,11 +70,12 @@ func NewMCPCommand() *cobra.Command {
 			},
 		},
 	})
+	// The legacy dynamic MCP surface has been removed; the app layer adds
+	// reviewed static MCP helpers as subcommands of this command.
 	cmd := &cobra.Command{
 		Use:               "mcp",
-		Short:             "Canonical MCP-derived CLI surface (static mode)",
-		Long:              "The canonical MCP command surface is disabled. Commands are now registered via plugins and static endpoints.",
-		Hidden:            true,
+		Short:             "管理 MCP 服务连接信息",
+		Long:              "管理经过审核并纳入 Schema 的 MCP 服务连接辅助能力。",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

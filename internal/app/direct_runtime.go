@@ -16,12 +16,10 @@ package app
 import (
 	"net"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
@@ -208,10 +206,10 @@ func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[strin
 	}
 }
 
+// shouldUseDirectRuntime gates endpoint resolution to the invocation kinds
+// the executor actually constructs (NewCompatibilityInvocation /
+// NewHelperInvocation); other kinds keep their own endpoint flows.
 func shouldUseDirectRuntime(invocation executor.Invocation) bool {
-	if strings.TrimSpace(os.Getenv(cli.CatalogFixtureEnv)) != "" {
-		return false
-	}
 	switch invocation.Kind {
 	case "compat_invocation", "helper_invocation":
 		return true
