@@ -461,8 +461,8 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 
 	bindPersistentFlags(root, flags)
 
-	schemaCmd := newSchemaCommand(loader)
-	mcpCmd := newMCPCommand(rootCtx, loader, runner, engine)
+	schemaCmd := cli.NewSchemaCommand()
+	mcpCmd := cli.NewMCPCommand()
 	// The legacy dynamic MCP surface remains disabled, but reviewed static MCP
 	// helpers registered below are part of the public CLI and Schema surface.
 	mcpCmd.Hidden = false
@@ -480,7 +480,7 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 		newAPICommand(flags),
 		newSkillCommand(),
 		newCacheCommand(),
-		newCatalogCommand(loader),
+		newCatalogCommand(),
 		newConfigCommand(),
 		newDoctorCommand(),
 		newEventCommand(),
@@ -693,18 +693,6 @@ func newVersionCommand() *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func newSchemaCommand(loader cli.DiscoveryCatalogLoader) *cobra.Command {
-	return cli.NewSchemaCommand(loader)
-}
-
-// buildMCPCommandFn is a test seam for newMCPCommand.
-var buildMCPCommandFn = cli.NewMCPCommand
-
-// newMCPCommand builds the `dws mcp` command tree.
-func newMCPCommand(ctx context.Context, loader cli.DiscoveryCatalogLoader, runner executor.Runner, engine *pipeline.Engine) *cobra.Command {
-	return buildMCPCommandFn(ctx, loader, runner, engine)
 }
 
 // hideNonDirectRuntimeCommands marks top-level product commands as hidden
@@ -1335,7 +1323,7 @@ func registerPluginAuthFromHeaders(srv mcptypes.ServerDescriptor) {
 // Register → PreParse → PostParse → PreRequest → PostResponse.
 //
 // Phases are invoked at their respective integration points:
-//   - Register:     during command tree construction (newMCPCommand)
+//   - Register:     during command tree construction (cli.NewMCPCommand)
 //   - PreParse:     before Cobra parses raw argv (RunPreParse)
 //   - PostParse:    after Cobra parsing, before validation (canonical RunE)
 //   - PreRequest:   after validation, before JSON-RPC dispatch (canonical RunE)

@@ -22,9 +22,6 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 	if got := emptyPinnedMCPMetadata(); got.Tools == nil || len(got.Tools) != 0 {
 		t.Fatalf("empty pinned metadata = %#v", got)
 	}
-	if got := runtimeMCPMetadata(); got.Tools == nil {
-		t.Fatal("runtimeMCPMetadata tools map must be non-nil empty")
-	}
 
 	cmd := &cobra.Command{Use: "run", Short: "short", Long: "long"}
 	AnnotateRuntimeToolMetadata(cmd, " title ", " description ", " source ")

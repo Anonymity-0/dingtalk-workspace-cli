@@ -16,7 +16,7 @@ import (
 )
 
 func TestCrossPlatformCoverageCanonicalCommandsAndFlags(t *testing.T) {
-	mcp := NewMCPCommand(t.Context(), nil, nil, nil)
+	mcp := NewMCPCommand()
 	mcp.SetOut(&bytes.Buffer{})
 	if err := mcp.Execute(); err != nil {
 		t.Fatal(err)

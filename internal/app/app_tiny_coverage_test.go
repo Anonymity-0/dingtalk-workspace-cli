@@ -274,7 +274,7 @@ func TestCrossPlatformCoverageEmbeddedSkillAndTinyCommandsRemainingCoverage(t *t
 	if err := completion.RunE(completion, []string{"other"}); err != nil {
 		t.Fatal(err)
 	}
-	catalog := newCatalogCommand(nil)
+	catalog := newCatalogCommand()
 	catalog.SetOut(io.Discard)
 	if err := catalog.RunE(catalog, nil); err != nil {
 		t.Fatal(err)

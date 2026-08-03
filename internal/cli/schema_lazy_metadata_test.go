@@ -20,10 +20,8 @@ const schemaLazyCatalogChildEnv = "DWS_SCHEMA_LAZY_CATALOG_CHILD"
 func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 	if os.Getenv(schemaLazyMetadataChildEnv) == "1" {
 		// Package-cli TestMain may assemble Catalog via cmd_schema_catalog dump
-		// decode; that must not force Agent / parameter-binding loads. MCP may
-		// already be touched by assembly-related validation — record baseline.
+		// decode; that must not force Agent / parameter-binding loads.
 		agentBefore := runtimeAgentMetadataLazyLoadCount.Load()
-		mcpBefore := runtimePinnedMCPMetadataLazyLoadCount.Load()
 		paramBefore := runtimeSchemaParameterBindingsLazyLoadCount.Load()
 		if agentBefore != 0 {
 			t.Fatalf("Agent metadata loaded during package init: %d", agentBefore)
@@ -38,7 +36,6 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 			go func() {
 				defer wait.Done()
 				_ = runtimeAgentMetadata()
-				_ = runtimeMCPMetadata()
 				_, _ = runtimeSchemaParameterBindingData()
 			}()
 		}
@@ -46,9 +43,6 @@ func TestRuntimeSchemaMetadataLoadsOnlyOnDemand(t *testing.T) {
 
 		if got := runtimeAgentMetadataLazyLoadCount.Load(); got != 1 {
 			t.Fatalf("Agent metadata lazy load count = %d, want 1", got)
-		}
-		if got := runtimePinnedMCPMetadataLazyLoadCount.Load(); got != mcpBefore+1 && got != 1 {
-			t.Fatalf("MCP metadata lazy load count = %d, want 1 or baseline+1 (baseline=%d)", got, mcpBefore)
 		}
 		if got := runtimeSchemaParameterBindingsLazyLoadCount.Load(); got != 1 {
 			t.Fatalf("parameter bindings lazy load count = %d, want 1", got)

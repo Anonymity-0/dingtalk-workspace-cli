@@ -315,17 +315,17 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 
 	t.Run("NewSchemaCommand delivery branches", func(t *testing.T) {
 		restorePackageCLISchemaDeliveryForTest()
-		cmd := NewSchemaCommand(nil)
+		cmd := NewSchemaCommand()
 		cmd.SetArgs([]string{"--all"})
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("--all error = %v", err)
 		}
-		cmd = NewSchemaCommand(nil)
+		cmd = NewSchemaCommand()
 		cmd.SetArgs(nil)
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("overview error = %v", err)
 		}
-		cmd = NewSchemaCommand(nil)
+		cmd = NewSchemaCommand()
 		cmd.SetArgs([]string{"dev"})
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("path query error = %v", err)
@@ -334,7 +334,7 @@ func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *test
 
 	t.Run("NewSchemaCommand catalog load failure", func(t *testing.T) {
 		testseam.Swap(t, &schemaCommandCatalogError, func() error { return errors.New("catalog broken") })
-		cmd := NewSchemaCommand(nil)
+		cmd := NewSchemaCommand()
 		cmd.SetArgs([]string{"--all"})
 		if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "load typed Schema registry") {
 			t.Fatalf("catalog error = %v", err)

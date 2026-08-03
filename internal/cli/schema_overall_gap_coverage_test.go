@@ -682,14 +682,14 @@ func TestCrossPlatformCoverageRuntimeParameterMetadataApply(t *testing.T) {
 }
 
 func TestOverallCoverageGapSchemaCommandAndFieldResolve(t *testing.T) {
-	cmd := NewSchemaCommand(nil)
+	cmd := NewSchemaCommand()
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"drive", "--cli-path", "drive list"})
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("cli-path with positional arg must fail")
 	}
-	cmd = NewSchemaCommand(nil)
+	cmd = NewSchemaCommand()
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"drive", "--all"})
@@ -698,7 +698,7 @@ func TestOverallCoverageGapSchemaCommandAndFieldResolve(t *testing.T) {
 	}
 	realCatalogError := schemaCommandCatalogError
 	testseam.Swap(t, &schemaCommandCatalogError, func() error { return fmt.Errorf("catalog boom") })
-	cmd = NewSchemaCommand(nil)
+	cmd = NewSchemaCommand()
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"list"})
@@ -726,7 +726,7 @@ func TestOverallCoverageGapSchemaCommandAndFieldResolve(t *testing.T) {
 		{"--all"},
 		{"--cli-path", "dev", "--compact"},
 	} {
-		success := NewSchemaCommand(nil)
+		success := NewSchemaCommand()
 		success.SetOut(&bytes.Buffer{})
 		success.SetErr(&bytes.Buffer{})
 		success.SetArgs(args)
@@ -1154,7 +1154,7 @@ func TestCrossPlatformCoverageOverallRegressionRecovery(t *testing.T) {
 		t.Fatal("empty mapping exclusions ledger must fail load")
 	}
 
-	cmd := NewSchemaCommand(nil)
+	cmd := NewSchemaCommand()
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"__coverage_gate_unknown_schema_path__"})

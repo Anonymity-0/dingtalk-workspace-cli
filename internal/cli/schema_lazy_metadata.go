@@ -10,7 +10,6 @@ type SchemaMetadataLoadCounts struct {
 	Catalog          uint64
 	MetaIndex        uint64
 	AgentMetadata    uint64
-	MCPMetadata      uint64
 	ParameterBinding uint64
 }
 
@@ -21,7 +20,6 @@ func RuntimeSchemaMetadataLoadCounts() SchemaMetadataLoadCounts {
 		Catalog:          runtimeDeliverySchemaCatalogLazyCount.Load(),
 		MetaIndex:        runtimeDeliverySchemaMetaIndexLazyCount.Load(),
 		AgentMetadata:    runtimeAgentMetadataLazyLoadCount.Load(),
-		MCPMetadata:      runtimePinnedMCPMetadataLazyLoadCount.Load(),
 		ParameterBinding: runtimeSchemaParameterBindingsLazyLoadCount.Load(),
 	}
 }

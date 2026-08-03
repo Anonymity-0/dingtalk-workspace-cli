@@ -79,7 +79,7 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 	if bindings, err := cli.LoadSchemaParameterBindings(); err != nil || len(bindings) != 0 {
 		t.Fatalf("LoadSchemaParameterBindings() = %d, %v; want empty active map after Phase 2", len(bindings), err)
 	}
-	if counts := cli.RuntimeSchemaMetadataLoadCounts(); counts.AgentMetadata == 0 || counts.MCPMetadata == 0 {
+	if counts := cli.RuntimeSchemaMetadataLoadCounts(); counts.AgentMetadata == 0 {
 		t.Fatalf("RuntimeSchemaMetadataLoadCounts() = %#v", counts)
 	}
 }

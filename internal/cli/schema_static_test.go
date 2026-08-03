@@ -6,22 +6,15 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
 
-type panicDiscoveryCatalogLoader struct{}
-
-func (panicDiscoveryCatalogLoader) Load(context.Context) (DiscoveryCatalog, error) {
-	panic("schema must not load a runtime catalog")
-}
-
 func TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
-	root.AddCommand(NewSchemaCommand(panicDiscoveryCatalogLoader{}))
+	root.AddCommand(NewSchemaCommand())
 	var stdout bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetArgs([]string{"schema"})
@@ -43,7 +36,7 @@ func TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad(t *testing.T) {
 
 func TestSchemaAllReturnsCompleteDeliveryLeafSchemas(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
-	root.AddCommand(NewSchemaCommand(panicDiscoveryCatalogLoader{}))
+	root.AddCommand(NewSchemaCommand())
 	var stdout bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetArgs([]string{"schema", "--all"})

@@ -21,8 +21,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
@@ -95,13 +93,6 @@ type embeddedMCPParamMeta struct {
 	RequiredWhen string   `json:"required_when,omitempty"`
 }
 
-var runtimePinnedMCPMetadataLazy struct {
-	once     sync.Once
-	metadata embeddedMCPMetadata
-}
-
-var runtimePinnedMCPMetadataLazyLoadCount atomic.Uint64
-
 var runtimeSchemaConstraintsByCanonical = map[string]RuntimeSchemaConstraints{}
 
 // RegisterRuntimeSchemaConstraints records reviewed cross-parameter CLI rules
@@ -122,17 +113,6 @@ func RegisterRuntimeSchemaConstraints(canonicalPath string, constraints RuntimeS
 // through schemaRegistryForTestWithMetadata.
 func emptyPinnedMCPMetadata() embeddedMCPMetadata {
 	return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
-}
-
-// runtimeMCPMetadata returns the empty production MCP pin. Kept as a lazy
-// once so SchemaMetadataLoadCounts still observes first Schema assembly touch
-// without reading any file.
-func runtimeMCPMetadata() embeddedMCPMetadata {
-	runtimePinnedMCPMetadataLazy.once.Do(func() {
-		runtimePinnedMCPMetadataLazyLoadCount.Add(1)
-		runtimePinnedMCPMetadataLazy.metadata = emptyPinnedMCPMetadata()
-	})
-	return runtimePinnedMCPMetadataLazy.metadata
 }
 
 func interfaceMetadataSummaryFrom(metadata embeddedMCPMetadata) map[string]any {

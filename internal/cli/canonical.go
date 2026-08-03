@@ -14,16 +14,13 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +55,7 @@ type FlagSpec struct {
 // NewMCPCommand returns a stub command since the canonical discovery
 // surface has been removed. The command tree is now built from plugins
 // and static endpoint registration only.
-func NewMCPCommand(_ context.Context, _ DiscoveryCatalogLoader, _ executor.Runner, _ *pipeline.Engine) *cobra.Command {
+func NewMCPCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/mcp.json
 	// products.mcp). DiscoveryCatalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
@@ -89,8 +86,9 @@ func NewMCPCommand(_ context.Context, _ DiscoveryCatalogLoader, _ executor.Runne
 
 // NewSchemaCommand serves the typed Schema contract. Production assembles from
 // declarations via ResolveSchemaBuild (factory registered by internal/app).
-// A malformed assembly fails closed; the MCP DiscoveryCatalogLoader is unused.
-func NewSchemaCommand(_ DiscoveryCatalogLoader) *cobra.Command {
+// A malformed assembly fails closed; the command takes no discovery loader
+// because queries never run service discovery.
+func NewSchemaCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schema [path]",
 		Short: "渐进查看命令 Schema (产品 / 分组 / 工具参数)",

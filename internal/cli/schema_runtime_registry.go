@@ -72,7 +72,7 @@ func (resolved ResolvedSchemaBuild) CommandCount() int {
 func pinnedRuntimeSchemaMetadataSources() runtimeSchemaMetadataSources {
 	return runtimeSchemaMetadataSources{
 		Agent: runtimeAgentMetadata(),
-		MCP:   runtimeMCPMetadata(),
+		MCP:   emptyPinnedMCPMetadata(),
 	}
 }
 
