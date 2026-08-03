@@ -5,7 +5,7 @@ unrelated work, and use `gofmt` for every modified Go file.
 
 ## Build and test
 
-- Build: `go build ./cmd`
+- Build: `make build` (wraps `scripts/dev/build.sh` → `go build -o dws ./cmd`; bare `go build ./cmd` fails because output name `cmd` collides with the directory)
 - Full test suite: `DWS_PACKAGE_VERSION=0.0.0-test go test ./...`
 - Param aliases generate: `go generate ./internal/cli` (entry point: `internal/cli/gen.go`; Catalog is not generated)
 - Refresh pinned MCP metadata: `make fetch-mcp-metadata` (requires `dws auth login`)
@@ -37,7 +37,8 @@ is different: it is a reviewed `CommandRegistry` source, not a generated
 snapshot. It is the single reviewed source of stable canonical identity,
 primary paths, aliases, and navigation. Edit it only when reviewed exposure,
 identity, primary path, or aliases change; parameter, Skill, and metadata-only
-changes must not rewrite it mechanically.
+changes must not rewrite it mechanically. Rationale and day-to-day management
+rules: `docs/schema/schema-command-registry.md`.
 
 ## Command framework declaration
 
@@ -54,7 +55,7 @@ changes must not rewrite it mechanically.
   - Catalog assembly / `ResolveMeta` (`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`); go:embed only for reviewed inputs → `internal/cli` root (package-local aliases for annotate/store APIs live in `runtime_schema_seam.go`; the former `cli/runtimeannotate` / `cli/contractfinal` shim packages are removed — import `corecmd/*` directly)
   - **Hard rule**: `internal/corecmd` (and its subpackages) must **not** import any `internal/cli` package
 - Authoring tiers (current, not aspirational):
-  - **Tier1** — `corecmd.New` / `NewLeafCommand` (fully managed declare + execute)
+  - **Tier1** — `corecmd.New` / `helpers.NewLeafCommand` (fully managed declare + execute)
   - **Tier2** — `DeclareLeafMetadata` (helpers migration; **Shortcut may also use this path — acceptable**)
   - **Tier3** — bare Cobra (should shrink over time; reviewed exclusions where needed)
   - Long-term outlook only: broader mcpbind / fewer hand-written `Execute` bodies. **Not** a current hard requirement to delete `Shortcut.Execute` or force mcpbind.
@@ -104,7 +105,7 @@ The Schema data flow is one way:
    + Interface metadata
    └─ resolves every command exactly once into ToolSpec
    └─ aggregates SchemaRegistry + SchemaIndex
-   └─ ResolveSchemaBuild (lazy, sync.Once) at runtime
+   └─ ResolveSchemaBuild assembles at runtime; deliverySchemaCatalog wraps it (lazy, sync.Once)
 
   6. Runtime delivery (no generate-written Catalog authority)
    SchemaRegistry
@@ -292,8 +293,7 @@ make generate-schema
 go test ./internal/app -run '^TestSheetFinalSchemaConfirmationMatchesRuntimeGuards$' -count=1
 ```
 
-`check-runtime-confirmation-truth.sh` compares Catalog
-`confirmation=user_required` to Contract SafetySpec only.
+`check-runtime-confirmation-truth.sh` compares live ContractFinal.Safety with the assembled ToolSpec `confirmation=user_required` and probes the runtime gate.
 `schema_hints/` must stay absent.
 
 Example rules (fail generation otherwise):
