@@ -188,6 +188,21 @@ func TestCrossPlatformCoverageSchemaSourceRootErrorBranchesAndRestoreFallback(t 
 	}
 }
 
+func TestCrossPlatformCoverageLoadSchemaSourceRootFnUnstored(t *testing.T) {
+	prev := loadSchemaSourceRootFn()
+	t.Cleanup(func() {
+		resetSchemaSourceRootAtomicForTest()
+		if prev != nil {
+			storeSchemaSourceRootFn(prev)
+		}
+		restorePackageCLISchemaDeliveryForTest()
+	})
+	resetSchemaSourceRootAtomicForTest()
+	if loadSchemaSourceRootFn() != nil {
+		t.Fatal("loadSchemaSourceRootFn() must be nil before first store")
+	}
+}
+
 func TestCrossPlatformCoverageSafetyForCLIPathUnregisteredFactory(t *testing.T) {
 	prev := loadSchemaSourceRootFn()
 	t.Cleanup(func() {

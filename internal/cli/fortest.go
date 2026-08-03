@@ -14,6 +14,8 @@
 package cli
 
 import (
+	"sync/atomic"
+
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +29,10 @@ func resetDeliverySchemaCatalogStateForTest() {
 
 func resetMetaByCLIPathStateForTest() {
 	resetSchemaDeliveryState()
+}
+
+func resetSchemaSourceRootAtomicForTest() {
+	schemaSourceRoot = atomic.Value{}
 }
 
 // clearDeclaredDryRunCapabilitiesForTest resets the declared index (tests only).

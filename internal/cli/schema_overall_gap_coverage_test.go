@@ -235,6 +235,14 @@ func TestCrossPlatformCoverageDeliveryInvariantErrorBranches(t *testing.T) {
 	if path == "" {
 		t.Fatal("list vs map difference empty")
 	}
+	path, _, _ = firstSchemaJSONDifference(map[string]any{"a": 1}, map[string]any{"a": 1, "b": 2})
+	if path != "$.b" {
+		t.Fatalf("extra right-map key difference = %q", path)
+	}
+	path, _, _ = firstSchemaJSONDifference(map[string]any{"a": 1, "b": 2}, map[string]any{"a": 1})
+	if path != "$.b" {
+		t.Fatalf("extra left-map key difference = %q", path)
+	}
 	long := strings.Repeat("x", 300)
 	if got := compactSchemaDiagnosticValue(long); !strings.HasSuffix(got, "...") {
 		t.Fatalf("compact long value = %q", got)

@@ -6,6 +6,8 @@ package cli
 import (
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestCrossPlatformCoverageIndexCommandSpecsValidationEdges(t *testing.T) {
@@ -60,5 +62,12 @@ func TestCrossPlatformCoverageIndexCommandSpecsValidationEdges(t *testing.T) {
 	}
 	if got := reg.Commands[0].Visibility; got != SchemaVisibilityPublic {
 		t.Fatalf("default visibility = %q", got)
+	}
+
+	if _, err := BuildEffectiveCommandRegistry(nil); err == nil || !strings.Contains(err.Error(), "root is nil") {
+		t.Fatalf("BuildEffectiveCommandRegistry(nil) error = %v", err)
+	}
+	if _, err := BuildEffectiveCommandRegistry(&cobra.Command{Use: "dws"}); err != nil {
+		t.Fatalf("BuildEffectiveCommandRegistry(root) error = %v", err)
 	}
 }
