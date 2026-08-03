@@ -137,7 +137,7 @@ var ConversationMuteAtAll = shortcut.Shortcut{
 	Command:     "+conversation-mute-at-all",
 	Product:     "im",
 	Description: "关闭/开启 @所有人消息提醒",
-	Intent:      "当你在某个群里不想再被'@所有人'打扰、或想恢复该提醒时使用；会实际修改该会话的@所有人提醒开关，需传 openConversationId。",
+	Intent:      "当你已对某个会话开启消息免打扰，并希望额外关闭或恢复'@所有人'提醒时使用；这是免打扰的子开关，若尚未开启总免打扰，先执行 +conversation-mute，否则平台会返回 NotificationOffNotEnabled。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
@@ -158,7 +158,7 @@ var ConversationMuteRedEnvelope = shortcut.Shortcut{
 	Command:     "+conversation-mute-red-envelope",
 	Product:     "im",
 	Description: "关闭/开启红包消息提醒",
-	Intent:      "当你想在某个会话里关闭或恢复红包消息提醒时使用；会实际修改该会话的红包提醒开关，需传 openConversationId。",
+	Intent:      "当你已对某个会话开启消息免打扰，并希望额外关闭或恢复红包提醒时使用；这是免打扰的子开关，若尚未开启总免打扰，或刚恢复过@所有人提醒，先执行 +conversation-mute，否则平台会返回 NotificationOffNotEnabled。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},

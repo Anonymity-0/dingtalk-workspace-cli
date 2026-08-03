@@ -220,6 +220,15 @@ func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 	}
 }
 
+func TestConversationNotificationSubSwitchesPublishMutePrerequisite(t *testing.T) {
+	for _, command := range []shortcut.Shortcut{ConversationMuteAtAll, ConversationMuteRedEnvelope} {
+		if !strings.Contains(command.Intent, "+conversation-mute") ||
+			!strings.Contains(command.Intent, "NotificationOffNotEnabled") {
+			t.Errorf("%s intent does not publish the live platform prerequisite: %q", command.Command, command.Intent)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageChatIDHelpers(t *testing.T) {
 	t.Run("recognize open DingTalk IDs", func(t *testing.T) {
 		tests := []struct {

@@ -1648,7 +1648,7 @@ Flags:
 
 #### 关闭/开启 @所有人消息提醒 — 关闭或开启会话中 @所有人的消息通知
 
-> ⚠️ 当前不可用：该命令当前调用常失败（服务端返回 1002 系统繁忙），多为服务端侧限制。命令本身参数合法，但调用不会生效。
+> 前置条件：先为会话开启总免打扰（`dws chat mute --conversation-id <openConversationId>`），否则平台返回 `NotificationOffNotEnabled`。
 ```
 Usage:
   dws chat mute-at-all [flags]
@@ -1664,6 +1664,7 @@ Flags:
 
 注意:
   - 默认行为是关闭 @所有人通知，传 --off 则恢复接收通知
+  - 该子开关依赖总免打扰；恢复 @所有人通知后，再修改红包子开关前应重新开启总免打扰
   - 支持单聊和群聊，openConversationId 可通过 chat search（群聊）或 chat conversation-info（单聊）获取
 ```
 
@@ -1671,7 +1672,7 @@ Flags:
 
 #### 关闭/开启红包消息提醒 — 关闭或开启会话中的红包消息通知
 
-> ⚠️ 当前不可用：该命令当前调用常失败（服务端返回 1002 系统繁忙），多为服务端侧限制。命令本身参数合法，但调用不会生效。
+> 前置条件：先为会话开启总免打扰（`dws chat mute --conversation-id <openConversationId>`），否则平台返回 `NotificationOffNotEnabled`。
 ```
 Usage:
   dws chat mute-red-envelope [flags]
@@ -1687,6 +1688,7 @@ Flags:
 
 注意:
   - 默认行为是关闭红包通知，传 --off 则恢复接收通知
+  - 若刚恢复了 @所有人通知，应先重新开启总免打扰，再修改红包通知
   - 支持单聊和群聊，openConversationId 可通过 chat search（群聊）或 chat conversation-info（单聊）获取
 ```
 
@@ -2020,8 +2022,8 @@ Flags:
 - `chat category list-by-conv` / `chat category batch-info` — 查询会话所属分组 / 批量查询分组信息
 - `chat mute` — 开启/关闭会话消息免打扰（默认开启，--off 关闭）
 - `chat hide` — 在会话列表中隐藏会话（支持单聊/群聊，收到新消息时重新出现）
-- `chat mute-at-all` — 关闭/开启 @所有人消息提醒（默认关闭，--off 恢复）
-- `chat mute-red-envelope` — 关闭/开启红包消息提醒（默认关闭，--off 恢复）
+- `chat mute-at-all` — 关闭/开启 @所有人消息提醒（默认关闭，--off 恢复；需先开启总免打扰）
+- `chat mute-red-envelope` — 关闭/开启红包消息提醒（默认关闭，--off 恢复；需先开启总免打扰）
 - `chat mark-unread` / `chat mark-read` — 标记会话未读 / 标记指定消息及之前的消息已读
 - `chat clear-red-point` / `chat clear-all-red-point` — 清除单个会话红点 / 一键清除所有会话红点（全部已读）
 - `chat list-all-conversations` — 分页拉取当前用户全部会话列表（单聊+群聊，与 list-top-conversations 的区别是不限置顶）
@@ -2308,8 +2310,8 @@ Flags:
 - `chat category list` 无需参数；`category list-conversations` 需传 --category-id（通过 category list 获取）
 - `chat mute` 默认开启免打扰，传 --off 关闭；--conversation-id / --id / --chat 三个别名均可用于传入会话 ID
 - `chat hide` 隐藏会话，需传 --conversation-id（openConversationId，支持单聊/群聊），隐藏后不显示在列表中，收到新消息时重新出现
-- `chat mute-at-all` 关闭/开启 @所有人消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收
-- `chat mute-red-envelope` 关闭/开启红包消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收
+- `chat mute-at-all` 关闭/开启 @所有人消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收；调用前需先开启总免打扰
+- `chat mute-red-envelope` 关闭/开启红包消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收；调用前需先开启总免打扰
 - `chat message reply` 引用回复消息（**单聊/群聊均可**），需传 --conversation-id（openConversationId，单聊与群聊使用同一字段）、--ref-msg-id（被引用消息 openMessageId）、--ref-sender（被引用消息发送者 openDingTalkId）、--text（回复内容）；目前回复类型仅支持 text
 - `chat message forward` 转发单条消息（**源/目标会话均支持单聊/群聊**，常见组合：群→群、群→单、单→群、单→单），需传 --src-conversation-id（源会话 openConversationId）、--msg-id（源消息 openMessageId）、--dest-conversation-id（目标会话 openConversationId）
 - `chat set-top` 设置/取消会话置顶（**单聊/群聊均可**），需传 --conversation-id（openConversationId，单聊与群聊使用同一字段），默认置顶，传 --off 取消

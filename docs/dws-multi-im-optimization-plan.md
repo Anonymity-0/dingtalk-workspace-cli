@@ -495,8 +495,46 @@ make generate-schema
 - Skill 命令面通过：1009 条可执行 path；
 - Runtime confirmation truth 通过：137 个 gated 工具；
 - Schema Catalog、CommandRegistry 和两次独立生成漂移检查通过；
-- `DWS_PACKAGE_VERSION=0.0.0-test go test ./...` 通过；
+- `DWS_PACKAGE_VERSION=0.0.0-test go test -p 1 ./...` 通过；默认包级并行复跑曾因
+  `internal/helpers` 的共享测试环境竞争失败一次，该包隔离强制复跑通过；
 - `go build -o /tmp/dws-multi-im-build ./cmd` 通过。
+
+### 9.2 真实环境端到端审计
+
+2026-08-03 使用当前分支构建的 CLI、有效个人登录态和真实 DingTalk 后端完成两组审计。
+报告只保留命令名、下层工具名、数量和脱敏错误类别，不落业务 payload：
+
+```bash
+python3 scripts/run_chat_shortcut_live_audit.py \
+  --dws /tmp/dws-multi-im-final \
+  --out-dir /tmp/dws-im-live-audit-019fc653/read-current-branch \
+  --timeout 90 --max-group-probes 8 --max-member-probes 8
+
+python3 scripts/run_chat_shortcut_live_write_audit.py \
+  --dws /tmp/dws-multi-im-final \
+  --out-dir /tmp/dws-im-live-audit-019fc653/write-current-branch \
+  --timeout 90 --yes-live
+```
+
+结果：
+
+- 读链路共 34 项：28 项 `pass`，2 项 `pass_empty`，4 项 `fixture_blocked`，无投影
+  不一致、下层错误或超时；
+- 写链路共 57 项：46 项 `pass`，11 项 `external_fixture_required`，无执行错误；
+- 写审计使用单用户临时群，并在 `finally` 中恢复可逆开关、解散临时群；按 4 类审计
+  名称前缀复查，残留为 0；
+- 未覆盖项都保留精确 fixture 原因：数字 `groupId`、真实 `openTaskId`、媒体消息、配置
+  完成的机器人/Webhook、第二测试成员和待审批入群请求；不使用业务数据伪造通过；
+- `+conversation-mute-at-all` 和 `+conversation-mute-red-envelope` 均在真实环境通过，旧 Mono
+  reference 的“当前不可用”结论已移除；真实前置条件是先开启总免打扰，否则平台返回
+  `NotificationOffNotEnabled`；连续审计两个子开关时，红包应先于 @所有人，或在恢复
+  @所有人通知后重新开启总免打扰；
+- `+at-me` 曾因上层同时提供 `messages`/`items` 兼容别名被审计器重复计数，现固定选择一个
+  canonical message projection；该问题属于审计器误报，不是 Runtime 数据丢失；
+- 首轮 `+messages-list-unread-conversations` 出现一次瞬时后端超时，同一原子入口和最终
+  完整复测均通过，未将瞬时故障掩盖为 contract-only。
+
+真实审计补充确定性门禁，但不替代 Schema、policy、单元测试和全量 Go 测试。
 
 ## 10. 完成定义
 

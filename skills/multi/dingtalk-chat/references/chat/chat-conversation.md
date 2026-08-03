@@ -49,8 +49,11 @@ dws chat conversation-info --open-dingtalk-id <openDingTalkId> --format json
 | `set-top` | 设置/取消会话置顶 | `--conversation-id`；默认置顶，`--off` 取消 |
 | `mute` | 开启/关闭会话免打扰 | `--conversation-id`；默认开启，`--off` 关闭 |
 | `hide` | 隐藏会话 | `--conversation-id` |
-| `mute-at-all` | 关闭/恢复 @所有人通知 | `--conversation-id`；默认关闭，`--off` 恢复 |
-| `mute-red-envelope` | 关闭/恢复红包通知 | `--conversation-id`；默认关闭，`--off` 恢复 |
+| `mute-at-all` | 关闭/恢复 @所有人通知 | `--conversation-id`；默认关闭，`--off` 恢复；必须先开启会话总免打扰 |
+| `mute-red-envelope` | 关闭/恢复红包通知 | `--conversation-id`；默认关闭，`--off` 恢复；必须先开启会话总免打扰 |
+
+若连续操作两个子开关，优先操作红包通知；恢复 @所有人通知后，平台可能清除子开关所需的
+总免打扰状态，此时要先重新开启总免打扰，再操作红包通知。
 
 ```bash
 dws chat set-top --conversation-id <openConversationId>
