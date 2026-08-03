@@ -505,12 +505,12 @@ func normalizeCommandAliases(aliases []string, primary string) []string {
 // is validated at BindEffectiveCommandRegistry and catalog assembly, not here.
 // Identity registry construction must not hard-depend on active binding rows.
 //
-// identity-deregistry Phase 2: the reviewed schema_command_registry remains
-// the assembly source, while TestCollectedIdentityMatchesReviewedRegistry
-// keeps the identity collected from live ContractFinal leaves byte-equivalent
-// with it. The production switchover to the collector ships together with the
-// registry removal (Phase 3) as one atomic change, not as an intermediate
-// state where assembly uses the collector but the registry still exists.
+// identity-deregistry: the reviewed schema_command_registry remains the
+// assembly source, while TestCollectedIdentityMatchesReviewedRegistry keeps
+// the identity collected from live ContractFinal leaves byte-equivalent with
+// it. The production switchover to the collector ships together with the
+// registry removal as one atomic change, not as an intermediate state where
+// assembly uses the collector but the registry still exists.
 func BuildEffectiveCommandRegistry(root *cobra.Command) (EffectiveCommandRegistry, error) {
 	if root == nil {
 		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")
