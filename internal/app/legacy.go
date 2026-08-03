@@ -82,10 +82,6 @@ func injectStaticServers() {
 	SetDynamicServers(descriptors)
 }
 
-func newLegacyHiddenCommands(_ executor.Runner) []*cobra.Command {
-	return nil
-}
-
 func mergeTopLevelCommands(commands []*cobra.Command) []*cobra.Command {
 	byName := make(map[string]*cobra.Command, len(commands))
 	for _, cmd := range commands {

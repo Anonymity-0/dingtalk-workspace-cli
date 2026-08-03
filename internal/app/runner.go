@@ -201,7 +201,7 @@ func (r *runtimeRunner) Run(ctx context.Context, invocation executor.Invocation)
 		return r.runMultiProfile(ctx, invocation, selections)
 	}
 	if strings.TrimSpace(rawProfile) != "" {
-		profile, err := authpkg.ResolveProfile(defaultConfigDir(), rawProfile)
+		profile, err := runnerResolveProfile(defaultConfigDir(), rawProfile)
 		if err != nil {
 			return executor.Result{}, apperrors.NewValidation(err.Error())
 		}
@@ -418,10 +418,12 @@ func multiProfileErrorPayload(err error) map[string]any {
 	return payload
 }
 
-// handleCatalogMiss decides what to do when discovery catalog does not cover the
-// requested product / tool and no `directRuntimeEndpoint` match fired earlier.
+// handleCatalogMiss decides what to do when the dynamic server registry has
+// no endpoint for the requested product / tool and no `directRuntimeEndpoint`
+// match fired earlier. The discovery catalog is retired; endpoint resolution
+// is the dynamic server registry only, so a registry miss here is terminal.
 //
-// Previously every catalog miss silently fell through to EchoRunner, which
+// Previously every miss silently fell through to EchoRunner, which
 // returns an empty `executor.Result{Response: nil}`. The helper-invocation
 // adapter then converted that into `&edition.ToolResult{}`, whose `Content`
 // marshals to `null`, surfacing as `{"Content": null}` at the CLI. Users had no

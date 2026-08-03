@@ -489,7 +489,6 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 	root.AddCommand(utilityCommands...)
 
 	root.AddCommand(newLegacyPublicCommands(runner, patCaller, loadRuntimeExtensions)...)
-	root.AddCommand(newLegacyHiddenCommands(runner)...)
 
 	// PAT authorization commands (open-source core)
 	pat.RegisterCommands(root, patCaller)

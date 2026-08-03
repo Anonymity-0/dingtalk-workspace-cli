@@ -110,54 +110,9 @@ func SetDynamicServers(servers []mcptypes.ServerDescriptor) {
 	products := make(map[string]bool)
 	aliases := make(map[string]string)
 	toolEndpoints := make(map[string]string)
-	registerDynamicServer(defaultPATServerDescriptor(), endpoints, products, aliases, toolEndpoints)
+	registerDynamicServer(defaultPATServerDescriptor(), endpoints, products, aliases, toolEndpoints, false)
 	for _, server := range servers {
-		if server.CLI.Skip {
-			continue
-		}
-		id := strings.TrimSpace(server.CLI.ID)
-		endpoint := strings.TrimSpace(server.Endpoint)
-		if id != "" && endpoint != "" {
-			endpoints[id] = endpoint
-			products[id] = true
-		}
-		cmd := strings.TrimSpace(server.CLI.Command)
-		if cmd != "" && cmd != id && endpoint != "" {
-			endpoints[cmd] = endpoint
-			products[cmd] = true
-		}
-		for _, alias := range server.CLI.Aliases {
-			alias = strings.TrimSpace(alias)
-			if alias != "" && endpoint != "" {
-				endpoints[alias] = endpoint
-				products[alias] = true
-				// Build alias → CLI.ID mapping
-				aliases[alias] = id
-			}
-		}
-		// Build tool → endpoint mapping from CLI tools and overrides.
-		if endpoint != "" {
-			for _, tool := range server.CLI.Tools {
-				toolName := strings.TrimSpace(tool.Name)
-				if toolName != "" {
-					toolEndpoints[toolName] = endpoint
-				}
-			}
-			for toolName, override := range server.CLI.ToolOverrides {
-				toolName = strings.TrimSpace(toolName)
-				if toolName == "" {
-					continue
-				}
-				// Leaves with serverOverride are routed to a different server's
-				// endpoint (e.g. chat's "search_my_robots" → bot). Registering
-				// them here would overwrite the real owner's tool → endpoint
-				// mapping and send the invocation to the wrong MCP URL.
-				if strings.TrimSpace(override.ServerOverride) != "" {
-					continue
-				}
-				toolEndpoints[toolName] = endpoint
-			}
-		}
+		registerDynamicServer(server, endpoints, products, aliases, toolEndpoints, false)
 	}
 	dynamicEndpoints = endpoints
 	dynamicProducts = products
@@ -165,7 +120,13 @@ func SetDynamicServers(servers []mcptypes.ServerDescriptor) {
 	dynamicToolEndpoints = toolEndpoints
 }
 
-func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[string]string, products map[string]bool, aliases map[string]string, toolEndpoints map[string]string) {
+// registerDynamicServer is the shared dynamic-server registration core used by
+// SetDynamicServers and AppendDynamicServer. It records the descriptor's
+// endpoint under its ID, command name, and aliases, and builds the tool →
+// endpoint map from its CLI tools and overrides. With protectCommandKey=true
+// (AppendDynamicServer) an already-registered command-key endpoint is never
+// overwritten; with false the entry is replaced.
+func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[string]string, products map[string]bool, aliases map[string]string, toolEndpoints map[string]string, protectCommandKey bool) {
 	if server.CLI.Skip {
 		return
 	}
@@ -177,7 +138,13 @@ func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[strin
 	}
 	cmd := strings.TrimSpace(server.CLI.Command)
 	if cmd != "" && cmd != id && endpoint != "" {
-		endpoints[cmd] = endpoint
+		if protectCommandKey {
+			if _, exists := endpoints[cmd]; !exists {
+				endpoints[cmd] = endpoint
+			}
+		} else {
+			endpoints[cmd] = endpoint
+		}
 		products[cmd] = true
 	}
 	for _, alias := range server.CLI.Aliases {
@@ -185,11 +152,11 @@ func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[strin
 		if alias != "" && endpoint != "" {
 			endpoints[alias] = endpoint
 			products[alias] = true
-			// Build alias -> CLI.ID mapping.
+			// Build alias → CLI.ID mapping.
 			aliases[alias] = id
 		}
 	}
-	// Build tool -> endpoint mapping from CLI tools and overrides.
+	// Build tool → endpoint mapping from CLI tools and overrides.
 	if endpoint != "" {
 		for _, tool := range server.CLI.Tools {
 			toolName := strings.TrimSpace(tool.Name)
@@ -197,18 +164,28 @@ func registerDynamicServer(server mcptypes.ServerDescriptor, endpoints map[strin
 				toolEndpoints[toolName] = endpoint
 			}
 		}
-		for toolName := range server.CLI.ToolOverrides {
+		for toolName, override := range server.CLI.ToolOverrides {
 			toolName = strings.TrimSpace(toolName)
-			if toolName != "" {
-				toolEndpoints[toolName] = endpoint
+			if toolName == "" {
+				continue
 			}
+			// Leaves with serverOverride are routed to a different server's
+			// endpoint (e.g. chat's "search_my_robots" → bot). Registering
+			// them here would overwrite the real owner's tool → endpoint
+			// mapping and send the invocation to the wrong MCP URL.
+			if strings.TrimSpace(override.ServerOverride) != "" {
+				continue
+			}
+			toolEndpoints[toolName] = endpoint
 		}
 	}
 }
 
-// shouldUseDirectRuntime gates endpoint resolution to the invocation kinds
-// the executor actually constructs (NewCompatibilityInvocation /
-// NewHelperInvocation); other kinds keep their own endpoint flows.
+// shouldUseDirectRuntime gates endpoint resolution to the only invocation
+// kinds the executor constructs: compat_invocation via
+// NewCompatibilityInvocation and helper_invocation via NewHelperInvocation.
+// Every other kind skips direct-runtime resolution and terminates at
+// handleCatalogMiss in the runner.
 func shouldUseDirectRuntime(invocation executor.Invocation) bool {
 	switch invocation.Kind {
 	case "compat_invocation", "helper_invocation":
@@ -359,51 +336,7 @@ func AppendDynamicServer(server mcptypes.ServerDescriptor) {
 		dynamicToolEndpoints = make(map[string]string)
 	}
 
-	if server.CLI.Skip {
-		return
-	}
-
-	id := strings.TrimSpace(server.CLI.ID)
-	endpoint := strings.TrimSpace(server.Endpoint)
-	if id != "" && endpoint != "" {
-		dynamicEndpoints[id] = endpoint
-		dynamicProducts[id] = true
-	}
-	cmd := strings.TrimSpace(server.CLI.Command)
-	if cmd != "" && cmd != id && endpoint != "" {
-		if _, exists := dynamicEndpoints[cmd]; !exists {
-			dynamicEndpoints[cmd] = endpoint
-		}
-		dynamicProducts[cmd] = true
-	}
-	for _, alias := range server.CLI.Aliases {
-		alias = strings.TrimSpace(alias)
-		if alias != "" && endpoint != "" {
-			dynamicEndpoints[alias] = endpoint
-			dynamicProducts[alias] = true
-			dynamicAliases[alias] = id
-		}
-	}
-	if endpoint != "" {
-		for _, tool := range server.CLI.Tools {
-			toolName := strings.TrimSpace(tool.Name)
-			if toolName != "" {
-				dynamicToolEndpoints[toolName] = endpoint
-			}
-		}
-		for toolName, override := range server.CLI.ToolOverrides {
-			toolName = strings.TrimSpace(toolName)
-			if toolName == "" {
-				continue
-			}
-			// Leaves with serverOverride are routed to a different server's
-			// endpoint; skip to avoid overwriting the real owner's mapping.
-			if strings.TrimSpace(override.ServerOverride) != "" {
-				continue
-			}
-			dynamicToolEndpoints[toolName] = endpoint
-		}
-	}
+	registerDynamicServer(server, dynamicEndpoints, dynamicProducts, dynamicAliases, dynamicToolEndpoints, true)
 }
 
 func normalizeDirectRuntimeProductID(productID string) string {
