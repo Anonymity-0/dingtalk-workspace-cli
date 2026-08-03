@@ -8,7 +8,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Fixed
 
-- **Event bus sockets on shared filesystems** — Unix event buses now place their local IPC socket in a private per-user runtime directory (`XDG_RUNTIME_DIR` when available, otherwise a `0700` per-UID directory under the system temporary directory) while retaining locks, metadata, logs, and subscription state in the configured Workdir. Listener and dial paths validate directory ownership and permissions before use. This prevents `dws event consume` from failing with `bind: errno 524` when `~/.dws` is hosted on NFS, CSI, FUSE, or another filesystem that does not support Unix Domain Sockets without exposing a predictable socket in a shared `/tmp` root.
+- **Event bus sockets on shared filesystems** — Unix event buses now place their local IPC socket in a private per-user runtime directory (`XDG_RUNTIME_DIR` when available, otherwise a `0700` per-UID directory under the system temporary directory) while retaining locks, metadata, logs, and subscription state in the configured Workdir. Listener and dial paths validate directory ownership and permissions before use. This prevents `dws event consume` from failing with `bind: errno 524` when `~/.dws` is hosted on NFS, CSI, FUSE, or another filesystem that does not support Unix Domain Sockets without exposing the socket directly in a shared `/tmp` root. When `XDG_RUNTIME_DIR` is unavailable, the per-UID directory name is deterministic: ownership validation prevents endpoint hijacking, but another local user can pre-create the directory to deny service; multi-user deployments should provide a private `XDG_RUNTIME_DIR`.
 
 ## [1.0.56-beta.2] - 2026-07-30
 

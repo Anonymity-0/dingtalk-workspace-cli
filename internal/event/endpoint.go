@@ -70,13 +70,21 @@ func ipcEndpointForOS(goos, workDir, editionName string, sourceKind SourceKind, 
 	if goos == "windows" {
 		return `\\.\pipe\dws-event-` + editionName + "-" + string(sourceKind) + "-" + identityHash
 	}
+	return unixSocketEndpoint(goos, workDir, strings.TrimSpace(os.Getenv("XDG_RUNTIME_DIR")), os.TempDir())
+}
+
+func unixSocketEndpoint(goos, workDir, runtimeDir, tempDir string) string {
 	socketName := "dws-evt-" + IdentityHash(workDir) + ".sock"
 	userDirName := eventRuntimeDirPrefix + currentUserID()
-	if runtimeDir := strings.TrimSpace(os.Getenv("XDG_RUNTIME_DIR")); filepath.IsAbs(runtimeDir) {
+	if filepath.IsAbs(runtimeDir) {
 		candidate := filepath.Join(runtimeDir, userDirName, socketName)
 		if len(candidate) <= maxUnixSocketPath(goos) {
 			return candidate
 		}
 	}
-	return filepath.Join(os.TempDir(), userDirName, socketName)
+	fallback := filepath.Join(tempDir, userDirName, socketName)
+	if len(fallback) <= maxUnixSocketPath(goos) {
+		return fallback
+	}
+	return filepath.Join("/tmp", userDirName, socketName)
 }

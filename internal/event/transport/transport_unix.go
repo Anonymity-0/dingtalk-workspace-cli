@@ -33,10 +33,13 @@ type unixListener struct {
 }
 
 var (
-	statSocket   = os.Stat
-	removeSocket = os.Remove
-	listenUnix   = net.Listen
-	chmodSocket  = os.Chmod
+	statSocket            = os.Stat
+	removeSocket          = os.Remove
+	listenUnix            = net.Listen
+	chmodSocket           = os.Chmod
+	lstatSocketPath       = os.Lstat
+	statSocketRuntimeRoot = os.Stat
+	mkdirSocketDir        = os.Mkdir
 )
 
 func (u *unixListener) Accept() (net.Conn, error) { return u.l.Accept() }
@@ -70,7 +73,7 @@ func ensureSocketDir(path string, create bool) error {
 	}
 	dir := filepath.Dir(path)
 	root := filepath.Dir(dir)
-	rootInfo, err := os.Lstat(root)
+	rootInfo, err := lstatSocketPath(root)
 	if err != nil {
 		return fmt.Errorf("transport: inspect socket runtime root %s: %w", root, err)
 	}
@@ -78,7 +81,7 @@ func ensureSocketDir(path string, create bool) error {
 	// Follow only that well-known alias, then apply the same ownership/sticky
 	// validation to its target. Arbitrary runtime-root symlinks remain rejected.
 	if rootInfo.Mode()&os.ModeSymlink != 0 && filepath.Clean(root) == "/tmp" {
-		rootInfo, err = os.Stat(root)
+		rootInfo, err = statSocketRuntimeRoot(root)
 		if err != nil {
 			return fmt.Errorf("transport: resolve socket runtime root %s: %w", root, err)
 		}
@@ -87,11 +90,11 @@ func ensureSocketDir(path string, create bool) error {
 		return err
 	}
 	if create {
-		if err := os.Mkdir(dir, config.DirPerm); err != nil && !errors.Is(err, os.ErrExist) {
+		if err := mkdirSocketDir(dir, config.DirPerm); err != nil && !errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("transport: create socket directory %s: %w", dir, err)
 		}
 	}
-	dirInfo, err := os.Lstat(dir)
+	dirInfo, err := lstatSocketPath(dir)
 	if err != nil {
 		return fmt.Errorf("transport: inspect socket directory %s: %w", dir, err)
 	}

@@ -119,7 +119,7 @@ func TestListen_StaleSocketCleanup(t *testing.T) {
 	defer l.Close()
 }
 
-func TestListen_CreatesPrivateSocketDirectory(t *testing.T) {
+func TestCrossPlatformCoverageListenCreatesPrivateSocketDirectory(t *testing.T) {
 	dir := filepath.Join(shortSecureTempDir(t), "dws-event-test")
 	path := filepath.Join(dir, "bus.sock")
 	l, err := Listen(path)
@@ -137,7 +137,7 @@ func TestListen_CreatesPrivateSocketDirectory(t *testing.T) {
 	}
 }
 
-func TestListen_RejectsWorldAccessibleSocketDirectory(t *testing.T) {
+func TestCrossPlatformCoverageListenRejectsWorldAccessibleSocketDirectory(t *testing.T) {
 	dir := filepath.Join(shortSecureTempDir(t), "dws-event-test")
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -150,7 +150,7 @@ func TestListen_RejectsWorldAccessibleSocketDirectory(t *testing.T) {
 	}
 }
 
-func TestDial_RejectsWorldAccessibleSocketDirectory(t *testing.T) {
+func TestCrossPlatformCoverageDialRejectsWorldAccessibleSocketDirectory(t *testing.T) {
 	dir := filepath.Join(shortSecureTempDir(t), "dws-event-test")
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -163,7 +163,7 @@ func TestDial_RejectsWorldAccessibleSocketDirectory(t *testing.T) {
 	}
 }
 
-func TestListen_RejectsSymlinkSocketDirectory(t *testing.T) {
+func TestCrossPlatformCoverageListenRejectsSymlinkSocketDirectory(t *testing.T) {
 	root := shortSecureTempDir(t)
 	target := filepath.Join(root, "target")
 	if err := os.Mkdir(target, 0o700); err != nil {
@@ -178,7 +178,7 @@ func TestListen_RejectsSymlinkSocketDirectory(t *testing.T) {
 	}
 }
 
-func TestValidatePrivateSocketDirRejectsDifferentOwner(t *testing.T) {
+func TestCrossPlatformCoverageValidatePrivateSocketDirRejectsDifferentOwner(t *testing.T) {
 	dir := shortSecureTempDir(t)
 	st, err := os.Lstat(dir)
 	if err != nil {
@@ -190,7 +190,7 @@ func TestValidatePrivateSocketDirRejectsDifferentOwner(t *testing.T) {
 	}
 }
 
-func TestListen_RejectsUntrustedRuntimeRoot(t *testing.T) {
+func TestCrossPlatformCoverageListenRejectsUntrustedRuntimeRoot(t *testing.T) {
 	root := filepath.Join(shortSecureTempDir(t), "untrusted")
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatalf("mkdir root: %v", err)
@@ -207,7 +207,7 @@ func TestListen_RejectsUntrustedRuntimeRoot(t *testing.T) {
 	}
 }
 
-func TestListen_SharedWorkDirUsesLocalSecureRuntimeEndpoint(t *testing.T) {
+func TestCrossPlatformCoverageListenSharedWorkDirUsesLocalSecureRuntimeEndpoint(t *testing.T) {
 	root := shortSecureTempDir(t)
 	runtimeDir := filepath.Join(root, "runtime")
 	if err := os.Mkdir(runtimeDir, 0o700); err != nil {

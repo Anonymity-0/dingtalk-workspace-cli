@@ -116,3 +116,16 @@ func TestIPCEndpointLongXDGPathFallsBackToTempDir(t *testing.T) {
 		t.Fatalf("fallback path still too long: %d > %d (%q)", len(got), maxUnixSocketPath("linux"), got)
 	}
 }
+
+func TestIPCEndpointLongTempDirUsesShortSystemFallback(t *testing.T) {
+	workDir := "/shared/events/open/personal_stream/aabbccdd00112233"
+	longTempDir := "/" + strings.Repeat("long-temp-root/", 20)
+	got := unixSocketEndpoint("linux", workDir, "", longTempDir)
+	want := filepath.Join("/tmp", eventRuntimeDirPrefix+currentUserID(), "dws-evt-"+IdentityHash(workDir)+".sock")
+	if got != want {
+		t.Fatalf("IPCEndpoint = %q, want short fallback %q", got, want)
+	}
+	if len(got) > maxUnixSocketPath("linux") {
+		t.Fatalf("short fallback path too long: %d > %d (%q)", len(got), maxUnixSocketPath("linux"), got)
+	}
+}
