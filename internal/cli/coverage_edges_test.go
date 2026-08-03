@@ -214,7 +214,17 @@ func TestCrossPlatformCoverageSchemaValidationCompleteMatrix(t *testing.T) {
 
 func TestCrossPlatformCoverageStdinCompleteMatrix(t *testing.T) {
 	original := os.Stdin
-	t.Cleanup(func() { os.Stdin = original })
+	// Restore/close before t.TempDir cleanup. defer runs on return and on
+	// t.Fatal (Goexit); open Windows handles otherwise block RemoveAll.
+	defer func() {
+		if current := os.Stdin; current != nil && current != original {
+			os.Stdin = original
+			_ = current.Close()
+			return
+		}
+		os.Stdin = original
+	}()
+
 	closed, err := os.CreateTemp(t.TempDir(), "closed")
 	if err != nil {
 		t.Fatal(err)
@@ -270,7 +280,6 @@ func TestCrossPlatformCoverageStdinCompleteMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer largeStdin.Close()
 	os.Stdin = largeStdin
 	if _, err := readStdinBounded(); err == nil {
 		t.Fatal("oversized stdin accepted")
