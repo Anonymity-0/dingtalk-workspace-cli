@@ -115,3 +115,72 @@ func TestOAApprovalCreateInstanceRejectsMixedRequestModes(t *testing.T) {
 		t.Fatalf("unexpected MCP call count: %d", caller.calls)
 	}
 }
+
+func TestOAApprovalNewCommandValidationAndRequestModes(t *testing.T) {
+	validCases := []struct {
+		name string
+		args []string
+		tool string
+	}{
+		{
+			name: "form schema",
+			args: []string{"approval", "form-schema", "--process-code", "PROC"},
+			tool: "get_process_schema",
+		},
+		{
+			name: "forecast simple mode",
+			args: []string{"approval", "forecast-process", "--process-code", "PROC", "--dept-id", "-1", "--form-values", `{"金额":"100"}`},
+			tool: "forecast_process",
+		},
+		{
+			name: "forecast request mode",
+			args: []string{"approval", "forecast-process", "--request", `{"processCode":"PROC"}`},
+			tool: "forecast_process",
+		},
+		{
+			name: "create request mode",
+			args: []string{"approval", "create-instance", "--request", `{"processCode":"PROC"}`, "--yes"},
+			tool: "start_process_instance",
+		},
+	}
+	for _, tc := range validCases {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			if err := executeOACommand(t, caller, tc.args...); err != nil {
+				t.Fatalf("execute %v: %v", tc.args, err)
+			}
+			if caller.tool != tc.tool || caller.calls != 1 {
+				t.Fatalf("called tool=%q calls=%d, want %q once", caller.tool, caller.calls, tc.tool)
+			}
+		})
+	}
+
+	invalidCases := [][]string{
+		{"approval", "form-schema"},
+		{"approval", "forecast-process"},
+		{"approval", "forecast-process", "--request", `{"processCode":"PROC"}`, "--process-code", "PROC"},
+		{"approval", "forecast-process", "--request", "{"},
+		{"approval", "forecast-process", "--request", "null"},
+		{"approval", "forecast-process", "--request", "{} {}"},
+		{"approval", "forecast-process", "--process-code", "PROC", "--dept-id", "bad", "--form-values", `{"金额":"100"}`},
+		{"approval", "forecast-process", "--process-code", "PROC", "--dept-id", "-1", "--form-values", "["},
+		{"approval", "create-instance", "--process-code", "PROC", "--form-values", `{}`},
+		{"approval", "create-instance", "--yes"},
+		{"approval", "create-instance", "--request", "{", "--yes"},
+		{"approval", "create-instance", "--request", "null", "--yes"},
+		{"approval", "create-instance", "--request", "{} {}", "--yes"},
+		{"approval", "create-instance", "--process-code", "PROC", "--form-values", "[", "--yes"},
+		{"approval", "create-instance", "--process-code", "PROC", "--form-values", `{}`, "--dept-id", "bad", "--yes"},
+		{"approval", "create-instance", "--process-code", "PROC", "--form-values", `{}`, "--approvers", "u", "--approvers-action-type", "bad", "--yes"},
+		{"approval", "create-instance", "--process-code", "PROC", "--form-values", `{}`, "--cc-list", "u", "--cc-position", "bad", "--yes"},
+	}
+	for _, args := range invalidCases {
+		caller := &scriptedToolCaller{}
+		if err := executeOACommand(t, caller, args...); err == nil {
+			t.Fatalf("invalid args %v returned nil", args)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("invalid args %v made %d MCP calls", args, caller.calls)
+		}
+	}
+}
