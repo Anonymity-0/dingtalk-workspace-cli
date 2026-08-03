@@ -5,14 +5,11 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
-
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 func TestCrossPlatformCoverageCanonicalCommandsAndFlags(t *testing.T) {
@@ -84,50 +81,11 @@ func TestCrossPlatformCoverageCanonicalCommandsAndFlags(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageLoaderAndPriorityEdges(t *testing.T) {
-	for _, reason := range []DiscoveryDegradedReason{DegradedUnauthenticated, DegradedMarketUnreachable, DegradedRuntimeAllFailed, "other"} {
-		degraded := newDiscoveryDegraded(reason, 2)
-		if degraded.Error() == "" || degradedHint(reason, 2) == "" || degraded.Hint == "" {
-			t.Fatalf("degraded %q = %#v", reason, degraded)
-		}
-	}
-	catalog := DiscoveryCatalog{Products: []CanonicalProduct{{ID: "product", Tools: []ToolDescriptor{{RPCName: "tool"}}}}}
-	product, ok := catalog.FindProduct("product")
-	if !ok {
-		t.Fatal("product not found")
-	}
-	if _, ok := catalog.FindProduct("missing"); ok {
-		t.Fatal("missing product found")
-	}
-	if _, ok := product.FindTool("tool"); !ok {
-		t.Fatal("tool not found")
-	}
-	if _, ok := product.FindTool("missing"); ok {
-		t.Fatal("missing tool found")
-	}
-	if got, err := (StaticDiscoveryLoader{DiscoveryCatalog: catalog}).Load(t.Context()); err != nil || len(got.Products) != 1 {
-		t.Fatalf("static load = %#v, %v", got, err)
-	}
-	failure := errors.New("load failed")
-	if got, err := DiscoveryCatalogLoaderFrom(catalog, failure).Load(t.Context()); !errors.Is(err, failure) || len(got.Products) != 1 {
-		t.Fatalf("preloaded load = %#v, %v", got, err)
-	}
-	loader := NewEnvironmentLoader()
-	if got, err := loader.Load(t.Context()); err != nil || len(got.Products) != 0 {
-		t.Fatalf("environment load = %#v, %v", got, err)
-	}
+func TestCrossPlatformCoveragePriorityEdges(t *testing.T) {
 	cmd := &cobra.Command{Use: "priority"}
 	SetOverridePriority(cmd, 42)
 	if got := OverridePriority(cmd); got != 42 {
 		t.Fatalf("priority = %d", got)
-	}
-	original := edition.Get()
-	edition.Override(&edition.Hooks{IsEmbedded: true})
-	t.Cleanup(func() { edition.Override(original) })
-	for _, reason := range []DiscoveryDegradedReason{DegradedUnauthenticated, DegradedMarketUnreachable, DegradedRuntimeAllFailed} {
-		if degradedHint(reason, 2) == "" {
-			t.Fatalf("embedded degraded hint %q is empty", reason)
-		}
 	}
 }
 

@@ -132,7 +132,7 @@ func executeParamAliasDryRunE2E(t *testing.T, args ...string) (*pipeline.Context
 	}()
 	rejectRunner := &paramAliasDryRunRejectRunner{}
 	originalRunnerFactory := rootNewCommandRunnerWithFlags
-	rootNewCommandRunnerWithFlags = func(cli.DiscoveryCatalogLoader, *GlobalFlags) executor.Runner {
+	rootNewCommandRunnerWithFlags = func(*GlobalFlags) executor.Runner {
 		return rejectRunner
 	}
 	root := NewRootCommand()
@@ -172,7 +172,7 @@ func executeParamAliasE2E(t *testing.T, caller *paramAliasCaptureCaller, args ..
 	defer func() { os.Args = originalArgs }()
 
 	originalRunnerFactory := rootNewCommandRunnerWithFlags
-	rootNewCommandRunnerWithFlags = func(cli.DiscoveryCatalogLoader, *GlobalFlags) executor.Runner {
+	rootNewCommandRunnerWithFlags = func(*GlobalFlags) executor.Runner {
 		return &paramAliasCaptureRunner{caller: caller}
 	}
 	root := NewRootCommand()

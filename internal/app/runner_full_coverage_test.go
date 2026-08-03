@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/safety"
@@ -35,7 +34,7 @@ func TestCrossPlatformCoverageRunnerRemainingRoutingCoverage(t *testing.T) {
 		runnerGetCachedRuntimeToken = oldCachedToken
 	})
 
-	created := newCommandRunnerWithFlags(cli.StaticDiscoveryLoader{}, &GlobalFlags{Timeout: 2})
+	created := newCommandRunnerWithFlags(&GlobalFlags{Timeout: 2})
 	if created.(*runtimeRunner).transport == nil {
 		t.Fatal("runner transport was not created")
 	}
@@ -55,21 +54,20 @@ func TestCrossPlatformCoverageRunnerRemainingRoutingCoverage(t *testing.T) {
 		return "", nil
 	}
 	r := &runtimeRunner{
-		loader:    cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, wantErr),
 		transport: transport.NewClient(nil),
 		fallback:  runnerCoverageFallback{},
 	}
 	directMiss := inv
 	directMiss.Kind = "helper_invocation"
-	if _, err := r.runSingle(context.Background(), directMiss, false); !errors.Is(err, wantErr) {
-		t.Fatalf("direct runtime miss load error = %v", err)
+	if _, err := r.runSingle(context.Background(), directMiss, false); err == nil || !strings.Contains(err.Error(), "no dynamic endpoint registered for product or tool") {
+		t.Fatalf("direct runtime miss = %v", err)
 	}
 	directHit := executor.Invocation{Kind: "helper_invocation", CanonicalProduct: defaultPATProductID, Tool: "pat", DryRun: true}
 	if got, err := r.runSingle(context.Background(), directHit, false); err != nil || got.Response["dry_run"] != true {
 		t.Fatalf("direct runtime hit = %#v, %v", got, err)
 	}
-	if _, err := r.runSingle(context.Background(), inv, true); !errors.Is(err, wantErr) {
-		t.Fatalf("runSingle error = %v", err)
+	if _, err := r.runSingle(context.Background(), inv, true); err == nil {
+		t.Fatal("endpoint miss succeeded")
 	}
 	<-prefetched
 
@@ -113,17 +111,18 @@ func TestCrossPlatformCoverageRunnerRemainingRoutingCoverage(t *testing.T) {
 		t.Fatalf("multi success aggregation = %#v, %v", result, err)
 	}
 
-	product := cli.CanonicalProduct{ID: "product", Endpoint: "https://catalog.test", Tools: []cli.ToolDescriptor{{RPCName: "tool"}}}
 	r = &runtimeRunner{
-		loader:      cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}},
 		transport:   transport.NewClient(nil),
 		globalFlags: &GlobalFlags{DryRun: true},
 		fallback:    runnerCoverageFallback{},
 	}
+	overrideInv := inv
+	overrideInv.Kind = "helper_invocation"
+	overrideInv.DryRun = true
 	t.Setenv("DINGTALK_PRODUCT_MCP_URL", "https://override.test")
-	got, err := r.runSingle(context.Background(), inv, false)
+	got, err := r.runSingle(context.Background(), overrideInv, false)
 	if err != nil || got.Response["endpoint"] != "https://override.test" {
-		t.Fatalf("catalog override = %#v, %v", got, err)
+		t.Fatalf("direct runtime override = %#v, %v", got, err)
 	}
 }
 

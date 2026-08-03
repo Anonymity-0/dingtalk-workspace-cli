@@ -288,20 +288,13 @@ func TestCrossPlatformCoverageRecoveryPureCoverage(t *testing.T) {
 	if _, err := (*recoveryRuntime)(nil).CallToolDirect(context.Background(), "x", "y", nil); err == nil {
 		t.Fatal("nil recovery runtime call succeeded")
 	}
-	if _, err := (&recoveryRuntime{}).resolveEndpoint(context.Background(), "missing", "tool"); err == nil {
-		t.Fatal("missing recovery endpoint succeeded")
+	if _, err := (&recoveryRuntime{}).resolveEndpoint(context.Background(), "missing", "tool"); err == nil || !strings.Contains(err.Error(), "未找到服务 missing 的 endpoint") {
+		t.Fatalf("missing recovery endpoint error = %v", err)
 	}
-	loaderErr := errors.New("catalog")
-	runtime := &recoveryRuntime{loader: cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, loaderErr)}
-	if _, err := runtime.resolveEndpoint(context.Background(), "missing", "tool"); !errors.Is(err, loaderErr) {
-		t.Fatalf("catalog recovery error = %v", err)
-	}
-	runtime.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{{ID: "empty"}, {ID: "ok", Endpoint: " https://catalog.test "}}}}
-	if _, err := runtime.resolveEndpoint(context.Background(), "empty", "tool"); err == nil {
-		t.Fatal("empty catalog endpoint succeeded")
-	}
+	t.Setenv("DINGTALK_OK_MCP_URL", " https://catalog.test ")
+	runtime := &recoveryRuntime{}
 	if got, err := runtime.resolveEndpoint(context.Background(), "ok", "tool"); err != nil || got != "https://catalog.test" {
-		t.Fatalf("catalog endpoint = %q %v", got, err)
+		t.Fatalf("recovery endpoint override = %q %v", got, err)
 	}
 	if recoveryRuntimeToken(nil) != "" || recoveryRuntimeToken(&GlobalFlags{Token: " token "}) != "token" {
 		t.Fatal("recovery token mismatch")
@@ -451,11 +444,14 @@ func TestCrossPlatformCoverageDirectRuntimeCoverage(t *testing.T) {
 		},
 	}
 	SetDynamicServers([]mcptypes.ServerDescriptor{{CLI: mcptypes.CLIOverlay{Skip: true}}, server, {CLI: mcptypes.CLIOverlay{ID: "empty"}}})
-	if got, ok := directRuntimeToolEndpoint("tool"); !ok || got != "https://one.test" {
+	if got, ok := directRuntimeEndpoint("unknown", "tool"); !ok || got != "https://one.test" {
 		t.Fatalf("tool endpoint = %q %v", got, ok)
 	}
-	if _, ok := directRuntimeToolEndpoint(" "); ok {
-		t.Fatal("blank tool endpoint resolved")
+	if got, ok := directRuntimeEndpoint("unknown", "override"); !ok || got != "https://one.test" {
+		t.Fatalf("tool override endpoint = %q %v", got, ok)
+	}
+	if _, ok := directRuntimeEndpoint("unknown", "skip"); ok {
+		t.Fatal("server-override tool endpoint resolved")
 	}
 	for _, id := range []string{"one", "cmd", "alias"} {
 		if got, ok := directRuntimeEndpoint(id, ""); !ok || got != "https://one.test" {
@@ -798,7 +794,6 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	}
 
 	r.transport = transport.NewClient(nil)
-	r.loader = cli.StaticDiscoveryLoader{}
 	r.globalFlags = &GlobalFlags{Mock: true}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["content"] == nil {
 		t.Fatalf("mock route = %#v %v", got, err)
@@ -810,17 +805,12 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	t.Setenv("DINGTALK_PRODUCT_MCP_URL", "")
 
 	r.globalFlags = &GlobalFlags{DryRun: true}
-	r.loader = cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, errors.New("load failure"))
-	if _, err := r.runSingle(context.Background(), inv, false); err == nil || !strings.Contains(err.Error(), "load failure") {
-		t.Fatalf("catalog failure = %v", err)
-	}
-	r.loader = cli.StaticDiscoveryLoader{}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
-		t.Fatalf("dry catalog miss = %#v %v (invocation %#v)", got, err, fallback.last)
+		t.Fatalf("dry endpoint miss = %#v %v (invocation %#v)", got, err, fallback.last)
 	}
 	r.globalFlags = &GlobalFlags{}
-	if _, err := r.runSingle(context.Background(), inv, false); err == nil {
-		t.Fatal("catalog miss succeeded")
+	if _, err := r.runSingle(context.Background(), inv, false); err == nil || !strings.Contains(err.Error(), "no dynamic endpoint registered for product or tool") {
+		t.Fatalf("endpoint miss = %v", err)
 	}
 	devInv := inv
 	devInv.CanonicalProduct = devappProductID
@@ -828,29 +818,18 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 		t.Fatal("devapp catalog miss succeeded")
 	}
 
-	product := cli.CanonicalProduct{ID: "product", Endpoint: "https://catalog.test", Tools: []cli.ToolDescriptor{{RPCName: "tool"}}}
-	r.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}}
-	r.globalFlags = &GlobalFlags{DryRun: true}
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://catalog.test" {
-		t.Fatalf("catalog dry route = %#v %v", got, err)
-	}
-	product.Tools = nil
-	r.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}}
 	SetDynamicServers([]mcptypes.ServerDescriptor{{Endpoint: "https://direct.test", CLI: mcptypes.CLIOverlay{ID: "product", Tools: []mcptypes.CLITool{{Name: "tool"}}}}})
 	t.Cleanup(func() { SetDynamicServers(nil) })
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://direct.test" {
-		t.Fatalf("undeclared tool direct route = %#v %v", got, err)
+	directInv := inv
+	directInv.Kind = "helper_invocation"
+	directInv.DryRun = true
+	if got, err := r.runSingle(context.Background(), directInv, false); err != nil || got.Response["dry_run"] != true || got.Response["endpoint"] != "https://direct.test" {
+		t.Fatalf("direct runtime route = %#v %v", got, err)
 	}
 	SetDynamicServers(nil)
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
-		t.Fatalf("undeclared tool dry miss = %#v %v (invocation %#v)", got, err, fallback.last)
-	}
-
-	SetDynamicServers([]mcptypes.ServerDescriptor{{Endpoint: "https://owner.test", CLI: mcptypes.CLIOverlay{ID: "owner", Tools: []mcptypes.CLITool{{Name: "tool"}}}}})
-	product.Tools = []cli.ToolDescriptor{{RPCName: "tool"}}
-	r.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}}
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://owner.test" {
-		t.Fatalf("tool owner correction = %#v %v", got, err)
+	r.globalFlags = &GlobalFlags{DryRun: true}
+	if got, err := r.runSingle(context.Background(), directInv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
+		t.Fatalf("direct runtime dry miss = %#v %v (invocation %#v)", got, err, fallback.last)
 	}
 
 	for _, result := range []executor.Result{{}, {Response: map[string]any{"content": "value"}}, {Response: map[string]any{"value": 1}}} {

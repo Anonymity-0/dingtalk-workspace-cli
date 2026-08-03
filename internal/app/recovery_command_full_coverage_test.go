@@ -9,13 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/recovery"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 )
 
 func recoveryCoverageRun(cmdArgs ...string) (string, error) {
-	cmd := newRecoveryCommand(context.Background(), cli.StaticDiscoveryLoader{}, &GlobalFlags{})
+	cmd := newRecoveryCommand(&GlobalFlags{})
 	out := &strings.Builder{}
 	cmd.SetOut(out)
 	cmd.SetErr(io.Discard)
@@ -49,7 +48,7 @@ func TestCrossPlatformCoverageRecoveryCommandRemainingCoverage(t *testing.T) {
 	}
 	recoverySaveAnalysis = oldSaveAnalysis
 
-	parent := newRecoveryCommand(context.Background(), nil, nil)
+	parent := newRecoveryCommand(nil)
 	parent.SetOut(io.Discard)
 	if err := parent.RunE(parent, nil); err != nil {
 		t.Fatal(err)
@@ -127,13 +126,12 @@ func TestCrossPlatformCoverageRecoveryExecutionAndRuntimeRemainingCoverage(t *te
 		t.Fatal("invalid attempt array should fail")
 	}
 
-	fail := errors.New("catalog")
 	SetDynamicServers(nil)
 	runtime := &recoveryRuntime{
-		loader:    cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, fail),
 		transport: transport.NewClient(nil),
+		flags:     &GlobalFlags{Token: "token"},
 	}
-	if _, err := runtime.CallToolDirect(context.Background(), "missing", "tool", nil); !errors.Is(err, fail) {
+	if _, err := runtime.CallToolDirect(context.Background(), "missing", "tool", nil); err == nil || !strings.Contains(err.Error(), "未找到服务 missing 的 endpoint") {
 		t.Fatalf("direct resolution error = %v", err)
 	}
 	if got, err := runtime.Search(context.Background(), "query", recovery.RecoveryContext{}); err == nil || got.DocSearch.Status != "error" {

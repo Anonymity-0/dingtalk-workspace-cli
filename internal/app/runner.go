@@ -30,7 +30,6 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/audit"
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/logging"
@@ -123,7 +122,7 @@ func logHostOwnedPATDecisionOnce() {
 	})
 }
 
-func newCommandRunnerWithFlags(loader cli.DiscoveryCatalogLoader, flags *GlobalFlags) executor.Runner {
+func newCommandRunnerWithFlags(flags *GlobalFlags) executor.Runner {
 	// Ensure DWS_CLIENT_ID env is populated from persisted config before
 	// resolveIdentityHeaders reads it.  This covers fresh-process cold starts
 	// where no env var has been inherited from a parent process.
@@ -141,7 +140,6 @@ func newCommandRunnerWithFlags(loader cli.DiscoveryCatalogLoader, flags *GlobalF
 	transportClient.ExtraHeaders = resolveIdentityHeaders()
 	transportClient.FileLogger = FileLoggerInstance()
 	return &runtimeRunner{
-		loader:             loader,
 		transport:          transportClient,
 		globalFlags:        flags,
 		fallback:           executor.EchoRunner{},
@@ -152,7 +150,6 @@ func newCommandRunnerWithFlags(loader cli.DiscoveryCatalogLoader, flags *GlobalF
 }
 
 type runtimeRunner struct {
-	loader             cli.DiscoveryCatalogLoader
 	transport          *transport.Client
 	globalFlags        *GlobalFlags
 	fallback           executor.Runner
@@ -244,12 +241,12 @@ func (r *runtimeRunner) RunReadOnly(ctx context.Context, invocation executor.Inv
 }
 
 func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invocation, prefetchToken bool) (executor.Result, error) {
-	if r.loader == nil || r.transport == nil {
+	if r.transport == nil {
 		return r.fallback.Run(ctx, invocation)
 	}
 	r.transport.ExtraHeaders = resolveIdentityHeaders()
 
-	// Mock mode: skip catalog validation, use a placeholder endpoint.
+	// Mock mode: skip endpoint resolution, use a placeholder endpoint.
 	if r.globalFlags != nil && r.globalFlags.Mock {
 		endpoint := fmt.Sprintf("https://mock-mcp-%s.dingtalk.com", invocation.CanonicalProduct)
 		if override, ok := productEndpointOverride(invocation.CanonicalProduct); ok {
@@ -260,7 +257,7 @@ func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invoc
 
 	// Prefetch the Keychain token in the background. Keychain access costs
 	// ~70ms on macOS; starting it here lets the load overlap with endpoint
-	// resolution and catalog loading below.
+	// resolution below.
 	if prefetchToken {
 		go func() {
 			_, _ = runnerGetCachedRuntimeToken(ctx)
@@ -273,56 +270,9 @@ func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invoc
 		}
 	}
 
-	catalogStart := time.Now()
-	catalog, err := r.loader.Load(ctx)
-	RecordTiming(ctx, "catalog_load", time.Since(catalogStart))
-	if err != nil {
-		var degraded *cli.DiscoveryDegraded
-		if !errors.As(err, &degraded) {
-			return executor.Result{}, err
-		}
-	}
-
-	product, ok := catalog.FindProduct(invocation.CanonicalProduct)
-	if !ok || strings.TrimSpace(product.Endpoint) == "" {
-		return r.handleCatalogMiss(ctx, invocation, "product missing from discovery catalog and no supplement/env override")
-	}
-	if _, ok := product.FindTool(invocation.Tool); !ok {
-		// DiscoveryCatalog knows the product but not the tool — this happens when the
-		// catalog entry came from SupplementServers (endpoint-only, no tool
-		// list). Trust directRuntimeEndpoint to re-resolve a working endpoint
-		// for the tool. If that also misses, fall through to handleCatalogMiss
-		// so stderr still carries the explicit not-resolved signal.
-		if endpoint, ok := directRuntimeEndpoint(invocation.CanonicalProduct, invocation.Tool); ok {
-			if r.globalFlags != nil && r.globalFlags.DryRun {
-				invocation.DryRun = true
-			}
-			return r.executeInvocation(ctx, endpoint, invocation)
-		}
-		return r.handleCatalogMiss(ctx, invocation, fmt.Sprintf("tool %q not declared by product %q in discovery catalog", invocation.Tool, invocation.CanonicalProduct))
-	}
-	if r.globalFlags != nil && r.globalFlags.DryRun {
-		invocation.DryRun = true
-	}
-
-	endpoint := product.Endpoint
-	if override, ok := productEndpointOverride(invocation.CanonicalProduct); ok {
-		endpoint = override
-	}
-	// Multi-server tool-name authority correction.
-	//
-	// When two envelope servers share the same cli.command (e.g. group-chat
-	// and im both publish `dws chat ...`), the endpoints[cmd] map in
-	// registerDynamicServer is the second-writer wins, and catalog FindProduct
-	// may pick the wrong product's Endpoint for a tool whose real owner is
-	// a different server. Cross-check the canonical tool→endpoint map: when
-	// the per-tool endpoint exists and differs from the per-product endpoint
-	// catalog returned, trust the tool-owner endpoint (the server that
-	// actually declares this tool in its toolOverrides).
-	if toolEndpoint, ok := directRuntimeToolEndpoint(invocation.Tool); ok && toolEndpoint != "" && toolEndpoint != endpoint {
-		endpoint = toolEndpoint
-	}
-	return r.executeInvocation(ctx, endpoint, invocation)
+	// Discovery is retired: endpoint resolution is the dynamic server
+	// registry only, so a direct-runtime miss is terminal.
+	return r.handleCatalogMiss(ctx, invocation, "no dynamic endpoint registered for product or tool")
 }
 
 type multiProfileSelection struct {

@@ -200,7 +200,7 @@ func TestCrossPlatformCoverageDirectRuntimeRemainingCoverage(t *testing.T) {
 			},
 		},
 	})
-	if got, ok := directRuntimeToolEndpoint("append-override"); !ok || got != "https://append.test" {
+	if got, ok := directRuntimeEndpoint("", "append-override"); !ok || got != "https://append.test" {
 		t.Fatalf("append override endpoint = %q, %v", got, ok)
 	}
 }

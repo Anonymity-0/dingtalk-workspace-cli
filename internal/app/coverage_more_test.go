@@ -302,7 +302,7 @@ func TestCrossPlatformCoverageRootUtilityAndTimingCoverage(t *testing.T) {
 	_ = newConfigCommand()
 	_ = newCacheCommand()
 	_ = newVersionCommand()
-	_ = newRecoveryCommand(context.Background(), nil, &GlobalFlags{})
+	_ = newRecoveryCommand(&GlobalFlags{})
 	_ = newAPICommand(&GlobalFlags{})
 	_ = NewRootCommand(context.Background())
 }

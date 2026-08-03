@@ -403,10 +403,7 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 	}
 	flags := &GlobalFlags{}
 	authpkg.SetRuntimeProfile(preparseProfileFlag(os.Args[1:]))
-	loader := cli.EnvironmentLoader{
-		LookupEnv: os.LookupEnv,
-	}
-	runner := rootNewCommandRunnerWithFlags(loader, flags)
+	runner := rootNewCommandRunnerWithFlags(flags)
 
 	root := &cobra.Command{
 		Use:               "dws",
@@ -486,7 +483,7 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 		newEventCommand(),
 		newAuditCommand(),
 		newCompletionCommand(root),
-		newRecoveryCommand(rootCtx, loader, flags),
+		newRecoveryCommand(flags),
 		newUpgradeCommand(),
 		newVersionCommand(),
 		newPluginCommand(),
