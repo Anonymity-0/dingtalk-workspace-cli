@@ -70,16 +70,6 @@ func TestCrossPlatformCoveragePinnedMCPTextAndLegacyMetadataSource(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageReviewedCommandRegistryMergedJSON(t *testing.T) {
-	merged, err := ReviewedCommandRegistryMergedJSON()
-	if err != nil || len(merged) == 0 {
-		t.Fatalf("ReviewedCommandRegistryMergedJSON() = %q err=%v", merged, err)
-	}
-	if !strings.Contains(string(merged), `"products"`) {
-		t.Fatalf("merged registry missing products: %s", merged[:min(120, len(merged))])
-	}
-}
-
 func TestCrossPlatformCoverageCompletenessAndDeliveryErrorBranches(t *testing.T) {
 	prevGroups := reviewedRuntimeSchemaExclusionGroups
 	t.Cleanup(func() { reviewedRuntimeSchemaExclusionGroups = prevGroups })

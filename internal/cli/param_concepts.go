@@ -21,8 +21,8 @@ const paramConceptsSchemaRef = "./param_concepts.schema.json"
 // the sole source of equivalent flag spellings ("concepts") plus per-command
 // overrides. Build-time generators reduce these concepts against each command's
 // real Cobra flags; generated alias tables are downstream views and must never
-// be read back here. It is a reviewed input peer of schema_command_registry/
-// (argv synonyms vs identity) — keep them side-by-side; do not merge authorities.
+// be read back here. It is a reviewed input peer of the collected command
+// identity (argv synonyms vs identity) — keep the authorities separate.
 
 //go:embed param_concepts.json
 var embeddedParamConceptsJSON []byte

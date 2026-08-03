@@ -19,8 +19,9 @@
 // CI/determinism tool (make generate-schema / check-generated-drift) and must
 // not be a committed delivery step.
 //
-// Reviewed inputs consumed by runtime assembly:
-//   1. schema_command_registry/             identity (canonical/aliases/navigation)
+// Inputs consumed by runtime assembly:
+//   1. leaf ContractFinal.Identity         identity (canonical/aliases/navigation),
+//                                          collected from the live Cobra tree
 //   2. contract.ProductDecl + leaf ContractFinal    Agent routing / selection prose
 //   3. schema_mcp_metadata.json            MCP server tool definitions
 //   4. schema_parameter_mapping_ledger.go  mapping exclusions / removals (Go)
@@ -28,7 +29,8 @@
 //   5. param_concepts.json + schema       reviewed parameter synonym policy
 //   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //
-// schema_hints/ and schema_agent_metadata/ are retired.
+// schema_hints/, schema_agent_metadata/, and schema_command_registry/ are
+// retired.
 //
 // Remaining generated output from this file:
 //   - param_aliases_generated.go           per-command parameter normalization

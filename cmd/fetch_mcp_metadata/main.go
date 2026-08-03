@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/app"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/syncdata"
@@ -42,7 +43,7 @@ var (
 	getenv           = os.Getenv
 	loadTokenData    = auth.LoadTokenDataKeychain
 	staticServers    = syncdata.StaticServers
-	registrySource   = cli.ReviewedCommandRegistryMergedJSON
+	registrySource   = collectedIdentityInterfaceRefs
 	listToolsTimeout = 30 * time.Second
 	gitHeadPath      = ".git/HEAD"
 	newToolLister    = func(token string) toolLister {
@@ -74,7 +75,7 @@ func run(args []string, stderr io.Writer) int {
 	servers := staticServers()
 	fmt.Fprintf(stderr, "fetch_mcp_metadata: querying %d server endpoints\n", len(servers))
 
-	// Load CLI registry to build tool_name → interface_ref mapping.
+	// Collect command identity to build tool_name → interface_ref mapping.
 	registryMap := loadRegistryInterfaceRefs(stderr)
 	fmt.Fprintf(stderr, "fetch_mcp_metadata: registry mapping: %d entries\n", len(registryMap))
 
@@ -310,44 +311,41 @@ func buildCrossServerRefs(prevTools map[string]map[string]any, registryMap map[s
 	return index
 }
 
-// loadRegistryInterfaceRefs loads the reviewed split CommandRegistry through
-// the cli package's reassembly API and builds a canonical_path →
-// {product_id, rpc_name} mapping for interface_ref injection.
-func loadRegistryInterfaceRefs(stderr io.Writer) map[string]map[string]string {
-	data, err := registrySource()
+// collectedIdentityInterfaceRefs collects command identity from the live
+// command tree — the replacement for the retired reviewed CommandRegistry —
+// and derives the canonical_path → {product_id, rpc_name} mapping used for
+// interface_ref injection.
+func collectedIdentityInterfaceRefs() (map[string]map[string]string, error) {
+	root := app.NewSchemaSourceRootCommand()
+	specs, _, err := cli.CollectIdentitySpecs(root)
 	if err != nil {
-		fmt.Fprintf(stderr, "fetch_mcp_metadata: warning: cannot load registry: %v\n", err)
-		return map[string]map[string]string{}
+		return nil, fmt.Errorf("collect command identity: %w", err)
 	}
-	var reg struct {
-		Products []struct {
-			ID    string `json:"id"`
-			Tools []struct {
-				CanonicalPath string `json:"canonical_path"`
-			} `json:"tools"`
-		} `json:"products"`
-	}
-	if err := json.Unmarshal(data, &reg); err != nil {
-		// 与读文件失败同等告警：静默返回空映射会让所有 live tool 被丢弃、
-		// 产出 stub-only 快照且零提示（P1#1 的故障模式）。
-		fmt.Fprintf(stderr, "fetch_mcp_metadata: warning: cannot parse registry: %v\n", err)
-		return map[string]map[string]string{}
-	}
-	out := make(map[string]map[string]string)
-	for _, prod := range reg.Products {
-		for _, tool := range prod.Tools {
-			cp := strings.TrimSpace(tool.CanonicalPath)
-			if cp == "" || !strings.Contains(cp, ".") {
-				continue
-			}
-			parts := strings.SplitN(cp, ".", 2)
-			out[cp] = map[string]string{
-				"product_id": parts[0],
-				"rpc_name":   parts[1],
-			}
+	out := make(map[string]map[string]string, len(specs))
+	for _, spec := range specs {
+		cp := strings.TrimSpace(spec.CanonicalPath)
+		if cp == "" || !strings.Contains(cp, ".") {
+			continue
+		}
+		parts := strings.SplitN(cp, ".", 2)
+		out[cp] = map[string]string{
+			"product_id": parts[0],
+			"rpc_name":   parts[1],
 		}
 	}
-	return out
+	return out, nil
+}
+
+// loadRegistryInterfaceRefs builds the canonical_path → interface_ref mapping
+// from the collected command identity. 与旧实现同等告警：静默返回空映射会让
+// 所有 live tool 被丢弃、产出 stub-only 快照且零提示（P1#1 的故障模式）。
+func loadRegistryInterfaceRefs(stderr io.Writer) map[string]map[string]string {
+	refs, err := registrySource()
+	if err != nil {
+		fmt.Fprintf(stderr, "fetch_mcp_metadata: warning: cannot collect command identity: %v\n", err)
+		return map[string]map[string]string{}
+	}
+	return refs
 }
 
 // extractParams converts a JSON Schema inputSchema (from MCP tools/list) into

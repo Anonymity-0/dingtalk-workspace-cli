@@ -15,7 +15,6 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -68,84 +67,6 @@ func TestAssembleSchemaCatalogSnapshotFailureModes(t *testing.T) {
 	denied := failingReadFS{fstest.MapFS{"tools/doc.json": {Data: []byte(`{}`)}}}
 	if _, err := assembleSchemaCatalogSnapshot(valid, denied, "tools"); err == nil || !strings.Contains(err.Error(), "read schema catalog shard") {
 		t.Fatalf("denied shard err = %v", err)
-	}
-}
-
-func TestAssembleCommandRegistryFromShards(t *testing.T) {
-	envelope := []byte(`{"$schema":"./schema_command_registry.schema.json","version":1}`)
-	shards := fstest.MapFS{
-		"products/doc.json": {Data: []byte(`{"id":"doc","tools":[{"canonical_path":"doc.copy_document","cli_path":"doc copy"}]}`)},
-		"products/notes.md": {Data: []byte("skip me")},
-	}
-	registry, err := assembleCommandRegistryFrom(envelope, shards, "products")
-	if err != nil {
-		t.Fatalf("assembleCommandRegistryFrom() error = %v", err)
-	}
-	if len(registry.Commands) != 1 || registry.Commands[0].CanonicalPath != "doc.copy_document" {
-		t.Fatalf("registry = %+v, want single doc.copy_document command", registry.Commands)
-	}
-}
-
-func TestAssembleCommandRegistryFromFailureModes(t *testing.T) {
-	valid := []byte(`{"version":1}`)
-	if _, err := assembleCommandRegistryFrom([]byte("{bad"), fstest.MapFS{}, "products"); err == nil || !strings.Contains(err.Error(), "envelope") {
-		t.Fatalf("bad envelope err = %v", err)
-	}
-	if _, err := assembleCommandRegistryFrom(valid, fstest.MapFS{}, "missing-dir"); err == nil || !strings.Contains(err.Error(), "read embedded command registry products") {
-		t.Fatalf("missing dir err = %v", err)
-	}
-	badShard := fstest.MapFS{"products/doc.json": {Data: []byte("{bad")}}
-	if _, err := assembleCommandRegistryFrom(valid, badShard, "products"); err == nil || !strings.Contains(err.Error(), "decode embedded command registry shard") {
-		t.Fatalf("bad shard err = %v", err)
-	}
-	denied := failingReadFS{fstest.MapFS{"products/doc.json": {Data: []byte(`{}`)}}}
-	if _, err := assembleCommandRegistryFrom(valid, denied, "products"); err == nil || !strings.Contains(err.Error(), "read embedded command registry shard") {
-		t.Fatalf("denied shard err = %v", err)
-	}
-}
-
-func TestMergedCommandRegistryJSONFailureModes(t *testing.T) {
-	valid := []byte(`{"version":1}`)
-	if _, err := mergedCommandRegistryJSON([]byte("{bad"), fstest.MapFS{}, "products"); err == nil {
-		t.Fatal("bad envelope should fail")
-	}
-	if _, err := mergedCommandRegistryJSON(valid, fstest.MapFS{}, "missing-dir"); err == nil {
-		t.Fatal("missing dir should fail")
-	}
-	denied := failingReadFS{fstest.MapFS{"products/doc.json": {Data: []byte(`{}`)}}}
-	if _, err := mergedCommandRegistryJSON(valid, denied, "products"); err == nil {
-		t.Fatal("denied shard should fail")
-	}
-	// Invalid shard JSON survives assembly as RawMessage but fails the final
-	// products marshal.
-	badShard := fstest.MapFS{"products/doc.json": {Data: []byte("{bad")}}
-	if _, err := mergedCommandRegistryJSON(valid, badShard, "products"); err == nil {
-		t.Fatal("invalid RawMessage shard should fail marshal")
-	}
-}
-
-func TestMergedCommandRegistryJSONDefaultsSchemaAndSkipsNonJSON(t *testing.T) {
-	shards := fstest.MapFS{
-		"products/doc.json": {Data: []byte(`{"id":"doc","tools":[]}`)},
-		"products/notes.md": {Data: []byte("skip me")},
-	}
-	data, err := mergedCommandRegistryJSON([]byte(`{"version":1}`), shards, "products")
-	if err != nil {
-		t.Fatalf("mergedCommandRegistryJSON() error = %v", err)
-	}
-	var merged struct {
-		Schema   string            `json:"$schema"`
-		Version  int               `json:"version"`
-		Products []json.RawMessage `json:"products"`
-	}
-	if err := json.Unmarshal(data, &merged); err != nil {
-		t.Fatal(err)
-	}
-	if merged.Schema != "./schema_command_registry.schema.json" {
-		t.Fatalf("schema = %q, want defaulted schema path", merged.Schema)
-	}
-	if len(merged.Products) != 1 {
-		t.Fatalf("products = %d, want 1 (markdown skipped)", len(merged.Products))
 	}
 }
 

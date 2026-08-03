@@ -233,9 +233,9 @@ func collectRuntimeSchemaEntries(root *cobra.Command) ([]runtimeSchemaEntry, err
 }
 
 // collectRuntimeSchemaEntriesFromBound is the sole identity hand-off into the
-// Schema assembler. It never scans annotations to discover commands: the
-// reviewed registry has already selected the exact command set and the binder
-// has already proved that every path resolves to a runnable Cobra leaf.
+// Schema assembler. It never scans annotations to discover commands: identity
+// collection has already selected the exact command set and the binder has
+// already proved that every path resolves to a runnable Cobra leaf.
 func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtimeSchemaEntry, error) {
 	entries := make([]runtimeSchemaEntry, 0, len(bound.Commands))
 	for _, command := range bound.Commands {

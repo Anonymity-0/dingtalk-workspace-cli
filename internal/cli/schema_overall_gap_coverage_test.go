@@ -314,44 +314,17 @@ func TestCrossPlatformCoverageDeliveryInvariantErrorBranches(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageCommandRegistryValidateAndHashEdges(t *testing.T) {
-	if _, err := ValidateCommandRegistrySource([]byte(`{`)); err == nil {
-		t.Fatal("bad JSON must fail ValidateCommandRegistrySource")
-	}
-	merged, err := ReviewedCommandRegistryMergedJSON()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ValidateCommandRegistrySource(merged); err != nil {
-		t.Fatalf("embedded registry must validate: %v", err)
-	}
-	var mutated map[string]any
-	if err := json.Unmarshal(merged, &mutated); err != nil {
-		t.Fatal(err)
-	}
-	mutated["version"] = 999
-	raw, _ := json.Marshal(mutated)
-	if _, err := ValidateCommandRegistrySource(raw); err == nil {
-		t.Fatal("mutated registry must disagree with embedded")
-	}
-	hash, err := ReviewedCommandRegistrySourceHash()
-	if err != nil || !strings.HasPrefix(hash, "sha256:") {
-		t.Fatalf("ReviewedCommandRegistrySourceHash() = %q err=%v", hash, err)
-	}
-	left := CommandRegistry{Commands: []CommandSpec{{
+func TestCrossPlatformCoverageCommandRegistryHashEdges(t *testing.T) {
+	specs := []CommandSpec{{
 		CanonicalPath: "a.one", PrimaryCLIPath: "a one", Visibility: SchemaVisibilityPublic,
-	}}}
-	right := CommandRegistry{Commands: []CommandSpec{{
-		CanonicalPath: "a.two", PrimaryCLIPath: "a two", Visibility: SchemaVisibilityPublic,
-	}}}
-	if equalCommandRegistries(left, right) {
-		t.Fatal("different registries must not equal")
+	}}
+	registry := CommandRegistry{Commands: specs}
+	if registry.SourceHash() == "" {
+		t.Fatal("command registry hash must be non-empty")
 	}
-	empty := CommandRegistry{}
-	if empty.SourceHash() == "" {
-		t.Fatal("empty registry hash must be non-empty")
+	if registry.SourceHash() != (EffectiveCommandRegistry{Commands: specs}).SourceHash() {
+		t.Fatal("CommandRegistry and EffectiveCommandRegistry hashes disagree for identical specs")
 	}
-	_ = EffectiveCommandRegistry{Commands: left.Commands}.SourceHash()
 }
 
 func TestCrossPlatformCoverageResolveAssembleInjectionErrors(t *testing.T) {
@@ -961,25 +934,6 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 		summary["surface_products"] != 1 || summary["surface_tools"] != 2 ||
 		summary["tools_with_agent_summary"] != 3 || summary["unmatched_skill_tools"] != 4 {
 		t.Fatalf("agentMetadataSummaryFrom = %#v", summary)
-	}
-
-	merged, err := ReviewedCommandRegistryMergedJSON()
-	if err != nil {
-		t.Fatal(err)
-	}
-	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) { return CommandRegistry{}, fmt.Errorf("embed boom") })
-	if _, err := ValidateCommandRegistrySource(merged); err == nil || !strings.Contains(err.Error(), "embed boom") {
-		t.Fatalf("embed load error = %v", err)
-	}
-	alt, err := newCommandRegistry([]CommandSpec{{
-		CanonicalPath: "gap.only", SourceProductID: "gap", PrimaryCLIPath: "gap only", Visibility: SchemaVisibilityPublic,
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) { return alt, nil })
-	if _, err := ValidateCommandRegistrySource(merged); err == nil || !strings.Contains(err.Error(), "disagrees") {
-		t.Fatalf("semantic disagree error = %v", err)
 	}
 
 	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {

@@ -56,7 +56,7 @@ func TestCrossPlatformCoverageCatalogMainReportsIsolationAndGenerationFailures(t
 		}()
 		main()
 	}
-	invoke("-root", repositoryRoot, "-output", filepath.Join(repositoryRoot, "internal/cli/schema_command_registry"))
+	invoke("-root", repositoryRoot, "-output", filepath.Join(repositoryRoot, "internal/cli/schema_mcp_metadata.json"))
 	validateCatalogParameterBindings = func() error { return errors.New("bindings") }
 	invoke("-root", repositoryRoot, "-output", filepath.Join(t.TempDir(), "catalog.json"))
 }
@@ -86,8 +86,8 @@ func TestCrossPlatformCoverageGenerateSchemaCatalogFailureEdges(t *testing.T) {
 	if err := generateSchemaCatalogWithResolver(".", root, "", output, "", nil); err == nil || !strings.Contains(err.Error(), "resolver is nil") {
 		t.Fatalf("nil resolver error = %v", err)
 	}
-	if err := generateSchemaCatalogWithResolver(".", root, filepath.Join(t.TempDir(), "missing.json"), output, "", resolver); err == nil || !strings.Contains(err.Error(), "read deprecated") {
-		t.Fatalf("surface read error = %v", err)
+	if err := generateSchemaCatalogWithResolver(".", root, filepath.Join(t.TempDir(), "missing.json"), output, "", resolver); err == nil || !strings.Contains(err.Error(), "retired") {
+		t.Fatalf("retired surface error = %v", err)
 	}
 	validateCatalogParameterBindings = func() error { return errors.New("bindings") }
 	if err := generateSchemaCatalogWithResolver(".", root, "", output, "", resolver); err == nil || !strings.Contains(err.Error(), "parameter binding") {
@@ -134,12 +134,8 @@ func TestCrossPlatformCoverageGenerateSchemaCatalogFailureEdges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	surface := filepath.Join(t.TempDir(), "registry.json")
-	if err := os.WriteFile(surface, []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := validateCatalogOutputIsolation(repositoryRoot, filepath.Join(t.TempDir(), "catalog.json"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), surface); err != nil {
-		t.Fatalf("surface isolation input rejected safe output: %v", err)
+	if err := validateCatalogOutputIsolation(repositoryRoot, filepath.Join(t.TempDir(), "catalog.json"), filepath.Join(t.TempDir(), "schema_meta_index.gob")); err != nil {
+		t.Fatalf("safe output rejected: %v", err)
 	}
 }
 
@@ -242,33 +238,14 @@ func loadSplitSchemaCatalogSnapshot(t *testing.T, dir string) cli.SchemaCatalogS
 	return snapshot
 }
 
-func TestValidateDeprecatedSurfaceAcceptsEmbeddedRegistrySource(t *testing.T) {
-	// Registry is now per-product shards; merge into a temp file for the
-	// deprecated -surface compatibility check (which reads a single JSON).
-	merged := mergeRegistryShardsForTest(t, filepath.Join("..", "..", "cli", "schema_command_registry"))
+func TestValidateDeprecatedSurfaceRejectsRetiredIdentitySource(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "registry.json")
-	if err := os.WriteFile(path, merged, 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateDeprecatedSurface(path); err != nil {
-		t.Fatalf("validateDeprecatedSurface() error = %v", err)
-	}
-}
-
-func TestValidateDeprecatedSurfaceRejectsDifferentIdentitySource(t *testing.T) {
-	merged := mergeRegistryShardsForTest(t, filepath.Join("..", "..", "cli", "schema_command_registry"))
-	altered := strings.Replace(string(merged), `"aisearch.search_enterprise_behavior"`, `"aisearch.not_reviewed"`, 1)
-	if altered == string(merged) {
-		t.Fatal("test fixture did not contain expected canonical path")
-	}
-	path := filepath.Join(t.TempDir(), "different-registry.json")
-	if err := os.WriteFile(path, []byte(altered), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
 	err := validateDeprecatedSurface(path)
-	if err == nil || !strings.Contains(err.Error(), "disagrees with the embedded reviewed registry") {
-		t.Fatalf("validateDeprecatedSurface() error = %v, want registry disagreement", err)
+	if err == nil || !strings.Contains(err.Error(), "retired") {
+		t.Fatalf("validateDeprecatedSurface() error = %v, want retired-input rejection", err)
 	}
 }
 
@@ -283,7 +260,6 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 	files := []string{
 		"skills/mono/SKILL.md",
 		"skills/mono/references/intent-guide.md",
-		"internal/cli/schema_command_registry",
 		"internal/cli/schema_mcp_metadata.json",
 		"internal/cli/schema_mcp_service_review.json",
 		"internal/cli/schema_parameter_mapping_ledger.go",
@@ -310,73 +286,22 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 		output string
 		want   string
 	}{
-		{name: "registry", output: filepath.Join(root, "internal/cli/schema_command_registry"), want: "CommandRegistry"},
 		{name: "mcp metadata", output: metadataDir, want: "pinned MCP metadata"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			err := validateCatalogOutputIsolation(root, test.output, filepath.Join(t.TempDir(), "schema_meta_index.gob"), "")
+			err := validateCatalogOutputIsolation(root, test.output, filepath.Join(t.TempDir(), "schema_meta_index.gob"))
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("validateCatalogOutputIsolation() error = %v, want %q", err, test.want)
 			}
 		})
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "artifacts/schema_catalog"), filepath.Join(root, "artifacts/schema_meta_index.gob"), ""); err != nil {
+	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "artifacts/schema_catalog"), filepath.Join(root, "artifacts/schema_meta_index.gob")); err != nil {
 		t.Fatalf("safe artifact output rejected: %v", err)
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(t.TempDir(), "schema_catalog"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), ""); err != nil {
+	if err := validateCatalogOutputIsolation(root, filepath.Join(t.TempDir(), "schema_catalog"), filepath.Join(t.TempDir(), "schema_meta_index.gob")); err != nil {
 		t.Fatalf("external temporary output rejected: %v", err)
 	}
-	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "skills/mono/overwrite.json"), filepath.Join(t.TempDir(), "schema_meta_index.gob"), ""); err == nil || !strings.Contains(err.Error(), "not a canonical generated delivery target") {
+	if err := validateCatalogOutputIsolation(root, filepath.Join(root, "skills/mono/overwrite.json"), filepath.Join(t.TempDir(), "schema_meta_index.gob")); err == nil || !strings.Contains(err.Error(), "not a canonical generated delivery target") {
 		t.Fatalf("non-canonical repository output error = %v", err)
 	}
-}
-
-// mergeRegistryShardsForTest reads per-product registry shards from dir and
-// returns a single merged JSON document matching the pre-split layout.
-func mergeRegistryShardsForTest(t *testing.T, dir string) []byte {
-	t.Helper()
-	envelopeData, err := os.ReadFile(filepath.Join(dir, "registry.json"))
-	if err != nil {
-		t.Fatalf("read registry envelope: %v", err)
-	}
-	var envelope struct {
-		Schema  string `json:"$schema,omitempty"`
-		Version int    `json:"version"`
-	}
-	if err := json.Unmarshal(envelopeData, &envelope); err != nil {
-		t.Fatalf("decode envelope: %v", err)
-	}
-	entries, err := os.ReadDir(filepath.Join(dir, "products"))
-	if err != nil {
-		t.Fatalf("read products dir: %v", err)
-	}
-	products := make([]json.RawMessage, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		shardData, err := os.ReadFile(filepath.Join(dir, "products", entry.Name()))
-		if err != nil {
-			t.Fatalf("read shard %s: %v", entry.Name(), err)
-		}
-		products = append(products, json.RawMessage(shardData))
-	}
-	productsJSON, err := json.Marshal(products)
-	if err != nil {
-		t.Fatalf("marshal products: %v", err)
-	}
-	result := struct {
-		Schema   string          `json:"$schema,omitempty"`
-		Version  int             `json:"version"`
-		Products json.RawMessage `json:"products"`
-	}{
-		Schema:  envelope.Schema,
-		Version: envelope.Version,
-	}
-	result.Products = productsJSON
-	merged, err := json.Marshal(result)
-	if err != nil {
-		t.Fatalf("marshal merged: %v", err)
-	}
-	return merged
 }

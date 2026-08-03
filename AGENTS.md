@@ -32,15 +32,13 @@ the wire projection. `cmd_schema_catalog` produces CI/local dumps only;
 `internal/cli/schema_catalog/`, `internal/cli/schema_meta_index.gob`, and
 `internal/cli/schema_meta_index.json` must not be committed. `schema_agent_metadata/` is retired: if that directory
 (or `schema_agent_metadata_audit.json`) is present, policy fails.
-`internal/cli/schema_command_registry/` (`registry.json` + `products/*.json`)
-is different: it is a reviewed `CommandRegistry` source, not a generated
-snapshot. It is the single reviewed source of stable canonical identity,
-primary paths, aliases, and navigation. Edit it only when reviewed exposure,
-identity, primary path, or aliases change; parameter, Skill, and metadata-only
-changes must not rewrite it mechanically. Rationale and day-to-day management
-rules: `docs/schema/schema-command-registry.md`. It sits beside other
-**reviewed inputs** under `internal/cli` (see Agent Schema contract) — same
-organizational family, separate authority; do not merge with
+Command identity is no longer a file input: it is collected from
+`ContractFinal.Identity` on the live Cobra leaves
+(`internal/cli/schema_identity_collect.go` → `BuildEffectiveCommandRegistry`).
+The reviewed `schema_command_registry/` was retired together with that
+switchover and must not reappear; identity changes happen by editing the leaf
+declaration. The remaining **reviewed inputs** under `internal/cli` (see Agent
+Schema contract) keep separate authorities — do not merge them with
 `param_concepts.json` or promote any of them into Catalog declaration.
 
 ## Command framework declaration
@@ -86,7 +84,7 @@ The Schema data flow is one way:
    └─ builds the real Cobra command tree and flags
    └─ leaf Safety / Contract / contract.ParamDecl declare ContractFinal (declare-or-annotate)
 
-2. schema_command_registry/ (registry.json + products/*.json)
+2. CollectIdentitySpecs (ContractFinal.Identity on live Cobra leaves)
    └─ forms EffectiveCommandRegistry
       └─ binds exactly to real Cobra leaves and aliases
 
@@ -127,7 +125,7 @@ substitutes. Keep them side-by-side; do **not** fold one into another:
 
 | Input | Path | Owns |
 |---|---|---|
-| Command registry | `schema_command_registry/` (`registry.json` + `products/*.json`) | stable identity, primary CLI path, aliases, navigation |
+| Command identity | collected from `ContractFinal.Identity` on live Cobra leaves (`schema_identity_collect.go`; not a file input) | stable identity, primary CLI path, aliases, navigation |
 | Param concepts | `param_concepts.json` (+ `.schema.json`) | argv synonym / concept dictionary (reduced to `param_aliases_generated.go`) |
 | Exclusions | `schema_command_exclusions.go` | exact reviewed CLI paths excluded from Schema (non-empty reason) |
 | Mapping ledger | `schema_parameter_mapping_ledger.go` | `mapping_exclusions` / removals (CLI flags with no direct RPC property); active bindings JSON retired |
@@ -138,14 +136,14 @@ substitutes. Keep them side-by-side; do **not** fold one into another:
 | Layer | Owns |
 |---|---|
 | `FlagSpec.Aliases` / Cobra flag aliases | executable flag synonyms on a leaf |
-| `schema_command_registry` `aliases` | reviewed CLI-path aliases for the same command identity |
+| `ContractFinal.Identity` `aliases` | reviewed CLI-path aliases for the same command identity |
 | `param_concepts.json` | argv synonym / concept dictionary (central preparse normalization) |
 
-**Visibility vs exclusions:** registry `visibility` is dormant (all entries default
-`public`); “runnable but not Agent-visible” belongs in
-`schema_command_exclusions.go`, not new `visibility` values. Registry Identity is
-a pin / consistency assertion against Cobra — never a second identity source that
-overrides the reviewed registry.
+**Visibility vs exclusions:** collected identity `visibility` is dormant (all
+entries default `public`); “runnable but not Agent-visible” belongs in
+`schema_command_exclusions.go`, not new `visibility` values. Native identity
+annotations are consistency assertions only — they must agree with the
+collected identity and never materialize or override it.
 
 Leaf declare (`Contract` / `ParamDecl` / `Safety` / `ProductDecl`) and the live
 Cobra tree remain separate from this table: declare owns semantics; Cobra owns
@@ -171,10 +169,11 @@ records, or use a previous Catalog JSON as a source.
 - CI tool: `cmd_schema_catalog` dumps an assembled Catalog for jq/determinism;
   it is **not** a `//go:generate` or committed delivery step.
 - `gen.go` only generates `param_aliases_generated.go`.
-- Inputs: **reviewed inputs** (registry / param_concepts / exclusions /
-  bindings audit / MCP pin — see table above) + ProductDecl/ContractFinal +
-  live Cobra tree. `schema_hints/` / `schema_agent_metadata/` must not
-  reappear.
+- Inputs: **reviewed inputs** (param_concepts / exclusions / bindings audit /
+  MCP pin — see table above) + ProductDecl/ContractFinal (identity is
+  collected from `ContractFinal.Identity`) + live Cobra tree.
+  `schema_hints/`, `schema_agent_metadata/`, and `schema_command_registry/`
+  must not reappear.
 - Gates: `make generate-schema` (param aliases + assembly determinism),
   `check-generated-drift.sh`, `check-schema-catalog.sh`.
 
@@ -192,10 +191,11 @@ navigation catalog, and schema renderer. DWS intentionally preserves its
 existing flat JSON wire contract for compatibility; do not treat architectural
 alignment as permission to make an unversioned wire-format change.
 
-The reviewed `CommandRegistry` is the sole source of stable command identity
-and navigation. The executable Cobra tree remains the source of truth for
-whether a CLI path exists, is runnable, and which flags it accepts. Schema
-coverage is bidirectional:
+The identity collected from `ContractFinal.Identity` (via
+`CollectIdentitySpecs`) is the sole source of stable command identity and
+navigation. The executable Cobra tree remains the source of truth for whether
+a CLI path exists, is runnable, and which flags it accepts. Schema coverage is
+bidirectional:
 
 1. Every final `SchemaRegistry` tool, including its serialized Catalog
    projection, must resolve to an executable Cobra command.
@@ -209,14 +209,11 @@ or duplicate exclusions must fail generation and CI.
 
 When adding or changing an Agent-visible command, review all relevant inputs:
 
-- `internal/cli/schema_command_registry/` (`registry.json` +
-  `products/*.json`) for the reviewed `CommandRegistry`: canonical identity,
-  primary CLI path, aliases, and stable navigation. It is the identity source
-  and is not a generated artifact.
-- `internal/cli/schema_command_registry.schema.json` is its closed,
-  machine-readable editing contract. Preserve the local `$schema` reference;
-  unknown fields, invalid visibility values, stale paths, and collisions fail
-  Go validation and policy.
+- Leaf `ContractFinal.Identity` for canonical identity, primary CLI path,
+  aliases, and stable navigation. Identity is collected from the live Cobra
+  leaves (`CollectIdentitySpecs`); there is no separate identity file. Invalid
+  canonical paths, alias collisions, stale paths, and drift fail collection,
+  binding, and policy.
 - Leaf `Safety` / `Contract` (`corecmd.ContractDecl`) / `contract.ParamDecl`
   (helpers `LeafSpec` or shortcut `Contract`) for parameter facts, interface
   disposition, safety, and Agent selection prose. Delivered provenance is
@@ -345,8 +342,8 @@ provenance are `contract_final` from ProductDecl / leaf declarations
 `make generate-schema` refreshes `param_aliases_generated.go` and runs
 assembly determinism (`check-schema-assembly.sh`). It does not rewrite a
 committed Catalog as delivery authority — runtime reassembles from
-declarations. Byte guards fail if generation mutates reviewed CommandRegistry
-or parameter-concept inputs.
+declarations. Byte guards fail if generation mutates parameter-concept
+inputs; policy fails if the retired `schema_command_registry/` reappears.
 
 Selection prose may choose a more or less restrictive recommendation. It cannot
 create a Cobra command or flag, change parameter facts, invent an

@@ -56,15 +56,15 @@ func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *te
 	}
 
 	testseam.Swap(t, &bindValidateParameterBindings, func() error { return nil })
-	testseam.Swap(t, &loadReviewedCommandRegistry, func() (CommandRegistry, error) {
-		return CommandRegistry{Commands: []CommandSpec{{
-			CanonicalPath: "sample.run", PrimaryCLIPath: "sample run",
-			Visibility: SchemaVisibilityPublic, Source: "reviewed_registry", ReviewReason: "test binding failure",
-		}}}, nil
-	})
+	prevGroups := reviewedRuntimeSchemaExclusionGroups
+	t.Cleanup(func() { reviewedRuntimeSchemaExclusionGroups = prevGroups })
+	reviewedRuntimeSchemaExclusionGroups = []runtimeSchemaExclusionGroup{{
+		ID: "", Reason: "x", Reviewed: true, Commands: []string{"x"},
+	}}
 	if _, err := collectRuntimeSchemaEntries(&cobra.Command{Use: "dws"}); err == nil {
-		t.Fatal("missing Cobra path should fail binding")
+		t.Fatal("invalid reviewed exclusions should fail identity collection")
 	}
+	reviewedRuntimeSchemaExclusionGroups = prevGroups
 
 	if _, err := collectRuntimeSchemaEntriesFromBound(BoundCommandRegistry{Commands: []BoundCommandSpec{{
 		CommandSpec: CommandSpec{CanonicalPath: "invalid", Visibility: SchemaVisibilityPublic},

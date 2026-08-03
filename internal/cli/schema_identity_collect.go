@@ -24,42 +24,32 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 )
 
-// identity-deregistry probe (Phase 1).
+// Command identity collection — the single identity source.
 //
-// These helpers test the hypothesis that command identity can be collected
-// from live Cobra leaves carrying ContractFinal.Identity, producing a command
-// spec set byte-equivalent to the reviewed schema_command_registry. They are
-// additive: nothing here changes production behaviour. The comparison test
-// (internal/app) gates Phase 2 on SourceHash equivalence.
+// CollectIdentitySpecs walks the live Cobra leaves carrying
+// ContractFinal.Identity and produces the CommandSpec set consumed by
+// BuildEffectiveCommandRegistry. The reviewed schema_command_registry was
+// retired together with this switchover; the standing gate in internal/app
+// asserts the collector is a valid, stable single source.
 
-// IdentityCollectionReport summarises a collection walk for the probe.
+// IdentityCollectionReport summarises a collection walk.
 type IdentityCollectionReport struct {
 	Leaves          int      // runnable leaves walked (hidden included)
 	WithIdentity    int      // primary leaves carrying a ContractFinal.Identity
 	HiddenPrimaries int      // collected primaries that are Hidden deprecated/migration shims
 	Excluded        int      // leaves matched by reviewed exclusions
 	NoIdentity      []string // leaves without Identity (alias / compatibility / deprecated; informational)
-	MissingPrimary  []string // reviewed canonicals with no collected primary (the real gap)
+	MissingPrimary  []string // canonicals with no collected primary (populated by spec-set comparisons)
 }
 
-// ReviewedCommandSpecs exposes the reviewed registry's command specs for the
-// probe comparison. Production assembly continues to use the existing path.
-func ReviewedCommandSpecs() ([]CommandSpec, error) {
-	registry, err := loadReviewedCommandRegistry()
-	if err != nil {
-		return nil, err
-	}
-	return registry.Commands, nil
-}
-
-// BuildEffectiveFromSpecs wraps the shared indexing so collected and reviewed
-// specs are normalised by the exact same rules before hashing.
+// BuildEffectiveFromSpecs wraps the shared indexing so collected specs are
+// normalised by the exact same rules used for effective registry assembly.
 func BuildEffectiveFromSpecs(specs []CommandSpec) (EffectiveCommandRegistry, error) {
 	return newEffectiveCommandRegistry(specs)
 }
 
-// primaryCLIPathFromIdentity resolves the primary leaf path the way the
-// registry does: PrimaryCLIPath wins, CLIPath fills when primary is empty.
+// primaryCLIPathFromIdentity resolves the primary leaf path declared by an
+// identity: PrimaryCLIPath wins, CLIPath fills when primary is empty.
 func primaryCLIPathFromIdentity(id contract.ToolIdentitySpec) string {
 	primary := strings.TrimSpace(id.PrimaryCLIPath)
 	if primary == "" {
@@ -70,12 +60,11 @@ func primaryCLIPathFromIdentity(id contract.ToolIdentitySpec) string {
 
 // walkIdentityLeaves visits every runnable leaf under cmd, INCLUDING Hidden
 // ones. The production bind path (bindCommandRegistryPath →
-// resolveExactCobraPath) resolves registry entries through raw Commands() with
-// no availability filter, so hidden deprecated shims that still carry a
-// reviewed registry entry and ContractFinal.Identity are part of the current
-// effective surface. The collector must match that reachability to be
-// byte-equivalent; filtering on IsAvailableCommand (as the public-surface
-// completeness walk does) would silently drop them.
+// resolveExactCobraPath) resolves identity entries through raw Commands() with
+// no availability filter, so hidden deprecated shims that still carry
+// ContractFinal.Identity are part of the current effective surface. The
+// collector must match that reachability; filtering on IsAvailableCommand (as
+// the public-surface completeness walk does) would silently drop them.
 func walkIdentityLeaves(cmd *cobra.Command, fn func(*cobra.Command)) {
 	if cmd == nil {
 		return
@@ -92,10 +81,10 @@ func walkIdentityLeaves(cmd *cobra.Command, fn func(*cobra.Command)) {
 	}
 }
 
-// CollectIdentitySpecs walks the public runnable leaves under root and
-// synthesises a CommandSpec from each leaf's ContractFinal.Identity, matching
-// the reviewed registry decode semantics (Source constant, public visibility,
-// SourceProductID defaulting handled by the shared indexer).
+// CollectIdentitySpecs walks the runnable leaves under root and synthesises a
+// CommandSpec from each leaf's ContractFinal.Identity (public visibility;
+// SourceProductID defaulting is handled by the shared indexer). It is the
+// single identity source consumed by BuildEffectiveCommandRegistry.
 func CollectIdentitySpecs(root *cobra.Command) ([]CommandSpec, IdentityCollectionReport, error) {
 	report := IdentityCollectionReport{}
 	if root == nil {
@@ -193,10 +182,10 @@ func validateCollectedUniqueness(specs []CommandSpec) error {
 	return nil
 }
 
-// DiagnoseMissingPrimaries resolves each reviewed spec that has no collected
-// primary and reports why: the reviewed primary CLI path may not exist as a
-// Cobra leaf, the leaf may lack ContractFinal, or its declared canonical may
-// drift from the reviewed one.
+// DiagnoseMissingPrimaries resolves each spec that has no collected primary
+// and reports why: the primary CLI path may not exist as a Cobra leaf, the
+// leaf may lack ContractFinal, or its declared canonical may drift from the
+// expected one.
 func DiagnoseMissingPrimaries(root *cobra.Command, missing []CommandSpec) []string {
 	var diagnostics []string
 	for _, spec := range missing {
@@ -219,8 +208,8 @@ func DiagnoseMissingPrimaries(root *cobra.Command, missing []CommandSpec) []stri
 }
 
 // CompareCommandSpecEquivalence returns a human-readable, deterministic diff
-// between collected and reviewed specs keyed by canonical path. An empty slice
-// means the two sets agree on every compared field.
+// between two CommandSpec sets keyed by canonical path. An empty slice means
+// the two sets agree on every compared field.
 func CompareCommandSpecEquivalence(collected, reviewed []CommandSpec) []string {
 	byCanonical := func(specs []CommandSpec) map[string]CommandSpec {
 		m := make(map[string]CommandSpec, len(specs))

@@ -94,20 +94,16 @@ func TestRuntimeSchemaCompletenessRejectsInvalidAndStaleExclusions(t *testing.T)
 	}
 }
 
-func TestReviewedCommandRegistryOwnsIdentityWithoutNativeAnnotation(t *testing.T) {
+func TestEffectiveCommandRegistryOwnsIdentityWithoutNativeAnnotation(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	product := &cobra.Command{Use: "aisearch"}
 	leaf := &cobra.Command{Use: "person", Run: func(*cobra.Command, []string) {}}
 	product.AddCommand(leaf)
 	root.AddCommand(product)
 
-	reviewed, err := loadCommandRegistryFromEmbed()
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec, ok := reviewed.ByCLIPath["aisearch person"]
-	if !ok || spec.CanonicalPath != "aisearch.enterprise_person_search" {
-		t.Fatalf("reviewed registry fixture = %#v, %v", spec, ok)
+	spec := CommandSpec{
+		CanonicalPath:  "aisearch.enterprise_person_search",
+		PrimaryCLIPath: "aisearch person",
 	}
 	effective, err := newEffectiveCommandRegistry([]CommandSpec{spec})
 	if err != nil {

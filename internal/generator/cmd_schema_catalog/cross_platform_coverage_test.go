@@ -112,7 +112,7 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationFailure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateCatalogOutputIsolation(repositoryRoot, "skills/mono/SKILL.md", "internal/cli/schema_meta_index.gob", ""); err == nil {
+	if err := validateCatalogOutputIsolation(repositoryRoot, "skills/mono/SKILL.md", "internal/cli/schema_meta_index.gob"); err == nil {
 		t.Fatal("expected output/input overlap failure")
 	}
 }

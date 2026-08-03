@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -88,46 +87,6 @@ func TestCrossPlatformCoverageInterfaceAppliedSummariesNonNil(t *testing.T) {
 		InterfaceMetadata: &agentmetadata.InterfaceMetadataAudit{AppliedSummaries: 3},
 	}); got != 3 {
 		t.Fatalf("interfaceAppliedSummaries = %d, want 3", got)
-	}
-}
-
-func TestCrossPlatformCoverageMergeRegistryShards(t *testing.T) {
-	dir := t.TempDir()
-	envelope := `{"$schema":"./schema_command_registry.schema.json","version":1}`
-	if err := os.WriteFile(filepath.Join(dir, "registry.json"), []byte(envelope), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	productsDir := filepath.Join(dir, "products")
-	if err := os.MkdirAll(productsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	shard := `{"id":"sample","tools":[{"canonical_path":"sample.run","cli_path":"sample run"}]}`
-	if err := os.WriteFile(filepath.Join(productsDir, "sample.json"), []byte(shard), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	merged, err := mergeRegistryShards(dir)
-	if err != nil {
-		t.Fatalf("mergeRegistryShards() error = %v", err)
-	}
-	var doc struct {
-		Version  int             `json:"version"`
-		Products json.RawMessage `json:"products"`
-	}
-	if err := json.Unmarshal(merged, &doc); err != nil {
-		t.Fatalf("decode merged registry: %v", err)
-	}
-	if doc.Version != 1 || len(doc.Products) == 0 {
-		t.Fatalf("merged registry = %s", merged)
-	}
-}
-
-func TestCrossPlatformCoverageValidateCommandRegistryFileDirectory(t *testing.T) {
-	repositoryRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := validateCommandRegistryFile(repositoryRoot, "internal/cli/schema_command_registry"); err != nil {
-		t.Fatalf("validateCommandRegistryFile(dir) error = %v", err)
 	}
 }
 

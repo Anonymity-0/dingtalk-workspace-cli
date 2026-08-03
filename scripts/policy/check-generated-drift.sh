@@ -22,9 +22,6 @@ trap 'rm -rf "$tmp" "$exec_tmp"' EXIT HUP INT TERM
 
 go build -o "$param_aliases_generator" ./internal/generator/cmd_param_aliases
 
-# CommandRegistry is a reviewed input, never a generated artifact.
-registry_guard="$tmp/schema_command_registry"
-cp -R internal/cli/schema_command_registry "$registry_guard"
 concepts_guard="$tmp/param_concepts.json"
 concepts_schema_guard="$tmp/param_concepts.schema.json"
 cp internal/cli/param_concepts.json "$concepts_guard"
@@ -41,8 +38,8 @@ fi
 "$param_aliases_generator" -root . -output "$param_aliases_tmp"
 "$param_aliases_generator" -root . -output "$param_aliases_tmp_second"
 
-if ! diff -qr internal/cli/schema_command_registry "$registry_guard" >/dev/null; then
-	printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry/' >&2
+if [ -e internal/cli/schema_command_registry ]; then
+	printf '%s\n' 'generated drift: retired schema_command_registry/ must not be present' >&2
 	exit 1
 fi
 

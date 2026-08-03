@@ -58,8 +58,7 @@ func TestMainGeneratesMetadataToTemporaryDirectory(t *testing.T) {
 }
 
 func TestLoadEffectiveCommandRegistryProjectionReconcilesAliases(t *testing.T) {
-	root := filepath.Join("..", "..", "..")
-	registry, err := loadEffectiveCommandRegistryProjection(root, "internal/cli/schema_command_registry", true)
+	registry, err := loadEffectiveCommandRegistryProjection(true)
 	if err != nil {
 		t.Fatalf("loadEffectiveCommandRegistryProjection() error = %v", err)
 	}
@@ -77,17 +76,9 @@ func TestLoadEffectiveCommandRegistryProjectionReconcilesAliases(t *testing.T) {
 	}
 }
 
-func TestLoadEffectiveCommandRegistryProjectionRejectsCompatibilityDrift(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "schema_command_registry")
-	if err := os.WriteFile(path, []byte(`{"$schema":"./schema_command_registry.schema.json","version":1,"products":[{"id":"sample","tools":[{"canonical_path":"sample.run","cli_path":"sample run"}]}]}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	_, err := loadEffectiveCommandRegistryProjection(".", path, true)
-	if err == nil || !strings.Contains(err.Error(), "disagrees with the embedded") {
-		t.Fatalf("compatibility drift error = %v", err)
-	}
-	if _, err := loadEffectiveCommandRegistryProjection(".", "", false); err == nil || !strings.Contains(err.Error(), "cannot be disabled") {
-		t.Fatalf("disabled registry validation error = %v", err)
+func TestLoadEffectiveCommandRegistryProjectionRejectsDisabledValidation(t *testing.T) {
+	if _, err := loadEffectiveCommandRegistryProjection(false); err == nil || !strings.Contains(err.Error(), "cannot be disabled") {
+		t.Fatalf("disabled validation error = %v", err)
 	}
 }
 

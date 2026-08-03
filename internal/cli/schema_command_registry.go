@@ -4,38 +4,24 @@
 package cli
 
 import (
-	"bytes"
 	"crypto/sha256"
-	"embed"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/fs"
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/spf13/cobra"
 )
 
-const commandRegistrySchemaRef = "./schema_command_registry.schema.json"
-
-// schema_command_registry/ (registry.json + products/*.json) is the reviewed,
-// typed command registry and the sole source of stable command identity and
-// navigation. Catalog and generated metadata are downstream views and must
-// never be read back here. Peer reviewed inputs (param_concepts, exclusions,
-// bindings audit, MCP pin) stay separate — see AGENTS.md "Reviewed inputs".
-
-//go:embed schema_command_registry/registry.json
-var embeddedSchemaCommandRegistryEnvelopeJSON []byte
-
-//go:embed schema_command_registry/products
-var embeddedSchemaCommandRegistryProducts embed.FS
-
-//go:embed schema_command_registry.schema.json
-var embeddedSchemaCommandRegistrySchemaJSON []byte
+// Command identity is collected from the live Cobra command tree: every
+// runnable leaf carrying ContractFinal.Identity contributes one CommandSpec
+// (CollectIdentitySpecs in schema_identity_collect.go). The reviewed
+// schema_command_registry/ was retired together with that switchover; the
+// collector is the single source of stable command identity and navigation.
+// Catalog and generated metadata are downstream views and must never be read
+// back here. Peer reviewed inputs (param_concepts, exclusions, bindings
+// audit, MCP pin) stay separate — see AGENTS.md "Reviewed inputs".
 
 var (
 	commandRegistryProductIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
@@ -43,26 +29,7 @@ var (
 	commandRegistryCLIPathToken     = regexp.MustCompile(`^(?:[A-Za-z0-9][A-Za-z0-9._:-]*|\+[A-Za-z0-9][A-Za-z0-9._:-]*)$`)
 )
 
-type schemaCommandRegistrySnapshot struct {
-	Schema   string                         `json:"$schema,omitempty"`
-	Version  int                            `json:"version"`
-	Products []schemaCommandRegistryProduct `json:"products"`
-}
-
-type schemaCommandRegistryProduct struct {
-	ID    string                      `json:"id"`
-	Tools []schemaCommandRegistryTool `json:"tools"`
-}
-
-type schemaCommandRegistryTool struct {
-	CanonicalPath   string            `json:"canonical_path"`
-	SourceProductID *string           `json:"source_product_id,omitempty"`
-	CLIPath         string            `json:"cli_path"`
-	Aliases         []string          `json:"aliases,omitempty"`
-	Visibility      *SchemaVisibility `json:"visibility,omitempty"`
-}
-
-// CommandSpec is one reviewed command identity. Identity and navigation are
+// CommandSpec is one command identity. Identity and navigation are
 // deliberately kept together so no downstream renderer can independently
 // invent a canonical name, primary path, or alias.
 type CommandSpec struct {
@@ -75,162 +42,20 @@ type CommandSpec struct {
 	ReviewReason    string
 }
 
-// CommandRegistry is the decoded reviewed identity registry.
+// CommandRegistry is an indexed command identity set.
 type CommandRegistry struct {
 	Commands    []CommandSpec
 	ByCLIPath   map[string]CommandSpec
 	ByCanonical map[string]CommandSpec
 }
 
-// EffectiveCommandRegistry is the reviewed registry after exact reviewed
-// manual command additions have been merged. It remains independent of Cobra;
-// binding is a separate fail-closed step.
+// EffectiveCommandRegistry is the collected command identity registry after
+// indexing. It remains independent of Cobra; binding is a separate
+// fail-closed step.
 type EffectiveCommandRegistry struct {
 	Commands    []CommandSpec
 	ByCLIPath   map[string]CommandSpec
 	ByCanonical map[string]CommandSpec
-}
-
-var (
-	embeddedSchemaCommandRegistryOnce sync.Once
-	embeddedSchemaCommandRegistryData CommandRegistry
-	embeddedSchemaCommandRegistryErr  error
-	loadReviewedCommandRegistry       = loadCommandRegistryFromEmbed
-)
-
-func loadCommandRegistryFromEmbed() (CommandRegistry, error) {
-	embeddedSchemaCommandRegistryOnce.Do(func() {
-		embeddedSchemaCommandRegistryData, embeddedSchemaCommandRegistryErr = assembleCommandRegistry()
-	})
-	return cloneCommandRegistry(embeddedSchemaCommandRegistryData), embeddedSchemaCommandRegistryErr
-}
-
-// assembleCommandRegistry reads the per-product shards embedded at build time
-// and reassembles them into a single CommandRegistry, identical to the previous
-// single-file layout. Mirrors assembleSchemaCatalogSnapshot's shard merge shape.
-func assembleCommandRegistry() (CommandRegistry, error) {
-	return assembleCommandRegistryFrom(embeddedSchemaCommandRegistryEnvelopeJSON, embeddedSchemaCommandRegistryProducts, "schema_command_registry/products")
-}
-
-// assembleCommandRegistryFrom reassembles an envelope plus product shard
-// directory. Split from assembleCommandRegistry so shard failure modes stay
-// testable against fake filesystems.
-func assembleCommandRegistryFrom(envelopeJSON []byte, shards fs.FS, dir string) (CommandRegistry, error) {
-	var envelope struct {
-		Schema  string `json:"$schema,omitempty"`
-		Version int    `json:"version"`
-	}
-	if err := json.Unmarshal(envelopeJSON, &envelope); err != nil {
-		return CommandRegistry{}, fmt.Errorf("decode embedded command registry envelope: %w", err)
-	}
-
-	entries, err := fs.ReadDir(shards, dir)
-	if err != nil {
-		return CommandRegistry{}, fmt.Errorf("read embedded command registry products: %w", err)
-	}
-
-	var snapshot schemaCommandRegistrySnapshot
-	snapshot.Schema = envelope.Schema
-	snapshot.Version = envelope.Version
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		data, readErr := fs.ReadFile(shards, dir+"/"+entry.Name())
-		if readErr != nil {
-			return CommandRegistry{}, fmt.Errorf("read embedded command registry shard %s: %w", entry.Name(), readErr)
-		}
-		var product schemaCommandRegistryProduct
-		if err := json.Unmarshal(data, &product); err != nil {
-			return CommandRegistry{}, fmt.Errorf("decode embedded command registry shard %s: %w", entry.Name(), err)
-		}
-		snapshot.Products = append(snapshot.Products, product)
-	}
-
-	// Encode to bytes and decode via the existing pipeline so all validation
-	// (canonical patterns, duplicate detection, visibility) runs identically.
-	// Marshal of this plain struct cannot fail.
-	data, _ := json.Marshal(snapshot)
-	return decodeCommandRegistry(data)
-}
-
-// ReviewedCommandRegistryMergedJSON returns the per-product shards reassembled
-// into a single JSON document matching the pre-split layout. Used by tests that
-// need the full registry bytes.
-func ReviewedCommandRegistryMergedJSON() ([]byte, error) {
-	return mergedCommandRegistryJSON(embeddedSchemaCommandRegistryEnvelopeJSON, embeddedSchemaCommandRegistryProducts, "schema_command_registry/products")
-}
-
-// mergedCommandRegistryJSON is the injectable core of
-// ReviewedCommandRegistryMergedJSON.
-func mergedCommandRegistryJSON(envelopeJSON []byte, shards fs.FS, dir string) ([]byte, error) {
-	var envelope struct {
-		Schema  string `json:"$schema,omitempty"`
-		Version int    `json:"version"`
-	}
-	if err := json.Unmarshal(envelopeJSON, &envelope); err != nil {
-		return nil, err
-	}
-	entries, err := fs.ReadDir(shards, dir)
-	if err != nil {
-		return nil, err
-	}
-	products := make([]json.RawMessage, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		data, err := fs.ReadFile(shards, dir+"/"+entry.Name())
-		if err != nil {
-			return nil, err
-		}
-		products = append(products, json.RawMessage(data))
-	}
-	result := struct {
-		Schema   string          `json:"$schema,omitempty"`
-		Version  int             `json:"version"`
-		Products json.RawMessage `json:"products"`
-	}{
-		Schema:  envelope.Schema,
-		Version: envelope.Version,
-	}
-	if result.Schema == "" {
-		result.Schema = "./schema_command_registry.schema.json"
-	}
-	result.Products, err = json.Marshal(products)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(result)
-}
-
-// ValidateCommandRegistrySource validates a compatibility --surface input and
-// requires it to be semantically identical to the embedded reviewed registry.
-// Generators may retain the flag for migration, but cannot use it to introduce
-// a second identity source.
-func ValidateCommandRegistrySource(data []byte) (CommandRegistry, error) {
-	candidate, err := decodeCommandRegistry(data)
-	if err != nil {
-		return CommandRegistry{}, err
-	}
-	embedded, err := loadReviewedCommandRegistry()
-	if err != nil {
-		return CommandRegistry{}, err
-	}
-	if !equalCommandRegistries(candidate, embedded) {
-		return CommandRegistry{}, fmt.Errorf("command registry source disagrees with the embedded reviewed registry")
-	}
-	return candidate, nil
-}
-
-// ReviewedCommandRegistrySourceHash returns the stable semantic hash used by
-// all generated downstream views.
-func ReviewedCommandRegistrySourceHash() (string, error) {
-	registry, err := loadReviewedCommandRegistry()
-	if err != nil {
-		return "", err
-	}
-	return registry.SourceHash(), nil
 }
 
 // SourceHash hashes only stable identity, navigation, and reviewed exposure.
@@ -240,8 +65,8 @@ func (registry CommandRegistry) SourceHash() string {
 	return hashCommandSpecs(registry.Commands)
 }
 
-// SourceHash includes reviewed manual additions because those entries are part
-// of the effective identity registry delivered to downstream consumers.
+// SourceHash covers every effective command identity delivered to downstream
+// consumers.
 func (registry EffectiveCommandRegistry) SourceHash() string {
 	return hashCommandSpecs(registry.Commands)
 }
@@ -266,118 +91,6 @@ func hashCommandSpecs(commands []CommandSpec) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-func equalCommandRegistries(left, right CommandRegistry) bool {
-	if len(left.Commands) != len(right.Commands) || left.SourceHash() != right.SourceHash() {
-		return false
-	}
-	for canonical, leftSpec := range left.ByCanonical {
-		rightSpec, ok := right.ByCanonical[canonical]
-		if !ok || leftSpec.SourceProductID != rightSpec.SourceProductID || leftSpec.PrimaryCLIPath != rightSpec.PrimaryCLIPath || strings.Join(leftSpec.Aliases, "\x00") != strings.Join(rightSpec.Aliases, "\x00") || leftSpec.Visibility != rightSpec.Visibility {
-			return false
-		}
-	}
-	return true
-}
-
-func decodeCommandRegistry(data []byte) (CommandRegistry, error) {
-	var snapshot schemaCommandRegistrySnapshot
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&snapshot); err != nil {
-		return CommandRegistry{}, fmt.Errorf("decode reviewed Schema command registry: %w", err)
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		if err == nil {
-			err = fmt.Errorf("multiple JSON values")
-		}
-		return CommandRegistry{}, fmt.Errorf("decode reviewed Schema command registry: %w", err)
-	}
-	if snapshot.Version != 1 {
-		return CommandRegistry{}, fmt.Errorf("unsupported Schema command registry version %d", snapshot.Version)
-	}
-	if strings.TrimSpace(snapshot.Schema) != commandRegistrySchemaRef {
-		return CommandRegistry{}, fmt.Errorf("schema command registry must declare $schema=%q", commandRegistrySchemaRef)
-	}
-	if len(snapshot.Products) == 0 {
-		return CommandRegistry{}, fmt.Errorf("schema command registry contains no products")
-	}
-
-	products := append([]schemaCommandRegistryProduct(nil), snapshot.Products...)
-	sort.Slice(products, func(i, j int) bool { return products[i].ID < products[j].ID })
-	commands := make([]CommandSpec, 0)
-	seenProducts := make(map[string]bool, len(products))
-	for _, product := range products {
-		productID := strings.TrimSpace(product.ID)
-		if productID != product.ID || !validCommandRegistryProductID(productID) {
-			return CommandRegistry{}, fmt.Errorf("schema command registry contains invalid product id %q", product.ID)
-		}
-		if seenProducts[productID] {
-			return CommandRegistry{}, fmt.Errorf("schema command registry contains duplicate product id %q", productID)
-		}
-		seenProducts[productID] = true
-		if len(product.Tools) == 0 {
-			return CommandRegistry{}, fmt.Errorf("schema command registry product %s contains no commands", productID)
-		}
-		for _, tool := range product.Tools {
-			canonical := strings.TrimSpace(tool.CanonicalPath)
-			canonicalProduct, _, ok := splitManualSchemaCanonicalPath(canonical)
-			if canonical != tool.CanonicalPath || !ok || !commandRegistryCanonicalPattern.MatchString(canonical) || canonicalProduct != productID {
-				return CommandRegistry{}, fmt.Errorf("schema command registry product %s contains invalid canonical path %q", productID, canonical)
-			}
-			sourceProductID := productID
-			if tool.SourceProductID != nil {
-				rawSourceProductID := *tool.SourceProductID
-				sourceProductID = strings.TrimSpace(rawSourceProductID)
-				if sourceProductID != rawSourceProductID || !validCommandRegistryProductID(sourceProductID) {
-					return CommandRegistry{}, fmt.Errorf("schema command registry tool %s has invalid source_product_id %q", canonical, rawSourceProductID)
-				}
-			}
-			if !validReviewedCommandRegistryCLIPath(tool.CLIPath) {
-				return CommandRegistry{}, fmt.Errorf("schema command registry tool %s has invalid primary cli path %q", canonical, tool.CLIPath)
-			}
-			seenAliases := make(map[string]bool, len(tool.Aliases))
-			for _, alias := range tool.Aliases {
-				if !validReviewedCommandRegistryCLIPath(alias) {
-					return CommandRegistry{}, fmt.Errorf("schema command registry tool %s has invalid alias path %q", canonical, alias)
-				}
-				if alias == tool.CLIPath {
-					return CommandRegistry{}, fmt.Errorf("schema command registry tool %s alias %q duplicates its primary cli path", canonical, alias)
-				}
-				if seenAliases[alias] {
-					return CommandRegistry{}, fmt.Errorf("schema command registry tool %s contains duplicate alias %q", canonical, alias)
-				}
-				seenAliases[alias] = true
-			}
-			visibility := SchemaVisibilityPublic
-			if tool.Visibility != nil {
-				visibility = *tool.Visibility
-				switch visibility {
-				case SchemaVisibilityPublic, SchemaVisibilityCompat, SchemaVisibilityInternal:
-				default:
-					return CommandRegistry{}, fmt.Errorf("schema command registry tool %s has invalid visibility %q", canonical, visibility)
-				}
-			}
-			commands = append(commands, CommandSpec{
-				CanonicalPath:   canonical,
-				SourceProductID: sourceProductID,
-				PrimaryCLIPath:  tool.CLIPath,
-				Aliases:         tool.Aliases,
-				Visibility:      visibility,
-				Source:          "reviewed_command_registry",
-			})
-		}
-	}
-	return newCommandRegistry(commands)
-}
-
-func newCommandRegistry(commands []CommandSpec) (CommandRegistry, error) {
-	normalized, byPath, byCanonical, err := indexCommandSpecs(commands)
-	if err != nil {
-		return CommandRegistry{}, err
-	}
-	return CommandRegistry{Commands: normalized, ByCLIPath: byPath, ByCanonical: byCanonical}, nil
-}
-
 func newEffectiveCommandRegistry(commands []CommandSpec) (EffectiveCommandRegistry, error) {
 	normalized, byPath, byCanonical, err := indexCommandSpecs(commands)
 	if err != nil {
@@ -395,31 +108,31 @@ func indexCommandSpecs(commands []CommandSpec) ([]CommandSpec, map[string]Comman
 		spec.CanonicalPath = strings.TrimSpace(spec.CanonicalPath)
 		productID, _, ok := splitManualSchemaCanonicalPath(spec.CanonicalPath)
 		if !ok || !commandRegistryCanonicalPattern.MatchString(spec.CanonicalPath) {
-			return nil, nil, nil, fmt.Errorf("schema command registry contains invalid canonical path %q", raw.CanonicalPath)
+			return nil, nil, nil, fmt.Errorf("command identity has invalid canonical path %q", raw.CanonicalPath)
 		}
 		spec.SourceProductID = strings.TrimSpace(spec.SourceProductID)
 		if spec.SourceProductID == "" {
 			spec.SourceProductID = productID
 		}
 		if !validCommandRegistryProductID(spec.SourceProductID) {
-			return nil, nil, nil, fmt.Errorf("schema command registry tool %s has invalid source_product_id %q", spec.CanonicalPath, raw.SourceProductID)
+			return nil, nil, nil, fmt.Errorf("command identity %s has invalid source_product_id %q", spec.CanonicalPath, raw.SourceProductID)
 		}
 		spec.PrimaryCLIPath = normalizeSchemaCLIPath(spec.PrimaryCLIPath)
-		if !validReviewedCommandRegistryCLIPath(spec.PrimaryCLIPath) {
-			return nil, nil, nil, fmt.Errorf("schema command registry tool %s has invalid primary cli path %q", spec.CanonicalPath, raw.PrimaryCLIPath)
+		if !validCommandRegistryCLIPath(spec.PrimaryCLIPath) {
+			return nil, nil, nil, fmt.Errorf("command identity %s has invalid primary cli path %q", spec.CanonicalPath, raw.PrimaryCLIPath)
 		}
 		aliases := make([]string, 0, len(spec.Aliases))
 		seenAliases := make(map[string]bool, len(spec.Aliases))
 		for _, rawAlias := range spec.Aliases {
 			alias := normalizeSchemaCLIPath(rawAlias)
-			if !validReviewedCommandRegistryCLIPath(alias) {
-				return nil, nil, nil, fmt.Errorf("schema command registry tool %s has invalid alias path %q", spec.CanonicalPath, alias)
+			if !validCommandRegistryCLIPath(alias) {
+				return nil, nil, nil, fmt.Errorf("command identity %s has invalid alias path %q", spec.CanonicalPath, alias)
 			}
 			if alias == spec.PrimaryCLIPath {
-				return nil, nil, nil, fmt.Errorf("schema command registry tool %s alias %q duplicates its primary path", spec.CanonicalPath, alias)
+				return nil, nil, nil, fmt.Errorf("command identity %s alias %q duplicates its primary path", spec.CanonicalPath, alias)
 			}
 			if seenAliases[alias] {
-				return nil, nil, nil, fmt.Errorf("schema command registry tool %s has duplicate alias path %q", spec.CanonicalPath, alias)
+				return nil, nil, nil, fmt.Errorf("command identity %s has duplicate alias path %q", spec.CanonicalPath, alias)
 			}
 			seenAliases[alias] = true
 			aliases = append(aliases, alias)
@@ -431,7 +144,7 @@ func indexCommandSpecs(commands []CommandSpec) ([]CommandSpec, map[string]Comman
 		switch spec.Visibility {
 		case SchemaVisibilityPublic, SchemaVisibilityCompat, SchemaVisibilityInternal:
 		default:
-			return nil, nil, nil, fmt.Errorf("schema command registry tool %s has invalid visibility %q", spec.CanonicalPath, spec.Visibility)
+			return nil, nil, nil, fmt.Errorf("command identity %s has invalid visibility %q", spec.CanonicalPath, spec.Visibility)
 		}
 		spec.Source = strings.TrimSpace(spec.Source)
 		if spec.Source == "" {
@@ -439,12 +152,12 @@ func indexCommandSpecs(commands []CommandSpec) ([]CommandSpec, map[string]Comman
 		}
 		spec.ReviewReason = strings.TrimSpace(spec.ReviewReason)
 		if previous, exists := byCanonical[spec.CanonicalPath]; exists {
-			return nil, nil, nil, fmt.Errorf("duplicate Schema command registry canonical path %s (primary paths %q and %q)", spec.CanonicalPath, previous.PrimaryCLIPath, spec.PrimaryCLIPath)
+			return nil, nil, nil, fmt.Errorf("duplicate command identity canonical path %s (primary paths %q and %q)", spec.CanonicalPath, previous.PrimaryCLIPath, spec.PrimaryCLIPath)
 		}
 		byCanonical[spec.CanonicalPath] = spec
 		for _, path := range append([]string{spec.PrimaryCLIPath}, spec.Aliases...) {
 			if previous, exists := byPath[path]; exists {
-				return nil, nil, nil, fmt.Errorf("schema command registry path %q belongs to both %s and %s", path, previous.CanonicalPath, spec.CanonicalPath)
+				return nil, nil, nil, fmt.Errorf("command identity path %q belongs to both %s and %s", path, previous.CanonicalPath, spec.CanonicalPath)
 			}
 			byPath[path] = spec
 		}
@@ -453,7 +166,7 @@ func indexCommandSpecs(commands []CommandSpec) ([]CommandSpec, map[string]Comman
 	for path, owner := range byPath {
 		if canonicalOwner, exists := byCanonical[path]; exists {
 			return nil, nil, nil, fmt.Errorf(
-				"schema command registry CLI path %q for %s conflicts with canonical identity %s",
+				"command identity CLI path %q for %s conflicts with canonical identity %s",
 				path,
 				owner.CanonicalPath,
 				canonicalOwner.CanonicalPath,
@@ -468,11 +181,11 @@ func validCommandRegistryProductID(value string) bool {
 	return commandRegistryProductIDPattern.MatchString(strings.TrimSpace(value))
 }
 
-// validReviewedCommandRegistryCLIPath is intentionally stricter than
-// normalizeSchemaCLIPath: reviewed source must already be canonical and may
-// not rely on normalization to hide a leading dws, repeated whitespace,
+// validCommandRegistryCLIPath is intentionally stricter than
+// normalizeSchemaCLIPath: collected identity must already be canonical and
+// may not rely on normalization to hide a leading dws, repeated whitespace,
 // flags, or wildcard syntax.
-func validReviewedCommandRegistryCLIPath(value string) bool {
+func validCommandRegistryCLIPath(value string) bool {
 	if value == "" || value != strings.TrimSpace(value) || strings.HasPrefix(value, "dws ") || strings.ContainsAny(value, "*?[]") {
 		return false
 	}
@@ -496,45 +209,24 @@ func normalizeCommandAliases(aliases []string, primary string) []string {
 	return sortedUniqueStrings(normalized)
 }
 
-// BuildEffectiveCommandRegistry loads the reviewed CommandRegistry. Manual
-// Schema hint overlays are retired; every public Schema identity must already
-// exist in the reviewed registry.
+// BuildEffectiveCommandRegistry assembles the effective command identity
+// registry by collecting ContractFinal.Identity from the live Cobra leaves
+// under root. The collector is the single identity source; there is no
+// separate reviewed identity file to merge or overlay.
 //
 // Parameter mapping ledger (schema_parameter_mapping_ledger.go —
 // mapping_exclusions / removals; active bindings retired to ParamDecl.Property)
 // is validated at BindEffectiveCommandRegistry and catalog assembly, not here.
 // Identity registry construction must not hard-depend on active binding rows.
-//
-// identity-deregistry: the reviewed schema_command_registry remains the
-// assembly source, while TestCollectedIdentityMatchesReviewedRegistry keeps
-// the identity collected from live ContractFinal leaves byte-equivalent with
-// it. The production switchover to the collector ships together with the
-// registry removal as one atomic change, not as an intermediate state where
-// assembly uses the collector but the registry still exists.
 func BuildEffectiveCommandRegistry(root *cobra.Command) (EffectiveCommandRegistry, error) {
 	if root == nil {
 		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")
 	}
-	reviewed, err := loadReviewedCommandRegistry()
+	collected, _, err := CollectIdentitySpecs(root)
 	if err != nil {
 		return EffectiveCommandRegistry{}, err
 	}
-	return buildEffectiveCommandRegistry(root, reviewed)
-}
-
-func buildEffectiveCommandRegistry(root *cobra.Command, reviewed CommandRegistry) (EffectiveCommandRegistry, error) {
-	if root == nil {
-		return EffectiveCommandRegistry{}, fmt.Errorf("build effective Schema command registry: root is nil")
-	}
-	return newEffectiveCommandRegistry(reviewed.Commands)
-}
-
-func cloneCommandRegistry(registry CommandRegistry) CommandRegistry {
-	clone, err := newCommandRegistry(registry.Commands)
-	if err != nil {
-		return CommandRegistry{}
-	}
-	return clone
+	return newEffectiveCommandRegistry(collected)
 }
 
 func cloneCommandSpec(spec CommandSpec) CommandSpec {

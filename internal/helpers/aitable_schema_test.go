@@ -14,14 +14,12 @@
 package helpers
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
-	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 )
@@ -107,50 +105,54 @@ func TestDeclareLeafMetadataDoesNotRewriteRunE(t *testing.T) {
 	}
 }
 
+// TestAitableDeclareLeafMetadataCoversRegistryHelpers asserts the aitable
+// subtree is a complete identity source after the reviewed registry
+// retirement: the collector finds a non-empty aitable identity set, every
+// collected primary CLI path resolves back to a ContractFinal-bearing leaf in
+// the tree, and every canonical stays inside the aitable product. Leaves
+// without identity (compatibility aliases, hint stubs) remain allowed — they
+// resolve to a primary, matching the collector's NoIdentity treatment.
 func TestAitableDeclareLeafMetadataCoversRegistryHelpers(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	regPath := filepath.Join(filepath.Dir(thisFile), "..", "cli", "schema_command_registry", "products", "aitable.json")
-	raw, err := os.ReadFile(regPath)
-	if err != nil {
-		t.Fatalf("read registry: %v", err)
-	}
-	var reg struct {
-		Tools []struct {
-			CanonicalPath string `json:"canonical_path"`
-			CLIPath       string `json:"cli_path"`
-		} `json:"tools"`
-	}
-	if err := json.Unmarshal(raw, &reg); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-
 	root := newAitableCommand()
-	missing := make([]string, 0)
-	helperCount := 0
-	for _, tool := range reg.Tools {
+	specs, _, err := cli.CollectIdentitySpecs(root)
+	if err != nil {
+		t.Fatalf("collect aitable identity specs: %v", err)
+	}
+	if len(specs) == 0 {
+		t.Fatal("expected identity-bearing aitable leaves")
+	}
+	for _, spec := range specs {
+		if !strings.HasPrefix(spec.CanonicalPath, "aitable.") {
+			t.Fatalf("canonical %q escapes the aitable product", spec.CanonicalPath)
+		}
 		// Shortcut paths (+...) stay on bind-time decls until Shortcut.Schema migration.
-		if containsPlus(tool.CLIPath) {
+		if containsPlus(spec.PrimaryCLIPath) {
 			continue
 		}
-		helperCount++
-		leaf := findCLIPath(root, tool.CLIPath)
+		leaf := findCLIPath(root, spec.PrimaryCLIPath)
 		if leaf == nil {
-			missing = append(missing, tool.CLIPath+" (command missing)")
-			continue
+			t.Fatalf("primary path %q does not resolve in the aitable tree", spec.PrimaryCLIPath)
 		}
 		if !contractfinal.HasRuntimeContractFinal(leaf) {
-			missing = append(missing, tool.CLIPath)
+			t.Fatalf("primary path %q is missing ContractFinal", spec.PrimaryCLIPath)
 		}
 	}
-	if helperCount == 0 {
-		t.Fatal("expected helper registry entries")
+}
+
+func findCLIPath(root *cobra.Command, cliPath string) *cobra.Command {
+	parts := splitCLI(cliPath)
+	if len(parts) == 0 || parts[0] != "aitable" {
+		return nil
 	}
-	if len(missing) > 0 {
-		t.Fatalf("%d/%d helper paths missing ContractFinal: %v", len(missing), helperCount, missing[:min(10, len(missing))])
+	cur := root
+	for _, p := range parts[1:] {
+		next, _, err := cur.Find(append([]string{}, p))
+		if err != nil || next == nil {
+			return nil
+		}
+		cur = next
 	}
+	return cur
 }
 
 func containsPlus(cliPath string) bool {
@@ -179,20 +181,4 @@ func splitCLI(cliPath string) []string {
 		out = append(out, cur)
 	}
 	return out
-}
-
-func findCLIPath(root *cobra.Command, cliPath string) *cobra.Command {
-	parts := splitCLI(cliPath)
-	if len(parts) == 0 || parts[0] != "aitable" {
-		return nil
-	}
-	cur := root
-	for _, p := range parts[1:] {
-		next, _, err := cur.Find(append([]string{}, p))
-		if err != nil || next == nil {
-			return nil
-		}
-		cur = next
-	}
-	return cur
 }

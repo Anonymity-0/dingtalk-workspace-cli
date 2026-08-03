@@ -31,7 +31,6 @@ import (
 var (
 	validateMetadataIsolation      = validateAgentMetadataOutputIsolation
 	validateMetadataAllowlist      = validateAgentMetadataOutputAllowlist
-	validateMetadataRegistryFile   = validateCommandRegistryFile
 	loadMetadataRegistryProjection = loadEffectiveCommandRegistryProjection
 	validateMetadataSelection      = validateSelectionCoverage
 	generateAgentMetadata          = agentmetadata.Generate
@@ -79,15 +78,25 @@ func main() {
 	flag.StringVar(&outputPath, "output", "", "Optional diagnostic single-file Agent metadata JSON (not a Catalog input)")
 	flag.StringVar(&outputDir, "output-dir", "", "Optional diagnostic split Agent metadata directory (not a Catalog input; Catalog injects in-memory)")
 	flag.StringVar(&auditOutputPath, "audit-output", "", "Optional output path for build-time source and CommandRegistry diagnostics")
-	flag.StringVar(&registryPath, "registry", "internal/cli/schema_command_registry", "Reviewed CommandRegistry path, relative to --root; validation-only because the registry is embedded")
-	flag.StringVar(&legacySurfacePath, "surface", "", "Deprecated alias for --registry; the file must equal the embedded reviewed CommandRegistry")
+	flag.StringVar(&registryPath, "registry", "", "Retired; rejected when set. Command identity is collected from ContractFinal declarations")
+	flag.StringVar(&legacySurfacePath, "surface", "", "Retired alias for --registry; rejected when set")
 	flag.IntVar(&maxExamples, "max-examples", 2, "Maximum examples retained per command")
 	flag.IntVar(&maxInterfaceSummaryRunes, "max-interface-summary-runes", 120, "Maximum runes retained in an unreviewed MCP-derived Agent summary")
-	flag.BoolVar(&validateRegistry, "validate-registry", true, "Require Agent metadata to use the embedded reviewed CommandRegistry")
-	flag.BoolVar(&legacyValidateSurface, "validate-surface", true, "Deprecated alias; false is rejected because Registry validation cannot be bypassed")
+	flag.BoolVar(&validateRegistry, "validate-registry", true, "Retired anti-bypass valve; false is rejected because identity collection cannot be bypassed")
+	flag.BoolVar(&legacyValidateSurface, "validate-surface", true, "Deprecated alias; false is rejected because identity collection cannot be bypassed")
 	flag.Parse()
 	if strings.TrimSpace(hintsDir) != "" {
 		fail(fmt.Errorf("-hints is retired; clear the flag and declare ProductDecl/ContractFinal selection instead (got %q)", hintsDir))
+	}
+	// Flag names "-registry"/"-surface" are retained as fail-closed
+	// anti-regression valves (historical CLI compatibility). The reviewed
+	// CommandRegistry they pointed at is retired; identity is collected from
+	// ContractFinal declarations, so external identity files are rejected.
+	if strings.TrimSpace(registryPath) != "" {
+		fail(fmt.Errorf("-registry is retired; command identity is collected from ContractFinal declarations (got %q)", registryPath))
+	}
+	if strings.TrimSpace(legacySurfacePath) != "" {
+		fail(fmt.Errorf("-surface is retired; command identity is collected from ContractFinal declarations (got %q)", legacySurfacePath))
 	}
 	// Disk output is optional and diagnostic only. Catalog generation uses the
 	// in-memory agentmetadata pipeline and does not consume schema_agent_metadata/.
@@ -96,18 +105,13 @@ func main() {
 		{Name: "canonical main Skill input", Path: "skills/mono/SKILL.md"},
 		{Name: "canonical product Skill input directory", Path: "skills/mono/references/products"},
 		{Name: "canonical intent guide input", Path: "skills/mono/references/intent-guide.md"},
-		{Name: "canonical reviewed CommandRegistry input", Path: "internal/cli/schema_command_registry"},
 		{Name: "canonical pinned interface metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "main Skill input", Path: skillPath},
 		{Name: "product Skill input directory", Path: productsDir},
 		{Name: "intent guide input", Path: intentGuidePath},
-		{Name: "reviewed CommandRegistry input", Path: registryPath},
 	}
 	if strings.TrimSpace(interfaceMetadataPath) != "" {
 		protectedInputs = append(protectedInputs, outputguard.Input{Name: "pinned interface metadata input", Path: interfaceMetadataPath})
-	}
-	if strings.TrimSpace(legacySurfacePath) != "" {
-		protectedInputs = append(protectedInputs, outputguard.Input{Name: "deprecated Registry compatibility input", Path: legacySurfacePath})
 	}
 	if err := validateMetadataIsolation(root, protectedInputs, outputPath, outputDir, auditOutputPath); err != nil {
 		fail(err)
@@ -118,12 +122,7 @@ func main() {
 	if !legacyValidateSurface {
 		validateRegistry = false
 	}
-	if strings.TrimSpace(legacySurfacePath) != "" {
-		if err := validateMetadataRegistryFile(root, legacySurfacePath); err != nil {
-			fail(fmt.Errorf("validate deprecated -surface compatibility input: %w", err))
-		}
-	}
-	registry, err := loadMetadataRegistryProjection(root, registryPath, validateRegistry)
+	registry, err := loadMetadataRegistryProjection(validateRegistry)
 	if err != nil {
 		fail(err)
 	}
@@ -308,15 +307,13 @@ func firstPathToken(path string) string {
 
 type commandRegistryProjection = agentmetadata.RegistryProjection
 
-// loadEffectiveCommandRegistryProjection consumes the same reviewed registry
-// API as the Catalog generator. The registry file argument is validation only
-// and can never replace or mutate the embedded identity registry.
-func loadEffectiveCommandRegistryProjection(rootPath, registryPath string, validateRegistry bool) (commandRegistryProjection, error) {
+// loadEffectiveCommandRegistryProjection builds the effective command
+// identity the same way the Catalog generator does: by collecting
+// ContractFinal declarations from the live command tree. There is no
+// external identity file to validate or merge.
+func loadEffectiveCommandRegistryProjection(validateRegistry bool) (commandRegistryProjection, error) {
 	if !validateRegistry {
-		return commandRegistryProjection{}, fmt.Errorf("CommandRegistry validation cannot be disabled: Agent metadata must use the reviewed CommandRegistry")
-	}
-	if err := validateCommandRegistryFile(rootPath, registryPath); err != nil {
-		return commandRegistryProjection{}, fmt.Errorf("validate CommandRegistry input: %w", err)
+		return commandRegistryProjection{}, fmt.Errorf("CommandRegistry validation cannot be disabled: Agent metadata identity is collected from ContractFinal declarations")
 	}
 	commandRoot := newMetadataRoot()
 	effective, err := buildEffectiveMetadata(commandRoot)
@@ -332,93 +329,15 @@ func loadEffectiveCommandRegistryProjection(rootPath, registryPath string, valid
 	return projection, nil
 }
 
-// projectEffectiveCommandRegistry deliberately accepts the post-manual
-// registry. Keeping projection below this boundary prevents a base-registry
-// allowlist from silently dropping reviewed manual-only commands.
+// projectEffectiveCommandRegistry deliberately accepts the full effective
+// registry. Keeping projection below this boundary prevents a partial
+// allowlist from silently dropping effective commands.
 func projectEffectiveCommandRegistry(effective cli.EffectiveCommandRegistry) commandRegistryProjection {
 	return agentmetadata.ProjectEffectiveRegistry(effective)
 }
 
-func validateCommandRegistryFile(rootPath, registryPath string) error {
-	if strings.TrimSpace(registryPath) == "" {
-		return nil
-	}
-	absPath := resolveRootPath(rootPath, registryPath)
-	info, err := os.Stat(absPath)
-	if err != nil {
-		return err
-	}
-	var data []byte
-	if info.IsDir() {
-		// Per-product shards: merge envelope + products/*.json into one JSON.
-		data, err = mergeRegistryShards(absPath)
-		if err != nil {
-			return err
-		}
-	} else {
-		data, err = os.ReadFile(absPath)
-		if err != nil {
-			return err
-		}
-	}
-	_, err = cli.ValidateCommandRegistrySource(data)
-	return err
-}
-
-// mergeRegistryShards reads registry.json (envelope) + products/*.json (shards)
-// and returns a single JSON document matching the pre-split layout.
-func mergeRegistryShards(dir string) ([]byte, error) {
-	envelopeData, err := os.ReadFile(filepath.Join(dir, "registry.json"))
-	if err != nil {
-		return nil, fmt.Errorf("read registry envelope: %w", err)
-	}
-	var envelope struct {
-		Schema  string `json:"$schema,omitempty"`
-		Version int    `json:"version"`
-	}
-	if err := json.Unmarshal(envelopeData, &envelope); err != nil {
-		return nil, fmt.Errorf("decode registry envelope: %w", err)
-	}
-	entries, err := os.ReadDir(filepath.Join(dir, "products"))
-	if err != nil {
-		return nil, fmt.Errorf("read registry products dir: %w", err)
-	}
-	var products []json.RawMessage
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		shardData, err := os.ReadFile(filepath.Join(dir, "products", entry.Name()))
-		if err != nil {
-			return nil, fmt.Errorf("read registry shard %s: %w", entry.Name(), err)
-		}
-		products = append(products, json.RawMessage(shardData))
-	}
-	result := struct {
-		Schema   string          `json:"$schema,omitempty"`
-		Version  int             `json:"version"`
-		Products json.RawMessage `json:"products"`
-	}{
-		Schema:  envelope.Schema,
-		Version: envelope.Version,
-	}
-	result.Products, err = json.Marshal(products)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(result)
-}
-
 func validateSelectionCoverage(_ string, _ string, registry commandRegistryProjection) error {
 	return agentmetadata.ValidateSelectionCoverage(registry)
-}
-
-func resolveRootPath(root, path string) string {
-	path = strings.TrimSpace(path)
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(root, path)
 }
 
 func validateAgentMetadataOutputIsolation(rootPath string, inputs []outputguard.Input, outputPath, outputDir, auditOutputPath string) error {

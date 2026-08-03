@@ -42,7 +42,7 @@ func main() {
 	var outputPath string
 	var metaIndexPath string
 	flag.StringVar(&rootPath, "root", ".", "Repository root used to protect Schema generator inputs")
-	flag.StringVar(&surfacePath, "surface", "", "Deprecated compatibility input relative to --root; when set it must equal the embedded reviewed CommandRegistry")
+	flag.StringVar(&surfacePath, "surface", "", "Retired; rejected when set. Command identity is collected from ContractFinal declarations")
 	flag.StringVar(&outputPath, "output", "artifacts/schema_catalog", "Output directory for a CI/local Catalog dump (catalog.json + tools/<product>.json); not a go:generate or production delivery step")
 	flag.StringVar(&metaIndexPath, "meta-index", "", "Output path for CommandMeta summary index gob (default: sibling schema_meta_index.gob next to --output)")
 	flag.Parse()
@@ -50,7 +50,7 @@ func main() {
 	// Catalog delivery assembles via cli.ResolveSchemaBuild at runtime.
 	resolvedSurfacePath := resolveCatalogRootPath(rootPath, surfacePath)
 	resolvedMetaIndexPath := resolveSchemaMetaIndexPath(outputPath, metaIndexPath)
-	if err := validateCatalogOutputIsolation(rootPath, outputPath, resolvedMetaIndexPath, resolvedSurfacePath); err != nil {
+	if err := validateCatalogOutputIsolation(rootPath, outputPath, resolvedMetaIndexPath); err != nil {
 		fail(err)
 	}
 
@@ -76,19 +76,15 @@ func resolveSchemaMetaIndexPath(outputPath, metaIndexPath string) string {
 	return filepath.Join(filepath.Dir(outputPath), "schema_meta_index.gob")
 }
 
-func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surfacePath string) error {
+func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath string) error {
 	inputs := []outputguard.Input{
 		{Name: "main Skill metadata source", Path: "skills/mono/SKILL.md"},
 		{Name: "product Skill metadata source directory", Path: "skills/mono/references/products"},
 		{Name: "intent guide metadata source", Path: "skills/mono/references/intent-guide.md"},
-		{Name: "reviewed CommandRegistry input", Path: "internal/cli/schema_command_registry"},
 		{Name: "pinned MCP metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "reviewed MCP service disposition input", Path: "internal/cli/schema_mcp_service_review.json"},
 		{Name: "reviewed parameter mapping ledger input", Path: "internal/cli/schema_parameter_mapping_ledger.go"},
 		{Name: "reviewed command exclusion input", Path: "internal/cli/schema_command_exclusions.go"},
-	}
-	if strings.TrimSpace(surfacePath) != "" {
-		inputs = append(inputs, outputguard.Input{Name: "deprecated Registry compatibility input", Path: surfacePath})
 	}
 	targets := []outputguard.Target{
 		{Name: "--output", Path: outputPath, Directory: true},
@@ -109,13 +105,12 @@ func validateCatalogOutputIsolation(rootPath, outputPath, metaIndexPath, surface
 	)
 }
 
-// generateSchemaCatalog consumes the cli package's reviewed registry API. It
-// deliberately does not decode command identity itself: the compatibility
-// --surface flag is validated against the embedded reviewed registry and can
-// never replace it as an input source. Agent metadata may be generated
-// in-memory and injected for this CI/local dump only; production Agent
-// authority remains ContractFinal / ProductDecl. schema_agent_metadata/ is
-// not a delivery artifact.
+// generateSchemaCatalog consumes the cli package's identity collection API.
+// It deliberately does not decode command identity itself: the retired
+// --surface flag is rejected, so an external identity file can never enter
+// assembly. Agent metadata may be generated in-memory and injected for this
+// CI/local dump only; production Agent authority remains ContractFinal /
+// ProductDecl. schema_agent_metadata/ is not a delivery artifact.
 func generateSchemaCatalog(rootPath string, root *cobra.Command, surfacePath, outputPath, metaIndexPath string) error {
 	return generateSchemaCatalogWithResolver(rootPath, root, surfacePath, outputPath, metaIndexPath, cli.ResolveSchemaBuild)
 }
@@ -279,18 +274,15 @@ func writeSchemaCatalogJSON(path string, value any) error {
 	return writeCatalogFile(path, append(encoded, '\n'), 0o644)
 }
 
+// validateDeprecatedSurface rejects the retired -surface compatibility input.
+// The reviewed CommandRegistry it had to equal was retired when identity
+// collection became the single source; an external identity file can never
+// re-enter assembly.
 func validateDeprecatedSurface(path string) error {
-	if path == "" {
+	if strings.TrimSpace(path) == "" {
 		return nil
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read deprecated -surface compatibility input: %w", err)
-	}
-	if _, err := cli.ValidateCommandRegistrySource(data); err != nil {
-		return fmt.Errorf("validate deprecated -surface compatibility input: %w", err)
-	}
-	return nil
+	return fmt.Errorf("deprecated -surface input %q is retired: command identity is collected from ContractFinal declarations", path)
 }
 
 func fail(err error) {

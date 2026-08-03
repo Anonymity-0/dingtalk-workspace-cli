@@ -24,7 +24,6 @@ func TestCrossPlatformCoverageMetadataMainReportsEveryStageFailure(t *testing.T)
 	originalArgs, originalFlags := os.Args, flag.CommandLine
 	originalIsolation := validateMetadataIsolation
 	originalAllowlist := validateMetadataAllowlist
-	originalRegistryFile := validateMetadataRegistryFile
 	originalLoad := loadMetadataRegistryProjection
 	originalSelection := validateMetadataSelection
 	originalGenerate := generateAgentMetadata
@@ -36,7 +35,6 @@ func TestCrossPlatformCoverageMetadataMainReportsEveryStageFailure(t *testing.T)
 		os.Args, flag.CommandLine = originalArgs, originalFlags
 		validateMetadataIsolation = originalIsolation
 		validateMetadataAllowlist = originalAllowlist
-		validateMetadataRegistryFile = originalRegistryFile
 		loadMetadataRegistryProjection = originalLoad
 		validateMetadataSelection = originalSelection
 		generateAgentMetadata = originalGenerate
@@ -50,8 +48,7 @@ func TestCrossPlatformCoverageMetadataMainReportsEveryStageFailure(t *testing.T)
 	reset := func() {
 		validateMetadataIsolation = func(string, []outputguard.Input, string, string, string) error { return nil }
 		validateMetadataAllowlist = func(string, string, string, string) error { return nil }
-		validateMetadataRegistryFile = func(string, string) error { return nil }
-		loadMetadataRegistryProjection = func(string, string, bool) (commandRegistryProjection, error) {
+		loadMetadataRegistryProjection = func(bool) (commandRegistryProjection, error) {
 			return commandRegistryProjection{}, nil
 		}
 		validateMetadataSelection = func(string, string, commandRegistryProjection) error { return nil }
@@ -83,16 +80,15 @@ func TestCrossPlatformCoverageMetadataMainReportsEveryStageFailure(t *testing.T)
 	invoke([]string{"-output", temporaryOutput}, func() {
 		validateMetadataAllowlist = func(string, string, string, string) error { return errors.New("allowlist") }
 	})
-	invoke([]string{"-output", temporaryOutput, "-surface", "legacy.json"}, func() {
-		validateMetadataRegistryFile = func(string, string) error { return errors.New("legacy") }
-	})
+	// The retired -surface valve rejects before isolation runs.
+	invoke([]string{"-output", temporaryOutput, "-surface", "legacy.json"}, func() {})
 	invoke([]string{"-output", temporaryOutput, "-validate-surface=false"}, func() {
-		loadMetadataRegistryProjection = func(string, string, bool) (commandRegistryProjection, error) {
+		loadMetadataRegistryProjection = func(bool) (commandRegistryProjection, error) {
 			return commandRegistryProjection{}, errors.New("registry disabled")
 		}
 	})
 	invoke([]string{"-output", temporaryOutput}, func() {
-		loadMetadataRegistryProjection = func(string, string, bool) (commandRegistryProjection, error) {
+		loadMetadataRegistryProjection = func(bool) (commandRegistryProjection, error) {
 			return commandRegistryProjection{}, errors.New("registry")
 		}
 	})
@@ -237,17 +233,11 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 		bindEffectiveMetadata = originalBind
 	})
 
-	if err := validateCommandRegistryFile(".", " "); err != nil {
-		t.Fatalf("empty registry path error = %v", err)
-	}
-	if err := validateCommandRegistryFile(t.TempDir(), "missing.json"); err == nil {
-		t.Fatal("missing registry file should fail")
-	}
 	newMetadataRoot = func(...context.Context) *cobra.Command { return &cobra.Command{Use: "dws"} }
 	buildEffectiveMetadata = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
 		return cli.EffectiveCommandRegistry{}, errors.New("build")
 	}
-	if _, err := loadEffectiveCommandRegistryProjection(".", "", true); err == nil || !strings.Contains(err.Error(), "build effective") {
+	if _, err := loadEffectiveCommandRegistryProjection(true); err == nil || !strings.Contains(err.Error(), "build effective") {
 		t.Fatalf("build projection error = %v", err)
 	}
 	buildEffectiveMetadata = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
@@ -256,7 +246,7 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 	bindEffectiveMetadata = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
 		return cli.BoundCommandRegistry{}, errors.New("bind")
 	}
-	if _, err := loadEffectiveCommandRegistryProjection(".", "", true); err == nil || !strings.Contains(err.Error(), "bind effective") {
+	if _, err := loadEffectiveCommandRegistryProjection(true); err == nil || !strings.Contains(err.Error(), "bind effective") {
 		t.Fatalf("bind projection error = %v", err)
 	}
 
@@ -273,11 +263,6 @@ func TestCrossPlatformCoverageMetadataRegistryAndSelectionFailureEdges(t *testin
 	registry := commandRegistryProjection{CanonicalToolPaths: map[string]string{"sample.run": "sample run"}}
 	if err := validateSelectionCoverage(root, "", registry); err == nil || !strings.Contains(err.Error(), "ProductDecl/ContractFinal selection coverage incomplete") {
 		t.Fatalf("missing ContractFinal coverage error = %v", err)
-	}
-
-	abs := filepath.Join(t.TempDir(), "absolute")
-	if resolveRootPath("ignored", abs) != abs {
-		t.Fatal("absolute root path should be preserved")
 	}
 }
 

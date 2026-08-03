@@ -87,7 +87,6 @@ policy: test-auth-legacy-compat
 	@mkdir -p "$(POLICY_GOTMPDIR)"
 	@$(POLICY_ENV) ./scripts/policy/check-open-source-assets.sh
 	@$(POLICY_ENV) ./scripts/policy/check-skill-context-budget.sh
-	@$(POLICY_ENV) ./scripts/policy/check-schema-command-registry.sh
 	@$(POLICY_ENV) ./scripts/policy/check-command-surface.sh --strict
 	@$(POLICY_ENV) ./scripts/policy/check-generated-drift.sh
 	@$(POLICY_ENV) ./scripts/policy/check-param-concepts.sh
@@ -142,20 +141,18 @@ test-schema-agent-examples:
 # schema_agent_metadata/ and schema_hints/ must stay absent.
 generate-schema:
 	@set -e; \
-	registry_guard=$$(mktemp -d); \
 	concepts_guard=$$(mktemp); \
 	concepts_schema_guard=$$(mktemp); \
-	trap 'rm -rf "$$registry_guard" "$$concepts_guard" "$$concepts_schema_guard"' EXIT HUP INT TERM; \
-	cp -R internal/cli/schema_command_registry/ "$$registry_guard/"; \
+	trap 'rm -rf "$$concepts_guard" "$$concepts_schema_guard"' EXIT HUP INT TERM; \
 	cp internal/cli/param_concepts.json "$$concepts_guard"; \
 	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
 	$(GO) generate ./internal/cli; \
 	rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json; \
 	rm -f internal/cli/schema_meta_index.json; \
-	diff -qr internal/cli/schema_command_registry "$$registry_guard" >/dev/null || { \
-		printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry/' >&2; \
+	if [ -e internal/cli/schema_command_registry ]; then \
+		printf '%s\n' 'retired schema_command_registry/ must not reappear after generation' >&2; \
 		exit 1; \
-	}; \
+	fi; \
 	cmp -s internal/cli/param_concepts.json "$$concepts_guard" || { \
 		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.json' >&2; \
 		exit 1; \

@@ -14,83 +14,55 @@
 package app
 
 import (
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
-// TestCollectedIdentityMatchesReviewedRegistry is the identity-deregistry
-// dual-run gate (Phase 2). It asserts that command identity collected from
-// live Cobra leaves carrying ContractFinal.Identity is byte-equivalent to the
-// reviewed schema_command_registry: the collected EffectiveCommandRegistry's
-// SourceHash equals the reviewed one, no reviewed canonical is missing a
-// collected primary, and no compared field drifts.
-//
-// This gate is the insurance that lets Phase 3 retire the reviewed registry:
-// while it is green, the collector is a drop-in replacement for the registry.
-// If it fails, the logged MISSING_PRIMARY / DIAG / DIFF lines pinpoint the
-// drifted command so the declaration or the registry entry can be reconciled.
-func TestCollectedIdentityMatchesReviewedRegistry(t *testing.T) {
+// TestCollectedIdentityIsValidSingleSource is the standing gate for the
+// retired reviewed registry: command identity collected from live Cobra
+// leaves carrying ContractFinal.Identity must be a valid single source for
+// EffectiveCommandRegistry assembly. It asserts the collector returns a
+// non-empty spec set with no missing primaries, builds an effective registry
+// from it, and produces a stable SourceHash across repeated collection walks.
+func TestCollectedIdentityIsValidSingleSource(t *testing.T) {
 	root := NewRootCommand()
 	collected, report, err := cli.CollectIdentitySpecs(root)
 	if err != nil {
 		t.Fatalf("collect identity specs: %v", err)
 	}
-	reviewed, err := cli.ReviewedCommandSpecs()
-	if err != nil {
-		t.Fatalf("load reviewed command specs: %v", err)
+	if len(collected) == 0 {
+		t.Fatal("identity collection returned no command specs")
+	}
+	if len(report.MissingPrimary) != 0 {
+		t.Fatalf("identity collection reported missing primaries: %v", report.MissingPrimary)
 	}
 
-	t.Logf("walk leaves=%d withIdentity=%d hiddenPrimaries=%d excluded=%d noIdentity=%d collected=%d reviewed=%d",
-		report.Leaves, report.WithIdentity, report.HiddenPrimaries, report.Excluded, len(report.NoIdentity), len(collected), len(reviewed))
-
-	collectedEffective, err := cli.BuildEffectiveFromSpecs(collected)
-	if err != nil {
-		t.Fatalf("build collected effective registry: %v", err)
-	}
-	reviewedEffective, err := cli.BuildEffectiveFromSpecs(reviewed)
-	if err != nil {
-		t.Fatalf("build reviewed effective registry: %v", err)
-	}
-	collectedHash := collectedEffective.SourceHash()
-	reviewedHash := reviewedEffective.SourceHash()
-	t.Logf("collected SourceHash=%s", collectedHash)
-	t.Logf("reviewed  SourceHash=%s", reviewedHash)
-
-	collectedCanonicals := make(map[string]bool, len(collectedEffective.Commands))
-	for _, spec := range collectedEffective.Commands {
-		collectedCanonicals[strings.TrimSpace(spec.CanonicalPath)] = true
-	}
-	var missingPrimaries []cli.CommandSpec
-	for _, spec := range reviewedEffective.Commands {
-		if !collectedCanonicals[strings.TrimSpace(spec.CanonicalPath)] {
-			missingPrimaries = append(missingPrimaries, spec)
-		}
-	}
-	report.MissingPrimary = make([]string, 0, len(missingPrimaries))
-	for _, spec := range missingPrimaries {
-		report.MissingPrimary = append(report.MissingPrimary, spec.CanonicalPath)
-	}
-	sort.Strings(report.MissingPrimary)
-	for _, canonical := range report.MissingPrimary {
-		t.Logf("MISSING_PRIMARY %s", canonical)
-	}
-	for _, diagnostic := range cli.DiagnoseMissingPrimaries(root, missingPrimaries) {
-		t.Logf("DIAG %s", diagnostic)
-	}
+	t.Logf("walk leaves=%d withIdentity=%d hiddenPrimaries=%d excluded=%d noIdentity=%d collected=%d",
+		report.Leaves, report.WithIdentity, report.HiddenPrimaries, report.Excluded, len(report.NoIdentity), len(collected))
 	for _, leaf := range report.NoIdentity {
 		t.Logf("NO_IDENTITY_LEAF %s", leaf)
 	}
 
-	problems := cli.CompareCommandSpecEquivalence(collectedEffective.Commands, reviewedEffective.Commands)
-	for _, problem := range problems {
-		t.Logf("DIFF %s", problem)
+	effective, err := cli.BuildEffectiveFromSpecs(collected)
+	if err != nil {
+		t.Fatalf("build effective registry from collected specs: %v", err)
+	}
+	sourceHash := effective.SourceHash()
+	t.Logf("collected SourceHash=%s commands=%d", sourceHash, len(effective.Commands))
+	if sourceHash == "" {
+		t.Fatal("effective registry SourceHash is empty")
 	}
 
-	if collectedHash != reviewedHash || len(problems) > 0 || len(missingPrimaries) > 0 {
-		t.Fatalf("identity collection not byte-equivalent to reviewed registry: field_diffs=%d missing_primary=%d hash_match=%v",
-			len(problems), len(missingPrimaries), collectedHash == reviewedHash)
+	collectedAgain, _, err := cli.CollectIdentitySpecs(root)
+	if err != nil {
+		t.Fatalf("re-collect identity specs: %v", err)
+	}
+	effectiveAgain, err := cli.BuildEffectiveFromSpecs(collectedAgain)
+	if err != nil {
+		t.Fatalf("rebuild effective registry from collected specs: %v", err)
+	}
+	if got := effectiveAgain.SourceHash(); got != sourceHash {
+		t.Fatalf("collected identity SourceHash is not stable across walks: %q vs %q", got, sourceHash)
 	}
 }
