@@ -48,6 +48,36 @@ func TestSender(t *testing.T) {
 	}
 }
 
+func TestProjectMessageV1PublishesSharedIdentityAndContext(t *testing.T) {
+	row := ProjectMessageV1(map[string]any{
+		"openMessageId":      "msg-1",
+		"openConversationId": "cid-1",
+		"openConvThreadId":   "thread-1",
+		"sender": map[string]any{
+			"name":           "张三",
+			"openDingTalkId": "D1",
+			"senderType":     "user",
+		},
+		"msgType":    "text",
+		"content":    "你好",
+		"createTime": "2026-08-03 10:00:00",
+	}, true)
+	for key, want := range map[string]any{
+		"messageId":      "msg-1",
+		"conversationId": "cid-1",
+		"threadId":       "thread-1",
+		"sender":         "张三",
+		"senderId":       "D1",
+		"senderType":     "user",
+		"messageType":    "text",
+		"text":           "你好",
+	} {
+		if row[key] != want {
+			t.Errorf("%s = %#v, want %#v; row=%#v", key, row[key], want, row)
+		}
+	}
+}
+
 func TestCleanText(t *testing.T) {
 	// Out-of-office auto-reply: readable body lives in items[].data.text; the
 	// decorative preview/config JSON lines and "empty" placeholder are dropped.
@@ -386,6 +416,20 @@ func TestApplyMessagePaginationUsesExecutableTimeBoundary(t *testing.T) {
 	next, ok := payload["nextPage"].(map[string]any)
 	if !ok || next["time"] != "2026-07-28 09:00:00" || next["direction"] != "older" {
 		t.Fatalf("message nextPage = %#v", payload["nextPage"])
+	}
+}
+
+func TestApplyMessagePaginationFailsClosedWhenCompletenessIsUnknown(t *testing.T) {
+	payload := map[string]any{}
+	ApplyMessagePagination(payload, map[string]any{"result": map[string]any{"messages": []any{}}}, nil, "older")
+	if payload["contractVersion"] != MessageListContractVersion ||
+		payload["complete"] != false || payload["paginationKnown"] != false ||
+		payload["failedCount"] != 1 {
+		t.Fatalf("unknown pagination contract = %#v", payload)
+	}
+	failures, _ := payload["failures"].([]map[string]any)
+	if len(failures) != 1 || failures[0]["stage"] != "pagination" {
+		t.Fatalf("unknown pagination failures = %#v", failures)
 	}
 }
 

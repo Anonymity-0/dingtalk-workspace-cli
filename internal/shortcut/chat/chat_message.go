@@ -286,46 +286,22 @@ func listMessageProjectOne(m map[string]any) map[string]any {
 }
 
 func listMessageProjectOneWithReactions(m map[string]any, includeReactions bool) map[string]any {
-	row := map[string]any{}
-	if v, ok := listMessagesFirst(m, "openMessageId", "openMsgId", "messageId", "msgId"); ok {
-		row["messageId"] = v
-	}
-	if v, ok := listMessagesFirst(m, "senderOpenDingTalkId", "senderUserId", "senderId", "senderStaffId"); ok {
-		row["senderId"] = v
-	}
-	if v, ok := listMessagesFirst(m, "msgType", "messageType", "type"); ok {
-		row["msgType"] = v
-	}
-	if v, ok := listMessagesFirst(m, "createTime", "sendTime", "gmtCreate", "messageTime"); ok {
-		row["createTime"] = v
-	}
-	if text := chatmsg.Text(m); text != nil {
-		row["text"] = text
-	}
-	if conversationID := chatmsg.ConversationID(m); conversationID != nil {
-		row["conversationId"] = conversationID
-	}
-	if threadID := chatmsg.ThreadID(m); threadID != nil {
-		row["threadId"] = threadID
-	}
-	if updateTime := chatmsg.UpdateTime(m); updateTime != nil {
-		row["updateTime"] = updateTime
-	}
-	if includeReactions {
-		if reactions := chatmsg.Reactions(m); len(reactions) > 0 {
-			row["reactions"] = reactions
+	row := chatmsg.ProjectMessageV1(m, includeReactions)
+	// The established mget/list projection omits absent scalar fields; keep
+	// that wire behavior even though the shared chat/search view retains them.
+	for _, key := range []string{"sender", "text", "createTime"} {
+		if row[key] == nil {
+			delete(row, key)
 		}
 	}
-	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
-		row["quotedMessage"] = quoted
+	// Keep the historical mget/list msgType alias while adding the canonical
+	// messageType field from MessageViewV1.
+	if messageType := chatmsg.MessageType(m); messageType != nil {
+		row["msgType"] = messageType
 	}
-	if resources := chatmsg.ResourcesDeep(m); len(resources) > 0 {
-		row["resourceRefs"] = resources
-	}
-	projectForwarded := func(item map[string]any) map[string]any {
+	if forwarded := chatmsg.Forwarded(m, func(item map[string]any) map[string]any {
 		return listMessageProjectOneWithReactions(item, includeReactions)
-	}
-	if forwarded := chatmsg.Forwarded(m, projectForwarded); len(forwarded) > 0 {
+	}); len(forwarded) > 0 {
 		row["forwarded"] = forwarded
 	}
 	return row
@@ -562,20 +538,35 @@ var MessagesMget = shortcut.Shortcut{
 			}
 		}
 		notFound := make([]string, 0)
+		failures := make([]map[string]any, 0)
 		for _, id := range ids {
 			if !found[id] {
 				notFound = append(notFound, id)
+				failures = append(failures, map[string]any{
+					"stage":     "mget",
+					"messageId": id,
+					"error":     "下层未返回该消息",
+				})
 			}
 		}
 		payload := map[string]any{
+			"contractVersion":    chatmsg.MessageListContractVersion,
 			"requestedCount":     len(ids),
 			"foundCount":         len(ids) - len(notFound),
 			"notFoundCount":      len(notFound),
 			"notFoundMessageIds": notFound,
 			"messages":           messages,
+			"complete":           len(notFound) == 0,
+			"hasMore":            false,
+			"nextCursor":         "",
+			"paginationKnown":    true,
+			"pagesFetched":       1,
+			"enrichedCount":      0,
+			"failedCount":        len(failures),
+			"failures":           failures,
 		}
 		if rt.Bool("download-resources") {
-			payload["resourceDownloads"] = DownloadMessageResources(rt, rawMessages, "")
+			AttachMessageResourceDownloads(payload, DownloadMessageResources(rt, rawMessages, ""))
 		}
 		return rt.Output(payload)
 	},
@@ -796,6 +787,47 @@ func DownloadMessageResources(
 		"failedCount":       len(failures),
 		"downloads":         downloads,
 		"failures":          failures,
+	}
+}
+
+// AttachMessageResourceDownloads publishes the download ledger and folds any
+// resource failure into the task-level completeness contract without dropping
+// successfully read messages or downloaded files.
+func AttachMessageResourceDownloads(payload, ledger map[string]any) {
+	payload["resourceDownloads"] = ledger
+	failed := messageLedgerInt(ledger["failedCount"])
+	if failed == 0 {
+		return
+	}
+	payload["complete"] = false
+	payload["failedCount"] = messageLedgerInt(payload["failedCount"]) + failed
+	taskFailures, _ := payload["failures"].([]map[string]any)
+	resourceFailures, _ := ledger["failures"].([]map[string]any)
+	for _, failure := range resourceFailures {
+		row := make(map[string]any, len(failure)+1)
+		row["stage"] = "resource-download"
+		for key, value := range failure {
+			row[key] = value
+		}
+		taskFailures = append(taskFailures, row)
+	}
+	payload["failures"] = taskFailures
+}
+
+func messageLedgerInt(value any) int {
+	switch typed := value.(type) {
+	case int:
+		return typed
+	case int32:
+		return int(typed)
+	case int64:
+		return int(typed)
+	case float32:
+		return int(typed)
+	case float64:
+		return int(typed)
+	default:
+		return 0
 	}
 }
 

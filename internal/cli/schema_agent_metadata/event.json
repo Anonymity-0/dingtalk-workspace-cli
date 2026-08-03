@@ -1,6 +1,268 @@
 {
   "product_id": "event",
   "tools": {
+    "event +listen-im": {
+      "agent_summary": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件",
+      "agent_summary_source": "dws-agent-selection/event",
+      "availability": "available",
+      "avoid_when": [
+        "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+      ],
+      "confirmation": "not_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws event +listen-im --kind at-me --max-events 1",
+        "dws event +listen-im --kind group --events message,reaction --chat-id \u003copenConversationId\u003e --duration 10m"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件",
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "candidates": [
+            {
+              "value": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件",
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+          ],
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "candidates": [
+            {
+              "value": [
+                "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+              ],
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws event +listen-im --kind at-me --max-events 1",
+            "dws event +listen-im --kind group --events message,reaction --chat-id \u003copenConversationId\u003e --duration 10m"
+          ],
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "candidates": [
+            {
+              "value": [
+                "dws event +listen-im --kind at-me --max-events 1",
+                "dws event +listen-im --kind group --events message,reaction --chat-id \u003copenConversationId\u003e --duration 10m"
+              ],
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "non_idempotent",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "non_idempotent",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume."
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
+          ],
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "candidates": [
+            {
+              "value": [
+                "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
+              ],
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume."
+            }
+          ]
+        }
+      },
+      "idempotency": "non_idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "cobra-help:dws event +listen-im",
+        "internal/app/event_listen_im.go",
+        "internal/cli/schema_command_registry/products/event.json#event.listen_im",
+        "internal/cli/schema_hints/metadata/event.json",
+        "internal/cli/schema_hints/selection/event.json",
+        "internal/event/personal/registry.go"
+      ],
+      "use_when": [
+        "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
+      ]
+    },
     "event consume": {
       "agent_summary": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
       "agent_summary_source": "dws-agent-selection/event",

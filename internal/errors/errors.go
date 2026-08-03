@@ -55,6 +55,7 @@ type Error struct {
 	Actions           []string
 	AvailableFlags    []string
 	Snapshot          string
+	Details           map[string]any
 	RPCCode           int               `json:"rpc_code,omitempty"`
 	RPCData           json.RawMessage   `json:"rpc_data,omitempty"`
 	ServerDiag        ServerDiagnostics `json:"-"`
@@ -183,6 +184,21 @@ func WithAvailableFlags(names ...string) Option {
 func WithSnapshot(path string) Option {
 	return func(err *Error) {
 		err.Snapshot = path
+	}
+}
+
+// WithDetails records an additive machine-readable payload for errors whose
+// recovery needs typed context, such as ambiguous target-resolution
+// candidates. Callers must keep credentials and other secrets out of details.
+func WithDetails(details map[string]any) Option {
+	return func(err *Error) {
+		if len(details) == 0 {
+			return
+		}
+		err.Details = make(map[string]any, len(details))
+		for key, value := range details {
+			err.Details[key] = value
+		}
 	}
 }
 
@@ -315,6 +331,9 @@ func PrintJSON(w io.Writer, err error) error {
 		}
 		if typed.Snapshot != "" {
 			errorPayload["snapshot_path"] = typed.Snapshot
+		}
+		if len(typed.Details) > 0 {
+			errorPayload["details"] = typed.Details
 		}
 		if typed.RPCCode != 0 {
 			errorPayload["rpc_code"] = typed.RPCCode

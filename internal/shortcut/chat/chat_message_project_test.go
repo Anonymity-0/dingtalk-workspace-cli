@@ -75,6 +75,34 @@ func TestListMessageProjectOne(t *testing.T) {
 	}
 }
 
+func TestAttachMessageResourceDownloadsPreservesMessagesAndMarksIncomplete(t *testing.T) {
+	payload := map[string]any{
+		"messages":    []map[string]any{{"messageId": "msg-1"}},
+		"complete":    true,
+		"failedCount": 0,
+		"failures":    []map[string]any{},
+	}
+	ledger := map[string]any{
+		"failedCount": 1,
+		"failures": []map[string]any{{
+			"messageId": "msg-1",
+			"error":     "download failed",
+		}},
+	}
+	AttachMessageResourceDownloads(payload, ledger)
+	if payload["complete"] != false || payload["failedCount"] != 1 {
+		t.Fatalf("task completeness = %#v", payload)
+	}
+	messages, _ := payload["messages"].([]map[string]any)
+	if len(messages) != 1 || messages[0]["messageId"] != "msg-1" {
+		t.Fatalf("messages were dropped: %#v", messages)
+	}
+	failures, _ := payload["failures"].([]map[string]any)
+	if len(failures) != 1 || failures[0]["stage"] != "resource-download" {
+		t.Fatalf("resource failures = %#v", failures)
+	}
+}
+
 func TestListPinProjectPreservesThreadIdentity(t *testing.T) {
 	got := listPinProject(map[string]any{
 		"result": map[string]any{

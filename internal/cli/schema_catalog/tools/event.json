@@ -3430,6 +3430,1353 @@
         "尚不知道可用 event_key，需要先盘点个人事件目录"
       ]
     },
+    "event.listen_im": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "cobra-help:dws event +listen-im",
+        "internal/app/event_listen_im.go",
+        "internal/cli/schema_command_registry/products/event.json#event.listen_im",
+        "internal/cli/schema_hints/metadata/event.json",
+        "internal/cli/schema_hints/selection/event.json",
+        "internal/event/personal/registry.go"
+      ],
+      "agent_summary": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件",
+      "agent_summary_source": "dws-agent-selection/event",
+      "availability": "available",
+      "avoid_when": [
+        "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+      ],
+      "canonical_path": "event.listen_im",
+      "cli_name": "+listen-im",
+      "cli_path": "event +listen-im",
+      "confirmation": "not_required",
+      "constraints": {
+        "mutually_exclusive": [
+          [
+            "user",
+            "open-dingtalk-id",
+            "user-query",
+            "chat-id",
+            "chat-query"
+          ]
+        ]
+      },
+      "description": "把 @我、指定发送人、指定群、全部单聊或全部群聊等用户意图确定性编译为个人 EventKey，自然姓名/群名会先唯一解析，再复用 event consume 的订阅、ready marker、NDJSON、取消、回滚和清理生命周期。",
+      "display": "事件订阅 (DingTalk Stream 长连接)",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws event +listen-im --kind at-me --max-events 1",
+        "dws event +listen-im --kind group --events message,reaction --chat-id \u003copenConversationId\u003e --duration 10m"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "value": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "value": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "value": [
+                "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "value": [
+            "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "event +listen-im",
+              "value": "event.listen_im"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "event +listen-im",
+          "value": "event.listen_im"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "把 @我、指定发送人、指定群、全部单聊或全部群聊等用户意图确定性编译为个人 EventKey，自然姓名/群名会先唯一解析，再复用 event consume 的订阅、ready marker、NDJSON、取消、回滚和清理生命周期。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "把 @我、指定发送人、指定群、全部单聊或全部群聊等用户意图确定性编译为个人 EventKey，自然姓名/群名会先唯一解析，再复用 event consume 的订阅、ready marker、NDJSON、取消、回滚和清理生命周期。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "write"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "write"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "value": [
+                "dws event +listen-im --kind at-me --max-events 1",
+                "dws event +listen-im --kind group --events message,reaction --chat-id \u003copenConversationId\u003e --duration 10m"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "value": [
+            "dws event +listen-im --kind at-me --max-events 1",
+            "dws event +listen-im --kind group --events message,reaction --chat-id \u003copenConversationId\u003e --duration 10m"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "non_idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "non_idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/event.json",
+              "value": "medium"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+          "source": "internal/cli/schema_hints/metadata/event.json",
+          "value": "medium"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "按 IM 意图解析目标并监听一个或多个个人消息事件"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "按 IM 意图解析目标并监听一个或多个个人消息事件"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/event.json",
+              "value": [
+                "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified deterministic mapping table, typed natural target resolver, one-process multi-event delegation, flatten/NDJSON defaults, bounded execution flags, and explicit fallback boundary to low-level event consume.",
+          "source": "internal/cli/schema_hints/selection/event.json",
+          "value": [
+            "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "non_idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+      "is_alias": false,
+      "name": "listen_im",
+      "parameter_count": 11,
+      "parameters": {
+        "chat-id": {
+          "description": "指定群 openConversationId",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "指定群 openConversationId"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "指定群 openConversationId"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "chatId"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "chatId"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "chatId",
+          "required": false,
+          "type": "string"
+        },
+        "chat-query": {
+          "description": "按群名唯一解析指定群",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "按群名唯一解析指定群"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "按群名唯一解析指定群"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "chatQuery"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "chatQuery"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "chatQuery",
+          "required": false,
+          "type": "string"
+        },
+        "dry-run": {
+          "description": "解析目标并打印订阅计划，不创建订阅或连接 bus",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "解析目标并打印订阅计划，不创建订阅或连接 bus"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "解析目标并打印订阅计划，不创建订阅或连接 bus"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "dryRun"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "dryRun"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "dryRun",
+          "required": false,
+          "type": "boolean"
+        },
+        "duration": {
+          "description": "运行时长上限 (Go duration，如 30s/5m；0 = 不限)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "运行时长上限 (Go duration，如 30s/5m；0 = 不限)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "运行时长上限 (Go duration，如 30s/5m；0 = 不限)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "duration"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "duration"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "duration",
+          "required": false,
+          "type": "string"
+        },
+        "events": {
+          "default": "[message]",
+          "description": "事件种类: message,reaction,read,recall",
+          "enum": [
+            "message",
+            "reaction",
+            "read",
+            "recall"
+          ],
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "事件种类: message,reaction,read,recall"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "事件种类: message,reaction,read,recall"
+            },
+            "enum": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": [
+                    "message",
+                    "reaction",
+                    "read",
+                    "recall"
+                  ]
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": []
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": [
+                "message",
+                "reaction",
+                "read",
+                "recall"
+              ]
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "events"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "events"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "array"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "array"
+            }
+          },
+          "property": "events",
+          "required": false,
+          "type": "array"
+        },
+        "kind": {
+          "default": "at-me",
+          "description": "监听意图: at-me|sender|group|all-direct|all-group",
+          "enum": [
+            "at-me",
+            "sender",
+            "group",
+            "all-direct",
+            "all-group"
+          ],
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "监听意图: at-me|sender|group|all-direct|all-group"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "监听意图: at-me|sender|group|all-direct|all-group"
+            },
+            "enum": {
+              "candidates": [
+                {
+                  "precedence": "native_annotation",
+                  "selected": true,
+                  "source": "native_annotation",
+                  "value": [
+                    "at-me",
+                    "sender",
+                    "group",
+                    "all-direct",
+                    "all-group"
+                  ]
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": []
+                }
+              ],
+              "precedence": "native_annotation",
+              "resolution": "highest_precedence",
+              "source": "native_annotation",
+              "value": [
+                "at-me",
+                "sender",
+                "group",
+                "all-direct",
+                "all-group"
+              ]
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "kind"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "kind"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "kind",
+          "required": false,
+          "type": "string"
+        },
+        "max-events": {
+          "description": "收到 N 条后退出 (0 = 不限)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "收到 N 条后退出 (0 = 不限)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "收到 N 条后退出 (0 = 不限)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "maxEvents"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "maxEvents"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "maxEvents",
+          "required": false,
+          "type": "integer"
+        },
+        "open-dingtalk-id": {
+          "description": "指定发送人/单聊对端 openDingTalkId",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "指定发送人/单聊对端 openDingTalkId"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "指定发送人/单聊对端 openDingTalkId"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "openDingtalkId"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "openDingtalkId"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "openDingtalkId",
+          "required": false,
+          "type": "string"
+        },
+        "query": {
+          "description": "消息文本关键词过滤，逗号分隔；仅 message 事件",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "消息文本关键词过滤，逗号分隔；仅 message 事件"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "消息文本关键词过滤，逗号分隔；仅 message 事件"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "query"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "query"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "query",
+          "required": false,
+          "type": "string"
+        },
+        "user": {
+          "description": "指定发送人/单聊对端 userId",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "指定发送人/单聊对端 userId"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "指定发送人/单聊对端 userId"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "user"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "user"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "user",
+          "required": false,
+          "type": "string"
+        },
+        "user-query": {
+          "description": "按姓名/花名唯一解析指定发送人",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "按姓名/花名唯一解析指定发送人"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "按姓名/花名唯一解析指定发送人"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "userQuery"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "userQuery"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "userQuery",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "event.listen_im",
+      "primary_cli_path": "event +listen-im",
+      "product_id": "event",
+      "reviewed": true,
+      "risk": "medium",
+      "source": "reviewed_command_registry",
+      "title": "按 IM 意图解析目标并监听一个或多个个人消息事件",
+      "use_when": [
+        "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
+      ]
+    },
     "event.schema": {
       "agent_metadata_source": "embedded-skill-metadata",
       "agent_source_refs": [

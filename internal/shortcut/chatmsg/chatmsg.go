@@ -38,6 +38,10 @@ import (
 	"strings"
 )
 
+// MessageListContractVersion identifies the additive, compatibility-preserving
+// public envelope shared by message list/search/mget/thread projections.
+const MessageListContractVersion = "im.message-list.v1"
+
 // Sender reads a message's speaker display name, tolerating common sender-name
 // keys. The message-list responses carry the display name under the bare
 // "sender" key (verified live), so it is probed first; the remaining aliases and
@@ -148,6 +152,88 @@ func ThreadID(m map[string]any) any {
 // MessageType preserves the lower message type when present.
 func MessageType(m map[string]any) any {
 	return firstMessageValue(m, "msgType", "messageType", "message_type", "type")
+}
+
+// SenderID preserves the stable sender identity without replacing the legacy
+// scalar sender display field. Nested sender records and both userId families
+// are accepted because list/search/mget currently expose different shapes.
+func SenderID(m map[string]any) any {
+	for _, key := range []string{"sender", "from", "senderUser"} {
+		if nested, ok := m[key].(map[string]any); ok {
+			if value := firstMessageValue(nested,
+				"openDingTalkId", "openDingtalkId", "userId", "senderId", "id"); value != nil {
+				return value
+			}
+		}
+	}
+	return firstMessageValue(m,
+		"senderOpenDingTalkId", "senderOpenDingtalkId", "senderUserId",
+		"senderId", "sender_id", "senderStaffId", "openDingTalkId", "userId")
+}
+
+// SenderType returns only an explicitly published lower sender type. It does
+// not guess that every sender identity is a user because bot/system messages
+// can share the same generic senderId key.
+func SenderType(m map[string]any) any {
+	for _, key := range []string{"sender", "from", "senderUser"} {
+		if nested, ok := m[key].(map[string]any); ok {
+			if value := firstMessageValue(nested, "senderType", "type", "entityType"); value != nil {
+				return value
+			}
+		}
+	}
+	return firstMessageValue(m, "senderType", "sender_type", "fromType", "from_type")
+}
+
+// ProjectMessageV1 is the single compatibility-preserving core projection for
+// list, search, mget, @me, and thread readers. Public wrappers may retain
+// legacy aliases such as time or msgType, but the underlying identity,
+// context, reaction, quote, forward, and resource semantics come from here.
+func ProjectMessageV1(m map[string]any, includeReactions bool) map[string]any {
+	row := map[string]any{
+		"sender":     Sender(m),
+		"text":       Text(m),
+		"createTime": CreateTime(m),
+	}
+	if value := MessageID(m); value != nil {
+		row["messageId"] = value
+	}
+	if value := ConversationID(m); value != nil {
+		row["conversationId"] = value
+	}
+	if value := ThreadID(m); value != nil {
+		row["threadId"] = value
+	}
+	if value := SenderID(m); value != nil {
+		row["senderId"] = value
+	}
+	if value := SenderType(m); value != nil {
+		row["senderType"] = value
+	}
+	if value := MessageType(m); value != nil {
+		row["messageType"] = value
+	}
+	if value := UpdateTime(m); value != nil {
+		row["updateTime"] = value
+	}
+	if includeReactions {
+		if reactions := Reactions(m); len(reactions) > 0 {
+			row["reactions"] = reactions
+		}
+	}
+	if quoted := QuotedMessage(m); len(quoted) > 0 {
+		row["quotedMessage"] = quoted
+	}
+	if resources := ResourcesDeep(m); len(resources) > 0 {
+		row["resourceRefs"] = resources
+	}
+	projectForwarded := func(item map[string]any) map[string]any {
+		return ProjectMessageV1(item, includeReactions)
+	}
+	if forwarded := Forwarded(m, projectForwarded); len(forwarded) > 0 {
+		row["forwarded"] = forwarded
+	}
+	return row
 }
 
 // QuotedMessage projects one level of quoted/replied-to context. It is
@@ -605,13 +691,35 @@ func ApplyPagination(payload, data map[string]any) {
 // message-list contract paginates with the boundary message createTime, so the
 // resume object uses exactly that accepted parameter.
 func ApplyMessagePagination(payload, data map[string]any, messages []map[string]any, direction string) {
+	payload["contractVersion"] = MessageListContractVersion
+	payload["pagesFetched"] = 1
+	payload["enrichedCount"] = 0
+	payload["failedCount"] = 0
+	payload["failures"] = []map[string]any{}
+	payload["hasMore"] = false
+	payload["complete"] = false
 	page := Pagination(data)
 	if len(page) == 0 {
+		payload["paginationKnown"] = false
+		payload["failedCount"] = 1
+		payload["failures"] = []map[string]any{{
+			"stage": "pagination",
+			"error": "下层未返回可靠的 hasMore/nextCursor，无法证明结果完整",
+		}}
 		return
 	}
-	if value, ok := page["hasMore"]; ok {
-		payload["hasMore"] = value
+	value, hasMoreKnown := page["hasMore"]
+	if !hasMoreKnown {
+		payload["paginationKnown"] = false
+		payload["failedCount"] = 1
+		payload["failures"] = []map[string]any{{
+			"stage": "pagination",
+			"error": "下层仅返回 cursor、未返回 hasMore，无法证明结果完整",
+		}}
+		return
 	}
+	payload["paginationKnown"] = true
+	payload["hasMore"] = value
 	if value, ok := page["complete"]; ok {
 		payload["complete"] = value
 	}
@@ -621,6 +729,11 @@ func ApplyMessagePagination(payload, data map[string]any, messages []map[string]
 	}
 	boundary := CreateTime(messages[len(messages)-1])
 	if boundary == nil {
+		payload["failedCount"] = 1
+		payload["failures"] = []map[string]any{{
+			"stage": "pagination",
+			"error": "下层返回 hasMore=true，但末条消息缺少可继续读取的 createTime",
+		}}
 		return
 	}
 	next := map[string]any{"time": boundary}

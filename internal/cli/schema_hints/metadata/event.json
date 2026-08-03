@@ -8,6 +8,18 @@
     "reviewed": true
   },
   "tools": {
+    "event.listen_im": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "not_required",
+      "idempotency": "non_idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+      "reviewed": true,
+      "review_reason": "Reviewed against every kind/event mapping and conditional target branch, structured ambiguity/no-match behavior, same-profile read resolution, all-or-nothing multi-subscription preparation, dry-run resolution parity, and reuse of runPersonalEventConsume. It does not create a second event system or expose unverified group lifecycle mappings.",
+      "runtime_gate": "none"
+    },
     "event.consume": {
       "effect": "write",
       "risk": "medium",

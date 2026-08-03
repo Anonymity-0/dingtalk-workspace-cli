@@ -20,6 +20,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 var dingTalkMessageLocation = time.FixedZone("CST", 8*60*60)
@@ -52,18 +53,19 @@ var ChatMessages = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+chat-messages",
 	Product:     "chat",
-	Description: "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
-	Intent: "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；" +
-		"群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。" +
+	Description: "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
+	Intent: "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；" +
+		"群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。" +
 		"省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。" +
-		"内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。" +
-		"默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。",
+		"默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。",
 	Risk: shortcut.RiskRead,
 	Flags: append([]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId），与 --user 互斥"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
 		{Name: "id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId"},
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊对方的 userId，与 --group 互斥"},
+		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId"},
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊对方的 openDingTalkId，与 --group/--user 互斥"},
 		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的消息条数（可选）"},
@@ -72,7 +74,7 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
 	Constraints: append([]shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id", "user", "open-dingtalk-id"}},
+		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id", "chat-query", "user", "user-query", "open-dingtalk-id"}},
 	}, chatshortcut.MessageResourceDownloadConstraints()...),
 	Tips: []string{
 		`dws chat +chat-messages --group <openconversation_id> --time "2025-03-01 00:00:00"`,
@@ -87,6 +89,23 @@ var ChatMessages = shortcut.Shortcut{
 		var tool string
 		params := map[string]any{}
 		fallbackConversationID := ""
+		groupID := rt.StrFirst("group", "conversation-id", "id")
+		userID := rt.Str("user")
+		openID := rt.Str("open-dingtalk-id")
+		if query := rt.Str("chat-query"); query != "" {
+			resolved, err := targetresolver.ResolveChat(rt, query)
+			if err != nil {
+				return err
+			}
+			groupID = resolved.Selected.OpenConversationID
+		}
+		if query := rt.Str("user-query"); query != "" {
+			resolved, err := targetresolver.ResolveUser(rt, query, targetresolver.IdentityOpenDingTalkID)
+			if err != nil {
+				return err
+			}
+			openID = resolved.Selected.OpenDingTalkID
+		}
 
 		if rt.Changed("time") && rt.Str("time") != "" {
 			params["time"] = rt.Str("time")
@@ -110,16 +129,16 @@ var ChatMessages = shortcut.Shortcut{
 			params["forward"] = false
 		}
 
-		if group := rt.StrFirst("group", "conversation-id", "id"); group != "" {
+		if groupID != "" {
 			tool = "list_conversation_message_v2"
-			params["openconversation_id"] = group
-			fallbackConversationID = group
-		} else if openID := strings.TrimSpace(rt.Str("open-dingtalk-id")); openID != "" {
+			params["openconversation_id"] = groupID
+			fallbackConversationID = groupID
+		} else if openID != "" {
 			tool = "list_individual_chat_message"
 			params["openDingTalkId"] = openID
 		} else {
 			tool = "list_individual_chat_message"
-			params["userId"] = rt.Str("user")
+			params["userId"] = userID
 		}
 
 		data, err := rt.CallMCPData("chat", tool, params)
@@ -142,7 +161,10 @@ var ChatMessages = shortcut.Shortcut{
 		direction := strings.TrimSpace(strings.ToLower(rt.Str("direction")))
 		chatmsg.ApplyMessagePagination(payload, data, items, direction)
 		if rt.Bool("download-resources") {
-			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, fallbackConversationID)
+			chatshortcut.AttachMessageResourceDownloads(
+				payload,
+				chatshortcut.DownloadMessageResources(rt, items, fallbackConversationID),
+			)
 		}
 		return rt.Output(payload)
 	},
@@ -188,44 +210,7 @@ func projectChatMessage(m map[string]any) map[string]any {
 }
 
 func projectChatMessageWithReactions(m map[string]any, includeReactions bool) map[string]any {
-	row := map[string]any{
-		"sender":     chatmsg.Sender(m),
-		"text":       chatmsg.Text(m),
-		"createTime": chatmsg.CreateTime(m),
-	}
-	if messageID := chatmsg.MessageID(m); messageID != nil {
-		row["messageId"] = messageID
-	}
-	if conversationID := chatmsg.ConversationID(m); conversationID != nil {
-		row["conversationId"] = conversationID
-	}
-	if threadID := chatmsg.ThreadID(m); threadID != nil {
-		row["threadId"] = threadID
-	}
-	if messageType := chatmsg.MessageType(m); messageType != nil {
-		row["messageType"] = messageType
-	}
-	if updateTime := chatmsg.UpdateTime(m); updateTime != nil {
-		row["updateTime"] = updateTime
-	}
-	if includeReactions {
-		if reactions := chatmsg.Reactions(m); len(reactions) > 0 {
-			row["reactions"] = reactions
-		}
-	}
-	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
-		row["quotedMessage"] = quoted
-	}
-	if resources := chatmsg.ResourcesDeep(m); len(resources) > 0 {
-		row["resourceRefs"] = resources
-	}
-	projectForwarded := func(item map[string]any) map[string]any {
-		return projectChatMessageWithReactions(item, includeReactions)
-	}
-	if forwarded := chatmsg.Forwarded(m, projectForwarded); len(forwarded) > 0 {
-		row["forwarded"] = forwarded
-	}
-	return row
+	return chatmsg.ProjectMessageV1(m, includeReactions)
 }
 
 func init() {

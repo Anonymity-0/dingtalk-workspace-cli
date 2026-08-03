@@ -2,6 +2,10 @@
   "id": "event",
   "tools": [
     {
+      "canonical_path": "event.listen_im",
+      "cli_path": "event +listen-im"
+    },
+    {
       "canonical_path": "event.consume",
       "cli_path": "event consume"
     },

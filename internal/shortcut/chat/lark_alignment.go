@@ -13,6 +13,7 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // ChatCreate creates a DingTalk group as the current user. It intentionally
@@ -22,20 +23,32 @@ var ChatCreate = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+chat-create",
 	Product:     "im",
-	Description: "以当前用户身份创建钉钉群聊",
-	Intent:      "当你要创建一个基础钉钉群聊时使用；自动把当前用户加入成员列表并作为群主，支持 INTERNAL、EXTERNAL、NORMAL 和话题模式。它不支持指定其他 owner、群 description、初始机器人或 Lark public/private 语义。",
+	Description: "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+	Intent:      "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "name", Type: shortcut.FlagString, Desc: "群名称", Required: true},
-		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "初始成员 userId 或 openDingTalkId 列表", Required: true},
+		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "初始成员 userId 或 openDingTalkId 列表"},
+		{Name: "member-query", Type: shortcut.FlagStringSlice, Desc: "按姓名/花名唯一解析的初始成员，可逗号分隔或重复传入"},
 		{Name: "type", Type: shortcut.FlagString, Default: "INTERNAL", Desc: "群类型", Enum: []string{"INTERNAL", "EXTERNAL", "NORMAL"}},
 		{Name: "thread", Type: shortcut.FlagBool, Desc: "创建为话题群"},
 	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"users", "member-query"}},
+	},
 	Tips: []string{
 		`dws chat +chat-create --name "项目冲刺群" --users userId1,userId2`,
-		`dws chat +chat-create --name "合作群" --users userId1,userId2 --type EXTERNAL`,
+		`dws chat +chat-create --name "合作群" --member-query "张三,李四" --type EXTERNAL`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		resolvedMembers, err := targetresolver.ResolveUsers(
+			rt,
+			rt.StrSlice("member-query"),
+			targetresolver.IdentityAny,
+		)
+		if err != nil {
+			return err
+		}
 		profile, err := rt.CallMCPData("contact", "get_current_user_profile", nil)
 		if err != nil {
 			return fmt.Errorf("读取当前用户以设置群主失败: %w", err)
@@ -50,6 +63,13 @@ var ChatCreate = shortcut.Shortcut{
 			if member != "" {
 				members = appendUniqueShortcutString(members, member)
 			}
+		}
+		for _, resolved := range resolvedMembers {
+			member := resolved.Selected.UserID
+			if member == "" {
+				member = resolved.Selected.OpenDingTalkID
+			}
+			members = appendUniqueShortcutString(members, member)
 		}
 		params := map[string]any{
 			"groupName":    rt.Str("name"),
@@ -138,8 +158,8 @@ var MessagesReply = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-reply",
 	Product:     "chat",
-	Description: "以当前用户身份引用回复消息（自动补全原发送者）",
-	Intent:      "当你要以当前用户身份对已有消息发送纯文本引用回复时使用；提供会话和被引用消息即可，默认通过 mget 自动读取原发送者，也可显式传 openDingTalkId/userId；userId 会通过通讯录搜索精确匹配 openDingTalkId。它不支持 bot 身份、富媒体、卡片或 thread 内回复。",
+	Description: "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
+	Intent:      "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
@@ -175,8 +195,77 @@ var MessagesReply = shortcut.Shortcut{
 		if value := rt.StrFirst("idempotency-key", "uuid"); value != "" {
 			params["uuid"] = value
 		}
-		return rt.CallMCP("send_personal_message", params)
+		if rt.DryRun() {
+			return rt.Output(map[string]any{
+				"contractVersion": "im.message-reply.v1",
+				"dryRun":          true,
+				"willSend":        false,
+				"transport":       "chat/send_personal_message",
+				"arguments":       params,
+				"conversationId":  rt.Str("conversation-id"),
+				"referencedMessage": map[string]any{
+					"messageId":            replyMessageID(rt),
+					"senderOpenDingTalkId": refSender,
+				},
+			})
+		}
+		data, err := rt.CallMCPWriteData("chat", "send_personal_message", params)
+		if err != nil {
+			return err
+		}
+		enrichReplyResult(data, rt, refSender)
+		return rt.Output(data)
 	},
+}
+
+func enrichReplyResult(data map[string]any, rt *shortcut.RuntimeContext, refSender string) {
+	data["contractVersion"] = "im.message-reply.v1"
+	data["conversationId"] = rt.Str("conversation-id")
+	data["referencedMessage"] = map[string]any{
+		"messageId":            replyMessageID(rt),
+		"senderOpenDingTalkId": refSender,
+		"resolutionSource": func() string {
+			if rt.Str("ref-sender") != "" {
+				return "explicit"
+			}
+			return "message_lookup"
+		}(),
+	}
+	if key := rt.StrFirst("idempotency-key", "uuid"); key != "" {
+		data["idempotencyKey"] = key
+	}
+	if value := replyResponseValue(data, "openMessageId", "openMsgId", "messageId", "msgId"); value != nil {
+		data["messageId"] = value
+	}
+	if value := replyResponseValue(data, "openConvThreadId", "threadId", "topicId"); value != nil {
+		data["threadId"] = value
+	}
+	if value := replyResponseValue(data, "deliveryStatus", "sendStatus", "status"); value != nil {
+		data["deliveryStatus"] = value
+		data["deliveryStatusKnown"] = true
+	} else {
+		data["deliveryStatus"] = "unknown"
+		data["deliveryStatusKnown"] = false
+	}
+}
+
+func replyResponseValue(data map[string]any, keys ...string) any {
+	scopes := []map[string]any{data}
+	for _, wrapper := range []string{"result", "data"} {
+		if nested, ok := data[wrapper].(map[string]any); ok {
+			scopes = append(scopes, nested)
+		}
+	}
+	for _, scope := range scopes {
+		for _, key := range keys {
+			if value, ok := scope[key]; ok && value != nil {
+				if text, isString := value.(string); !isString || strings.TrimSpace(text) != "" {
+					return value
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func resolveReplySender(rt *shortcut.RuntimeContext) (string, error) {

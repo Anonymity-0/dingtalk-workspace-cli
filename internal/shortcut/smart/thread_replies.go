@@ -99,7 +99,10 @@ var ThreadReplies = shortcut.Shortcut{
 		}
 		chatmsg.ApplyMessagePagination(payload, data, items, "older")
 		if rt.Bool("download-resources") {
-			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, rt.Str("group"))
+			chatshortcut.AttachMessageResourceDownloads(
+				payload,
+				chatshortcut.DownloadMessageResources(rt, items, rt.Str("group")),
+			)
 		}
 		return rt.Output(payload)
 	},

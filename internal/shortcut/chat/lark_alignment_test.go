@@ -127,6 +127,79 @@ func TestChatCreateAddsCurrentUserAndNormalizesResult(t *testing.T) {
 	}
 }
 
+func TestChatCreateResolvesEveryNaturalMemberBeforeCreating(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"resolved-user","openDingTalkId":"D-resolved"}]}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+chat-create",
+		"--name", "测试群",
+		"--users", "explicit-user",
+		"--member-query", "张三",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 3 {
+		t.Fatalf("calls = %#v, want member resolve + current profile + create", fake.calls)
+	}
+	if fake.calls[0].tool != "search_contact_by_key_word" ||
+		fake.calls[1].tool != "get_current_user_profile" ||
+		fake.calls[2].tool != "create_group_conversation" {
+		t.Fatalf("call order = %#v", fake.calls)
+	}
+	if got, want := fake.calls[2].args["groupMembers"], []string{"self-user", "explicit-user", "resolved-user"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("groupMembers = %#v, want %#v", got, want)
+	}
+}
+
+func TestChatCreateNaturalMemberAmbiguityStopsBeforeProfileAndCreate(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"u1"},{"name":"张三","userId":"u2"}]}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+chat-create",
+		"--name", "测试群",
+		"--member-query", "张三",
+		"--yes",
+	})
+	if err := root.Execute(); err == nil {
+		t.Fatal("ambiguous member unexpectedly created a group")
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "search_contact_by_key_word" {
+		t.Fatalf("ambiguous member reached profile/create: %#v", fake.calls)
+	}
+}
+
+func TestChatCreateNaturalMemberDryRunUsesSameResolutionChain(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"resolved-user"}]}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+chat-create",
+		"--name", "测试群",
+		"--member-query", "张三",
+		"--dry-run",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 3 ||
+		fake.calls[0].tool != "search_contact_by_key_word" ||
+		fake.calls[1].tool != "get_current_user_profile" ||
+		fake.calls[2].tool != "create_group_conversation" {
+		t.Fatalf("dry-run calls = %#v", fake.calls)
+	}
+}
+
 func TestMessagesSendRoutesIdentitySpecificTransports(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -292,9 +365,13 @@ func TestLarkAlignmentWriteMappings(t *testing.T) {
 }
 
 func TestMessagesReplyPublishesPlainTextBoundary(t *testing.T) {
-	fake := &larkAlignmentCaller{}
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"chat/send_personal_message": `{"result":{"openMessageId":"new-msg","openConvThreadId":"thread-1","sendStatus":"accepted"}}`,
+	}}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
 	root.SetArgs([]string{
 		"chat", "+messages-reply",
 		"--conversation-id", "cid",
@@ -326,6 +403,43 @@ func TestMessagesReplyPublishesPlainTextBoundary(t *testing.T) {
 		content["replyMsgType"] != "text" ||
 		content["content"] != "收到" {
 		t.Fatalf("reply content = %#v", content)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["contractVersion"] != "im.message-reply.v1" ||
+		payload["messageId"] != "new-msg" ||
+		payload["conversationId"] != "cid" ||
+		payload["threadId"] != "thread-1" ||
+		payload["deliveryStatus"] != "accepted" ||
+		payload["idempotencyKey"] != "reply-uuid" {
+		t.Fatalf("reply result context = %#v", payload)
+	}
+	referenced, _ := payload["referencedMessage"].(map[string]any)
+	if referenced["messageId"] != "msg" || referenced["resolutionSource"] != "explicit" {
+		t.Fatalf("referenced message context = %#v", referenced)
+	}
+}
+
+func TestMessagesReplyDryRunStopsBeforeWrite(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-reply",
+		"--conversation-id", "cid",
+		"--message-id", "msg",
+		"--ref-sender", "D-sender",
+		"--text", "收到",
+		"--dry-run",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 0 {
+		t.Fatalf("reply dry-run reached write transport: %#v", fake.calls)
 	}
 }
 

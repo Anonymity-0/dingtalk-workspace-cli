@@ -66,7 +66,7 @@ dws chat bot --help
 | [chat-group](./chat/chat-group.md) | 建群、搜群、成员、机器人进群、群设置、群主、入群审批、群身份、群公告、群邀请分享 | `group *`、`group-role *`、`search`、`search-common` |
 | [chat-bot](./chat/chat-bot.md) | 查机器人、机器人发消息/撤回、Webhook、机器人单聊、机器人进群 | `bot *`、`message send-by-bot`、`recall-by-bot`、`send-by-webhook` |
 | [chat-conversation](./chat/chat-conversation.md) | 会话列表、置顶、免打扰、隐藏、红点、已读未读、清空、会话分组、智能分组 | `conversation-info`、`category *`、`mute`、`set-top`、`mark-read` |
-| [chat-workflows](./chat/chat-workflows.md) | 高频复合流程、上下文传递表、openDingTalkId 获取方式、自动化脚本 | 工作流与字段传递 |
+| [消息任务级流程](./01-messaging.md) | Golden Route 无法单步覆盖的复合流程与上下文传递 | 工作流与字段传递 |
 
 ## ID 获取速查
 
@@ -318,12 +318,12 @@ dws chat bot --help
 
 | 场景 | 入口 |
 |------|------|
-| 搜索群并拉消息 | [chat-workflows §群聊消息](./chat/chat-workflows.md#群聊消息) |
-| 个人身份发送群聊/单聊/文件 | [chat-workflows §发送消息](./chat/chat-workflows.md#发送消息) |
-| 机器人发消息后撤回 | [chat-workflows §机器人消息](./chat/chat-workflows.md#机器人消息) |
-| 机器人不在群内时先邀请再发送 | [chat-workflows §机器人消息](./chat/chat-workflows.md#机器人消息) |
-| 给机器人发单聊 | [chat-workflows §机器人消息](./chat/chat-workflows.md#机器人消息) |
-| 发送图片 / 文件 / 音频 / 视频 | [chat-workflows §发送消息](./chat/chat-workflows.md#发送消息) |
+| 搜索群并拉消息 | [消息任务级流程 §群聊消息](./01-messaging.md#群聊消息) |
+| 个人身份发送群聊/单聊/文件 | [消息任务级流程 §发送消息](./01-messaging.md#发送消息) |
+| 机器人发消息后撤回 | [消息任务级流程 §机器人消息](./01-messaging.md#机器人消息) |
+| 机器人不在群内时先邀请再发送 | [消息任务级流程 §机器人消息](./01-messaging.md#机器人消息) |
+| 给机器人发单聊 | [消息任务级流程 §机器人消息](./01-messaging.md#机器人消息) |
+| 发送图片 / 文件 / 音频 / 视频 | [消息任务级流程 §发送消息](./01-messaging.md#发送消息) |
 | 流式卡片创建与更新 | [chat-message §话题与卡片](./chat/chat-message.md#话题与卡片) |
 | 群公告发布与修改 | [chat-group §群公告](./chat/chat-group.md#群公告) |
 | 消息转待办 | 先用 [chat-message](./chat/chat-message.md#拉取消息) 取消息内容，再读取 `dingtalk-todo` 创建待办 |
@@ -349,7 +349,7 @@ dws chat bot --help
 | `chat group-role list` | `openRoleId` | `group-role update/remove/set-user/remove-user` |
 | `chat message send-card` | `bizId` | `message update-card --biz-id` |
 
-完整字段传递表见 [chat-workflows](./chat/chat-workflows.md#上下文传递表)。
+完整字段传递表见 [消息任务级流程](./01-messaging.md#上下文传递表)。
 
 ## 相关产品
 

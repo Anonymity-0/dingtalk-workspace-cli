@@ -498,8 +498,16 @@
       "cli_path": "chat set-top"
     },
     {
+      "canonical_path": "chat.shortcut_chat_create",
+      "cli_path": "chat +chat-create"
+    },
+    {
       "canonical_path": "chat.shortcut_chat_messages",
       "cli_path": "chat +chat-messages"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_reply",
+      "cli_path": "chat +messages-reply"
     },
     {
       "canonical_path": "chat.shortcut_messages_send",

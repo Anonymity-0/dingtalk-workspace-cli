@@ -23,7 +23,7 @@ import (
 
 func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 	want := []string{
-		"identity", "as", "group", "chat-id", "user", "open-dingtalk-id",
+		"identity", "as", "group", "chat-id", "chat-query", "user", "user-query", "open-dingtalk-id",
 		"users", "open-dingtalk-ids", "robot-code", "webhook-token",
 		"uuid", "idempotency-key",
 	}

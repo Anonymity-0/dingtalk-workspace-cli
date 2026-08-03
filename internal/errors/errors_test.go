@@ -53,6 +53,10 @@ func TestPrintJSON(t *testing.T) {
 		WithRetryable(true),
 		WithActions("dws schema doc.create_document", "retry command"),
 		WithSnapshot("/tmp/dws-recovery/snapshot.json"),
+		WithDetails(map[string]any{
+			"type":  "resolution",
+			"query": "项目群",
+		}),
 	)); err != nil {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
@@ -75,6 +79,9 @@ func TestPrintJSON(t *testing.T) {
 	}
 	if !strings.Contains(got, "\"snapshot_path\": \"/tmp/dws-recovery/snapshot.json\"") {
 		t.Fatalf("expected snapshot path in output, got %q", got)
+	}
+	if !strings.Contains(got, "\"type\": \"resolution\"") || !strings.Contains(got, "\"query\": \"项目群\"") {
+		t.Fatalf("expected structured details in output, got %q", got)
 	}
 }
 

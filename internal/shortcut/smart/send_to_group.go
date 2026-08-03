@@ -14,12 +14,9 @@
 package smart
 
 import (
-	"encoding/json"
-	"fmt"
-	"strings"
-
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // SendToGroup: message a group by its NAME, no openConversationId juggling.
@@ -52,33 +49,17 @@ var SendToGroup = shortcut.Shortcut{
 		groupName := rt.Str("group")
 		text := rt.Str("text")
 
-		// Step 1 — search groups by name (keyword) on the im server.
-		data, err := rt.CallMCPData("im", "search_groups", map[string]any{
-			"keyword": groupName,
-			"limit":   10,
-			"cursor":  "0",
-		})
+		resolved, err := targetresolver.ResolveChat(rt, groupName)
 		if err != nil {
 			return err
 		}
-		groups := preferExactGroupMatches(extractGroupsForSend(data), groupName)
-		switch {
-		case len(groups) == 0:
-			return apperrors.NewValidation(fmt.Sprintf(
-				"没找到名字匹配 %q 的群；换用群名里连续的核心词再试。", groupName))
-		case len(groups) > 1:
-			return apperrors.NewValidation(fmt.Sprintf(
-				"%q 匹配到 %d 个群：%s。请用更精确的群名，或直接用 dws chat +messages-send --group <openConversationId> 指定群。",
-				groupName, len(groups), strings.Join(sendGroupLabels(groups), "、")))
-		}
-
-		// Step 2 — send the markdown message to the unique group.
-		content, _ := json.Marshal(map[string]string{"title": text, "text": text})
-		return rt.CallMCP("send_personal_message", rt.AddAIMessageTag(map[string]any{
-			"openConversationId": groups[0].id,
-			"msgType":            "markdown",
-			"content":            string(content),
-		}))
+		return chatshortcut.ExecuteResolvedUserMarkdown(
+			rt,
+			chatshortcut.ResolvedUserMessageTarget{
+				GroupID: resolved.Selected.OpenConversationID,
+			},
+			text,
+		)
 	},
 }
 
@@ -93,41 +74,10 @@ type sendGroupMatch struct {
 // result/result.items/result.groups (field names per chat search's real
 // response shape), and the name field may be "title" or "name".
 func extractGroupsForSend(data map[string]any) []sendGroupMatch {
-	var list []any
-	switch inner := data["result"].(type) {
-	case []any:
-		list = inner
-	case map[string]any:
-		if v, ok := inner["items"].([]any); ok {
-			list = v
-		} else if v, ok := inner["groups"].([]any); ok {
-			list = v
-		}
-	}
-	if list == nil {
-		if v, ok := data["items"].([]any); ok {
-			list = v
-		}
-	}
-
-	var out []sendGroupMatch
-	for _, item := range list {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		id, _ := m["openConversationId"].(string)
-		if id == "" {
-			id, _ = m["id"].(string)
-		}
-		if id == "" {
-			continue
-		}
-		name, _ := m["title"].(string)
-		if name == "" {
-			name, _ = m["name"].(string)
-		}
-		out = append(out, sendGroupMatch{id: id, name: name})
+	chats := targetresolver.ExtractChats(data)
+	out := make([]sendGroupMatch, 0, len(chats))
+	for _, chat := range chats {
+		out = append(out, sendGroupMatch{id: chat.OpenConversationID, name: chat.Name})
 	}
 	return out
 }
@@ -138,38 +88,24 @@ func extractGroupsForSend(data map[string]any) []sendGroupMatch {
 // group wins over prefix/suffix matches. Duplicate rows for the same
 // openConversationId are collapsed before selection.
 func preferExactGroupMatches(groups []sendGroupMatch, query string) []sendGroupMatch {
-	unique := make([]sendGroupMatch, 0, len(groups))
-	seen := make(map[string]struct{}, len(groups))
+	chats := make([]targetresolver.Chat, 0, len(groups))
 	for _, group := range groups {
-		if _, ok := seen[group.id]; ok {
-			continue
-		}
-		seen[group.id] = struct{}{}
-		unique = append(unique, group)
+		chats = append(chats, targetresolver.Chat{OpenConversationID: group.id, Name: group.name})
 	}
-	query = strings.TrimSpace(query)
-	exact := make([]sendGroupMatch, 0, 1)
-	for _, group := range unique {
-		if strings.EqualFold(strings.TrimSpace(group.name), query) {
-			exact = append(exact, group)
-		}
+	selected := targetresolver.PreferExactChats(chats, query)
+	out := make([]sendGroupMatch, 0, len(selected))
+	for _, chat := range selected {
+		out = append(out, sendGroupMatch{id: chat.OpenConversationID, name: chat.Name})
 	}
-	if len(exact) > 0 {
-		return exact
-	}
-	return unique
+	return out
 }
 
 func sendGroupLabels(groups []sendGroupMatch) []string {
-	out := make([]string, 0, len(groups))
-	for _, g := range groups {
-		name := g.name
-		if name == "" {
-			name = "(未命名群)"
-		}
-		out = append(out, fmt.Sprintf("%s(%s)", name, g.id))
+	chats := make([]targetresolver.Chat, 0, len(groups))
+	for _, group := range groups {
+		chats = append(chats, targetresolver.Chat{OpenConversationID: group.id, Name: group.name})
 	}
-	return out
+	return targetresolver.ChatLabels(chats)
 }
 
 func init() {

@@ -15,6 +15,7 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 const messagesSendFileUploadTimeout = 10 * time.Minute
@@ -27,15 +28,17 @@ var MessagesSend = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-send",
 	Product:     "chat",
-	Description: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
-	Intent:      "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。",
+	Description: "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+	Intent:      "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "identity", Type: shortcut.FlagString, Default: "user", Enum: []string{"user", "bot", "webhook"}, Desc: "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束"},
 		{Name: "as", Type: shortcut.FlagString, Enum: []string{"user", "bot", "webhook"}, Desc: "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（user/bot 群聊）；受发送身份能力矩阵约束"},
 		{Name: "chat-id", Type: shortcut.FlagString, Desc: "--group 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一群聊（仅 user 的高级发送场景）；受发送身份能力矩阵约束"},
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊接收者 userId（user；包括 --dry-run 也会先通过通讯录搜索精确匹配 openDingTalkId）；受发送身份能力矩阵约束"},
+		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId（仅 user 的高级发送场景）；受发送身份能力矩阵约束"},
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束"},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束"},
 		{Name: "open-dingtalk-ids", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束"},
@@ -65,7 +68,7 @@ var MessagesSend = shortcut.Shortcut{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"uuid", "idempotency-key"}},
 		{
 			Kind:        shortcut.ConstraintCustom,
-			Flags:       []string{"identity", "as", "group", "chat-id", "user", "open-dingtalk-id", "users", "open-dingtalk-ids", "robot-code", "webhook-token", "uuid", "idempotency-key"},
+			Flags:       []string{"identity", "as", "group", "chat-id", "chat-query", "user", "user-query", "open-dingtalk-id", "users", "open-dingtalk-ids", "robot-code", "webhook-token", "uuid", "idempotency-key"},
 			Description: "目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
 		},
 	},
@@ -81,7 +84,9 @@ var MessagesSend = shortcut.Shortcut{
 func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 	identity := messagesSendIdentity(rt)
 	group := rt.StrFirst("chat-id", "group")
+	chatQuery := rt.Str("chat-query")
 	userID := rt.Str("user")
+	userQuery := rt.Str("user-query")
 	openID := rt.Str("open-dingtalk-id")
 	users := uniqueShortcutStrings(rt.StrSlice("users"))
 	openIDs := uniqueShortcutStrings(rt.StrSlice("open-dingtalk-ids"))
@@ -100,9 +105,9 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 	}
 	switch identity {
 	case "user":
-		targetCount := nonEmptyStringCount(group, userID, openID)
+		targetCount := nonEmptyStringCount(group, chatQuery, userID, userQuery, openID)
 		if targetCount != 1 {
-			return apperrors.NewValidation("--identity user 时 --group、--user、--open-dingtalk-id 必须且只能指定一个")
+			return apperrors.NewValidation("--identity user 时 --group/--chat-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个")
 		}
 		if len(users) > 0 || len(openIDs) > 0 || rt.Str("robot-code") != "" || rt.Str("webhook-token") != "" {
 			return apperrors.NewValidation("--identity user 不接受 bot/webhook 凭据或批量目标")
@@ -110,13 +115,16 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 		if len(atUserIDs) > 0 || len(atMobiles) > 0 {
 			return apperrors.NewValidation("--identity user 只接受 --at-open-dingtalk-ids")
 		}
-		if (userID != "" || openID != "") && (len(atOpenIDs) > 0 || rt.Bool("at-all")) {
+		if (userID != "" || userQuery != "" || openID != "") && (len(atOpenIDs) > 0 || rt.Bool("at-all")) {
 			return apperrors.NewValidation("user 单聊不接受 @ 参数；@ 只适用于群聊")
 		}
 		if contentType != "text" && contentType != "markdown" && (len(atOpenIDs) > 0 || rt.Bool("at-all")) {
 			return apperrors.NewValidation("user image/file/audio/video 当前不接受 @ 参数")
 		}
 	case "bot":
+		if chatQuery != "" || userQuery != "" {
+			return apperrors.NewValidation("--identity bot 当前不接受 --chat-query 或 --user-query；请传真实群 ID 或批量用户 ID")
+		}
 		if rt.Str("robot-code") == "" {
 			return apperrors.NewValidation("--identity bot 必须指定 --robot-code")
 		}
@@ -140,6 +148,9 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 			return apperrors.NewValidation("--identity bot 当前下层只支持 text/markdown")
 		}
 	case "webhook":
+		if chatQuery != "" || userQuery != "" {
+			return apperrors.NewValidation("--identity webhook 的目标由 token 所在群决定，不接受 --chat-query 或 --user-query")
+		}
 		if rt.Str("webhook-token") == "" {
 			return apperrors.NewValidation("--identity webhook 必须指定 --webhook-token")
 		}
@@ -191,33 +202,10 @@ func executeMessagesSend(rt *shortcut.RuntimeContext) error {
 		if contentType == "file" || contentType == "audio" || contentType == "video" {
 			return executeMessagesSendUserFile(rt, group, openID, contentType)
 		}
-		if group != "" {
-			body = helpers.NormalizeMessageMentions(
-				body,
-				uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids")),
-				rt.Bool("at-all"),
-				true,
-			)
-		}
-		content, _ := json.Marshal(map[string]string{"title": title, "text": body})
-		params := rt.AddAIMessageTag(map[string]any{
-			"msgType": "markdown",
-			"content": string(content),
-		})
-		if group != "" {
-			params["openConversationId"] = group
-			if values := uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids")); len(values) > 0 {
-				params["atOpenDingTalkIds"] = values
-			}
-			if rt.Bool("at-all") {
-				params["atAll"] = true
-			}
-		} else {
-			params["receiverOpenDingTalkId"] = openID
-		}
-		if value := messagesSendIdempotencyKey(rt); value != "" {
-			params["uuid"] = value
-		}
+		params := resolvedUserMarkdownParams(rt, ResolvedUserMessageTarget{
+			GroupID:        group,
+			OpenDingTalkID: openID,
+		}, title, body, uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids")), rt.Bool("at-all"), messagesSendIdempotencyKey(rt))
 		return executeUnifiedMessageWrite(rt, "chat", "send_personal_message", params)
 	case "bot":
 		body = helpers.NormalizeMessageMentions(
@@ -359,11 +347,83 @@ func messagesSendUserTarget(rt *shortcut.RuntimeContext) (group, openID string, 
 	if openID != "" || group != "" {
 		return group, openID, nil
 	}
+	if query := rt.Str("chat-query"); query != "" {
+		resolved, resolveErr := targetresolver.ResolveChat(rt, query)
+		if resolveErr != nil {
+			return "", "", resolveErr
+		}
+		return resolved.Selected.OpenConversationID, "", nil
+	}
+	if query := rt.Str("user-query"); query != "" {
+		resolved, resolveErr := targetresolver.ResolveUser(rt, query, targetresolver.IdentityOpenDingTalkID)
+		if resolveErr != nil {
+			return "", "", resolveErr
+		}
+		return "", resolved.Selected.OpenDingTalkID, nil
+	}
 	openID, err = resolveUserOpenDingTalkID(rt, rt.Str("user"))
 	if err != nil {
 		return "", "", err
 	}
 	return "", openID, nil
+}
+
+// ResolvedUserMessageTarget is the stable target accepted by the shared user
+// send engine after natural-name resolution has completed.
+type ResolvedUserMessageTarget struct {
+	GroupID        string
+	OpenDingTalkID string
+}
+
+// ExecuteResolvedUserMarkdown lets narrow semantic shortcuts such as +dm and
+// +send-to-group reuse the same target/content/AI-tag parameter builder while
+// preserving their existing raw lower-response output contract.
+func ExecuteResolvedUserMarkdown(
+	rt *shortcut.RuntimeContext,
+	target ResolvedUserMessageTarget,
+	text string,
+) error {
+	params := resolvedUserMarkdownParams(
+		rt,
+		target,
+		text,
+		text,
+		nil,
+		false,
+		"",
+	)
+	return rt.CallMCP("send_personal_message", params)
+}
+
+func resolvedUserMarkdownParams(
+	rt *shortcut.RuntimeContext,
+	target ResolvedUserMessageTarget,
+	title, body string,
+	atOpenIDs []string,
+	atAll bool,
+	idempotencyKey string,
+) map[string]any {
+	if target.GroupID != "" {
+		body = helpers.NormalizeMessageMentions(body, atOpenIDs, atAll, true)
+	}
+	content, _ := json.Marshal(map[string]string{"title": title, "text": body})
+	params := rt.AddAIMessageTag(map[string]any{
+		"msgType": "markdown",
+		"content": string(content),
+	})
+	addMessagesSendUserTarget(params, target.GroupID, target.OpenDingTalkID)
+	if target.GroupID != "" {
+		if len(atOpenIDs) > 0 {
+			params["atOpenDingTalkIds"] = atOpenIDs
+		}
+		if atAll {
+			params["atAll"] = true
+		}
+	}
+	if idempotencyKey != "" {
+		params["uuid"] = idempotencyKey
+	}
+	return params
 }
 
 func resolveUserOpenDingTalkID(rt *shortcut.RuntimeContext, userID string) (string, error) {

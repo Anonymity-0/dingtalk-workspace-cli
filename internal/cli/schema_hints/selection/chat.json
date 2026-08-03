@@ -2110,10 +2110,30 @@
         "ShortcutRegistry:chat +chat-role-query-user"
       ]
     },
-    "chat.shortcut_chat_messages": {
-      "agent_summary": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
+    "chat.shortcut_chat_create": {
+      "agent_summary": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
       "use_when": [
-        "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+        "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+      ],
+      "avoid_when": [
+        "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+      ],
+      "examples": [
+        "dws chat +chat-create --name \"项目冲刺群\" --users <userId1>,<userId2>",
+        "dws chat +chat-create --name \"合作群\" --member-query \"张三,李四\" --type EXTERNAL"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields.",
+      "source_refs": [
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_create",
+        "cobra-help:dws chat +chat-create",
+        "ShortcutRegistry:chat +chat-create"
+      ]
+    },
+    "chat.shortcut_chat_messages": {
+      "agent_summary": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
+      "use_when": [
+        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ],
       "avoid_when": [
         "要跨多个会话按关键词、发送者或消息类型检索时使用 +search-msg；已有一批精确消息 ID 时使用 +messages-mget"
@@ -2123,27 +2143,46 @@
         "dws chat +chat-messages --open-dingtalk-id <openDingTalkId> --download-resources --output-dir ./downloads"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget.",
+      "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget.",
       "source_refs": [
         "internal/cli/schema_command_registry.json#chat.shortcut_chat_messages",
         "cobra-help:dws chat +chat-messages",
         "ShortcutRegistry:chat +chat-messages"
       ]
     },
-    "chat.shortcut_messages_send": {
-      "agent_summary": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+    "chat.shortcut_messages_reply": {
+      "agent_summary": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
       "use_when": [
-        "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+        "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。"
       ],
       "avoid_when": [
-        "需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"
+        "要在话题 Thread 内新增回复、用 bot 身份回复、发送富媒体或卡片时不要使用；当前入口只实现普通引用回复，不猜测不存在的 Thread writer"
+      ],
+      "examples": [
+        "dws chat +messages-reply --conversation-id <openConversationId> --message-id <openMessageId> --text \"收到\" --idempotency-key <key>"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing.",
+      "source_refs": [
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_reply",
+        "cobra-help:dws chat +messages-reply",
+        "ShortcutRegistry:chat +messages-reply"
+      ]
+    },
+    "chat.shortcut_messages_send": {
+      "agent_summary": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+      "use_when": [
+        "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
+      ],
+      "avoid_when": [
+        "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
       ],
       "examples": [
         "dws chat +messages-send --as user --chat-id <openConversationId> --markdown \"## 周报\" --idempotency-key <key>",
         "dws chat +messages-send --as user --user <userId> --msg-type file --file ./report.pdf"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media.",
+      "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media.",
       "source_refs": [
         "internal/cli/schema_command_registry.json#chat.shortcut_messages_send",
         "cobra-help:dws chat +messages-send",
@@ -2362,7 +2401,7 @@
       ]
     },
     "chat.shortcut_dm": {
-      "agent_summary": "按姓名直接给某人发单聊消息（自动解析 userId）",
+      "agent_summary": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
       "use_when": [
         "当你只知道对方姓名、想直接发一条单聊消息而不想先查 userId 时使用；内部先按姓名搜通讯录解析出唯一用户，并用其 openDingTalkId 发送，姓名匹配到多人时会列出候选让你区分。会真实发出消息。"
       ],
@@ -2420,9 +2459,9 @@
       ]
     },
     "chat.shortcut_search_msg": {
-      "agent_summary": "多维搜索消息，可全量翻页并批量富化详情",
+      "agent_summary": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
       "use_when": [
-        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
       ],
       "avoid_when": [
         "只想读取一个已知会话的连续历史时使用 +chat-messages；已有精确消息 ID 时使用 +messages-mget"
@@ -2432,7 +2471,7 @@
         "dws chat +search-msg --group <openConversationId> --message-type file --download-resources --output-dir ./downloads"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+      "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
       "source_refs": [
         "internal/cli/schema_command_registry.json#chat.shortcut_search_msg",
         "cobra-help:dws chat +search-msg",

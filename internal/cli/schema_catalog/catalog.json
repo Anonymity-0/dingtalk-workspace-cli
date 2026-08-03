@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
-  "source_hash": "sha256:862734fb976a4c9c78d010b7391c74822f37805f5acc650551f4ac60f701c13a",
+  "surface_hash": "sha256:6823217b0d98e1cdebdea7e1b421a6920ce30a985016cf164ade5e14f69a6c30",
+  "source_hash": "sha256:480a0b5b5a8d323b73bd8efc07799c52e18980f0c0f0c334e23fbbb95d5ae7e0",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:670ca810a83bf2aa6f387a18c3af746393d5ea9de24570cbcebbcf994eb7b613",
-      "surface_hash": "sha256:60eee8e2f37d6d9d60689efce85082798eb9ad38b7ba7c0b471c3de676a85a16",
+      "source_hash": "sha256:78125a5eb3b3621bcbe2c0f504379fe80f1e0f14bd0ebba32c775958af505c5d",
+      "surface_hash": "sha256:6823217b0d98e1cdebdea7e1b421a6920ce30a985016cf164ade5e14f69a6c30",
       "surface_products": 26,
-      "surface_tools": 845,
-      "tools_with_agent_summary": 845,
-      "tools_with_metadata": 845,
+      "surface_tools": 848,
+      "tools_with_agent_summary": 848,
+      "tools_with_metadata": 848,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -7722,7 +7722,7 @@
         "id": "chat",
         "name": "群聊 / 消息 / 机器人",
         "runtime": true,
-        "tool_count": 129,
+        "tool_count": 131,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -10024,6 +10024,32 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+            ],
+            "canonical_path": "chat.shortcut_chat_create",
+            "cli_name": "+chat-create",
+            "cli_path": "chat +chat-create",
+            "confirmation": "user_required",
+            "description": "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。\n\n参数约束：\n  - --users、--member-query 至少指定一个",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed create-chat adapter: it batch-resolves every natural member query, reads the current profile to guarantee owner membership, de-duplicates stable member identities, creates one group, and normalizes the public conversation identity.",
+            "name": "shortcut_chat_create",
+            "primary_cli_path": "chat +chat-create",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+            "use_when": [
+              "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "解散群聊（不可逆，需群主权限）",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10154,7 +10180,7 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
+            "agent_summary": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -10164,18 +10190,18 @@
             "cli_name": "+chat-messages",
             "cli_path": "chat +chat-messages",
             "confirmation": "not_required",
-            "description": "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--conversation-id、--id、--user、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
+            "interface_reason": "Reviewed built-in Shortcut adapter: it accepts a stable group/user identity or deterministically resolves one natural group/user query, routes the resulting group or direct-message history read, projects the additive im.message-list.v1 shape, publishes proof-oriented pagination facts, and optionally orchestrates safe resource downloads whose failures fold into task completeness.",
             "name": "shortcut_chat_messages",
             "primary_cli_path": "chat +chat-messages",
             "reviewed": true,
             "risk": "low",
-            "title": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
+            "title": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
             "use_when": [
-              "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+              "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
             ]
           },
           {
@@ -10570,7 +10596,7 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按姓名直接给某人发单聊消息（自动解析 userId）",
+            "agent_summary": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -10589,7 +10615,7 @@
             "primary_cli_path": "chat +dm",
             "reviewed": true,
             "risk": "medium",
-            "title": "按姓名直接给某人发单聊消息（自动解析 userId）",
+            "title": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
             "use_when": [
               "当你只知道对方姓名、想直接发一条单聊消息而不想先查 userId 时使用；内部先按姓名搜通讯录解析出唯一用户，并用其 openDingTalkId 发送，姓名匹配到多人时会列出候选让你区分。会真实发出消息。"
             ]
@@ -10714,7 +10740,7 @@
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+            "interface_reason": "Reviewed exact-ID message reader: it validates and de-duplicates up to 50 IDs, projects them through the shared additive im.message-list.v1 builder, accounts for every missing ID, and optionally downloads resources with task-level failure accounting.",
             "name": "shortcut_messages_mget",
             "primary_cli_path": "chat +messages-mget",
             "reviewed": true,
@@ -10778,28 +10804,54 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+            "agent_summary": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"
+              "要在话题 Thread 内新增回复、用 bot 身份回复、发送富媒体或卡片时不要使用；当前入口只实现普通引用回复，不猜测不存在的 Thread writer"
+            ],
+            "canonical_path": "chat.shortcut_messages_reply",
+            "cli_name": "+messages-reply",
+            "cli_path": "chat +messages-reply",
+            "confirmation": "user_required",
+            "description": "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。\n\n参数约束：\n  - --ref-msg-id、--message-id 必须且只能指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed quote-reply adapter: it resolves or reads the referenced sender before one personal-message write, constructs DingTalk's reply content, and enriches the successful response with stable continuation context while preserving the lower payload.",
+            "name": "shortcut_messages_reply",
+            "primary_cli_path": "chat +messages-reply",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
+            "use_when": [
+              "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
             ],
             "canonical_path": "chat.shortcut_messages_send",
             "cli_name": "+messages-send",
             "cli_path": "chat +messages-send",
             "confirmation": "user_required",
-            "description": "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
+            "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
+            "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports deterministic user/chat query resolution, live-compatible exact userId conversion, mediaId images, and the native init/upload/commit local-file flow.",
             "name": "shortcut_messages_send",
             "primary_cli_path": "chat +messages-send",
             "reviewed": true,
             "risk": "medium",
-            "title": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+            "title": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
             "use_when": [
-              "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+              "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
             ]
           },
           {
@@ -10908,7 +10960,7 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "多维搜索消息，可全量翻页并批量富化详情",
+            "agent_summary": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -10918,18 +10970,18 @@
             "cli_name": "+search-msg",
             "cli_path": "chat +search-msg",
             "confirmation": "not_required",
-            "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
+            "interface_reason": "Reviewed search adapter: it batch-resolves natural group and sender queries before search, combines resolved stable IDs with explicit filters, cursor pagination and batched mget enrichment, projects im.message-list.v1, and folds search/enrichment/resource failures into completeness accounting.",
             "name": "shortcut_search_msg",
             "primary_cli_path": "chat +search-msg",
             "reviewed": true,
             "risk": "low",
-            "title": "多维搜索消息，可全量翻页并批量富化详情",
+            "title": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
             "use_when": [
-              "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+              "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
             ]
           },
           {
@@ -10974,7 +11026,7 @@
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
+            "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects the shared additive im.message-list.v1 fields with proof-oriented pagination, and optionally downloads reply resources whose failures fold into task completeness.",
             "name": "shortcut_thread_replies",
             "primary_cli_path": "chat +thread-replies",
             "reviewed": true,
@@ -17589,7 +17641,7 @@
         "id": "event",
         "name": "事件订阅 (DingTalk Stream 长连接)",
         "runtime": true,
-        "tool_count": 5,
+        "tool_count": 6,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -17648,6 +17700,32 @@
             "title": "列出个人事件目录",
             "use_when": [
               "尚不知道可用 event_key，需要先盘点个人事件目录"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件",
+            "agent_summary_source": "dws-agent-selection/event",
+            "availability": "available",
+            "avoid_when": [
+              "需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口"
+            ],
+            "canonical_path": "event.listen_im",
+            "cli_name": "+listen-im",
+            "cli_path": "event +listen-im",
+            "confirmation": "not_required",
+            "description": "把 @我、指定发送人、指定群、全部单聊或全部群聊等用户意图确定性编译为个人 EventKey，自然姓名/群名会先唯一解析，再复用 event consume 的订阅、ready marker、NDJSON、取消、回滚和清理生命周期。",
+            "effect": "write",
+            "idempotency": "non_idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+            "name": "listen_im",
+            "primary_cli_path": "event +listen-im",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "按 IM 意图解析目标并监听一个或多个个人消息事件",
+            "use_when": [
+              "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
             ]
           },
           {
@@ -26644,6 +26722,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 845
+    "tool_count": 848
   }
 }

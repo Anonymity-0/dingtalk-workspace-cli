@@ -2327,6 +2327,267 @@
         "当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。"
       ]
     },
+    "chat +chat-create": {
+      "agent_summary": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+      "agent_summary_source": "dws-agent-selection/chat",
+      "availability": "available",
+      "avoid_when": [
+        "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws chat +chat-create --name \"项目冲刺群\" --users \u003cuserId1\u003e,\u003cuserId2\u003e",
+        "dws chat +chat-create --name \"合作群\" --member-query \"张三,李四\" --type EXTERNAL"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields.",
+          "candidates": [
+            {
+              "value": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+          ],
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields.",
+          "candidates": [
+            {
+              "value": [
+                "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+              ],
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws chat +chat-create --name \"项目冲刺群\" --users \u003cuserId1\u003e,\u003cuserId2\u003e",
+            "dws chat +chat-create --name \"合作群\" --member-query \"张三,李四\" --type EXTERNAL"
+          ],
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields.",
+          "candidates": [
+            {
+              "value": [
+                "dws chat +chat-create --name \"项目冲刺群\" --users \u003cuserId1\u003e,\u003cuserId2\u003e",
+                "dws chat +chat-create --name \"合作群\" --member-query \"张三,李四\" --type EXTERNAL"
+              ],
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "unknown",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "unknown",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed create-chat adapter: it batch-resolves every natural member query, reads the current profile to guarantee owner membership, de-duplicates stable member identities, creates one group, and normalizes the public conversation identity.",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "Reviewed create-chat adapter: it batch-resolves every natural member query, reads the current profile to guarantee owner membership, de-duplicates stable member identities, creates one group, and normalizes the public conversation identity.",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields."
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against the executable ID/query member contract, all-or-nothing structured resolution failures, dry-run resolution parity, current-owner precondition, and single create_group_conversation write. It intentionally does not invent unsupported owner, description, initial-bot, or Lark visibility semantics."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+          ],
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields.",
+          "candidates": [
+            {
+              "value": [
+                "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+              ],
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields."
+            }
+          ]
+        }
+      },
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed create-chat adapter: it batch-resolves every natural member query, reads the current profile to guarantee owner membership, de-duplicates stable member identities, creates one group, and normalizes the public conversation identity.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "ShortcutRegistry:chat +chat-create",
+        "cobra-help:dws chat +chat-create",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_create",
+        "internal/cli/schema_hints/metadata/chat.json",
+        "internal/cli/schema_hints/selection/chat.json"
+      ],
+      "use_when": [
+        "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+      ]
+    },
     "chat +chat-dismiss": {
       "agent_summary": "解散群聊（不可逆，需群主权限）",
       "agent_summary_source": "dws-agent-selection/chat",
@@ -3618,7 +3879,7 @@
       ]
     },
     "chat +chat-messages": {
-      "agent_summary": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
+      "agent_summary": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -3633,18 +3894,18 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
+          "value": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget.",
+          "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget.",
           "candidates": [
             {
-              "value": "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
+              "value": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget."
+              "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget."
             }
           ]
         },
@@ -3653,14 +3914,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
@@ -3671,7 +3932,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget.",
+          "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget.",
           "candidates": [
             {
               "value": [
@@ -3680,7 +3941,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget."
+              "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget."
             }
           ]
         },
@@ -3689,14 +3950,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
@@ -3705,14 +3966,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
@@ -3724,7 +3985,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget.",
+          "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget.",
           "candidates": [
             {
               "value": [
@@ -3734,7 +3995,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget."
+              "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget."
             }
           ]
         },
@@ -3743,14 +4004,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
@@ -3759,30 +4020,30 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
         "interface_reason": {
-          "value": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
+          "value": "Reviewed built-in Shortcut adapter: it accepts a stable group/user identity or deterministically resolves one natural group/user query, routes the resulting group or direct-message history read, projects the additive im.message-list.v1 shape, publishes proof-oriented pagination facts, and optionally orchestrates safe resource downloads whose failures fold into task completeness.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
-              "value": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
+              "value": "Reviewed built-in Shortcut adapter: it accepts a stable group/user identity or deterministically resolves one natural group/user query, routes the resulting group or direct-message history read, projects the additive im.message-list.v1 shape, publishes proof-oriented pagination facts, and optionally orchestrates safe resource downloads whose failures fold into task completeness.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
@@ -3807,21 +4068,21 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             },
             {
               "value": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget."
+              "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget."
             }
           ]
         },
@@ -3830,41 +4091,41 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
+          "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication.",
           "candidates": [
             {
               "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable Shortcut and group/direct lower read tools. Optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
+              "review_reason": "Reviewed against the executable Shortcut, structured zero/multiple-candidate resolution failures, and group/direct lower read tools. Ambiguity stops before the history read; optional downloads stay read/not_required under the existing safe local-download convention: workspace-relative paths, no overwrite by default, and atomic publication."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget.",
+          "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget.",
           "candidates": [
             {
               "value": [
-                "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified group/direct routing, stable projection, pagination, and optional safe resource workflow; it distinguishes conversation history from cross-conversation search and exact-ID mget."
+              "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget."
             }
           ]
         }
       },
       "idempotency": "idempotent",
       "interface_mode": "composite",
-      "interface_reason": "Reviewed built-in Shortcut adapter: it routes group or direct-message history reads, projects a stable message shape, and optionally orchestrates safe resource downloads with a failure ledger.",
+      "interface_reason": "Reviewed built-in Shortcut adapter: it accepts a stable group/user identity or deterministically resolves one natural group/user query, routes the resulting group or direct-message history read, projects the additive im.message-list.v1 shape, publishes proof-oriented pagination facts, and optionally orchestrates safe resource downloads whose failures fold into task completeness.",
       "reviewed": true,
       "risk": "low",
       "source_refs": [
@@ -3876,7 +4137,7 @@
         "skills/mono/references/intent-guide.md"
       ],
       "use_when": [
-        "当你想快速看某个会话里的消息（谁在什么时间说了什么），而不想拿到一大坨原始消息字段时使用；群聊传 --group（群会话 ID，openConversationId），单聊传 --user（对方 userId），两者互斥且必须二选一。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。内部据此调用群聊或单聊的消息列表接口，再在本地投影出每条消息的发言人、文本和时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat +chat-mute": {
@@ -7753,7 +8014,7 @@
       ]
     },
     "chat +dm": {
-      "agent_summary": "按姓名直接给某人发单聊消息（自动解析 userId）",
+      "agent_summary": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -7767,14 +8028,14 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "按姓名直接给某人发单聊消息（自动解析 userId）",
+          "value": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "candidates": [
             {
-              "value": "按姓名直接给某人发单聊消息（自动解析 userId）",
+              "value": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -9077,14 +9338,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
@@ -9113,14 +9374,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
@@ -9129,14 +9390,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
@@ -9165,14 +9426,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
@@ -9181,30 +9442,30 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
         "interface_reason": {
-          "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+          "value": "Reviewed exact-ID message reader: it validates and de-duplicates up to 50 IDs, projects them through the shared additive im.message-list.v1 builder, accounts for every missing ID, and optionally downloads resources with task-level failure accounting.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
-              "value": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+              "value": "Reviewed exact-ID message reader: it validates and de-duplicates up to 50 IDs, projects them through the shared additive im.message-list.v1 builder, accounts for every missing ID, and optionally downloads resources with task-level failure accounting.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
@@ -9229,14 +9490,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             },
             {
               "value": true,
@@ -9252,14 +9513,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false.",
           "candidates": [
             {
               "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the built-in Shortcut registry and mounted Cobra command. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable ID bounds, shared identity/context/reaction/quote/forward/resource projection, missing-ID completeness ledger, and safe relative-path download workflow. Downloads stay read/not_required and any failure preserves messages while setting complete=false."
             }
           ]
         },
@@ -9286,7 +9547,7 @@
       },
       "idempotency": "idempotent",
       "interface_mode": "composite",
-      "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+      "interface_reason": "Reviewed exact-ID message reader: it validates and de-duplicates up to 50 IDs, projects them through the shared additive im.message-list.v1 builder, accounts for every missing ID, and optionally downloads resources with task-level failure accounting.",
       "reviewed": true,
       "risk": "low",
       "source_refs": [
@@ -9816,34 +10077,33 @@
         "当你想知道自己发出的某条消息有哪些人已读/未读时使用；只读，需传会话 openConversationId 和该消息 openMessageId，可指定目标成员列表。"
       ]
     },
-    "chat +messages-send": {
-      "agent_summary": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+    "chat +messages-reply": {
+      "agent_summary": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
-        "需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"
+        "要在话题 Thread 内新增回复、用 bot 身份回复、发送富媒体或卡片时不要使用；当前入口只实现普通引用回复，不猜测不存在的 Thread writer"
       ],
       "confirmation": "user_required",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
-        "dws chat +messages-send --as user --chat-id \u003copenConversationId\u003e --markdown \"## 周报\" --idempotency-key \u003ckey\u003e",
-        "dws chat +messages-send --as user --user \u003cuserId\u003e --msg-type file --file ./report.pdf"
+        "dws chat +messages-reply --conversation-id \u003copenConversationId\u003e --message-id \u003copenMessageId\u003e --text \"收到\" --idempotency-key \u003ckey\u003e"
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+          "value": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media.",
+          "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing.",
           "candidates": [
             {
-              "value": "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+              "value": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media."
+              "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing."
             }
           ]
         },
@@ -9852,34 +10112,34 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             }
           ]
         },
         "avoid_when": {
           "value": [
-            "需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"
+            "要在话题 Thread 内新增回复、用 bot 身份回复、发送富媒体或卡片时不要使用；当前入口只实现普通引用回复，不猜测不存在的 Thread writer"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media.",
+          "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing.",
           "candidates": [
             {
               "value": [
-                "需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"
+                "要在话题 Thread 内新增回复、用 bot 身份回复、发送富媒体或卡片时不要使用；当前入口只实现普通引用回复，不猜测不存在的 Thread writer"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media."
+              "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing."
             }
           ]
         },
@@ -9888,20 +10148,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
-            },
-            {
-              "value": "not_required",
-              "source": "risk-default",
-              "precedence": "inference_or_default",
-              "selected": false
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             }
           ]
         },
@@ -9910,42 +10164,34 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": "write",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
-            },
-            {
-              "value": "write",
-              "source": "command-verb",
-              "precedence": "inference_or_default",
-              "selected": false
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             }
           ]
         },
         "examples": {
           "value": [
-            "dws chat +messages-send --as user --chat-id \u003copenConversationId\u003e --markdown \"## 周报\" --idempotency-key \u003ckey\u003e",
-            "dws chat +messages-send --as user --user \u003cuserId\u003e --msg-type file --file ./report.pdf"
+            "dws chat +messages-reply --conversation-id \u003copenConversationId\u003e --message-id \u003copenMessageId\u003e --text \"收到\" --idempotency-key \u003ckey\u003e"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media.",
+          "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing.",
           "candidates": [
             {
               "value": [
-                "dws chat +messages-send --as user --chat-id \u003copenConversationId\u003e --markdown \"## 周报\" --idempotency-key \u003ckey\u003e",
-                "dws chat +messages-send --as user --user \u003cuserId\u003e --msg-type file --file ./report.pdf"
+                "dws chat +messages-reply --conversation-id \u003copenConversationId\u003e --message-id \u003copenMessageId\u003e --text \"收到\" --idempotency-key \u003ckey\u003e"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media."
+              "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing."
             }
           ]
         },
@@ -9954,20 +10200,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": "unknown",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
-            },
-            {
-              "value": "unknown",
-              "source": "effect-default",
-              "precedence": "inference_or_default",
-              "selected": false
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             }
           ]
         },
@@ -9976,30 +10216,30 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             }
           ]
         },
         "interface_reason": {
-          "value": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
+          "value": "Reviewed quote-reply adapter: it resolves or reads the referenced sender before one personal-message write, constructs DingTalk's reply content, and enriches the successful response with stable continuation context while preserving the lower payload.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
-              "value": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
+              "value": "Reviewed quote-reply adapter: it resolves or reads the referenced sender before one personal-message write, constructs DingTalk's reply content, and enriches the successful response with stable continuation context while preserving the lower payload.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             }
           ]
         },
@@ -10024,21 +10264,21 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
             },
             {
               "value": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media."
+              "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing."
             }
           ]
         },
@@ -10047,14 +10287,293 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists.",
+          "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists.",
           "candidates": [
             {
               "value": "medium",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against every executable identity/content/target validation branch, authenticated contact-search response shape, and the real lower tool mappings; bot and webhook media are intentionally rejected because no equivalent lower capability exists."
+              "review_reason": "Reviewed against explicit/open identity resolution, exact referenced-message lookup, no-write dry-run behavior, optional idempotency key, single send_personal_message write, and additive im.message-reply.v1 result fields. Thread reply is intentionally not advertised because no verified writer exists."
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。"
+          ],
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing.",
+          "candidates": [
+            {
+              "value": [
+                "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。"
+              ],
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified pre-write sender lookup, plain-text quote contract, dry-run no-write behavior, optional idempotency, additive continuation DTO, and explicit exclusion of unverified Thread writing."
+            }
+          ]
+        }
+      },
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed quote-reply adapter: it resolves or reads the referenced sender before one personal-message write, constructs DingTalk's reply content, and enriches the successful response with stable continuation context while preserving the lower payload.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "ShortcutRegistry:chat +messages-reply",
+        "cobra-help:dws chat +messages-reply",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_reply",
+        "internal/cli/schema_hints/metadata/chat.json",
+        "internal/cli/schema_hints/selection/chat.json"
+      ],
+      "use_when": [
+        "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。"
+      ]
+    },
+    "chat +messages-send": {
+      "agent_summary": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+      "agent_summary_source": "dws-agent-selection/chat",
+      "availability": "available",
+      "avoid_when": [
+        "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws chat +messages-send --as user --chat-id \u003copenConversationId\u003e --markdown \"## 周报\" --idempotency-key \u003ckey\u003e",
+        "dws chat +messages-send --as user --user \u003cuserId\u003e --msg-type file --file ./report.pdf"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media.",
+          "candidates": [
+            {
+              "value": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media."
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
+          ],
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media.",
+          "candidates": [
+            {
+              "value": [
+                "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
+              ],
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media."
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            },
+            {
+              "value": "write",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws chat +messages-send --as user --chat-id \u003copenConversationId\u003e --markdown \"## 周报\" --idempotency-key \u003ckey\u003e",
+            "dws chat +messages-send --as user --user \u003cuserId\u003e --msg-type file --file ./report.pdf"
+          ],
+          "source": "internal/cli/schema_hints/selection/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media.",
+          "candidates": [
+            {
+              "value": [
+                "dws chat +messages-send --as user --chat-id \u003copenConversationId\u003e --markdown \"## 周报\" --idempotency-key \u003ckey\u003e",
+                "dws chat +messages-send --as user --user \u003cuserId\u003e --msg-type file --file ./report.pdf"
+              ],
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media."
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "unknown",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "unknown",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            },
+            {
+              "value": "unknown",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports deterministic user/chat query resolution, live-compatible exact userId conversion, mediaId images, and the native init/upload/commit local-file flow.",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports deterministic user/chat query resolution, live-compatible exact userId conversion, mediaId images, and the native init/upload/commit local-file flow.",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media."
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/chat.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/chat.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Reviewed against every executable identity/content/target validation branch, structured ambiguity handling, dry-run resolution parity, authenticated contact/group search response shapes, and the real lower tool mappings; bot and webhook natural targets or media are intentionally rejected because no equivalent contract exists."
             },
             {
               "value": "medium",
@@ -10066,28 +10585,28 @@
         },
         "use_when": {
           "value": [
-            "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+            "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media.",
+          "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media.",
           "candidates": [
             {
               "value": [
-                "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+                "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified identity/content capability matrix, live-compatible contact search with exact userId matching, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook media."
+              "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media."
             }
           ]
         }
       },
       "idempotency": "unknown",
       "interface_mode": "composite",
-      "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
+      "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports deterministic user/chat query resolution, live-compatible exact userId conversion, mediaId images, and the native init/upload/commit local-file flow.",
       "reviewed": true,
       "risk": "medium",
       "source_refs": [
@@ -10099,7 +10618,7 @@
         "skills/mono/references/intent-guide.md"
       ],
       "use_when": [
-        "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"
+        "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
       ]
     },
     "chat +messages-send-by-webhook": {
@@ -11141,7 +11660,7 @@
       ]
     },
     "chat +search-msg": {
-      "agent_summary": "多维搜索消息，可全量翻页并批量富化详情",
+      "agent_summary": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -11156,18 +11675,18 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "多维搜索消息，可全量翻页并批量富化详情",
+          "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
-              "value": "多维搜索消息，可全量翻页并批量富化详情",
+              "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -11176,14 +11695,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
@@ -11194,7 +11713,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
               "value": [
@@ -11203,7 +11722,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -11212,14 +11731,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": "not_required",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
@@ -11228,14 +11747,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": "read",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
@@ -11247,7 +11766,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
               "value": [
@@ -11257,7 +11776,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -11266,14 +11785,14 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": "idempotent",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
@@ -11282,30 +11801,30 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": "composite",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
         "interface_reason": {
-          "value": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
+          "value": "Reviewed search adapter: it batch-resolves natural group and sender queries before search, combines resolved stable IDs with explicit filters, cursor pagination and batched mget enrichment, projects im.message-list.v1, and folds search/enrichment/resource failures into completeness accounting.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
-              "value": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
+              "value": "Reviewed search adapter: it batch-resolves natural group and sender queries before search, combines resolved stable IDs with explicit filters, cursor pagination and batched mget enrichment, projects im.message-list.v1, and folds search/enrichment/resource failures into completeness accounting.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
@@ -11330,21 +11849,21 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             },
             {
               "value": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -11353,41 +11872,41 @@
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
+          "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
               "value": "low",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Reviewed against the executable advanced-search flags plus page and enrichment ledgers. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
+              "review_reason": "Reviewed against the executable advanced-search flags, all-or-nothing structured target resolution, and page/enrichment ledgers. Any unresolved or ambiguous query prevents the search call; optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op."
             }
           ]
         },
         "use_when": {
           "value": [
-            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
               "value": [
-                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         }
       },
       "idempotency": "idempotent",
       "interface_mode": "composite",
-      "interface_reason": "Reviewed search adapter: it combines filters, cursor pagination, batched mget enrichment, stable projection, completeness accounting, and optional safe resource downloads.",
+      "interface_reason": "Reviewed search adapter: it batch-resolves natural group and sender queries before search, combines resolved stable IDs with explicit filters, cursor pagination and batched mget enrichment, projects im.message-list.v1, and folds search/enrichment/resource failures into completeness accounting.",
       "reviewed": true,
       "risk": "low",
       "source_refs": [
@@ -11399,7 +11918,7 @@
         "skills/mono/references/intent-guide.md"
       ],
       "use_when": [
-        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
+        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat +send-to-group": {
@@ -11814,14 +12333,14 @@
           ]
         },
         "interface_reason": {
-          "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
+          "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects the shared additive im.message-list.v1 fields with proof-oriented pagination, and optionally downloads reply resources whose failures fold into task completeness.",
           "source": "internal/cli/schema_hints/metadata/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "Reviewed against the executable thread/topic alias contract and real list_topic_replies mapping. Optional downloads stay read/not_required under the existing safe local-download convention and therefore do not create a non-interactive confirmation no-op.",
           "candidates": [
             {
-              "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
+              "value": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects the shared additive im.message-list.v1 fields with proof-oriented pagination, and optionally downloads reply resources whose failures fold into task completeness.",
               "source": "internal/cli/schema_hints/metadata/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -11907,7 +12426,7 @@
       },
       "idempotency": "idempotent",
       "interface_mode": "composite",
-      "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects stable message fields, and optionally downloads reply resources safely.",
+      "interface_reason": "Reviewed thread reader adapter: it accepts threadId/topicId, reads lower topic replies, projects the shared additive im.message-list.v1 fields with proof-oriented pagination, and optionally downloads reply resources whose failures fold into task completeness.",
       "reviewed": true,
       "risk": "low",
       "source_refs": [
