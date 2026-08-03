@@ -243,10 +243,9 @@ func runtimeToolSpecAllowingLegacy(entry runtimeSchemaEntry, metadata runtimeSch
 
 // runtimeToolSpecFromContractFinal pass-throughs Contract-authored Schema fields.
 // Declared values are the final data source; hints/registry text does not merge.
-// Pinned MCP parameter metadata still participates in parameter resolution:
-// interface_type and interface-side required are interface facts the CLI
-// declaration does not own, and dropping them is a published-Schema
-// compatibility break, not a declaration takeover.
+// Production MCP pin is empty; interface_type / interface_* facts come from
+// ParamDecl / native annotations. Optional fixture maps may still participate
+// via pinnedMCPMetadataForEntryFrom for tests.
 func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)

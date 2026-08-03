@@ -6,7 +6,7 @@ DWS Schema 是当前二进制公开 CLI 的版本化 Agent 执行契约。它描
 
 设计遵循三条硬规则：
 
-1. **Schema 描述 CLI，不制造 CLI。** `CommandRegistry`、ProductDecl / leaf `Contract`、metadata 和 Catalog 都不能凭空创建 Cobra 命令或 flag；registry 中的每个路径都必须精确绑定真实 runnable Cobra leaf。**`schema_mcp_metadata` 同样不得生成 CLI flag**——它只提供 interface 事实（见 §4.1 同源决策）。
+1. **Schema 描述 CLI，不制造 CLI。** `CommandRegistry`、ProductDecl / leaf `Contract`、metadata 和 Catalog 都不能凭空创建 Cobra 命令或 flag；registry 中的每个路径都必须精确绑定真实 runnable Cobra leaf。interface 事实由 leaf `Contract` / `ParamDecl` 声明（`schema_mcp_metadata` 已退役），**不得**从 MCP meta 生成 CLI flag（见 §4.1 同源决策）。
 2. **所有来源只解析一次。** 来源经过统一 resolver 进入 typed `SchemaRegistry`，所有查询、导出和门禁都消费同一个 `SchemaRegistry/SchemaIndex`。
 3. **Registry-first，Catalog 只出不进。** reviewed `CommandRegistry` 是稳定 command identity/navigation 的唯一事实源；production 通过 `RegisterSchemaSourceRoot` → `ResolveSchemaBuild` 组装 `SchemaRegistry`，并从它投影 ToolSpec wire 与 `ResolveMeta`。`cmd_schema_catalog` 只能生成 CI/local dump，`internal/cli/schema_catalog/`、`schema_meta_index.gob` 和 `schema_meta_index.json` 不得提交或成为运行时来源。`schema_agent_metadata/` / `schema_hints/` 已退役；若存在则 policy 失败。生产 Agent selection / safety / interface 权威为 leaf `ContractFinal` 与 `ProductDecl`；`agent_metadata_inject.go` / `InstallBuildTimeAgentMetadataJSON` 仅作 `cmd_schema_catalog` CI/local dump 辅助，不得作为生产权威。
 
@@ -36,7 +36,7 @@ live Cobra flag facts / typed parameter metadata
   + leaf Contract (Safety / ContractDecl / ParamDecl → contract_final)
   + ProductDecl (product routing prose; production Agent authority)
   + schema_parameter_mapping_ledger.go (reviewed mapping exclusions / removals)
-  + schema_mcp_metadata.json          (pinned, sanitized interface facts)
+  + leaf Contract.Interface / ParamDecl (declared interface facts)
   + skills/mono Markdown              (evidence only; not concatenated)
                          |
                          v
@@ -119,7 +119,7 @@ DWS 当前对外仍保留兼容 wire：leaf 使用 flat `parameters`，安全和
 | native Schema identity annotations | implementation-side consistency evidence；存在时必须与 `EffectiveCommandRegistry` 精确一致 | 提供、补全、推断或覆盖 identity |
 | typed parameter metadata / constraints | 由 Contract 约束投影而来的 `require_one_of` / 互斥等；以及仍需 reviewed 的 `required_when` 等 | 命令 identity |
 | `schema_parameter_mapping_ledger.go` | CLI flag 无直接 RPC property 的 exclusions / removals | 命令发现、risk 推断、创建 CLI flag；property 交付归 ParamDecl.Property |
-| `schema_mcp_metadata.json` | pinned RPC identity、接口描述和脱敏参数事实（interface 同源） | CLI identity、运行时路由、**创建 CLI flag**、risk 推断 |
+| leaf `Contract.Interface` / `ParamDecl` | 声明的 RPC identity 与 interface_* 事实（`schema_mcp_metadata.json` 已退役） | CLI identity、运行时路由、**创建 CLI flag**、risk 推断 |
 | ProductDecl + leaf `Contract.Selection` | reviewed selection / product routing prose（`contract_final`） | 创建 Cobra 命令或参数、改写 safety；`schema_hints/` 已退役 |
 | Skills/Markdown | 产品路由、工作流和使用建议 | 命令存在性和 flag 事实 |
 | `cmd_schema_catalog` CI/local dump（可选 `schema_catalog/` / meta-index） | resolved registry 的兼容序列化快照，仅供 jq/determinism；不得提交为 runtime 来源 | production delivery、`ResolveMeta` 权威、identity fallback、手工修复源 |
@@ -310,7 +310,7 @@ go test ./internal/cli ./internal/app ./internal/generator/... -count=1
 - 运行时调用 MCP `tools/list` 或访问网络生成 Schema。
 - 从 `schema_catalog/` 等生成 JSON 反向创建/补齐 Cobra leaf、flag、CommandRegistry 或下一轮 Catalog。
 - 重新引入 `schema_agent_metadata/`（或 audit JSON）作为交付物、`go:embed` 目标，或把它写回 `go:generate` 入口。
-- 从 `schema_mcp_metadata` **生成或补齐** LeafSpec/Shortcut 主路径的 CLI flag（interface overlay 除外）；未满足同源文档 §5 准入条件时启用「MCP 透传生成通道」。
+- 从 MCP meta / 已退役的 `schema_mcp_metadata` **生成或补齐** LeafSpec/Shortcut 主路径的 CLI flag（interface overlay 除外）；未满足同源文档 §5 准入条件时启用「MCP 透传生成通道」。
 - 把 native annotation、legacy registry 或 Catalog 当作 identity fallback；或在 `EffectiveCommandRegistry` 之后再次选择 identity winner。
 - renderer、query 或 gate 在 `SchemaRegistry` 之后重新读取 source 并做第二次 merge。
 - 用 prefix/wildcard exclusion 隐藏未来命令。

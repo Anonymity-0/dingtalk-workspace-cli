@@ -11,7 +11,7 @@
 
 v5.1 的变更：
 
-- **flag / help / schema 同源**已拍板为路径 A：Contract / LeafSpec 为 CLI 表面权威，且 **必须经 cobra 注解嵌入 Schema 生成物**（`dws.schema.contract` / property / type / required / constraints / 显式 `dws.schema.risk`）。`schema_mcp_metadata` 只做 interface 同源，不得生成 flag。身份/selection 继续评审源。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md)。
+- **flag / help / schema 同源**已拍板为路径 A：Contract / LeafSpec 为 CLI 表面权威，且 **必须经 cobra 注解嵌入 Schema 生成物**（`dws.schema.contract` / property / type / required / constraints / 显式 `dws.schema.risk`）。interface 事实由 leaf `Contract.Interface` / `ParamDecl` 声明（`schema_mcp_metadata` 已退役），不得从 MCP meta 生成 flag。身份/selection 继续评审源。见 [`flag-help-schema-homology.md`](flag-help-schema-homology.md)。
 
 v5 的变更，全部来自第二轮独立评审并经过代码级复核。它们修的是 v4 自己引入的规范矛盾，因此逐条列出而不是折进正文：
 
@@ -353,7 +353,7 @@ Definition（仅声明；不可编译）
 | | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
 | | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍手工 annotate；目标进 Contract / reviewed 约束（`schema_hints/` 已退役） | 有则须 declare 或 reviewed annotate |
-| | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + ParamDecl / mapping ledger exclusions | 否；**不得创建 CLI flag**（`HOM-I1`） |
+| | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | ParamDecl / mapping ledger exclusions（`schema_mcp_metadata` 已退役） | 否；**不得创建 CLI flag**（`HOM-I1`） |
 | **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
 | **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
 | **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `contract.SafetySpec`）**或标注**（`runtime_gate`） | `Safety` / `AnnotateRuntimeGate`（metadata 壳 `tools: {}`，不再承载 reviewed Safety） | 四字段独立；confirmation 单独驱动运行时 |

@@ -1,15 +1,16 @@
 // Command fetch_mcp_metadata pulls tools/list from ALL live MCP server endpoints
-// and writes a refreshed schema_mcp_metadata.json. This is DWS's equivalent of
-// lark-cli's scripts/fetch_meta.py.
+// and writes a local diagnostic dump. It is NOT a Schema delivery refresh:
+// schema_mcp_metadata.json is retired; production Catalog assembles from
+// Contract/ParamDecl/Interface + Cobra only.
 //
 // Usage:
 //
 //	dws auth login                     # ensure valid auth
-//	make fetch-mcp-metadata             # runs this tool
+//	make fetch-mcp-metadata             # writes artifacts/mcp_metadata_diagnostic.json
 //
-// The tool loads auth from the DWS keychain, iterates all 26 static server
-// endpoints (internal/syncdata.StaticServers), calls tools/list on each,
-// merges results, and writes schema_mcp_metadata.json.
+// The tool loads auth from the DWS keychain, iterates static server endpoints
+// (internal/syncdata.StaticServers), calls tools/list on each, merges results,
+// and writes the requested -output path (refuses the retired pin path).
 package main
 
 import (
@@ -58,8 +59,12 @@ func main() {
 func run(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("fetch_mcp_metadata", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	output := flags.String("output", "internal/cli/schema_mcp_metadata.json", "output file path")
+	output := flags.String("output", "artifacts/mcp_metadata_diagnostic.json", "diagnostic dump path (not a Schema pin)")
 	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if retiredPinnedMCPMetadataPath(*output) {
+		fmt.Fprintln(stderr, "fetch_mcp_metadata: refusing to write retired Schema pin internal/cli/schema_mcp_metadata.json")
 		return 2
 	}
 
@@ -79,7 +84,7 @@ func run(args []string, stderr io.Writer) int {
 	registryMap := loadRegistryInterfaceRefs(stderr)
 	fmt.Fprintf(stderr, "fetch_mcp_metadata: registry mapping: %d entries\n", len(registryMap))
 
-	// Load the previous schema_mcp_metadata.json to preserve hand-curated
+	// Load a previous diagnostic dump (if any) to preserve hand-curated
 	// cross-server interface_ref mappings that automated matching can't derive.
 	prevData, prevErr := os.ReadFile(*output)
 	prevTools := map[string]map[string]any{}
@@ -348,8 +353,14 @@ func loadRegistryInterfaceRefs(stderr io.Writer) map[string]map[string]string {
 	return refs
 }
 
+func retiredPinnedMCPMetadataPath(path string) bool {
+	cleaned := strings.ReplaceAll(strings.TrimSpace(path), "\\", "/")
+	return cleaned == "internal/cli/schema_mcp_metadata.json" ||
+		strings.HasSuffix(cleaned, "/internal/cli/schema_mcp_metadata.json")
+}
+
 // extractParams converts a JSON Schema inputSchema (from MCP tools/list) into
-// the flat param-name → metadata map used by schema_mcp_metadata.json.
+// the flat param-name → metadata map used by diagnostic dumps.
 func extractParams(inputSchema map[string]any) map[string]map[string]any {
 	if inputSchema == nil {
 		return nil

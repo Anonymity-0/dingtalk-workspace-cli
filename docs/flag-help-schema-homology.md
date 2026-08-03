@@ -52,7 +52,7 @@ command/Leaf 不再写 `dws.schema.risk`；SafetySpec 走类型化 Final 载荷�
 
 迁移期未迁完的叶子可暂走旧组装路径；**新声明面不含 review_reason / reviewed 字段**。写命令未设 `Safety` 时，过渡期仍可用 `runtime_gate` annotate（`HOM-S2`）。
 
-**不采用**路径 B（以 `schema_mcp_metadata` 生成全部 CLI flag/help/schema）作为主权威。钉钉 MCP meta 不是飞书 OAPI：粒度与 CLI 特有语义（二选一、OmitEmpty、ConstParams、write guard）无法从裸 meta 推出；强行生成会违反「Schema 描述 CLI，不制造 CLI」。
+**不采用**路径 B（以 MCP meta / 已退役的 `schema_mcp_metadata` 生成全部 CLI flag/help/schema）作为主权威。钉钉 MCP meta 不是飞书 OAPI：粒度与 CLI 特有语义（二选一、OmitEmpty、ConstParams、write guard）无法从裸 meta 推出；强行生成会违反「Schema 描述 CLI，不制造 CLI」。
 
 路径 B 仅允许作为 **可选的 1:1 MCP 透传叶子通道**（见 §5），不得覆盖 LeafSpec / Shortcut 主路径。
 
@@ -186,7 +186,7 @@ NewLeafCommand(LeafSpec{
 | ConstParams、Bind、OmitEmpty、Transform | 同上（载荷声明，不上 flag 表） | toolArgs；Schema 不把 ConstParams 伪装成用户 flag |
 | canonical path / aliases / navigation / exposure | `schema_command_registry`（+ reviewed manual additions） | Schema identity |
 | use_when / avoid_when / examples / agent_summary 文案 | `ContractDecl.Selection` / `ProductDecl` | Schema selection |
-| RPC tool 形状、`interface_ref`、interface 描述 | `schema_mcp_metadata` + leaf `ParamDecl.Property`（`schema_parameter_mapping_ledger.go` 仅 mapping_exclusions / removals） | Schema `interface_*` 字段；**不得创建 flag** |
+| RPC tool 形状、`interface_ref`、interface 描述 | leaf `Contract.Interface` + `ParamDecl`（`schema_parameter_mapping_ledger.go` 仅 mapping_exclusions / removals；`schema_mcp_metadata` 已退役） | Schema `interface_*` 字段；**不得创建 flag** |
 | 参数描述 overlay（可选） | 生产 metadata 壳为空；参数事实走 ParamDecl / FlagSpec | **Contract/cobra 胜** |
 | 遗留 Safety 文案（迁移期） | 生产 metadata 壳为空；Safety 走 Contract | 以 Contract.Safety / runtime_gate 为准（见 §4） |
 | dry-run 正能力 | reviewed dry-run registry | Schema `dry_run` |

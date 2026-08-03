@@ -184,9 +184,8 @@ func GenerateFromCommandRoot(rootPath string, commandRoot *cobra.Command, opts O
 		opts.IntentGuidePath = "skills/mono/references/intent-guide.md"
 	}
 	// HintsDir must stay empty: schema_hints/ is retired and non-empty values fail closed.
-	if strings.TrimSpace(opts.InterfaceMetadataPath) == "" {
-		opts.InterfaceMetadataPath = "internal/cli/schema_mcp_metadata.json"
-	}
+	// InterfaceMetadataPath is optional diagnostic input only. The committed
+	// schema_mcp_metadata.json pin is retired; leave empty to skip fallback.
 	if opts.MaxExamples <= 0 {
 		opts.MaxExamples = 2
 	}

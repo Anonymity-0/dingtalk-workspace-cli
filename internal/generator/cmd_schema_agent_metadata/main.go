@@ -74,7 +74,7 @@ func main() {
 	// (historical CLI compatibility). Non-empty values are rejected below;
 	// do not remove the flag or silently ignore it.
 	flag.StringVar(&hintsDir, "hints", "", "Retired; rejected when set. Declare ProductDecl/ContractFinal selection instead of schema_hints/")
-	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "internal/cli/schema_mcp_metadata.json", "Sanitized versioned MCP metadata used only for fallback Agent summaries")
+	flag.StringVar(&interfaceMetadataPath, "interface-metadata", "", "Optional diagnostic MCP dump for fallback Agent summaries (retired pin path refused)")
 	flag.StringVar(&outputPath, "output", "", "Optional diagnostic single-file Agent metadata JSON (not a Catalog input)")
 	flag.StringVar(&outputDir, "output-dir", "", "Optional diagnostic split Agent metadata directory (not a Catalog input; Catalog injects in-memory)")
 	flag.StringVar(&auditOutputPath, "audit-output", "", "Optional output path for build-time source and CommandRegistry diagnostics")
@@ -105,13 +105,15 @@ func main() {
 		{Name: "canonical main Skill input", Path: "skills/mono/SKILL.md"},
 		{Name: "canonical product Skill input directory", Path: "skills/mono/references/products"},
 		{Name: "canonical intent guide input", Path: "skills/mono/references/intent-guide.md"},
-		{Name: "canonical pinned interface metadata input", Path: "internal/cli/schema_mcp_metadata.json"},
 		{Name: "main Skill input", Path: skillPath},
 		{Name: "product Skill input directory", Path: productsDir},
 		{Name: "intent guide input", Path: intentGuidePath},
 	}
 	if strings.TrimSpace(interfaceMetadataPath) != "" {
-		protectedInputs = append(protectedInputs, outputguard.Input{Name: "pinned interface metadata input", Path: interfaceMetadataPath})
+		if strings.HasSuffix(strings.ReplaceAll(interfaceMetadataPath, "\\", "/"), "internal/cli/schema_mcp_metadata.json") {
+			fail(fmt.Errorf("-interface-metadata refuses retired Schema pin internal/cli/schema_mcp_metadata.json"))
+		}
+		protectedInputs = append(protectedInputs, outputguard.Input{Name: "diagnostic interface metadata input", Path: interfaceMetadataPath})
 	}
 	if err := validateMetadataIsolation(root, protectedInputs, outputPath, outputDir, auditOutputPath); err != nil {
 		fail(err)

@@ -2023,7 +2023,7 @@ func newChatCommand() *cobra.Command {
 				Examples:     []string{"dws chat message send --group <openConversationId> \"项目已更新\""},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "ai-tag", Property: "clawType"},
+				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds"},
 				{Name: "group", Property: "openConversationId"},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
@@ -5351,7 +5351,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text \"收到\""},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "ai-tag", Property: "clawType"},
+				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
 				{Name: "conversation-id", Property: "openConversationId"},
 			},
 		},

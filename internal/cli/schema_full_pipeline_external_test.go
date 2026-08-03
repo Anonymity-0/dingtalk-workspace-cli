@@ -87,8 +87,8 @@ func TestCrossPlatformCoverageProductionSchemaSourcePipeline(t *testing.T) {
 // TestCrossPlatformCoverageAssembleSchemaCatalogFromRootAndMaterialize covers
 // the production RegisterSchemaSourceRoot → assembleSchemaCatalogFromRoot
 // success path, content source_hash / catalog_hash, lazy materialize, and the
-// seven MCP-remapped interface_type fields that Policy / Interface Integrity
-// require.
+// ParamDecl-declared interface_type remaps that used to come from the retired
+// MCP pin.
 func TestCrossPlatformCoverageAssembleSchemaCatalogFromRootAndMaterialize(t *testing.T) {
 	cli.InstallProductionSchemaAssemblyForTest(func() *cobra.Command {
 		return app.NewSchemaSourceRootCommand()

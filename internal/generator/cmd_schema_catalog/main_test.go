@@ -56,7 +56,7 @@ func TestCrossPlatformCoverageCatalogMainReportsIsolationAndGenerationFailures(t
 		}()
 		main()
 	}
-	invoke("-root", repositoryRoot, "-output", filepath.Join(repositoryRoot, "internal/cli/schema_mcp_metadata.json"))
+	invoke("-root", repositoryRoot, "-output", filepath.Join(repositoryRoot, "internal/cli/param_concepts.json"))
 	validateCatalogParameterBindings = func() error { return errors.New("bindings") }
 	invoke("-root", repositoryRoot, "-output", filepath.Join(t.TempDir(), "catalog.json"))
 }
@@ -260,7 +260,7 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 	files := []string{
 		"skills/mono/SKILL.md",
 		"skills/mono/references/intent-guide.md",
-		"internal/cli/schema_mcp_metadata.json",
+		"internal/cli/param_concepts.json",
 		"internal/cli/schema_parameter_mapping_ledger.go",
 		"internal/cli/schema_command_exclusions.go",
 	}
@@ -273,7 +273,7 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 			t.Fatal(err)
 		}
 	}
-	metadataDir := filepath.Join(root, "internal/cli/schema_mcp_metadata.json")
+	conceptsPath := filepath.Join(root, "internal/cli/param_concepts.json")
 	for _, relative := range []string{"skills/mono/references/products"} {
 		if err := os.MkdirAll(filepath.Join(root, relative), 0o755); err != nil {
 			t.Fatal(err)
@@ -285,7 +285,7 @@ func TestCrossPlatformCoverageValidateCatalogOutputIsolationProtectsEveryInputLa
 		output string
 		want   string
 	}{
-		{name: "mcp metadata", output: metadataDir, want: "pinned MCP metadata"},
+		{name: "param concepts", output: conceptsPath, want: "reviewed param concepts"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := validateCatalogOutputIsolation(root, test.output, filepath.Join(t.TempDir(), "schema_meta_index.gob"))

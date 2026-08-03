@@ -23,14 +23,15 @@
 //   1. leaf ContractFinal.Identity         identity (canonical/aliases/navigation),
 //                                          collected from the live Cobra tree
 //   2. contract.ProductDecl + leaf ContractFinal    Agent routing / selection prose
-//   3. schema_mcp_metadata.json            MCP server tool definitions
-//   4. schema_parameter_mapping_ledger.go  mapping exclusions / removals (Go)
+//                                          (Interface / ParamDecl own interface facts)
+//   3. schema_parameter_mapping_ledger.go  mapping exclusions / removals (Go)
 //                                         (active bindings retired; ParamDecl.Property owns delivery)
-//   5. param_concepts.json + schema       reviewed parameter synonym policy
-//   6. cobra command tree (Go runtime)     flags/usage/required (reflected)
+//   4. param_concepts.json + schema       reviewed parameter synonym policy
+//   5. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //
-// schema_hints/, schema_agent_metadata/, schema_command_registry/, and
-// schema_mcp_service_review(.json|/ledger) are retired.
+// schema_hints/, schema_agent_metadata/, schema_command_registry/,
+// schema_mcp_metadata.json, and schema_mcp_service_review(.json|/ledger) are
+// retired.
 //
 // Remaining generated output from this file:
 //   - param_aliases_generated.go           per-command parameter normalization

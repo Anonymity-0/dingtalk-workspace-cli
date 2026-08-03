@@ -15,7 +15,6 @@ package cli
 
 import (
 	"bytes"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -30,9 +29,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
-
-//go:embed schema_mcp_metadata.json
-var embeddedMCPMetadataJSON []byte
 
 const (
 	// Annotation keys are owned by runtimeannotate; aliases keep assembly readers stable.
@@ -120,24 +116,21 @@ func RegisterRuntimeSchemaConstraints(canonicalPath string, constraints RuntimeS
 	runtimeSchemaConstraintsByCanonical[canonicalPath] = constraints
 }
 
-func loadPinnedMCPMetadata() embeddedMCPMetadata {
-	var metadata embeddedMCPMetadata
-	if err := json.Unmarshal(embeddedMCPMetadataJSON, &metadata); err != nil {
-		return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
-	}
-	if metadata.Tools == nil {
-		metadata.Tools = map[string]embeddedMCPToolMetadata{}
-	}
-	return metadata
+// emptyPinnedMCPMetadata returns the retired pin shape with no tools.
+// schema_mcp_metadata.json is deleted; production assembly does not embed or
+// load a pinned MCP snapshot. Test fixtures may still inject non-empty maps
+// through schemaRegistryForTestWithMetadata.
+func emptyPinnedMCPMetadata() embeddedMCPMetadata {
+	return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
 }
 
-// runtimeMCPMetadata parses the pinned interface snapshot only when Schema
-// assembly first requests it. Normal command construction and execution do
-// not cross this boundary.
+// runtimeMCPMetadata returns the empty production MCP pin. Kept as a lazy
+// once so SchemaMetadataLoadCounts still observes first Schema assembly touch
+// without reading any file.
 func runtimeMCPMetadata() embeddedMCPMetadata {
 	runtimePinnedMCPMetadataLazy.once.Do(func() {
 		runtimePinnedMCPMetadataLazyLoadCount.Add(1)
-		runtimePinnedMCPMetadataLazy.metadata = loadPinnedMCPMetadata()
+		runtimePinnedMCPMetadataLazy.metadata = emptyPinnedMCPMetadata()
 	})
 	return runtimePinnedMCPMetadataLazy.metadata
 }
@@ -289,9 +282,13 @@ func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtime
 }
 
 func pinnedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata agentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
-	// Production authority: ContractFinal Interface.Ref remaps CLI canonical
-	// names onto pinned MCP tool keys (e.g. reply_personal_message →
-	// chat.send_personal_message). Agent-metadata inject is CI-dump only.
+	// Optional test/diagnostic lookup only. Production mcpMetadata is empty;
+	// Contract/ParamDecl own interface facts. When a non-empty fixture is
+	// injected, ContractFinal Interface.Ref remaps CLI canonical names onto
+	// fixture keys (e.g. reply_personal_message → chat.send_personal_message).
+	if len(mcpMetadata.Tools) == 0 {
+		return embeddedMCPToolMetadata{}, false
+	}
 	if entry.Command != nil {
 		if final, ok := RuntimeContractFinal(entry.Command); ok && final.Interface != nil && final.Interface.Ref != nil {
 			if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, final.Interface.Ref.ProductID, final.Interface.Ref.RPCName); found {
@@ -437,11 +434,6 @@ func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runt
 	}
 	titleCandidates := []runtimeSchemaFieldCandidate{baseTitle}
 	descriptionCandidates := []runtimeSchemaFieldCandidate{baseDescription}
-	pinnedMeta, hasPinnedMeta := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
-	if hasPinnedMeta {
-		titleCandidates = append(titleCandidates, runtimeSchemaStringCandidate(pinnedMeta.Title, "mcp_metadata"))
-		descriptionCandidates = append(descriptionCandidates, runtimeSchemaStringCandidate(pinnedMeta.Description, "mcp_metadata"))
-	}
 	titleWinner, err := resolveRuntimeSchemaField("title", titleCandidates...)
 	if err != nil {
 		return "", "", "", nil, err
@@ -458,6 +450,8 @@ func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runt
 	}
 	switch selectedSource {
 	case "mcp_metadata", "pinned_mcp_metadata":
+		// Retained for fixture/diagnostic inject paths; production no longer
+		// nominates MCP text candidates.
 		metadataSource = ProvenanceEmbeddedMCPMetadata
 	case "cobra_help":
 		metadataSource = ""
@@ -813,30 +807,40 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 			return
 		}
 		property, _ := propertyWinner.Value.(string)
+		// pinnedParams remains for test fixtures that inject MCP-shaped maps;
+		// production assembly always passes an empty map (pin retired).
 		pinnedParam, hasPinnedParam := embeddedMCPParamMeta{}, false
-		if strings.TrimSpace(property) != "" {
+		if len(pinnedParams) > 0 && strings.TrimSpace(property) != "" {
 			pinnedParam, hasPinnedParam = lookupPinnedMCPParam(pinnedParams, property, flag.Name)
 		}
 		flagName := flag.Name
 
 		paramType := runtimeFlagCLIType(flag)
-		interfaceTypeWinner, err := resolveRuntimeSchemaField("interface_type",
+		interfaceTypeCandidates := []runtimeSchemaFieldCandidate{
 			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagTypeAnnotation), "native_annotation"),
-			runtimeSchemaStringCandidate(pinnedParam.Type, "mcp_metadata"),
+		}
+		if hasPinnedParam {
+			interfaceTypeCandidates = append(interfaceTypeCandidates, runtimeSchemaStringCandidate(pinnedParam.Type, "mcp_metadata"))
+		}
+		interfaceTypeCandidates = append(interfaceTypeCandidates,
 			runtimeSchemaStringCandidateAtRank(paramType, "cobra_flag_type", runtimeSchemaRankInference, "fallback"),
 		)
+		interfaceTypeWinner, err := resolveRuntimeSchemaField("interface_type", interfaceTypeCandidates...)
 		if err != nil {
 			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
 			return
 		}
 		interfaceType, _ := interfaceTypeWinner.Value.(string)
 
-		descriptionWinner, err := resolveRuntimeSchemaField("description",
+		descriptionCandidates := []runtimeSchemaFieldCandidate{
 			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagDescriptionAnnotation), "native_annotation"),
 			runtimeSchemaStringCandidate(flag.Usage, "cobra_usage"),
-			runtimeSchemaStringCandidate(pinnedParam.Description, "mcp_metadata"),
-			runtimeSchemaCandidate("", true, "default"),
-		)
+		}
+		if hasPinnedParam {
+			descriptionCandidates = append(descriptionCandidates, runtimeSchemaStringCandidate(pinnedParam.Description, "mcp_metadata"))
+		}
+		descriptionCandidates = append(descriptionCandidates, runtimeSchemaCandidate("", true, "default"))
+		descriptionWinner, err := resolveRuntimeSchemaField("description", descriptionCandidates...)
 		if err != nil {
 			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
 			return
@@ -853,10 +857,6 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 		if runtimeSchemaRequireOneOfContains(constraints, flag.Name, flagName, property) {
 			constraintRequired = runtimeSchemaCandidate(false, true, "require_one_of_constraint")
 		}
-		mcpRequired := runtimeSchemaFieldCandidate{}
-		if hasPinnedParam && pinnedParam.Required != nil {
-			mcpRequired = runtimeSchemaCandidate(*pinnedParam.Required, true, "mcp_metadata")
-		}
 		usageRequired := usageImpliesRequired(flag.Usage)
 		cobraDefaultOptional := (runtimeFlagDefault(flag) != "" || usageImpliesDefault(flag.Usage)) && !usageRequired
 		typedRequired := false
@@ -867,7 +867,7 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 			}
 		}
 		cobraHardRequired := runtimeFlagCobraHardRequired(flag)
-		requiredWinner, err := resolveRequiredProjection(cobraHardRequired,
+		requiredCandidates := []runtimeSchemaFieldCandidate{
 			constraintRequired,
 			runtimeSchemaCandidate(true, typedRequired, "typed_parameter_metadata"),
 			runtimeSchemaAnnotatedBoolCandidate(flag, runtimeSchemaFlagMetadataRequiredAnnotation, "typed_parameter_metadata"),
@@ -875,9 +875,12 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 			runtimeSchemaCandidate(true, cobraHardRequired, "cobra_hard_required"),
 			runtimeSchemaCandidate(false, cobraDefaultOptional, "cobra_nonzero_default"),
 			runtimeSchemaCandidate(usageRequired, usageRequired, "usage_required_inference"),
-			mcpRequired,
-			runtimeSchemaCandidate(false, true, "default"),
-		)
+		}
+		if hasPinnedParam && pinnedParam.Required != nil {
+			requiredCandidates = append(requiredCandidates, runtimeSchemaCandidate(*pinnedParam.Required, true, "mcp_metadata"))
+		}
+		requiredCandidates = append(requiredCandidates, runtimeSchemaCandidate(false, true, "default"))
+		requiredWinner, err := resolveRequiredProjection(cobraHardRequired, requiredCandidates...)
 		if err != nil {
 			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
 			return

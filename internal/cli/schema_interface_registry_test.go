@@ -51,8 +51,9 @@ func TestBuildInterfaceRegistryRejectsCanonicalConflict(t *testing.T) {
 }
 
 func TestRuntimeEmbeddedMCPMetadataBuildsInterfaceRegistry(t *testing.T) {
+	// Production pin is empty; empty Tools must build a valid empty registry.
 	if _, err := buildInterfaceRegistry(runtimeMCPMetadata().Tools); err != nil {
-		t.Fatalf("buildInterfaceRegistry(runtimeMCPMetadata().Tools) error = %v", err)
+		t.Fatalf("buildInterfaceRegistry(empty production MCP) error = %v", err)
 	}
 }
 

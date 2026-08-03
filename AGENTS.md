@@ -8,7 +8,7 @@ unrelated work, and use `gofmt` for every modified Go file.
 - Build: `make build` (wraps `scripts/dev/build.sh` → `go build -o dws ./cmd`; bare `go build ./cmd` fails because output name `cmd` collides with the directory)
 - Full test suite: `DWS_PACKAGE_VERSION=0.0.0-test go test ./...`
 - Param aliases generate: `go generate ./internal/cli` (entry point: `internal/cli/gen.go`; Catalog is not generated)
-- Refresh pinned MCP metadata: `make fetch-mcp-metadata` (requires `dws auth login`)
+- Optional diagnostic MCP dump (not a Schema pin): `make fetch-mcp-metadata` (requires `dws auth login`; writes under `artifacts/`)
 - Check generated drift + assembly determinism: `./scripts/policy/check-generated-drift.sh`
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
 - Coverage-gate test naming: tests that carry coverage for the macOS platform
@@ -97,10 +97,10 @@ The Schema data flow is one way:
 
 4. Agent and interface semantics
    ProductDecl + leaf ContractFinal Selection / Safety / Interface
-   + pinned MCP metadata
+   + contract.ParamDecl (interface_type / property)
    └─ resolves Agent metadata by source precedence
       Markdown is evidence only; it is not concatenated into final prose
-   └─ schema_hints/ is fully retired (must not reappear); not a leaf-fact source
+   └─ schema_hints/ and schema_mcp_metadata.json are fully retired
 
   5. One typed hub
    BoundCommandRegistry
@@ -129,7 +129,10 @@ substitutes. Keep them side-by-side; do **not** fold one into another:
 | Param concepts | `param_concepts.json` (+ `.schema.json`) | argv synonym / concept dictionary (reduced to `param_aliases_generated.go`) |
 | Exclusions | `schema_command_exclusions.go` | exact reviewed CLI paths excluded from Schema (non-empty reason) |
 | Mapping ledger | `schema_parameter_mapping_ledger.go` | `mapping_exclusions` / removals (CLI flags with no direct RPC property); active bindings JSON retired |
-| MCP pin | `schema_mcp_metadata.json` | pinned MCP tool-metadata baseline |
+
+`schema_mcp_metadata.json` is retired and must not reappear. Interface facts
+(`interface_ref`, `interface_type`, …) declare on leaf `Contract` /
+`contract.ParamDecl`.
 
 **Aliases are three distinct layers** (do not conflate):
 
@@ -169,11 +172,11 @@ records, or use a previous Catalog JSON as a source.
 - CI tool: `cmd_schema_catalog` dumps an assembled Catalog for jq/determinism;
   it is **not** a `//go:generate` or committed delivery step.
 - `gen.go` only generates `param_aliases_generated.go`.
-- Inputs: **reviewed inputs** (param_concepts / exclusions / bindings audit /
-  MCP pin — see table above) + ProductDecl/ContractFinal (identity is
-  collected from `ContractFinal.Identity`) + live Cobra tree.
-  `schema_hints/`, `schema_agent_metadata/`, and `schema_command_registry/`
-  must not reappear.
+- Inputs: **reviewed inputs** (param_concepts / exclusions / mapping ledger —
+  see table above) + ProductDecl/ContractFinal (identity is collected from
+  `ContractFinal.Identity`) + live Cobra tree.
+  `schema_hints/`, `schema_agent_metadata/`, `schema_command_registry/`, and
+  `schema_mcp_metadata.json` must not reappear.
 - Gates: `make generate-schema` (param aliases + assembly determinism),
   `check-generated-drift.sh`, `check-schema-catalog.sh`.
 
@@ -289,8 +292,9 @@ For every curated tool:
 
 ### Pull live MCP descriptions (personal token)
 
-Pinned `internal/cli/schema_mcp_metadata.json` is a sanitized baseline. Prefer
-live Schema from a logged-in personal session:
+Schema delivery no longer embeds a pinned MCP JSON. Prefer live Schema from a
+logged-in personal session when reviewing interface facts before declaring them
+on the leaf:
 
 ```bash
 dws auth status                 # token_valid should be true
@@ -299,12 +303,14 @@ dws schema <mcp-canonical> -f json
 # or CLI path: dws schema --cli-path "drive copy" -f json
 ```
 
-Resolve MCP identity via `interface_ref` when CLI canonical ≠ MCP path
+Resolve MCP identity via declared `interface_ref` when CLI canonical ≠ MCP path
 (example: CLI `drive.copy_document` → live `doc.copy_document`). On pull
-failure, fall back to Skill + Cobra Help + pinned MCP, and record evidence
+failure, fall back to Skill + Cobra Help, and record evidence
 (for example `live-dws-schema:<path>#FAILED`). Never print or commit tokens.
+`make fetch-mcp-metadata` writes an optional diagnostic dump under `artifacts/`
+only — do not commit it as a Schema pin.
 
-Precedence when sources disagree: **Runtime/Cobra > live MCP > pinned MCP >
+Precedence when sources disagree: **Runtime/Cobra / leaf Contract > live MCP >
 Skill (evidence only)**.
 
 ### Parallel product agents

@@ -34,9 +34,11 @@ func TestDeliveryCatalogMCPParameterMappingsAreComplete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runtimeSchemaParameterBindingData() error = %v", err)
 	}
+	// Pinned MCP metadata is retired. Audit declaration/exclusion structure
+	// only — no property∈pin resolution.
 	problems := auditSchemaParameterMappings(
 		loaded.Snapshot.Tools,
-		runtimeMCPMetadata(),
+		emptyPinnedMCPMetadata(),
 		bindings,
 	)
 	if len(problems) > 0 {
@@ -454,6 +456,7 @@ func TestSchemaParameterBindingActiveBindingsRemainEmpty(t *testing.T) {
 func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embeddedMCPMetadata, snapshot schemaParameterBindingSnapshot) []string {
 	flags := finalSchemaCatalogFlagIndex(tools)
 	problems := make([]string, 0)
+	pinAvailable := len(metadata.Tools) > 0
 
 	canonicals := make([]string, 0, len(tools))
 	for canonical := range tools {
@@ -480,6 +483,11 @@ func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embe
 			continue
 		}
 		if mode != contract.InterfaceModeMCP || availability != contract.InterfaceAvailable {
+			continue
+		}
+		if !pinAvailable {
+			// Production: no pin. Property authority is ParamDecl / exclusions;
+			// do not require property ∈ MCP parameter map.
 			continue
 		}
 		metadataKey, pinned, resolveProblems := pinnedMCPParameterMetadata(canonical, tool, metadata)
@@ -543,8 +551,8 @@ func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embe
 			// reviewed reason and omitted final property are the whole contract.
 			continue
 		case contract.InterfaceModeMCP:
-			if flag.availability != contract.InterfaceAvailable || len(flag.metadataParams) == 0 {
-				problems = append(problems, fmt.Sprintf("mapping_exclusions %q is not attached to an available pinned MCP parameter map", key))
+			if flag.availability != contract.InterfaceAvailable {
+				problems = append(problems, fmt.Sprintf("mapping_exclusions %q is not attached to an available mcp tool", key))
 				continue
 			}
 			directProperty := schemaExcludedDirectPropertyCandidate(flag.parameter)
@@ -553,8 +561,14 @@ func auditSchemaParameterMappings(tools map[string]map[string]any, metadata embe
 				problems = append(problems, fmt.Sprintf("mapping_exclusions %q has no lower-priority direct property candidate to review", key))
 				continue
 			}
-			if _, resolves := flag.metadataParams[root]; resolves {
-				problems = append(problems, fmt.Sprintf("mapping_exclusions %q is stale: candidate property %q already resolves to %s", key, directProperty, flag.metadataKey))
+			if pinAvailable {
+				if len(flag.metadataParams) == 0 {
+					problems = append(problems, fmt.Sprintf("mapping_exclusions %q is not attached to an available pinned MCP parameter map", key))
+					continue
+				}
+				if _, resolves := flag.metadataParams[root]; resolves {
+					problems = append(problems, fmt.Sprintf("mapping_exclusions %q is stale: candidate property %q already resolves to %s", key, directProperty, flag.metadataKey))
+				}
 			}
 		default:
 			problems = append(problems, fmt.Sprintf("mapping_exclusions %q is only valid for mcp, local, or composite tools", key))

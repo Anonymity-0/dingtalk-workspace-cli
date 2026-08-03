@@ -19,15 +19,11 @@ import (
 )
 
 func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T) {
-	originalJSON := embeddedMCPMetadataJSON
-	t.Cleanup(func() { embeddedMCPMetadataJSON = originalJSON })
-	embeddedMCPMetadataJSON = []byte("{")
-	if got := loadPinnedMCPMetadata(); got.Tools == nil || len(got.Tools) != 0 {
-		t.Fatalf("invalid embedded metadata = %#v", got)
+	if got := emptyPinnedMCPMetadata(); got.Tools == nil || len(got.Tools) != 0 {
+		t.Fatalf("empty pinned metadata = %#v", got)
 	}
-	embeddedMCPMetadataJSON = []byte(`{"version":1}`)
-	if got := loadPinnedMCPMetadata(); got.Tools == nil {
-		t.Fatal("nil tools map was not normalized")
+	if got := runtimeMCPMetadata(); got.Tools == nil {
+		t.Fatal("runtimeMCPMetadata tools map must be non-nil empty")
 	}
 
 	cmd := &cobra.Command{Use: "run", Short: "short", Long: "long"}

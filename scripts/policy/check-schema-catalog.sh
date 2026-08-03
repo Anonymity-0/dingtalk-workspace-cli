@@ -28,7 +28,6 @@ fi
 registry_count="$(jq -r '.tools | length' "$catalog")"
 catalog_count="$registry_count"
 catalog_product_count="$(jq -r '.catalog.count' "$catalog")"
-mcp_snapshot_registry_count="$(jq -r '.coverage.surface_tools' internal/cli/schema_mcp_metadata.json)"
 # Agent metadata is no longer a shipped intermediate. Selection completeness is
 # proven on the Catalog itself (every tool/product carries Agent prose).
 agent_registry_count="$registry_count"
@@ -43,19 +42,10 @@ if [ "$agent_registry_count" != "$registry_count" ] ||
 	exit 1
 fi
 
-if ! jq -e '
-  .version == 1 and
-  ((.source_revision // "") | length) > 0 and
-  .coverage.surface_scope == "source_revision" and
-  .coverage.source_services == (.coverage.snapshot_services + (.coverage.missing_services | length)) and
-  .coverage.surface_tools == (.coverage.matched_tools + .coverage.unmatched_tools) and
-  .coverage.source_tools >= .coverage.surface_tools and
-  .coverage.matched_tools <= (.tools | length) and
-  (.tools | length) <= .coverage.surface_tools and
-  .coverage.aliased_tools <= .coverage.matched_tools
-' internal/cli/schema_mcp_metadata.json >/dev/null; then
-	printf 'MCP source-revision snapshot coverage is inconsistent: snapshot_registry=%s\n' \
-		"$mcp_snapshot_registry_count" >&2
+# schema_mcp_metadata.json (pinned MCP baseline) is retired. Schema assembly
+# is Contract/ParamDecl/Interface + Cobra only; the pin must not reappear.
+if [ -e internal/cli/schema_mcp_metadata.json ]; then
+	printf '%s\n' 'retired schema_mcp_metadata.json must not be present' >&2
 	exit 1
 fi
 
@@ -209,7 +199,6 @@ fi
 
 if policy_search_paths 'mcp-gw\.dingtalk\.com|mcp\.dingtalk\.com/server|Authorization[^[:alnum:]]*:|Bearer [A-Za-z0-9]|access[_-]?token|client[_-]?secret' \
 	"$catalog" \
-	internal/cli/schema_mcp_metadata.json \
 	internal/cli/schema_parameter_mapping_ledger.go; then
 	printf '%s\n' 'schema assets contain endpoint or credential material' >&2
 	exit 1
@@ -234,7 +223,7 @@ fi
 
 # Run the typed content gates as policy, rather than treating non-empty
 # correction/exclusion maps as proof that their exact keys and winners are
-# valid against the shipped Catalog and pinned MCP metadata.
+# valid against the shipped Catalog (declaration + Cobra; no MCP pin).
 # Homology (HOM-*) CI entrypoints: Safety confirmation truth + vocabulary /
 # whitelist pins live in ./internal/cli/homology; parameter/help set equality
 # is in ./internal/app below; bindings/mapping subset remains in ./internal/cli.

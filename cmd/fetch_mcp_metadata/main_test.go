@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -326,6 +327,14 @@ func testRegistryRefs() (map[string]map[string]string, error) {
 		"doc.copy_document": {"product_id": "doc", "rpc_name": "copy_document"},
 		"doc.get_document":  {"product_id": "doc", "rpc_name": "get_document"},
 	}, nil
+}
+
+func TestRunRefusesRetiredPinnedMCPMetadataPath(t *testing.T) {
+	stubDeps(t, "env-token", nil, nil, &fakeLister{}, testRegistryRefs)
+	code := run([]string{"--output", "internal/cli/schema_mcp_metadata.json"}, io.Discard)
+	if code != 2 {
+		t.Fatalf("run(retired pin) = %d, want 2", code)
+	}
 }
 
 func TestRunNoTokenFails(t *testing.T) {

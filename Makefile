@@ -181,7 +181,7 @@ generate-schema-catalog:
 		-meta-index "$(SCHEMA_META_INDEX_OUTPUT)"
 
 fetch-mcp-metadata:
-	@printf '  %sRefreshing MCP metadata from live server%s\n' "$(COLOR_RUN)" "$(COLOR_RESET)"
+	@printf '  %sFetching diagnostic MCP dump (not a Schema pin)%s\n' "$(COLOR_RUN)" "$(COLOR_RESET)"
 	@./scripts/dev/fetch_mcp_metadata.sh
 
 package:

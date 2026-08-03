@@ -118,6 +118,8 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "query", Property: "keyword", Required: boolPtr(false)},
+				{Name: "page", Property: "page", InterfaceType: "number"},
+				{Name: "size", Property: "size", InterfaceType: "number"},
 			},
 		},
 	})
@@ -196,6 +198,8 @@ func newDevDocSearchCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "query", Property: "keyword"},
+				{Name: "page", Property: "page", InterfaceType: "number"},
+				{Name: "size", Property: "size", InterfaceType: "number"},
 			},
 		},
 	})

@@ -68,10 +68,10 @@ func newMinutesCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "cursor", Property: "nextToken"},
-				{Name: "end", Property: "createTimeEnd"},
+				{Name: "end", Property: "createTimeEnd", InterfaceType: "number"},
 				{Name: "limit", Property: "maxResults"},
 				{Name: "query", Property: "keyword"},
-				{Name: "start", Property: "createTimeStart"},
+				{Name: "start", Property: "createTimeStart", InterfaceType: "number"},
 			},
 		},
 	})
@@ -114,10 +114,10 @@ func newMinutesCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "cursor", Property: "nextToken"},
-				{Name: "end", Property: "createTimeEnd"},
+				{Name: "end", Property: "createTimeEnd", InterfaceType: "number"},
 				{Name: "limit", Property: "maxResults"},
 				{Name: "query", Property: "keyword"},
-				{Name: "start", Property: "createTimeStart"},
+				{Name: "start", Property: "createTimeStart", InterfaceType: "number"},
 			},
 		},
 	})
@@ -164,10 +164,10 @@ func newMinutesCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "cursor", Property: "nextToken"},
-				{Name: "end", Property: "createTimeEnd"},
+				{Name: "end", Property: "createTimeEnd", InterfaceType: "number"},
 				{Name: "limit", Property: "maxResults"},
 				{Name: "query", Property: "keyword"},
-				{Name: "start", Property: "createTimeStart"},
+				{Name: "start", Property: "createTimeStart", InterfaceType: "number"},
 			},
 		},
 	})
