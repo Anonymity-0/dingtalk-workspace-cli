@@ -154,6 +154,8 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T) {
+	completeIface := &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "get_thing"}}
+	completeSel := contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}}
 	for _, tc := range []struct {
 		name     string
 		contract ContractDecl
@@ -167,23 +169,41 @@ func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T
 		}, "Contract.Selection.AgentSummary"},
 		{"missing examples", ContractDecl{
 			Description: "d",
-			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "get_thing"}},
+			Interface:   completeIface,
 			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}},
 		}, "Contract.Selection.Examples"},
 		{"missing interface", ContractDecl{
 			Description: "d",
-			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+			Selection:   completeSel,
 		}, "Contract.Interface"},
 		{"composite without reason", ContractDecl{
 			Description: "d",
 			Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
-			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+			Selection:   completeSel,
 		}, "Contract.Interface.Reason"},
 		{"missing identity", ContractDecl{
 			Description: "d",
-			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "get_thing"}},
-			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+			Interface:   completeIface,
+			Selection:   completeSel,
 		}, "Contract.Identity"},
+		{"canonical path mismatch", ContractDecl{
+			Description: "d",
+			Interface:   completeIface,
+			Selection:   completeSel,
+			Identity: contract.ToolIdentitySpec{
+				ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.other_thing",
+				CLIPath: "dev create",
+			},
+		}, "must equal ProductID.Name"},
+		{"cli and primary disagree", ContractDecl{
+			Description: "d",
+			Interface:   completeIface,
+			Selection:   completeSel,
+			Identity: contract.ToolIdentitySpec{
+				ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+				CLIPath: "dev create", PrimaryCLIPath: "dev other",
+			},
+		}, "must agree on the primary leaf path"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {

@@ -116,20 +116,60 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalIdentityMismatchFa
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalRejectsReviewedSelection(t *testing.T) {
 	reviewed := true
 	entry := runtimeSchemaEntry{
-		ProductID: "dev",
-		ToolName:  "create_thing",
-		Command:   &cobra.Command{Use: "create"},
+		ProductID:      "dev",
+		ToolName:       "create_thing",
+		CLIName:        "create",
+		CLIPath:        "dev create",
+		PrimaryCLIPath: "dev create",
+		Command:        &cobra.Command{Use: "create"},
+		Source:         "test",
 	}
 	_, err := runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
 			CLIPath: "dev create", PrimaryCLIPath: "dev create",
+			CLIName: "create", Source: "test",
 		},
-
 		Selection: &contract.SelectionSpec{AgentSummary: "sum", Reviewed: &reviewed},
 	}, runtimeSchemaMetadataSources{})
-	if err == nil {
-		t.Fatal("declaration payload carrying Reviewed must fail assembly (reviewed is legacy-path only)")
+	if err == nil || !strings.Contains(err.Error(), "must not carry reviewed field") {
+		t.Fatalf("declaration payload carrying Reviewed must fail assembly, got %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalOptionalIdentityMismatch(t *testing.T) {
+	entry := runtimeSchemaEntry{
+		ProductID:      "dev",
+		ToolName:       "create_thing",
+		CLIName:        "create",
+		Group:          "dev thing",
+		CLIPath:        "dev create",
+		PrimaryCLIPath: "dev create",
+		Command:        &cobra.Command{Use: "create"},
+		Source:         "test",
+	}
+	for name, id := range map[string]contract.ToolIdentitySpec{
+		"cli_name": {
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create", CLIName: "other", Source: "test",
+		},
+		"group": {
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create", CLIName: "create",
+			Group: "other group", Source: "test",
+		},
+		"source": {
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create", CLIName: "create",
+			Source: "other",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{Identity: &id}, runtimeSchemaMetadataSources{})
+			if err == nil || !strings.Contains(err.Error(), name+":") {
+				t.Fatalf("optional identity field %s mismatch error = %v", name, err)
+			}
+		})
 	}
 }
 

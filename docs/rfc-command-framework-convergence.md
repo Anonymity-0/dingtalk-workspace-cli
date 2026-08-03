@@ -276,7 +276,7 @@ Definition（仅声明；不可编译）
 | **声明（declare）** | `corecmd.Spec` / `LeafSpec` / `ContractDecl` **数据字段**（声明证据；交付见下） | `Flags`/`Constraints`/`Risk`/`ConstParams`/`Contract`；类型真身在 `corecmd/contract`（DTO：`SafetySpec`/`ParamDecl`/`ProductDecl`/`ContractFinalPayload`；**无** Cobra store） |
 | **框架转换** | 类型转换并注册（**禁止** JSON 注解桥） | `embedContractDecl` → `corecmd/contractfinal.RegisterRuntimeContractFinal`（annotate + store；全部调用方直调，`corecmd.New` 内部注册） |
 | **注解 seam** | Cobra `dws.schema.*` 写入 | `internal/corecmd/runtimeannotate.AnnotateRuntime*`（框架侧；`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/runtimeannotate` 垫片包已删，一律直引 corecmd） |
-| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`（`ResolveMeta` 自同一组装投影）；go:embed 仅限 reviewed 输入（registry / MCP meta / bindings 等），不得 embed Catalog | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/contractfinal` 垫片包已删） |
+| **Schema 透传** / 交付 | 组装读取注册表，原样投影为 `ToolSpec`；`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`（`ResolveMeta` 自同一组装投影）；go:embed 仅限 reviewed 输入（`schema_command_registry/` / MCP meta 等），映射排除走 Go ledger（`schema_parameter_mapping_ledger.go`），不得 embed Catalog | `internal/cli` 根（交付边界）；ContractFinal store 在 `corecmd/contractfinal`（`cli` 根经 `runtime_schema_seam.go` 包内别名访问；`cli/contractfinal` 垫片包已删） |
 | **执行（execute）** | 钩子不发明表面 | `Validate` / `Call` / `RunE` / `PostMount` |
 
 依赖方向硬规则：`internal/corecmd`（含子包）**不得** import 任何 `internal/cli` 包；annotate 与 ContractFinal store 归属框架侧。
@@ -301,7 +301,7 @@ Definition（仅声明；不可编译）
 下列字段**不是**声明面（编排 / 执行）：
 
 - `Validate`、`PostMount`、`Call` / `Invoke` / `Orchestrate`、`RunE`
-- Leaf 的 `Server` / `Tool`（路由；Schema interface 另由 MCP meta / bindings 表达）
+- Leaf 的 `Server` / `Tool`（路由；Schema interface 另由 MCP meta / ParamDecl 表达）
 
 验收（框架门禁，而非口头约定）：
 
@@ -353,7 +353,7 @@ Definition（仅声明；不可编译）
 | | `description`（usage 文案） | 声明 usage | `FlagSpec.Usage` / ParamDecl；`schema_hints/` 已退役 | usage **是**；不得用 hint overlay 改 type/required/default |
 | | `property`（载荷键） | 声明 | `FlagSpec.Bind`（空则 Name） | **是**（载荷映射） |
 | | `enum`, `format`, `example`, `required_when` | 声明或评审 annotate | 今日部分仍手工 annotate；目标进 Contract / reviewed 约束（`schema_hints/` 已退役） | 有则须 declare 或 reviewed annotate |
-| | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + bindings | 否；**不得创建 CLI flag**（`HOM-I1`） |
+| | `interface_description`, `interface_type`, `interface_default` | 评审源（interface） | `schema_mcp_metadata` + ParamDecl / mapping ledger exclusions | 否；**不得创建 CLI flag**（`HOM-I1`） |
 | **Constraints** | `require_one_of`, `mutually_exclusive`, `require_together` | **声明** | `Constraints` → `AnnotateConstraints` | **是** |
 | **Positionals** | 位置参数名/必填/说明 | **声明** 或显式 annotate | 目标 `Args`/`PositionalSpec`；今日少量 cobra Args + 注解 | 受管命令应声明，禁止推断 |
 | **Safety** | `effect`, `risk`, `confirmation`, `idempotency` | **声明**（完整 `contract.SafetySpec`）**或标注**（`runtime_gate`） | `Safety` / `AnnotateRuntimeGate`（metadata 壳 `tools: {}`，不再承载 reviewed Safety） | 四字段独立；confirmation 单独驱动运行时 |

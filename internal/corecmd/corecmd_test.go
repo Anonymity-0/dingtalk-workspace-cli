@@ -1682,6 +1682,56 @@ func TestCrossPlatformCoverageAttachContractOverwritesLegacySelectionSources(t *
 	}
 }
 
+func TestCrossPlatformCoverageAttachContractIdentityCLIPrimaryFillAndAliases(t *testing.T) {
+	baseSel := contract.SelectionSpec{
+		AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws t"},
+	}
+	baseIface := &contract.InterfaceSpec{
+		Mode: "mcp", Availability: "available",
+		Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"},
+	}
+
+	primaryOnly := newTestCommand()
+	AttachContract(primaryOnly, testWriteSafety(), ContractDecl{
+		Description: "desc",
+		Interface:   baseIface,
+		Selection:   baseSel,
+		Identity: contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			PrimaryCLIPath: "dev create",
+			Aliases:        []string{"dev alt"},
+		},
+	}, "short", "long")
+	got, ok := contractfinal.RuntimeContractFinal(primaryOnly)
+	if !ok || got.Identity == nil {
+		t.Fatal("expected Identity after PrimaryCLIPath-only attach")
+	}
+	if got.Identity.CLIPath != "dev create" || got.Identity.PrimaryCLIPath != "dev create" {
+		t.Fatalf("CLI/Primary mutual fill = %#v", got.Identity)
+	}
+	if len(got.Identity.Aliases) != 1 || got.Identity.Aliases[0] != "dev alt" {
+		t.Fatalf("Aliases copy = %#v", got.Identity.Aliases)
+	}
+
+	cliOnly := newTestCommand()
+	AttachContract(cliOnly, testWriteSafety(), ContractDecl{
+		Description: "desc",
+		Interface:   baseIface,
+		Selection:   baseSel,
+		Identity: contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create",
+		},
+	}, "short", "long")
+	got, ok = contractfinal.RuntimeContractFinal(cliOnly)
+	if !ok || got.Identity == nil {
+		t.Fatal("expected Identity after CLIPath-only attach")
+	}
+	if got.Identity.CLIPath != "dev create" || got.Identity.PrimaryCLIPath != "dev create" {
+		t.Fatalf("Primary fill from CLIPath = %#v", got.Identity)
+	}
+}
+
 func TestCrossPlatformCoverageEffectiveSafetySpecZeroValueDefaultsToRead(t *testing.T) {
 	got := effectiveSafetySpec(contract.SafetySpec{})
 	want := contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}

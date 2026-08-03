@@ -392,3 +392,55 @@ func TestCrossPlatformCoverageCompatibilityPathAndHelperRemainingEdges(t *testin
 		t.Fatalf("aligned Identity must pass: %v", err)
 	}
 }
+
+func TestCrossPlatformCoverageValidateContractIdentityAgainstCommandSpecEdges(t *testing.T) {
+	path := "sample run"
+	baseSpec := CommandSpec{
+		CanonicalPath:  "sample.run",
+		PrimaryCLIPath: "sample run",
+		Aliases:        []string{"sample alias"},
+	}
+
+	if err := validateContractIdentityAgainstCommandSpec(contract.ToolIdentitySpec{}, CommandSpec{
+		CanonicalPath:  "not-a-canonical",
+		PrimaryCLIPath: path,
+	}, path); err == nil || !strings.Contains(err.Error(), "invalid canonical path") {
+		t.Fatalf("invalid canonical error = %v", err)
+	}
+
+	// CLIPath empty fills from PrimaryCLIPath (and the reverse) before compare.
+	if err := validateContractIdentityAgainstCommandSpec(contract.ToolIdentitySpec{
+		ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+		PrimaryCLIPath: "sample run", Aliases: []string{"sample alias"},
+	}, baseSpec, path); err != nil {
+		t.Fatalf("PrimaryCLIPath-only identity must pass after mutual fill: %v", err)
+	}
+	if err := validateContractIdentityAgainstCommandSpec(contract.ToolIdentitySpec{
+		ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+		CLIPath: "sample run", Aliases: []string{"sample alias"},
+	}, baseSpec, path); err != nil {
+		t.Fatalf("CLIPath-only identity must pass after mutual fill: %v", err)
+	}
+
+	// Length mismatch and same-length element mismatch both reject via set compare.
+	if err := validateContractIdentityAgainstCommandSpec(contract.ToolIdentitySpec{
+		ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+		CLIPath: "sample run", PrimaryCLIPath: "sample run",
+		Aliases: []string{"sample alias", "sample extra"},
+	}, baseSpec, path); err == nil || !strings.Contains(err.Error(), "aliases") {
+		t.Fatalf("alias length mismatch error = %v", err)
+	}
+	if err := validateContractIdentityAgainstCommandSpec(contract.ToolIdentitySpec{
+		ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+		CLIPath: "sample run", PrimaryCLIPath: "sample run",
+		Aliases: []string{"sample other"},
+	}, baseSpec, path); err == nil || !strings.Contains(err.Error(), "aliases") {
+		t.Fatalf("same-length alias member mismatch error = %v", err)
+	}
+	if stringSlicesEqualAsSet([]string{"a"}, []string{"b"}) {
+		t.Fatal("stringSlicesEqualAsSet must reject same-length unequal members")
+	}
+	if stringSlicesEqualAsSet([]string{"a"}, []string{"a", "b"}) {
+		t.Fatal("stringSlicesEqualAsSet must reject length mismatch")
+	}
+}
