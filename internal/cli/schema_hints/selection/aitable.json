@@ -2250,6 +2250,26 @@
         "dws-schema-live:none (helper/composite; Skill+Cobra)"
       ]
     },
+    "aitable.workflow_edit_example": {
+      "agent_summary": "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。",
+      "use_when": [
+        "创建或更新工作流前，需要确认最新 workflow-dsl/v1 结构、节点写法或完整示例时"
+      ],
+      "avoid_when": [
+        "实际创建工作流用 workflow create；修改已有工作流用 workflow update；查询已发布定义用 workflow get"
+      ],
+      "examples": [
+        "dws aitable workflow edit-example"
+      ],
+      "reviewed": true,
+      "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+      "source_refs": [
+        "internal/cli/schema_command_registry.json#aitable.workflow_edit_example",
+        "cobra-help:dws aitable workflow edit-example --help",
+        "skills/mono/references/products/aitable/aitable-workflow.md",
+        "mcp-contract:aitable/edit_workflow_example"
+      ]
+    },
     "aitable.workflow_enable": {
       "agent_summary": "启用工作流。",
       "use_when": [
