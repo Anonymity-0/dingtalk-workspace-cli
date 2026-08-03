@@ -14,7 +14,6 @@
 package app
 
 import (
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -22,21 +21,18 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 )
 
-// TestIdentityCollectorProbe is the Phase-1 identity-deregistry probe. It is
-// opt-in so it does not gate normal test runs until byte-equivalence between
-// collected (Contract.Identity) and reviewed (schema_command_registry)
-// identity is confirmed. Run with:
+// TestCollectedIdentityMatchesReviewedRegistry is the identity-deregistry
+// dual-run gate (Phase 2). It asserts that command identity collected from
+// live Cobra leaves carrying ContractFinal.Identity is byte-equivalent to the
+// reviewed schema_command_registry: the collected EffectiveCommandRegistry's
+// SourceHash equals the reviewed one, no reviewed canonical is missing a
+// collected primary, and no compared field drifts.
 //
-//	DWS_IDENTITY_PROBE=1 go test -count=1 -run TestIdentityCollectorProbe ./internal/app
-//
-// Exit criterion: SourceHash of the collected EffectiveCommandRegistry equals
-// the reviewed one, the field-diff list is empty, and no leaf is missing an
-// Identity without a matching reviewed exclusion.
-func TestIdentityCollectorProbe(t *testing.T) {
-	if os.Getenv("DWS_IDENTITY_PROBE") == "" {
-		t.Skip("identity-deregistry probe is opt-in: set DWS_IDENTITY_PROBE=1")
-	}
-
+// This gate is the insurance that lets Phase 3 retire the reviewed registry:
+// while it is green, the collector is a drop-in replacement for the registry.
+// If it fails, the logged MISSING_PRIMARY / DIAG / DIFF lines pinpoint the
+// drifted command so the declaration or the registry entry can be reconciled.
+func TestCollectedIdentityMatchesReviewedRegistry(t *testing.T) {
 	root := NewRootCommand()
 	collected, report, err := cli.CollectIdentitySpecs(root)
 	if err != nil {

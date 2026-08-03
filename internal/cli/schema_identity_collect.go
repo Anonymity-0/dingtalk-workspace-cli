@@ -144,7 +144,53 @@ func CollectIdentitySpecs(root *cobra.Command) ([]CommandSpec, IdentityCollectio
 	})
 	sort.Slice(specs, func(i, j int) bool { return specs[i].CanonicalPath < specs[j].CanonicalPath })
 	sort.Strings(report.NoIdentity)
+	if err := validateCollectedUniqueness(specs); err != nil {
+		return nil, report, err
+	}
 	return specs, report, nil
+}
+
+// validateCollectedUniqueness fails closed on identity collisions among the
+// collected primaries: duplicate canonical paths, duplicate primary CLI paths,
+// or an alias that collides with any primary path or another alias. These are
+// authoring drift the collector must surface before the specs are trusted.
+func validateCollectedUniqueness(specs []CommandSpec) error {
+	canonicals := make(map[string]bool, len(specs))
+	primaryPaths := make(map[string]bool, len(specs))
+	aliasOwners := make(map[string]string)
+	for _, spec := range specs {
+		canonical := strings.TrimSpace(spec.CanonicalPath)
+		if canonicals[canonical] {
+			return fmt.Errorf("collect identity specs: duplicate canonical path %q", canonical)
+		}
+		canonicals[canonical] = true
+		primary := normalizeSchemaCLIPath(spec.PrimaryCLIPath)
+		if primary != "" {
+			if primaryPaths[primary] {
+				return fmt.Errorf("collect identity specs: duplicate primary CLI path %q", primary)
+			}
+			primaryPaths[primary] = true
+		}
+		for _, rawAlias := range spec.Aliases {
+			alias := normalizeSchemaCLIPath(rawAlias)
+			if alias == "" {
+				continue
+			}
+			if primaryPaths[alias] {
+				return fmt.Errorf("collect identity specs: alias %q collides with a primary CLI path", alias)
+			}
+			if owner, taken := aliasOwners[alias]; taken {
+				return fmt.Errorf("collect identity specs: alias %q declared by both %q and %q", alias, owner, canonical)
+			}
+			aliasOwners[alias] = canonical
+		}
+	}
+	for alias, owner := range aliasOwners {
+		if primaryPaths[alias] {
+			return fmt.Errorf("collect identity specs: alias %q (from %q) collides with a primary CLI path", alias, owner)
+		}
+	}
+	return nil
 }
 
 // DiagnoseMissingPrimaries resolves each reviewed spec that has no collected
