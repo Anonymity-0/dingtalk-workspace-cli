@@ -29,7 +29,7 @@ import (
 
 // schemaCommandCatalogError / payloads use deliverySchemaCatalog
 // (RegisterSchemaSourceRoot → ResolveSchemaBuild). There is no committed
-// Catalog embed fallback.
+// Schema Catalog embed fallback.
 var schemaCommandCatalogError = deliverySchemaCatalogError
 
 type FlagKind string
@@ -58,9 +58,9 @@ type FlagSpec struct {
 // NewMCPCommand returns a stub command since the canonical discovery
 // surface has been removed. The command tree is now built from plugins
 // and static endpoint registration only.
-func NewMCPCommand(_ context.Context, _ CatalogLoader, _ executor.Runner, _ *pipeline.Engine) *cobra.Command {
+func NewMCPCommand(_ context.Context, _ DiscoveryCatalogLoader, _ executor.Runner, _ *pipeline.Engine) *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/mcp.json
-	// products.mcp). Catalog assembly stamps provenance contract_final.
+	// products.mcp). DiscoveryCatalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "mcp",
 		Selection: contract.ProductSelectionDecl{
@@ -89,8 +89,8 @@ func NewMCPCommand(_ context.Context, _ CatalogLoader, _ executor.Runner, _ *pip
 
 // NewSchemaCommand serves the typed Schema contract. Production assembles from
 // declarations via ResolveSchemaBuild (factory registered by internal/app).
-// A malformed assembly fails closed; the MCP CatalogLoader is unused.
-func NewSchemaCommand(_ CatalogLoader) *cobra.Command {
+// A malformed assembly fails closed; the MCP DiscoveryCatalogLoader is unused.
+func NewSchemaCommand(_ DiscoveryCatalogLoader) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schema [path]",
 		Short: "渐进查看命令 Schema (产品 / 分组 / 工具参数)",

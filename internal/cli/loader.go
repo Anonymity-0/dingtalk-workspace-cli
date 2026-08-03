@@ -21,28 +21,28 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
-// CatalogDegradedReason identifies why catalog discovery returned empty.
-type CatalogDegradedReason string
+// DiscoveryDegradedReason identifies why catalog discovery returned empty.
+type DiscoveryDegradedReason string
 
 const (
-	DegradedUnauthenticated   CatalogDegradedReason = "unauthenticated"
-	DegradedMarketUnreachable CatalogDegradedReason = "market_unreachable"
-	DegradedRuntimeAllFailed  CatalogDegradedReason = "runtime_all_failed"
+	DegradedUnauthenticated   DiscoveryDegradedReason = "unauthenticated"
+	DegradedMarketUnreachable DiscoveryDegradedReason = "market_unreachable"
+	DegradedRuntimeAllFailed  DiscoveryDegradedReason = "runtime_all_failed"
 )
 
-// CatalogDegraded is returned by EnvironmentLoader.Load when discovery
+// DiscoveryDegraded is returned by EnvironmentLoader.Load when discovery
 // fails for a diagnosable reason. Callers that need graceful degradation
 // (e.g. the runtime runner) can check errors.As and fall back to an
 // empty catalog; callers like the schema command can surface the hint.
-type CatalogDegraded struct {
-	Reason      CatalogDegradedReason
+type DiscoveryDegraded struct {
+	Reason      DiscoveryDegradedReason
 	Hint        string
 	ServerCount int
 }
 
-func (e *CatalogDegraded) Error() string { return string(e.Reason) + ": " + e.Hint }
+func (e *DiscoveryDegraded) Error() string { return string(e.Reason) + ": " + e.Hint }
 
-func degradedHint(reason CatalogDegradedReason, serverCount int) string {
+func degradedHint(reason DiscoveryDegradedReason, serverCount int) string {
 	embedded := edition.Get().IsEmbedded
 	switch reason {
 	case DegradedUnauthenticated:
@@ -65,8 +65,8 @@ func degradedHint(reason CatalogDegradedReason, serverCount int) string {
 	}
 }
 
-func newCatalogDegraded(reason CatalogDegradedReason, serverCount int) *CatalogDegraded {
-	return &CatalogDegraded{
+func newDiscoveryDegraded(reason DiscoveryDegradedReason, serverCount int) *DiscoveryDegraded {
+	return &DiscoveryDegraded{
 		Reason:      reason,
 		Hint:        degradedHint(reason, serverCount),
 		ServerCount: serverCount,
@@ -80,16 +80,16 @@ const (
 )
 
 // ──────────────────────────────────────────────────────────────────────────
-// Catalog types (formerly in internal/ir, now inlined as minimal stubs)
+// DiscoveryCatalog types (formerly in internal/ir, now inlined as minimal stubs)
 // ──────────────────────────────────────────────────────────────────────────
 
-// Catalog holds the discovered MCP product surface.
-type Catalog struct {
+// DiscoveryCatalog holds the discovered MCP product surface.
+type DiscoveryCatalog struct {
 	Products []CanonicalProduct `json:"products"`
 }
 
 // FindProduct returns the product with the given ID.
-func (c Catalog) FindProduct(id string) (CanonicalProduct, bool) {
+func (c DiscoveryCatalog) FindProduct(id string) (CanonicalProduct, bool) {
 	for _, product := range c.Products {
 		if product.ID == id {
 			return product, true
@@ -132,35 +132,35 @@ type CLIFlagHint struct {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// CatalogLoader interface
+// DiscoveryCatalogLoader interface
 // ──────────────────────────────────────────────────────────────────────────
 
-// CatalogLoader loads the canonical catalog.
-type CatalogLoader interface {
-	Load(context.Context) (Catalog, error)
+// DiscoveryCatalogLoader loads the canonical catalog.
+type DiscoveryCatalogLoader interface {
+	Load(context.Context) (DiscoveryCatalog, error)
 }
 
-// StaticLoader returns a pre-built catalog.
-type StaticLoader struct {
-	Catalog Catalog
+// StaticDiscoveryLoader returns a pre-built catalog.
+type StaticDiscoveryLoader struct {
+	DiscoveryCatalog DiscoveryCatalog
 }
 
-func (l StaticLoader) Load(_ context.Context) (Catalog, error) {
-	return l.Catalog, nil
+func (l StaticDiscoveryLoader) Load(_ context.Context) (DiscoveryCatalog, error) {
+	return l.DiscoveryCatalog, nil
 }
 
-// CatalogLoaderFrom creates a CatalogLoader that returns a
+// DiscoveryCatalogLoaderFrom creates a DiscoveryCatalogLoader that returns a
 // pre-loaded catalog and error.
-func CatalogLoaderFrom(catalog Catalog, err error) CatalogLoader {
+func DiscoveryCatalogLoaderFrom(catalog DiscoveryCatalog, err error) DiscoveryCatalogLoader {
 	return &preloadedLoader{catalog: catalog, err: err}
 }
 
 type preloadedLoader struct {
-	catalog Catalog
+	catalog DiscoveryCatalog
 	err     error
 }
 
-func (l *preloadedLoader) Load(_ context.Context) (Catalog, error) {
+func (l *preloadedLoader) Load(_ context.Context) (DiscoveryCatalog, error) {
 	return l.catalog, l.err
 }
 
@@ -185,9 +185,9 @@ func NewEnvironmentLoader() EnvironmentLoader {
 
 // Load returns an empty catalog. All endpoint resolution now uses the
 // direct runtime path (dynamic server registry).
-func (l EnvironmentLoader) Load(_ context.Context) (Catalog, error) {
-	return Catalog{}, nil
+func (l EnvironmentLoader) Load(_ context.Context) (DiscoveryCatalog, error) {
+	return DiscoveryCatalog{}, nil
 }
 
 // Ensure unused imports are consumed.
-var _ = newCatalogDegraded
+var _ = newDiscoveryDegraded

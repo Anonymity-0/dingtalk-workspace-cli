@@ -292,11 +292,11 @@ func TestCrossPlatformCoverageRecoveryPureCoverage(t *testing.T) {
 		t.Fatal("missing recovery endpoint succeeded")
 	}
 	loaderErr := errors.New("catalog")
-	runtime := &recoveryRuntime{loader: cli.CatalogLoaderFrom(cli.Catalog{}, loaderErr)}
+	runtime := &recoveryRuntime{loader: cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, loaderErr)}
 	if _, err := runtime.resolveEndpoint(context.Background(), "missing", "tool"); !errors.Is(err, loaderErr) {
 		t.Fatalf("catalog recovery error = %v", err)
 	}
-	runtime.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{{ID: "empty"}, {ID: "ok", Endpoint: " https://catalog.test "}}}}
+	runtime.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{{ID: "empty"}, {ID: "ok", Endpoint: " https://catalog.test "}}}}
 	if _, err := runtime.resolveEndpoint(context.Background(), "empty", "tool"); err == nil {
 		t.Fatal("empty catalog endpoint succeeded")
 	}
@@ -798,7 +798,7 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	}
 
 	r.transport = transport.NewClient(nil)
-	r.loader = cli.StaticLoader{}
+	r.loader = cli.StaticDiscoveryLoader{}
 	r.globalFlags = &GlobalFlags{Mock: true}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["content"] == nil {
 		t.Fatalf("mock route = %#v %v", got, err)
@@ -810,11 +810,11 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	t.Setenv("DINGTALK_PRODUCT_MCP_URL", "")
 
 	r.globalFlags = &GlobalFlags{DryRun: true}
-	r.loader = cli.CatalogLoaderFrom(cli.Catalog{}, errors.New("load failure"))
+	r.loader = cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, errors.New("load failure"))
 	if _, err := r.runSingle(context.Background(), inv, false); err == nil || !strings.Contains(err.Error(), "load failure") {
 		t.Fatalf("catalog failure = %v", err)
 	}
-	r.loader = cli.StaticLoader{}
+	r.loader = cli.StaticDiscoveryLoader{}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
 		t.Fatalf("dry catalog miss = %#v %v (invocation %#v)", got, err, fallback.last)
 	}
@@ -829,13 +829,13 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	}
 
 	product := cli.CanonicalProduct{ID: "product", Endpoint: "https://catalog.test", Tools: []cli.ToolDescriptor{{RPCName: "tool"}}}
-	r.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}}
+	r.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}}
 	r.globalFlags = &GlobalFlags{DryRun: true}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://catalog.test" {
 		t.Fatalf("catalog dry route = %#v %v", got, err)
 	}
 	product.Tools = nil
-	r.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}}
+	r.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}}
 	SetDynamicServers([]mcptypes.ServerDescriptor{{Endpoint: "https://direct.test", CLI: mcptypes.CLIOverlay{ID: "product", Tools: []mcptypes.CLITool{{Name: "tool"}}}}})
 	t.Cleanup(func() { SetDynamicServers(nil) })
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://direct.test" {
@@ -848,7 +848,7 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 
 	SetDynamicServers([]mcptypes.ServerDescriptor{{Endpoint: "https://owner.test", CLI: mcptypes.CLIOverlay{ID: "owner", Tools: []mcptypes.CLITool{{Name: "tool"}}}}})
 	product.Tools = []cli.ToolDescriptor{{RPCName: "tool"}}
-	r.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}}
+	r.loader = cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://owner.test" {
 		t.Fatalf("tool owner correction = %#v %v", got, err)
 	}

@@ -123,7 +123,7 @@ func logHostOwnedPATDecisionOnce() {
 	})
 }
 
-func newCommandRunnerWithFlags(loader cli.CatalogLoader, flags *GlobalFlags) executor.Runner {
+func newCommandRunnerWithFlags(loader cli.DiscoveryCatalogLoader, flags *GlobalFlags) executor.Runner {
 	// Ensure DWS_CLIENT_ID env is populated from persisted config before
 	// resolveIdentityHeaders reads it.  This covers fresh-process cold starts
 	// where no env var has been inherited from a parent process.
@@ -152,7 +152,7 @@ func newCommandRunnerWithFlags(loader cli.CatalogLoader, flags *GlobalFlags) exe
 }
 
 type runtimeRunner struct {
-	loader             cli.CatalogLoader
+	loader             cli.DiscoveryCatalogLoader
 	transport          *transport.Client
 	globalFlags        *GlobalFlags
 	fallback           executor.Runner
@@ -277,7 +277,7 @@ func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invoc
 	catalog, err := r.loader.Load(ctx)
 	RecordTiming(ctx, "catalog_load", time.Since(catalogStart))
 	if err != nil {
-		var degraded *cli.CatalogDegraded
+		var degraded *cli.DiscoveryDegraded
 		if !errors.As(err, &degraded) {
 			return executor.Result{}, err
 		}
@@ -288,7 +288,7 @@ func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invoc
 		return r.handleCatalogMiss(ctx, invocation, "product missing from discovery catalog and no supplement/env override")
 	}
 	if _, ok := product.FindTool(invocation.Tool); !ok {
-		// Catalog knows the product but not the tool — this happens when the
+		// DiscoveryCatalog knows the product but not the tool — this happens when the
 		// catalog entry came from SupplementServers (endpoint-only, no tool
 		// list). Trust directRuntimeEndpoint to re-resolve a working endpoint
 		// for the tool. If that also misses, fall through to handleCatalogMiss

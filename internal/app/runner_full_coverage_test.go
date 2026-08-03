@@ -35,7 +35,7 @@ func TestCrossPlatformCoverageRunnerRemainingRoutingCoverage(t *testing.T) {
 		runnerGetCachedRuntimeToken = oldCachedToken
 	})
 
-	created := newCommandRunnerWithFlags(cli.StaticLoader{}, &GlobalFlags{Timeout: 2})
+	created := newCommandRunnerWithFlags(cli.StaticDiscoveryLoader{}, &GlobalFlags{Timeout: 2})
 	if created.(*runtimeRunner).transport == nil {
 		t.Fatal("runner transport was not created")
 	}
@@ -55,7 +55,7 @@ func TestCrossPlatformCoverageRunnerRemainingRoutingCoverage(t *testing.T) {
 		return "", nil
 	}
 	r := &runtimeRunner{
-		loader:    cli.CatalogLoaderFrom(cli.Catalog{}, wantErr),
+		loader:    cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, wantErr),
 		transport: transport.NewClient(nil),
 		fallback:  runnerCoverageFallback{},
 	}
@@ -115,7 +115,7 @@ func TestCrossPlatformCoverageRunnerRemainingRoutingCoverage(t *testing.T) {
 
 	product := cli.CanonicalProduct{ID: "product", Endpoint: "https://catalog.test", Tools: []cli.ToolDescriptor{{RPCName: "tool"}}}
 	r = &runtimeRunner{
-		loader:      cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}},
+		loader:      cli.StaticDiscoveryLoader{DiscoveryCatalog: cli.DiscoveryCatalog{Products: []cli.CanonicalProduct{product}}},
 		transport:   transport.NewClient(nil),
 		globalFlags: &GlobalFlags{DryRun: true},
 		fallback:    runnerCoverageFallback{},

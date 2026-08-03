@@ -23,7 +23,7 @@ var (
 	recoverySaveAnalysis = (*recovery.Store).SaveAnalysis
 )
 
-func newRecoveryCommand(_ context.Context, loader cli.CatalogLoader, flags *GlobalFlags) *cobra.Command {
+func newRecoveryCommand(_ context.Context, loader cli.DiscoveryCatalogLoader, flags *GlobalFlags) *cobra.Command {
 	var (
 		planUseLast    bool
 		planEventID    string
@@ -259,12 +259,12 @@ func legacyRecoveryAttempts(count int, actions []string, result, errorSummary st
 }
 
 type recoveryRuntime struct {
-	loader    cli.CatalogLoader
+	loader    cli.DiscoveryCatalogLoader
 	transport *transport.Client
 	flags     *GlobalFlags
 }
 
-func newRecoveryRuntime(loader cli.CatalogLoader, flags *GlobalFlags) *recoveryRuntime {
+func newRecoveryRuntime(loader cli.DiscoveryCatalogLoader, flags *GlobalFlags) *recoveryRuntime {
 	var httpClient *http.Client
 	if flags != nil && flags.Timeout > 0 {
 		httpClient = &http.Client{Timeout: time.Duration(flags.Timeout) * time.Second}

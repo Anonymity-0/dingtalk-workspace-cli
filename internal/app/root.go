@@ -695,7 +695,7 @@ func newVersionCommand() *cobra.Command {
 	}
 }
 
-func newSchemaCommand(loader cli.CatalogLoader) *cobra.Command {
+func newSchemaCommand(loader cli.DiscoveryCatalogLoader) *cobra.Command {
 	return cli.NewSchemaCommand(loader)
 }
 
@@ -703,7 +703,7 @@ func newSchemaCommand(loader cli.CatalogLoader) *cobra.Command {
 var buildMCPCommandFn = cli.NewMCPCommand
 
 // newMCPCommand builds the `dws mcp` command tree.
-func newMCPCommand(ctx context.Context, loader cli.CatalogLoader, runner executor.Runner, engine *pipeline.Engine) *cobra.Command {
+func newMCPCommand(ctx context.Context, loader cli.DiscoveryCatalogLoader, runner executor.Runner, engine *pipeline.Engine) *cobra.Command {
 	return buildMCPCommandFn(ctx, loader, runner, engine)
 }
 

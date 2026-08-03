@@ -85,13 +85,13 @@ func TestCrossPlatformCoverageCanonicalCommandsAndFlags(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageLoaderAndPriorityEdges(t *testing.T) {
-	for _, reason := range []CatalogDegradedReason{DegradedUnauthenticated, DegradedMarketUnreachable, DegradedRuntimeAllFailed, "other"} {
-		degraded := newCatalogDegraded(reason, 2)
+	for _, reason := range []DiscoveryDegradedReason{DegradedUnauthenticated, DegradedMarketUnreachable, DegradedRuntimeAllFailed, "other"} {
+		degraded := newDiscoveryDegraded(reason, 2)
 		if degraded.Error() == "" || degradedHint(reason, 2) == "" || degraded.Hint == "" {
 			t.Fatalf("degraded %q = %#v", reason, degraded)
 		}
 	}
-	catalog := Catalog{Products: []CanonicalProduct{{ID: "product", Tools: []ToolDescriptor{{RPCName: "tool"}}}}}
+	catalog := DiscoveryCatalog{Products: []CanonicalProduct{{ID: "product", Tools: []ToolDescriptor{{RPCName: "tool"}}}}}
 	product, ok := catalog.FindProduct("product")
 	if !ok {
 		t.Fatal("product not found")
@@ -105,11 +105,11 @@ func TestCrossPlatformCoverageLoaderAndPriorityEdges(t *testing.T) {
 	if _, ok := product.FindTool("missing"); ok {
 		t.Fatal("missing tool found")
 	}
-	if got, err := (StaticLoader{Catalog: catalog}).Load(t.Context()); err != nil || len(got.Products) != 1 {
+	if got, err := (StaticDiscoveryLoader{DiscoveryCatalog: catalog}).Load(t.Context()); err != nil || len(got.Products) != 1 {
 		t.Fatalf("static load = %#v, %v", got, err)
 	}
 	failure := errors.New("load failed")
-	if got, err := CatalogLoaderFrom(catalog, failure).Load(t.Context()); !errors.Is(err, failure) || len(got.Products) != 1 {
+	if got, err := DiscoveryCatalogLoaderFrom(catalog, failure).Load(t.Context()); !errors.Is(err, failure) || len(got.Products) != 1 {
 		t.Fatalf("preloaded load = %#v, %v", got, err)
 	}
 	loader := NewEnvironmentLoader()
@@ -124,7 +124,7 @@ func TestCrossPlatformCoverageLoaderAndPriorityEdges(t *testing.T) {
 	original := edition.Get()
 	edition.Override(&edition.Hooks{IsEmbedded: true})
 	t.Cleanup(func() { edition.Override(original) })
-	for _, reason := range []CatalogDegradedReason{DegradedUnauthenticated, DegradedMarketUnreachable, DegradedRuntimeAllFailed} {
+	for _, reason := range []DiscoveryDegradedReason{DegradedUnauthenticated, DegradedMarketUnreachable, DegradedRuntimeAllFailed} {
 		if degradedHint(reason, 2) == "" {
 			t.Fatalf("embedded degraded hint %q is empty", reason)
 		}

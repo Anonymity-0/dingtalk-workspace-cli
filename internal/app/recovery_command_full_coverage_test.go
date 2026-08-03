@@ -15,7 +15,7 @@ import (
 )
 
 func recoveryCoverageRun(cmdArgs ...string) (string, error) {
-	cmd := newRecoveryCommand(context.Background(), cli.StaticLoader{}, &GlobalFlags{})
+	cmd := newRecoveryCommand(context.Background(), cli.StaticDiscoveryLoader{}, &GlobalFlags{})
 	out := &strings.Builder{}
 	cmd.SetOut(out)
 	cmd.SetErr(io.Discard)
@@ -130,7 +130,7 @@ func TestCrossPlatformCoverageRecoveryExecutionAndRuntimeRemainingCoverage(t *te
 	fail := errors.New("catalog")
 	SetDynamicServers(nil)
 	runtime := &recoveryRuntime{
-		loader:    cli.CatalogLoaderFrom(cli.Catalog{}, fail),
+		loader:    cli.DiscoveryCatalogLoaderFrom(cli.DiscoveryCatalog{}, fail),
 		transport: transport.NewClient(nil),
 	}
 	if _, err := runtime.CallToolDirect(context.Background(), "missing", "tool", nil); !errors.Is(err, fail) {

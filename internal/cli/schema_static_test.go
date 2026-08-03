@@ -13,15 +13,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type panicCatalogLoader struct{}
+type panicDiscoveryCatalogLoader struct{}
 
-func (panicCatalogLoader) Load(context.Context) (Catalog, error) {
+func (panicDiscoveryCatalogLoader) Load(context.Context) (DiscoveryCatalog, error) {
 	panic("schema must not load a runtime catalog")
 }
 
 func TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
-	root.AddCommand(NewSchemaCommand(panicCatalogLoader{}))
+	root.AddCommand(NewSchemaCommand(panicDiscoveryCatalogLoader{}))
 	var stdout bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetArgs([]string{"schema"})
@@ -43,7 +43,7 @@ func TestSchemaUsesDeliveryCatalogWithoutRuntimeLoad(t *testing.T) {
 
 func TestSchemaAllReturnsCompleteDeliveryLeafSchemas(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
-	root.AddCommand(NewSchemaCommand(panicCatalogLoader{}))
+	root.AddCommand(NewSchemaCommand(panicDiscoveryCatalogLoader{}))
 	var stdout bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetArgs([]string{"schema", "--all"})

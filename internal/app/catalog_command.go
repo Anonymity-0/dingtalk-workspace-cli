@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newCatalogCommand(_ cli.CatalogLoader) *cobra.Command {
+func newCatalogCommand(_ cli.DiscoveryCatalogLoader) *cobra.Command {
 	return &cobra.Command{
 		Use:               "catalog",
 		Short:             "查看服务目录 (静态端点模式)",
