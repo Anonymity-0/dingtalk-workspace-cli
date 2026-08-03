@@ -510,6 +510,11 @@ func newOaCommand() *cobra.Command {
 		Example: "dws oa approval forecast-process --process-code <processCode> --dept-id -1 --form-values '{\"金额\":\"100\"}'",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if raw, _ := cmd.Flags().GetString("request"); raw != "" {
+				for _, name := range []string{"process-code", "dept-id", "form-values"} {
+					if cmd.Flags().Changed(name) {
+						return fmt.Errorf("--request 不能与 --%s 同时使用", name)
+					}
+				}
 				request, err := decodeOARequest(raw)
 				if err != nil {
 					return fmt.Errorf("--request JSON 解析失败: %w", err)
@@ -542,6 +547,11 @@ func newOaCommand() *cobra.Command {
 			}
 			var request map[string]any
 			if raw, _ := cmd.Flags().GetString("request"); raw != "" {
+				for _, name := range []string{"process-code", "dept-id", "form-values", "originator-user-id", "approvers", "approvers-action-type", "cc-list", "cc-position"} {
+					if cmd.Flags().Changed(name) {
+						return fmt.Errorf("--request 不能与 --%s 同时使用", name)
+					}
+				}
 				var err error
 				request, err = decodeOARequest(raw)
 				if err != nil {
@@ -562,6 +572,24 @@ func newOaCommand() *cobra.Command {
 						return fmt.Errorf("--dept-id 必须为整数: %w", err)
 					}
 					request["deptId"] = value
+				}
+				if userID, _ := cmd.Flags().GetString("originator-user-id"); userID != "" {
+					request["originatorUserId"] = userID
+				}
+				if rawApprovers, _ := cmd.Flags().GetString("approvers"); rawApprovers != "" {
+					action, _ := cmd.Flags().GetString("approvers-action-type")
+					if action != "AND" && action != "OR" && action != "NONE" {
+						return fmt.Errorf("--approvers-action-type 必须为 AND、OR 或 NONE")
+					}
+					request["approvers"] = []map[string]any{{"actionType": action, "userIds": strings.Split(rawApprovers, ",")}}
+				}
+				if rawCC, _ := cmd.Flags().GetString("cc-list"); rawCC != "" {
+					position, _ := cmd.Flags().GetString("cc-position")
+					if position != "START" && position != "FINISH" && position != "START_FINISH" {
+						return fmt.Errorf("--cc-position 必须为 START、FINISH 或 START_FINISH")
+					}
+					request["ccList"] = strings.Split(rawCC, ",")
+					request["ccPosition"] = position
 				}
 			}
 			return callMCPTool("start_process_instance", map[string]any{"ProcessInstanceCreationPopRequest": request})
@@ -647,6 +675,11 @@ func newOaCommand() *cobra.Command {
 	approvalCreateCmd.Flags().String("dept-id", "-1", "发起人部门 ID")
 	approvalCreateCmd.Flags().String("form-values", "", "表单值 JSON（简单模式必填）")
 	approvalCreateCmd.Flags().String("request", "", "完整请求 JSON（与简单模式互斥）")
+	approvalCreateCmd.Flags().String("originator-user-id", "", "审批发起人 userId")
+	approvalCreateCmd.Flags().String("approvers", "", "审批人 userId 列表，多个用逗号分隔")
+	approvalCreateCmd.Flags().String("approvers-action-type", "OR", "审批类型：AND、OR 或 NONE")
+	approvalCreateCmd.Flags().String("cc-list", "", "抄送人 userId 列表，多个用逗号分隔")
+	approvalCreateCmd.Flags().String("cc-position", "START", "抄送时点：START、FINISH 或 START_FINISH")
 
 	approvalCmd.AddCommand(
 		approvalListPendingCmd,
