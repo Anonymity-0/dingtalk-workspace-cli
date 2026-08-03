@@ -142,7 +142,6 @@ func newCommandRunnerWithFlags(flags *GlobalFlags) executor.Runner {
 	return &runtimeRunner{
 		transport:          transportClient,
 		globalFlags:        flags,
-		fallback:           executor.EchoRunner{},
 		scanner:            newRuntimeContentScanner(),
 		enforceContentScan: runtimeFlagEnabled(os.Getenv(runtimeContentScanEnforceEnv), false),
 		includeScanReport:  runtimeFlagEnabled(os.Getenv(runtimeContentScanReportOutputEnv), false),
@@ -208,13 +207,7 @@ func (r *runtimeRunner) Run(ctx context.Context, invocation executor.Invocation)
 		if profile == nil {
 			return executor.Result{}, apperrors.NewValidation(fmt.Sprintf("profile %q not found", rawProfile))
 		}
-		resolvedSelector := authpkg.ProfileSelector(*profile)
-		if strings.TrimSpace(profile.UserID) == "" {
-			// Preserve a unique local-name selector for an unresolved account.
-			// Reducing it to corpId can select a different exact account through
-			// the organization's current-account pointer.
-			resolvedSelector = rawProfile
-		}
+		resolvedSelector := profileRuntimeSelector(*profile, rawProfile)
 		authpkg.SetRuntimeProfile(resolvedSelector)
 		defer authpkg.SetRuntimeProfile(rawProfile)
 	}
@@ -275,6 +268,18 @@ func (r *runtimeRunner) runSingle(ctx context.Context, invocation executor.Invoc
 	return r.handleCatalogMiss(ctx, invocation, "no dynamic endpoint registered for product or tool")
 }
 
+// profileRuntimeSelector resolves the runtime profile selector for an
+// invocation. It preserves a unique local-name selector for an unresolved
+// account (empty UserID): reducing it to corpId can select a different exact
+// account through the organization's current-account pointer. Shared by the
+// single-profile path in Run and the multi-profile path in runMultiProfile.
+func profileRuntimeSelector(profile authpkg.Profile, rawSelector string) string {
+	if strings.TrimSpace(profile.UserID) == "" {
+		return rawSelector
+	}
+	return authpkg.ProfileSelector(profile)
+}
+
 type multiProfileSelection struct {
 	Selector string
 	Profile  authpkg.Profile
@@ -326,10 +331,7 @@ func (r *runtimeRunner) runMultiProfile(ctx context.Context, invocation executor
 	failed := 0
 
 	for _, selection := range selections {
-		resolvedSelector := authpkg.ProfileSelector(selection.Profile)
-		if strings.TrimSpace(selection.Profile.UserID) == "" {
-			resolvedSelector = selection.Selector
-		}
+		resolvedSelector := profileRuntimeSelector(selection.Profile, selection.Selector)
 		authpkg.SetRuntimeProfile(resolvedSelector)
 		result, err := r.runSingle(ctx, cloneInvocation(invocation), false)
 
@@ -429,36 +431,40 @@ func multiProfileErrorPayload(err error) map[string]any {
 // marshals to `null`, surfacing as `{"Content": null}` at the CLI. Users had no
 // signal that endpoint resolution failed — see the fix-wukong-discovery-missing-servers plan (Phase 3) for the full trace.
 //
-// New contract:
-//   - Dry-run (invocation.DryRun or globalFlags.DryRun): keep EchoRunner so
-//     `--dry-run` still prints the planned payload without real execution.
-//   - Otherwise: return an explicit apperrors.NewAPI("endpoint_not_resolved")
-//     with the offending product/tool attached. This fails fast to stderr and
-//     makes missing envelopes / supplement gaps immediately visible.
-func (r *runtimeRunner) handleCatalogMiss(ctx context.Context, invocation executor.Invocation, detail string) (executor.Result, error) {
-	dryRun := invocation.DryRun || (r.globalFlags != nil && r.globalFlags.DryRun)
-	if dryRun {
-		invocation.DryRun = true
-		return r.fallback.Run(ctx, invocation)
-	}
+// Contract: return an explicit apperrors.NewAPI("endpoint_not_resolved")
+// with the offending product/tool attached. This fails fast to stderr and
+// makes missing envelopes / supplement gaps immediately visible. Dry-run
+// invocations never reach this path in production: Run enforces the dry-run
+// barrier before endpoint resolution, and runSingle is only re-entered via
+// Run (multi-profile and PAT retry both route back through it).
+func (r *runtimeRunner) handleCatalogMiss(_ context.Context, invocation executor.Invocation, detail string) (executor.Result, error) {
+	return executor.Result{}, endpointNotResolvedError(invocation.CanonicalProduct, invocation.Tool, detail)
+}
+
+// endpointNotResolvedError builds the shared terminal error for a dynamic
+// server registry miss. Both the runtime runner (handleCatalogMiss) and the
+// recovery runtime (resolveEndpoint) use it so endpoint misses classify
+// identically: CategoryAPI, operation "discovery.resolve", reason
+// "endpoint_not_resolved", with the product ID as the server key.
+func endpointNotResolvedError(productID, toolName, detail string) error {
 	hint := "当前命令已注册，但静态端点目录中缺少对应 product/server endpoint。这通常是服务发现下线后的同步产物缺口，不是参数错误；请不要通过反复调整 flag 重试。"
 	actions := []string{
 		"确认 internal/syncdata.StaticServers() 是否包含该 product/server",
 		"运行 sync-oss 重新生成静态端点与路由",
 		"若该能力已下线，请在 skill 与 --help 中标记 unavailable 并提供替代命令",
 	}
-	if strings.TrimSpace(invocation.CanonicalProduct) == devappProductID {
+	if strings.TrimSpace(productID) == devappProductID {
 		hint = "dev app（product id: devapp）是 helper-only 产品，命令树不依赖服务发现；真实调用需要通过 StaticServers/SupplementServers 注入 MCP endpoint，或本地调试临时设置 DINGTALK_DEVAPP_MCP_URL。"
 		actions = []string{
 			"检查 StaticServers/SupplementServers 是否包含 devapp endpoint",
 			"本地调试可临时设置 DINGTALK_DEVAPP_MCP_URL 后重试",
 		}
 	}
-	return executor.Result{}, apperrors.NewAPI(
-		fmt.Sprintf("endpoint not resolved for product %q (tool %q): %s", invocation.CanonicalProduct, invocation.Tool, detail),
+	return apperrors.NewAPI(
+		fmt.Sprintf("endpoint not resolved for product %q (tool %q): %s", productID, toolName, detail),
 		apperrors.WithOperation("discovery.resolve"),
 		apperrors.WithReason("endpoint_not_resolved"),
-		apperrors.WithServerKey(invocation.CanonicalProduct),
+		apperrors.WithServerKey(productID),
 		apperrors.WithHint(hint),
 		apperrors.WithActions(actions...),
 	)
@@ -742,13 +748,6 @@ func (r *runtimeRunner) executeInvocation(ctx context.Context, endpoint string, 
 		response["safety"] = scanReport
 	}
 	return executor.Result{Invocation: invocation, Response: response}, nil
-}
-
-// executeStdioInvocation dispatches a tool call through a local StdioClient
-// subprocess instead of the HTTP transport. This is used for plugin stdio
-// servers whose endpoints use the stdio:// scheme.
-func (r *runtimeRunner) executeStdioInvocation(ctx context.Context, invocation executor.Invocation) (executor.Result, error) {
-	return r.executeStdioInvocationAtEndpoint(ctx, "", invocation)
 }
 
 func (r *runtimeRunner) executeStdioInvocationAtEndpoint(

@@ -287,8 +287,13 @@ func TestCrossPlatformCoverageRecoveryPureCoverage(t *testing.T) {
 	if _, err := (*recoveryRuntime)(nil).CallToolDirect(context.Background(), "x", "y", nil); err == nil {
 		t.Fatal("nil recovery runtime call succeeded")
 	}
-	if _, err := (&recoveryRuntime{}).resolveEndpoint(context.Background(), "missing", "tool"); err == nil || !strings.Contains(err.Error(), "未找到服务 missing 的 endpoint") {
+	if _, err := (&recoveryRuntime{}).resolveEndpoint(context.Background(), "missing", "tool"); err == nil || !strings.Contains(err.Error(), `endpoint not resolved for product "missing" (tool "tool")`) {
 		t.Fatalf("missing recovery endpoint error = %v", err)
+	} else {
+		var apiErr *apperrors.Error
+		if !errors.As(err, &apiErr) || apiErr.Category != apperrors.CategoryAPI || apiErr.Operation != "discovery.resolve" || apiErr.Reason != "endpoint_not_resolved" {
+			t.Fatalf("missing recovery endpoint classification = %#v", err)
+		}
 	}
 	t.Setenv("DINGTALK_OK_MCP_URL", " https://catalog.test ")
 	runtime := &recoveryRuntime{}
@@ -798,9 +803,12 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	}
 	t.Setenv("DINGTALK_PRODUCT_MCP_URL", "")
 
+	// Dry-run is an execution barrier enforced by Run before endpoint
+	// resolution, so a dry-run invocation returns a local preview and never
+	// reaches handleCatalogMiss or the fallback runner.
 	r.globalFlags = &GlobalFlags{DryRun: true}
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
-		t.Fatalf("dry endpoint miss = %#v %v (invocation %#v)", got, err, fallback.last)
+	if got, err := r.Run(context.Background(), inv); err != nil || got.Response["dry_run"] != true || got.Response["fallback"] != nil {
+		t.Fatalf("dry endpoint miss = %#v %v", got, err)
 	}
 	r.globalFlags = &GlobalFlags{}
 	if _, err := r.runSingle(context.Background(), inv, false); err == nil || !strings.Contains(err.Error(), "no dynamic endpoint registered for product or tool") {
@@ -821,9 +829,11 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 		t.Fatalf("direct runtime route = %#v %v", got, err)
 	}
 	SetDynamicServers(nil)
+	// With no dynamic endpoint registered, a dry-run helper invocation is still
+	// stopped by the Run barrier before endpoint resolution.
 	r.globalFlags = &GlobalFlags{DryRun: true}
-	if got, err := r.runSingle(context.Background(), directInv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
-		t.Fatalf("direct runtime dry miss = %#v %v (invocation %#v)", got, err, fallback.last)
+	if got, err := r.Run(context.Background(), directInv); err != nil || got.Response["dry_run"] != true || got.Response["fallback"] != nil {
+		t.Fatalf("direct runtime dry miss = %#v %v", got, err)
 	}
 
 	for _, result := range []executor.Result{{}, {Response: map[string]any{"content": "value"}}, {Response: map[string]any{"value": 1}}} {
@@ -934,7 +944,7 @@ func TestCrossPlatformCoverageExecuteInvocationCoverage(t *testing.T) {
 		t.Fatalf("stdio dry-run = %#v %v", got, err)
 	}
 	stdioInv.DryRun = false
-	if _, err := r.executeStdioInvocation(context.Background(), stdioInv); err == nil {
+	if _, err := r.executeStdioInvocationAtEndpoint(context.Background(), "", stdioInv); err == nil {
 		t.Fatal("missing stdio client succeeded")
 	}
 }

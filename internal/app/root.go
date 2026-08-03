@@ -693,27 +693,6 @@ func newVersionCommand() *cobra.Command {
 // stay hidden.
 func hideNonDirectRuntimeCommands(root *cobra.Command) {
 	allowedProducts := resolveVisibleProducts()
-	staticCommands := map[string]bool{
-		"auth":       true,
-		"api":        true,
-		"audit":      true,
-		"cache":      true,
-		"config":     true,
-		"dev":        true,
-		"doctor":     true,
-		"event":      true,
-		"completion": true,
-		"skill":      true,
-		"plugin":     true,
-		"profile":    true,
-		"version":    true,
-		"help":       true,
-		"markdown":   true,
-		"recovery":   true,
-		"schema":     true,
-		"mcp":        true,
-		"upgrade":    true,
-	}
 	for _, cmd := range root.Commands() {
 		name := cmd.Name()
 		if cmd.Hidden {
@@ -729,16 +708,40 @@ func hideNonDirectRuntimeCommands(root *cobra.Command) {
 	}
 }
 
+// builtinCommandNames is the shared base set of built-in command names. Both
+// staticCommands (the visibility allow-list used by
+// hideNonDirectRuntimeCommands) and reservedCommands (the plugin-override
+// blocklist) derive from this single set so they cannot drift apart.
+var builtinCommandNames = map[string]bool{
+	"auth": true, "api": true, "audit": true, "cache": true, "config": true,
+	"doctor": true, "event": true, "completion": true, "skill": true,
+	"plugin": true, "profile": true, "version": true, "help": true,
+	"recovery": true, "schema": true, "mcp": true, "upgrade": true,
+}
+
+// commandNameSet returns a new set containing every name in base plus extras.
+func commandNameSet(base map[string]bool, extras ...string) map[string]bool {
+	set := make(map[string]bool, len(base)+len(extras))
+	for name := range base {
+		set[name] = true
+	}
+	for _, extra := range extras {
+		set[extra] = true
+	}
+	return set
+}
+
+// staticCommands is the set of built-in commands that stay visible even when
+// they are not backed by a static endpoint product. Asymmetry with
+// reservedCommands is intentional: dev/markdown stay visible but are not
+// plugin-reserved, while login/logout are plugin-reserved but are not static
+// top-level commands.
+var staticCommands = commandNameSet(builtinCommandNames, "dev", "markdown")
+
 // reservedCommands is the set of built-in command names that plugins must
 // not override. This protects core CLI functionality from being hijacked
 // by a malicious or misconfigured plugin.
-var reservedCommands = map[string]bool{
-	"auth": true, "api": true, "audit": true, "login": true, "logout": true,
-	"plugin": true, "profile": true, "skill": true, "cache": true,
-	"config": true, "doctor": true, "event": true, "completion": true,
-	"recovery": true, "upgrade": true, "version": true,
-	"schema": true, "mcp": true, "help": true,
-}
+var reservedCommands = commandNameSet(builtinCommandNames, "login", "logout")
 
 var replaceablePluginFallbacks = map[string]bool{
 	"conference": true,

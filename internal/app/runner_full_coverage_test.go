@@ -306,7 +306,7 @@ func TestCrossPlatformCoverageRunnerRemainingStdioAuthAndHeadersCoverage(t *test
 	inv := executor.Invocation{CanonicalProduct: "stdio-product", Tool: "tool"}
 	wantErr := errors.New("stdio failed")
 	runnerStdioEnsureInitialized = func(*transport.StdioClient, context.Context) error { return wantErr }
-	if _, err := r.executeStdioInvocation(context.Background(), inv); err == nil || !strings.Contains(err.Error(), "stdio initialize failed") {
+	if _, err := r.executeStdioInvocationAtEndpoint(context.Background(), "", inv); err == nil || !strings.Contains(err.Error(), "stdio initialize failed") {
 		t.Fatalf("stdio initialize error = %v", err)
 	}
 	runnerStdioEnsureInitialized = func(*transport.StdioClient, context.Context) error { return nil }
@@ -321,19 +321,19 @@ func TestCrossPlatformCoverageRunnerRemainingStdioAuthAndHeadersCoverage(t *test
 	runnerStdioCallTool = func(*transport.StdioClient, context.Context, string, map[string]any) (transport.ToolCallResult, error) {
 		return transport.ToolCallResult{}, wantErr
 	}
-	if _, err := r.executeStdioInvocation(context.Background(), inv); err == nil || !strings.Contains(err.Error(), "stdio failed") {
+	if _, err := r.executeStdioInvocationAtEndpoint(context.Background(), "", inv); err == nil || !strings.Contains(err.Error(), "stdio failed") {
 		t.Fatalf("stdio call error = %v", err)
 	}
 	runnerStdioCallTool = func(*transport.StdioClient, context.Context, string, map[string]any) (transport.ToolCallResult, error) {
 		return transport.ToolCallResult{IsError: true, Content: map[string]any{"message": "tool failed"}}, nil
 	}
-	if _, err := r.executeStdioInvocation(context.Background(), inv); err == nil || !strings.Contains(err.Error(), "tool failed") {
+	if _, err := r.executeStdioInvocationAtEndpoint(context.Background(), "", inv); err == nil || !strings.Contains(err.Error(), "tool failed") {
 		t.Fatalf("stdio tool error = %v", err)
 	}
 	runnerStdioCallTool = func(*transport.StdioClient, context.Context, string, map[string]any) (transport.ToolCallResult, error) {
 		return transport.ToolCallResult{Content: map[string]any{"ok": true}}, nil
 	}
-	if got, err := r.executeStdioInvocation(context.Background(), inv); err != nil || !got.Invocation.Implemented {
+	if got, err := r.executeStdioInvocationAtEndpoint(context.Background(), "", inv); err != nil || !got.Invocation.Implemented {
 		t.Fatalf("stdio success = %#v, %v", got, err)
 	}
 	RegisterStdioClient("plugin/server-key", client)

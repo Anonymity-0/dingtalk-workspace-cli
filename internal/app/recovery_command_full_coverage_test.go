@@ -131,7 +131,7 @@ func TestCrossPlatformCoverageRecoveryExecutionAndRuntimeRemainingCoverage(t *te
 		transport: transport.NewClient(nil),
 		flags:     &GlobalFlags{Token: "token"},
 	}
-	if _, err := runtime.CallToolDirect(context.Background(), "missing", "tool", nil); err == nil || !strings.Contains(err.Error(), "未找到服务 missing 的 endpoint") {
+	if _, err := runtime.CallToolDirect(context.Background(), "missing", "tool", nil); err == nil || !strings.Contains(err.Error(), `endpoint not resolved for product "missing" (tool "tool")`) {
 		t.Fatalf("direct resolution error = %v", err)
 	}
 	if got, err := runtime.Search(context.Background(), "query", recovery.RecoveryContext{}); err == nil || got.DocSearch.Status != "error" {

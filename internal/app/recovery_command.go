@@ -354,7 +354,7 @@ func (r *recoveryRuntime) resolveEndpoint(_ context.Context, productID, toolName
 	if endpoint, ok := directRuntimeEndpoint(productID, toolName); ok {
 		return endpoint, nil
 	}
-	return "", fmt.Errorf("未找到服务 %s 的 endpoint", productID)
+	return "", endpointNotResolvedError(productID, toolName, "no dynamic endpoint registered for product or tool")
 }
 
 func recoveryRuntimeToken(flags *GlobalFlags) string {
