@@ -26,9 +26,10 @@ import (
 )
 
 // AttachRuntimeSchema records optional implementation-side identity evidence
-// on a runnable command. Command discovery belongs exclusively to the reviewed
-// CommandRegistry; the Cobra binder accepts an absent annotation and rejects
-// an annotation that disagrees with the registry.
+// on a runnable command. Stable command identity is collected from
+// ContractFinal.Identity on the live Cobra leaves (EffectiveCommandRegistry);
+// the binder accepts an absent annotation and rejects an annotation that
+// disagrees with the collected identity.
 func AttachRuntimeSchema(cmd *cobra.Command, productID, toolName, source string) {
 	if cmd == nil {
 		return
@@ -45,26 +46,6 @@ func AttachRuntimeSchema(cmd *cobra.Command, productID, toolName, source string)
 	cmd.Annotations[AnnotationTool] = toolName
 	if source = strings.TrimSpace(source); source != "" {
 		cmd.Annotations[AnnotationSource] = source
-	}
-}
-
-// AnnotateRuntimeToolMetadata preserves MCP-provided tool metadata on a Cobra
-// leaf so `dws schema` can render richer descriptions without refetching.
-func AnnotateRuntimeToolMetadata(cmd *cobra.Command, title, description, source string) {
-	if cmd == nil {
-		return
-	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	if title = strings.TrimSpace(title); title != "" {
-		cmd.Annotations[AnnotationTitle] = title
-	}
-	if description = strings.TrimSpace(description); description != "" {
-		cmd.Annotations[AnnotationDescription] = description
-	}
-	if source = strings.TrimSpace(source); source != "" {
-		cmd.Annotations[AnnotationMetaSource] = source
 	}
 }
 
@@ -196,45 +177,10 @@ func AnnotateRuntimeContract(cmd *cobra.Command) {
 	SetCommandAnnotation(cmd, AnnotationContract, "command")
 }
 
-// AnnotateRuntimeRisk records the Contract Risk string for Schema Safety
-// projection. Empty risk is a no-op so write-guard leaves that leave Risk
-// unset keep Contract.Safety / runtime_gate provenance (schema_hints/ is
-// retired and must not be treated as a Safety fallback).
-//
-// Freeze: do not add new production call sites; declare Contract SafetySpec
-// instead. Existing annotate sites may remain until migrated.
-func AnnotateRuntimeRisk(cmd *cobra.Command, risk string) {
-	if cmd == nil {
-		return
-	}
-	risk = strings.TrimSpace(risk)
-	if risk == "" {
-		return
-	}
-	AnnotateRuntimeContract(cmd)
-	SetCommandAnnotation(cmd, AnnotationRisk, risk)
-}
-
-// AnnotateRuntimeGate records a non-Risk confirmation path (e.g.
-// devAppRequireWriteGuard). Homology rule: every confirmation fact is either
-// Contract-declared (SafetySpec / Risk) or explicitly annotated (this gate).
-// schema_hints/ is retired and must not supply confirmation.
-//
-// Freeze: do not add new production call sites; declare Contract SafetySpec
-// instead. Existing annotate sites may remain until migrated.
-func AnnotateRuntimeGate(cmd *cobra.Command, gate string) {
-	if cmd == nil {
-		return
-	}
-	gate = strings.TrimSpace(gate)
-	if gate == "" {
-		return
-	}
-	AnnotateRuntimeContract(cmd)
-	SetCommandAnnotation(cmd, AnnotationRuntimeGate, gate)
-}
-
 // RuntimeContractRisk returns the Contract Risk annotation when present.
+// Writers are retired: production leaves declare contract.SafetySpec through
+// ContractFinal, and assembly consults this residual annotation only as the
+// fallback when a leaf carries no ContractFinal Safety.
 func RuntimeContractRisk(cmd *cobra.Command) (string, bool) {
 	if cmd == nil || cmd.Annotations == nil {
 		return "", false
@@ -246,7 +192,9 @@ func RuntimeContractRisk(cmd *cobra.Command) (string, bool) {
 	return risk, true
 }
 
-// RuntimeContractGate returns the annotated runtime confirmation gate when present.
+// RuntimeContractGate returns the annotated runtime confirmation gate when
+// present. Like RuntimeContractRisk it is read-only residual plumbing: the
+// writer is retired and declared Contract SafetySpec is the production path.
 func RuntimeContractGate(cmd *cobra.Command) (string, bool) {
 	if cmd == nil || cmd.Annotations == nil {
 		return "", false
@@ -299,12 +247,6 @@ func CommandPositionals(cmd *cobra.Command) []contract.RuntimeSchemaPositional {
 	}
 	sort.SliceStable(positionals, func(i, j int) bool { return positionals[i].Index < positionals[j].Index })
 	return positionals
-}
-
-// ExcludeFromRuntimeSchema keeps a human-facing hint or redirect in --help
-// while preventing it from being advertised as an executable agent tool.
-func ExcludeFromRuntimeSchema(cmd *cobra.Command) {
-	SetCommandAnnotation(cmd, AnnotationExclude, "true")
 }
 
 // CommandFlag resolves local flags plus product/group persistent flags.

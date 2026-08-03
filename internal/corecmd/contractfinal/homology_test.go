@@ -29,7 +29,7 @@ func TestCrossPlatformCoverageHasDeclaredOrAnnotatedConfirmationBranches(t *test
 	}
 
 	gated := &cobra.Command{Use: "gated"}
-	runtimeannotate.AnnotateRuntimeGate(gated, "devAppRequireWriteGuard")
+	gated.Annotations = map[string]string{runtimeannotate.AnnotationRuntimeGate: "devAppRequireWriteGuard"}
 	if !HasDeclaredOrAnnotatedConfirmation(gated) {
 		t.Fatal("annotated gate must satisfy declare-OR-annotate")
 	}
@@ -44,7 +44,7 @@ func TestCrossPlatformCoverageHasDeclaredOrAnnotatedConfirmationBranches(t *test
 	}
 
 	risky := &cobra.Command{Use: "risky"}
-	runtimeannotate.AnnotateRuntimeRisk(risky, "read")
+	risky.Annotations = map[string]string{runtimeannotate.AnnotationRisk: "read"}
 	if !HasDeclaredOrAnnotatedConfirmation(risky) {
 		t.Fatal("Contract Risk annotation must satisfy declare-OR-annotate")
 	}

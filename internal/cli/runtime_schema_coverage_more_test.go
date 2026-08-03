@@ -24,10 +24,6 @@ func TestCrossPlatformCoverageRuntimeSchemaLoaderAndAnnotationEdges(t *testing.T
 	}
 
 	cmd := &cobra.Command{Use: "run", Short: "short", Long: "long"}
-	AnnotateRuntimeToolMetadata(cmd, " title ", " description ", " source ")
-	if cmd.Annotations[runtimeannotate.AnnotationTitle] != "title" {
-		t.Fatalf("annotations = %#v", cmd.Annotations)
-	}
 	AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{Name: " ", Index: -1})
 	if _, ok := cmd.Annotations[runtimeSchemaArgsAnnotation]; ok {
 		t.Fatal("invalid positional should not be annotated")

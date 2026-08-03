@@ -253,7 +253,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSafetyAnnotationFa
 
 	// Safety nil + Contract Risk annotation: Risk overlay wins.
 	riskCmd := &cobra.Command{Use: "create"}
-	runtimeannotate.AnnotateRuntimeRisk(riskCmd, "write")
+	riskCmd.Annotations = map[string]string{runtimeannotate.AnnotationRisk: "write"}
 	entry.Command = riskCmd
 	spec, err := runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{}, runtimeSchemaMetadataSources{})
 	if err != nil {
@@ -268,7 +268,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSafetyAnnotationFa
 
 	// Safety nil + runtime gate annotation: gate overlay wins.
 	gateCmd := &cobra.Command{Use: "create"}
-	runtimeannotate.AnnotateRuntimeGate(gateCmd, "devAppRequireWriteGuard")
+	gateCmd.Annotations = map[string]string{runtimeannotate.AnnotationRuntimeGate: "devAppRequireWriteGuard"}
 	entry.Command = gateCmd
 	spec, err = runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{}, runtimeSchemaMetadataSources{})
 	if err != nil {

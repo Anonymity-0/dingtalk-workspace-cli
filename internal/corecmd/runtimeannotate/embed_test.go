@@ -19,53 +19,50 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageAnnotateRuntimeRiskEmbedsContractMarker(t *testing.T) {
-	cmd := &cobra.Command{Use: "x"}
-	AnnotateRuntimeRisk(cmd, "write")
+// The Risk/Gate writers are retired; assembly still reads the residual
+// annotations through the accessors as a ContractFinal-less fallback, so the
+// accessors keep coverage with directly constructed annotation maps.
+
+func TestCrossPlatformCoverageRuntimeContractRiskAccessor(t *testing.T) {
+	cmd := &cobra.Command{Use: "x", Annotations: map[string]string{
+		AnnotationRisk: "write",
+	}}
 	got, ok := RuntimeContractRisk(cmd)
 	if !ok || got != "write" {
 		t.Fatalf("RuntimeContractRisk = %q %v", got, ok)
 	}
-	if cmd.Annotations[AnnotationContract] != "command" {
-		t.Fatalf("contract marker = %q", cmd.Annotations[AnnotationContract])
+	if _, ok := RuntimeContractRisk(nil); ok {
+		t.Fatal("RuntimeContractRisk(nil) must miss")
 	}
-	AnnotateRuntimeRisk(cmd, "")
-	if got, _ = RuntimeContractRisk(cmd); got != "write" {
-		t.Fatalf("empty AnnotateRuntimeRisk must be no-op, got %q", got)
+	if _, ok := RuntimeContractRisk(&cobra.Command{}); ok {
+		t.Fatal("RuntimeContractRisk empty annotations must miss")
+	}
+	blank := &cobra.Command{Use: "y", Annotations: map[string]string{AnnotationRisk: "   "}}
+	if _, ok := RuntimeContractRisk(blank); ok {
+		t.Fatal("blank risk annotation must not report a risk")
 	}
 }
 
-func TestCrossPlatformCoverageAnnotateRuntimeGate(t *testing.T) {
-	cmd := &cobra.Command{Use: "x"}
-	AnnotateRuntimeGate(cmd, "devAppRequireWriteGuard")
+func TestCrossPlatformCoverageRuntimeContractGateAccessor(t *testing.T) {
+	cmd := &cobra.Command{Use: "x", Annotations: map[string]string{
+		AnnotationRuntimeGate: "devAppRequireWriteGuard",
+	}}
 	got, ok := RuntimeContractGate(cmd)
 	if !ok || got != "devAppRequireWriteGuard" {
 		t.Fatalf("RuntimeContractGate = %q %v", got, ok)
 	}
-	if cmd.Annotations[AnnotationContract] != "command" {
-		t.Fatalf("contract marker = %q", cmd.Annotations[AnnotationContract])
+	if _, ok := RuntimeContractGate(nil); ok {
+		t.Fatal("RuntimeContractGate(nil) must miss")
 	}
-}
-
-func TestCrossPlatformCoverageRuntimeContractAnnotationNilAndBlankGuards(t *testing.T) {
-	AnnotateRuntimeFlagDescription(nil, "flag", "description")
-	AnnotateRuntimeContract(nil)
-	AnnotateRuntimeRisk(nil, "write")
-	AnnotateRuntimeGate(nil, "devAppRequireWriteGuard")
-
-	cmd := &cobra.Command{Use: "x"}
-	AnnotateRuntimeGate(cmd, "   ")
-	if _, ok := RuntimeContractGate(cmd); ok {
-		t.Fatal("blank AnnotateRuntimeGate must not record a gate")
-	}
-	if cmd.Annotations != nil && cmd.Annotations[AnnotationContract] == "command" {
-		t.Fatal("blank AnnotateRuntimeGate must not mark the command as Contract")
-	}
-
 	blank := &cobra.Command{Use: "y", Annotations: map[string]string{
 		AnnotationRuntimeGate: "   ",
 	}}
 	if _, ok := RuntimeContractGate(blank); ok {
 		t.Fatal("blank runtime_gate annotation must not report a gate")
 	}
+}
+
+func TestCrossPlatformCoverageRuntimeContractAnnotationNilGuards(t *testing.T) {
+	AnnotateRuntimeFlagDescription(nil, "flag", "description")
+	AnnotateRuntimeContract(nil)
 }

@@ -605,15 +605,16 @@ func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 // EnvVar/RequiredHint report their hint separately. The plain group is checked
 // before the env group to preserve the handwritten order. Both groups use the
 // declared "main flag → alias → env" fallback: a compatible alias counts as
-// provided.
+// provided. Shortcut mode keeps its stricter contract: it demands an explicit
+// token, so the main flag or an alias must be Changed on the command line — a
+// registration default does not satisfy it.
 func ValidateRequired(cmd *cobra.Command, flags []FlagSpec) error {
 	for _, flag := range flags {
 		if flag.ValidationMode != ValidationShortcut {
 			continue
 		}
 		if flag.Required {
-			registered := cmd.Flags().Lookup(flag.Name)
-			if registered == nil || !registered.Changed {
+			if !flagNameProvided(cmd, flag) {
 				message := strings.TrimSpace(flag.RequiredError)
 				if message == "" {
 					message = fmt.Sprintf("缺少必填参数 --%s", flag.Name)
@@ -622,13 +623,11 @@ func ValidateRequired(cmd *cobra.Command, flags []FlagSpec) error {
 			}
 			switch flag.Kind {
 			case KindStringSlice:
-				values, _ := cmd.Flags().GetStringSlice(flag.Name)
-				if !sliceHasValue(values) {
+				if !sliceHasValue(sliceValue(cmd, flag)) {
 					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", flag.Name))
 				}
 			case KindString:
-				value, _ := cmd.Flags().GetString(flag.Name)
-				if strings.TrimSpace(value) == "" {
+				if strings.TrimSpace(EffectiveValue(cmd, flag)) == "" {
 					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", flag.Name))
 				}
 			}
@@ -680,12 +679,14 @@ func ValidateEnums(cmd *cobra.Command, flags []FlagSpec) error {
 }
 
 func validateEnum(cmd *cobra.Command, flag FlagSpec) error {
-	if len(flag.Enum) == 0 || !cmd.Flags().Changed(flag.Name) {
+	if len(flag.Enum) == 0 || !flagNameProvided(cmd, flag) {
 		return nil
 	}
-	values := []string{flagString(cmd, flag.Kind, flag.Name)}
+	var values []string
 	if flag.Kind == KindStringSlice {
-		values, _ = cmd.Flags().GetStringSlice(flag.Name)
+		values = sliceValue(cmd, flag)
+	} else {
+		values = []string{EffectiveValue(cmd, flag)}
 	}
 	for _, value := range values {
 		value = strings.TrimSpace(value)
@@ -703,6 +704,23 @@ func validateEnum(cmd *cobra.Command, flag FlagSpec) error {
 		}
 	}
 	return nil
+}
+
+// flagNameProvided reports whether the flag was explicitly passed on the
+// command line under its main name or any declared alias. Registration
+// defaults and environment variables do not count: those feed the
+// effective-value chain, not the explicit-token checks used by Shortcut
+// Required and enum validation.
+func flagNameProvided(cmd *cobra.Command, flag FlagSpec) bool {
+	if cmd.Flags().Changed(flag.Name) {
+		return true
+	}
+	for _, alias := range flag.Aliases {
+		if cmd.Flags().Changed(alias) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasEffectiveValue decides whether a Required flag is satisfied, matching the

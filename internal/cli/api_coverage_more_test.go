@@ -11,7 +11,6 @@ import (
 func TestCrossPlatformCoverageRuntimeAnnotationAPIsCoverage(t *testing.T) {
 	AttachRuntimeSchema(nil, "p", "t", "s")
 	AttachRuntimeSchema(&cobra.Command{}, "", "", "")
-	AnnotateRuntimeToolMetadata(nil, "", "", "")
 	AnnotateRuntimeFlag(nil, "x", "x", "string", false, "")
 	AnnotateRuntimeFlagProperty(nil, "x", "x")
 	AnnotateRuntimeRequiredFlags(nil, "x")
@@ -23,12 +22,10 @@ func TestCrossPlatformCoverageRuntimeAnnotationAPIsCoverage(t *testing.T) {
 	AnnotateRuntimeFlagExample(nil, "x", "a")
 	AnnotateRuntimeConstraints(nil, RuntimeSchemaConstraints{})
 	AnnotateRuntimePositionals(nil)
-	ExcludeFromRuntimeSchema(nil)
 
 	cmd := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
 	cmd.Flags().StringP("value", "v", "", "value")
 	AttachRuntimeSchema(cmd, " product ", " tool ", " source ")
-	AnnotateRuntimeToolMetadata(cmd, " Title ", " Description ", " source ")
 	AnnotateRuntimeFlag(cmd, "", "property", "string", true, "")
 	AnnotateRuntimeFlag(cmd, "missing", "property", "string", true, "")
 	AnnotateRuntimeFlag(cmd, "value", " property ", " string ", true, "")
@@ -52,13 +49,12 @@ func TestCrossPlatformCoverageRuntimeAnnotationAPIsCoverage(t *testing.T) {
 		contract.RuntimeSchemaPositional{Name: " second ", Index: 1, Description: " desc "},
 		contract.RuntimeSchemaPositional{Name: "first", Index: 0, Type: " number "},
 	)
-	ExcludeFromRuntimeSchema(cmd)
 	setRuntimeCommandAnnotation(cmd, "empty", " ")
 	setFlagAnnotation(nil, "x", "y")
 	setFlagAnnotation(cmd.Flags().Lookup("value"), "empty", " ")
 	setFlagAnnotationValues(nil, "x", "y")
 	setFlagAnnotationValues(cmd.Flags().Lookup("value"), "empty", " ")
-	if cmd.Annotations[runtimeSchemaProductAnnotation] != "product" || cmd.Annotations[runtimeSchemaExcludeAnnotation] != "true" {
+	if cmd.Annotations[runtimeSchemaProductAnnotation] != "product" {
 		t.Fatalf("command annotations = %#v", cmd.Annotations)
 	}
 }

@@ -14,7 +14,6 @@ import (
 func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 	AttachRuntimeSchema(nil, "p", "t", "s")
 	AttachRuntimeSchema(&cobra.Command{}, "", "", "")
-	AnnotateRuntimeToolMetadata(nil, "", "", "")
 	AnnotateRuntimeFlag(nil, "x", "x", "string", false, "")
 	AnnotateRuntimeFlagProperty(nil, "x", "x")
 	AnnotateRuntimeRequiredFlags(nil, "x")
@@ -28,7 +27,6 @@ func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 	AnnotateRuntimeContract(nil)
 	AnnotateRuntimeConstraints(nil, RuntimeSchemaConstraints{})
 	AnnotateRuntimePositionals(nil)
-	ExcludeFromRuntimeSchema(nil)
 	_ = CommandFlag(nil, "x")
 	_ = CommandPositionals(nil)
 	_ = CommandConstraints(nil)
@@ -42,29 +40,9 @@ func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 	parent.AddCommand(cmd)
 	cmd.Flags().String("value", "", "value")
 
-	freshMeta := &cobra.Command{Use: "meta"}
-	AnnotateRuntimeToolMetadata(freshMeta, " ", " ", " ")
-	AnnotateRuntimeToolMetadata(freshMeta, " Title ", " Description ", " source ")
-	if freshMeta.Annotations[AnnotationTitle] != "Title" || freshMeta.Annotations[AnnotationMetaSource] != "source" {
-		t.Fatalf("tool metadata = %#v", freshMeta.Annotations)
-	}
-
 	AttachRuntimeSchema(cmd, " product ", " tool ", " source ")
 	if cmd.Annotations[AnnotationProduct] != "product" || cmd.Annotations[AnnotationTool] != "tool" {
 		t.Fatalf("AttachRuntimeSchema annotations = %#v", cmd.Annotations)
-	}
-	AnnotateRuntimeToolMetadata(cmd, " Title2 ", " Description2 ", " source2 ")
-	if cmd.Annotations[AnnotationTitle] != "Title2" {
-		t.Fatalf("tool metadata overwrite = %#v", cmd.Annotations)
-	}
-	if _, ok := RuntimeContractRisk(nil); ok {
-		t.Fatal("RuntimeContractRisk(nil) must miss")
-	}
-	if _, ok := RuntimeContractRisk(&cobra.Command{}); ok {
-		t.Fatal("RuntimeContractRisk empty annotations must miss")
-	}
-	if _, ok := RuntimeContractRisk(&cobra.Command{Annotations: map[string]string{AnnotationRisk: "  "}}); ok {
-		t.Fatal("RuntimeContractRisk blank risk must miss")
 	}
 
 	AnnotateRuntimeFlag(cmd, "", "property", "string", true, "")
@@ -153,11 +131,6 @@ func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 	_ = CommandPositionals(&cobra.Command{Annotations: map[string]string{AnnotationPositionals: "   "}})
 	AnnotateRuntimePositionals(cmd) // empty after filters is no-op path via clean empty? name empty skipped
 	AnnotateRuntimePositionals(&cobra.Command{Use: "empty"})
-
-	ExcludeFromRuntimeSchema(cmd)
-	if cmd.Annotations[AnnotationExclude] != "true" {
-		t.Fatalf("exclude annotation = %#v", cmd.Annotations)
-	}
 
 	SetCommandAnnotation(cmd, "k", " ")
 	SetCommandAnnotation(cmd, "k", "v")

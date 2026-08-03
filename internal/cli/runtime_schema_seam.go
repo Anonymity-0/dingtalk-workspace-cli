@@ -31,7 +31,6 @@ type RuntimeSchemaConstraints = runtimeannotate.RuntimeSchemaConstraints
 
 var (
 	AttachRuntimeSchema                 = runtimeannotate.AttachRuntimeSchema
-	AnnotateRuntimeToolMetadata         = runtimeannotate.AnnotateRuntimeToolMetadata
 	AnnotateRuntimeFlag                 = runtimeannotate.AnnotateRuntimeFlag
 	AnnotateRuntimeFlagProperty         = runtimeannotate.AnnotateRuntimeFlagProperty
 	AnnotateRuntimeRequiredFlags        = runtimeannotate.AnnotateRuntimeRequiredFlags
@@ -43,13 +42,10 @@ var (
 	AnnotateRuntimeFlagEnum             = runtimeannotate.AnnotateRuntimeFlagEnum
 	AnnotateRuntimeFlagExample          = runtimeannotate.AnnotateRuntimeFlagExample
 	AnnotateRuntimeContract             = runtimeannotate.AnnotateRuntimeContract
-	AnnotateRuntimeRisk                 = runtimeannotate.AnnotateRuntimeRisk
-	AnnotateRuntimeGate                 = runtimeannotate.AnnotateRuntimeGate
 	RuntimeContractRisk                 = runtimeannotate.RuntimeContractRisk
 	RuntimeContractGate                 = runtimeannotate.RuntimeContractGate
 	AnnotateRuntimeConstraints          = runtimeannotate.AnnotateRuntimeConstraints
 	AnnotateRuntimePositionals          = runtimeannotate.AnnotateRuntimePositionals
-	ExcludeFromRuntimeSchema            = runtimeannotate.ExcludeFromRuntimeSchema
 	HasDeclaredOrAnnotatedConfirmation  = contractfinal.HasDeclaredOrAnnotatedConfirmation
 	RuntimeContractFinal                = contractfinal.RuntimeContractFinal
 	HasRuntimeContractFinal             = contractfinal.HasRuntimeContractFinal

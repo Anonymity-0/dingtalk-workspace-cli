@@ -1531,6 +1531,67 @@ func TestCrossPlatformCoverageValidateRequiredShortcutMessages(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageValidateAliasAwareShortcutAndEnum(t *testing.T) {
+	// D2: a declared alias satisfies Shortcut Required.
+	aliased := []FlagSpec{{
+		Name: "target", Usage: "T", Required: true,
+		ValidationMode: ValidationShortcut, Aliases: []string{"t-alias"},
+	}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, aliased)
+	_ = cmd.Flags().Set("t-alias", "hit")
+	if err := ValidateRequired(cmd, aliased); err != nil {
+		t.Fatalf("alias-satisfied shortcut required err = %v", err)
+	}
+
+	// D2: a registration default alone is not an explicit token, so Shortcut
+	// Required still reports the missing parameter.
+	defaulted := []FlagSpec{{
+		Name: "target", Usage: "T", Required: true, Default: "reg-default",
+		ValidationMode: ValidationShortcut, Aliases: []string{"t-alias"},
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, defaulted)
+	if err := ValidateRequired(cmd, defaulted); err == nil || err.Error() != "缺少必填参数 --target" {
+		t.Fatalf("default-only shortcut required err = %v", err)
+	}
+
+	// D1: an enum violation arriving through the alias is validated, not
+	// skipped, and the message names the main flag.
+	scalar := []FlagSpec{{Name: "mode", Usage: "M", Enum: []string{"a", "b"}, Aliases: []string{"m-alias"}}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, scalar)
+	_ = cmd.Flags().Set("m-alias", "z")
+	if err := ValidateEnums(cmd, scalar); err == nil || !strings.Contains(err.Error(), `参数 --mode 取值 "z" 不合法`) {
+		t.Fatalf("alias enum violation = %v", err)
+	}
+
+	// D1: a valid alias value passes.
+	cmd = newTestCommand()
+	RegisterFlags(cmd, scalar)
+	_ = cmd.Flags().Set("m-alias", "a")
+	if err := ValidateEnums(cmd, scalar); err != nil {
+		t.Fatalf("valid alias enum err = %v", err)
+	}
+
+	// D1: slice flags honor the alias too.
+	sliced := []FlagSpec{{Name: "ids", Usage: "I", Kind: KindStringSlice, Enum: []string{"x", "y"}, Aliases: []string{"ids-alias"}}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, sliced)
+	_ = cmd.Flags().Set("ids-alias", "x,z")
+	if err := ValidateEnums(cmd, sliced); err == nil || !strings.Contains(err.Error(), `参数 --ids 取值 "z" 不合法`) {
+		t.Fatalf("alias slice enum violation = %v", err)
+	}
+
+	// D1: an unprovided flag with a registered default stays unvalidated.
+	untouched := []FlagSpec{{Name: "mode", Usage: "M", Enum: []string{"a", "b"}, Default: "z", Aliases: []string{"m-alias"}}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, untouched)
+	if err := ValidateEnums(cmd, untouched); err != nil {
+		t.Fatalf("default-only enum must not validate, err = %v", err)
+	}
+}
+
 func TestCrossPlatformCoverageBuildArgsInvalidArgDefault(t *testing.T) {
 	flags := []FlagSpec{{Name: "page-size", Usage: "P", Kind: KindInt, ArgDefault: "not-a-number"}}
 	cmd := newTestCommand()
