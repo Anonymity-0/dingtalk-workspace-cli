@@ -30,9 +30,9 @@ import (
 type SpawnFunc func(SpawnConfig) (pid int, err error)
 
 // DiscoverConfig describes one discover attempt. WorkDir holds bus.lock and
-// persistent bus metadata; Unix sockets live under os.TempDir so WorkDir may
-// reside on a shared filesystem without socket support. The caller must mkdir
-// WorkDir with pkg/config.DirPerm beforehand.
+// persistent bus metadata; Unix sockets live in a private per-user runtime
+// directory so WorkDir may reside on a shared filesystem without socket
+// support. The caller must mkdir WorkDir with pkg/config.DirPerm beforehand.
 type DiscoverConfig struct {
 	WorkDir     string
 	IPCEndpoint string

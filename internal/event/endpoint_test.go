@@ -23,6 +23,7 @@ import (
 )
 
 func TestEndpointPlatformVariants(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	if maxUnixSocketPath("linux") != 107 || maxUnixSocketPath("darwin") != 103 {
 		t.Fatal("Unix socket limits changed")
 	}
@@ -31,7 +32,7 @@ func TestEndpointPlatformVariants(t *testing.T) {
 		t.Fatalf("Windows pipe = %q", pipe)
 	}
 	short := ipcEndpointForOS("darwin", "/tmp/events", "open", SourceKindPersonalStream, "hash")
-	if short != filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash("/tmp/events")+".sock") {
+	if short != filepath.Join(os.TempDir(), eventRuntimeDirPrefix+currentUserID(), "dws-evt-"+IdentityHash("/tmp/events")+".sock") {
 		t.Fatalf("short Unix endpoint = %q", short)
 	}
 	long := ipcEndpointForOS("darwin", "/"+strings.Repeat("deep/", 40), "open", SourceKindAppStream, "hash")
@@ -40,10 +41,30 @@ func TestEndpointPlatformVariants(t *testing.T) {
 	}
 }
 
-func TestIPCEndpointShortWorkDirUsesLocalTempDir(t *testing.T) {
+func TestIPCEndpointUsesXDGUserRuntimeDir(t *testing.T) {
+	tempRoot, err := filepath.EvalSymlinks("/tmp")
+	if err != nil {
+		t.Fatalf("EvalSymlinks: %v", err)
+	}
+	runtimeDir, err := os.MkdirTemp(tempRoot, "dws-xdg-")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(runtimeDir) })
+	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
+	workDir := "/shared/events/open/app_stream/aabbccdd00112233"
+	got := IPCEndpoint(workDir, "open", SourceKindAppStream, "aabbccdd00112233")
+	want := filepath.Join(runtimeDir, eventRuntimeDirPrefix+currentUserID(), "dws-evt-"+IdentityHash(workDir)+".sock")
+	if got != want {
+		t.Fatalf("IPCEndpoint = %q, want %q", got, want)
+	}
+}
+
+func TestIPCEndpointWithoutXDGUsesPerUserLocalTempDir(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	workDir := "/tmp/dws/events/open/app_stream/aabbccdd00112233"
 	got := IPCEndpoint(workDir, "open", SourceKindAppStream, "aabbccdd00112233")
-	want := filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash(workDir)+".sock")
+	want := filepath.Join(os.TempDir(), eventRuntimeDirPrefix+currentUserID(), "dws-evt-"+IdentityHash(workDir)+".sock")
 	if got != want {
 		t.Fatalf("IPCEndpoint = %q, want %q", got, want)
 	}
@@ -53,6 +74,7 @@ func TestIPCEndpointShortWorkDirUsesLocalTempDir(t *testing.T) {
 }
 
 func TestIPCEndpointLongWorkDirUsesLocalTempDir(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	// Mirrors the dwssb sandbox layout that produced a 111-byte socket
 	// path — over macOS's 103-byte usable sun_path budget.
 	workDir := "/Users/zhengyubai/.dwssb/sandboxes/event-subscribe/config/events/open/personal_stream/3928ce0fb4860a52"
@@ -69,6 +91,7 @@ func TestIPCEndpointLongWorkDirUsesLocalTempDir(t *testing.T) {
 }
 
 func TestIPCEndpointFallbackIsDeterministicPerWorkDir(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	long := strings.Repeat("x", 120)
 	a := IPCEndpoint("/base/"+long+"/one", "open", SourceKindPersonalStream, "hash")
 	b := IPCEndpoint("/base/"+long+"/one", "open", SourceKindPersonalStream, "hash")
@@ -78,5 +101,18 @@ func TestIPCEndpointFallbackIsDeterministicPerWorkDir(t *testing.T) {
 	}
 	if a == c {
 		t.Fatalf("different workDirs collided on endpoint %q", a)
+	}
+}
+
+func TestIPCEndpointLongXDGPathFallsBackToTempDir(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "/"+strings.Repeat("runtime/", 30))
+	workDir := "/shared/events/open/personal_stream/aabbccdd00112233"
+	got := ipcEndpointForOS("linux", workDir, "open", SourceKindPersonalStream, "hash")
+	wantPrefix := filepath.Join(os.TempDir(), eventRuntimeDirPrefix+currentUserID()) + string(filepath.Separator)
+	if !strings.HasPrefix(got, wantPrefix) {
+		t.Fatalf("IPCEndpoint = %q, want fallback under %q", got, wantPrefix)
+	}
+	if len(got) > maxUnixSocketPath("linux") {
+		t.Fatalf("fallback path still too long: %d > %d (%q)", len(got), maxUnixSocketPath("linux"), got)
 	}
 }

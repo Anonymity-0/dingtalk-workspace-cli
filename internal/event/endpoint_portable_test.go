@@ -21,6 +21,7 @@ import (
 )
 
 func TestCrossPlatformCoverageEndpointPortableCoverageEdges(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	if got := MaxUnixSocketPath(); got != 103 && got != 107 {
 		t.Fatalf("MaxUnixSocketPath() = %d", got)
 	}
@@ -34,7 +35,7 @@ func TestCrossPlatformCoverageEndpointPortableCoverageEdges(t *testing.T) {
 	if got := ipcEndpointForOS("windows", "ignored", "open", "", "hash"); got != `\\.\pipe\dws-event-open-app_stream-hash` {
 		t.Fatalf("Windows endpoint = %q", got)
 	}
-	if got := ipcEndpointForOS("darwin", "short", "open", SourceKindPersonalStream, "hash"); got != filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash("short")+".sock") {
+	if got := ipcEndpointForOS("darwin", "short", "open", SourceKindPersonalStream, "hash"); got != filepath.Join(os.TempDir(), eventRuntimeDirPrefix+currentUserID(), "dws-evt-"+IdentityHash("short")+".sock") {
 		t.Fatalf("short Unix endpoint = %q", got)
 	}
 	if got := ipcEndpointForOS("darwin", strings.Repeat("x", 200), "open", SourceKindAppStream, "hash"); !strings.Contains(got, "dws-evt-") {

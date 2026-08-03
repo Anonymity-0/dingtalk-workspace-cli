@@ -17,7 +17,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 )
+
+const eventRuntimeDirPrefix = "dws-event-"
+
+func currentUserID() string {
+	return strconv.Itoa(os.Geteuid())
+}
 
 // MaxUnixSocketPath returns the longest Unix socket path accepted by
 // bind/connect on this OS (Go rejects longer names with EINVAL before
@@ -35,15 +43,19 @@ func maxUnixSocketPath(goos string) int {
 }
 
 // IPCEndpoint returns the bus IPC endpoint for one identity: a Named Pipe
-// name on Windows, otherwise a deterministic Unix socket under os.TempDir.
+// name on Windows, otherwise a deterministic Unix socket under a private
+// per-user runtime directory.
 //
 // Unix sockets must live on a local filesystem that supports bind(2).
 // Config directories may reside on NFS, CSI, FUSE, or other shared mounts
-// that reject Unix socket creation with ENOTSUPP. Keeping the socket under
-// os.TempDir also guarantees a short path. The name is keyed by a hash of
-// workDir so every process (consume parent, forked _bus child, status/stop
-// tooling) that derives the endpoint from the same workDir agrees on the
-// location. bus.lock / bus.meta / bus.log always stay in workDir.
+// that reject Unix socket creation with ENOTSUPP. On Unix, the endpoint uses
+// XDG_RUNTIME_DIR when it is absolute and short enough; otherwise it falls
+// back to a per-UID directory under os.TempDir. The transport creates and
+// validates that directory as owner-only before listening or dialing. The
+// socket name is keyed by a hash of workDir so every process (consume parent,
+// forked _bus child, status/stop tooling) that derives the endpoint from the
+// same workDir agrees on the location. bus.lock / bus.meta / bus.log always
+// stay in workDir.
 //
 // This is the single source of truth for endpoint derivation; the cobra
 // layer and busctl must not re-implement the shape.
@@ -58,5 +70,13 @@ func ipcEndpointForOS(goos, workDir, editionName string, sourceKind SourceKind, 
 	if goos == "windows" {
 		return `\\.\pipe\dws-event-` + editionName + "-" + string(sourceKind) + "-" + identityHash
 	}
-	return filepath.Join(os.TempDir(), "dws-evt-"+IdentityHash(workDir)+".sock")
+	socketName := "dws-evt-" + IdentityHash(workDir) + ".sock"
+	userDirName := eventRuntimeDirPrefix + currentUserID()
+	if runtimeDir := strings.TrimSpace(os.Getenv("XDG_RUNTIME_DIR")); filepath.IsAbs(runtimeDir) {
+		candidate := filepath.Join(runtimeDir, userDirName, socketName)
+		if len(candidate) <= maxUnixSocketPath(goos) {
+			return candidate
+		}
+	}
+	return filepath.Join(os.TempDir(), userDirName, socketName)
 }

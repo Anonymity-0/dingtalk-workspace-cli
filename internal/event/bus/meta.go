@@ -26,7 +26,8 @@ import (
 
 // MetaFileName is the on-disk name of the bus metadata file. It lives
 // alongside bus.lock inside the bus working directory. Unix bus sockets live
-// under os.TempDir so shared config filesystems do not need socket support.
+// in a private per-user runtime directory so shared config filesystems do not
+// need socket support.
 const MetaFileName = "bus.meta"
 
 // Meta is the JSON document written once at bus startup. Its primary
