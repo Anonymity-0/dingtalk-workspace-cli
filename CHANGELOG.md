@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **Aitable workflow editing reference** — adds `dws aitable workflow edit-example`, a parameter-free read command that returns the service-provided workflow editing documentation and `workflow-dsl/v1` examples through `aitable/edit_workflow_example`.
+
 ## [1.0.56-beta.2] - 2026-07-30
 
 This beta adds PRs #831 and #835 on top of v1.0.56-beta.1. It separates

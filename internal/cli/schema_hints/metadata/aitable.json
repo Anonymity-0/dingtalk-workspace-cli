@@ -999,6 +999,19 @@
       "reviewed": true,
       "runtime_gate": "confirm_delete"
     },
+    "aitable.workflow_edit_example": {
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+      "reviewed": true,
+      "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+      "cli_path": "aitable workflow edit-example",
+      "runtime_gate": "none"
+    },
     "aitable.workflow_enable": {
       "interface_ref": {
         "product_id": "aitable-helper",

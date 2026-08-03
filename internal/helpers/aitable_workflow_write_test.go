@@ -94,6 +94,23 @@ func TestAitableWorkflowCreateMapsDSLWithoutRetry(t *testing.T) {
 	}
 }
 
+func TestAitableWorkflowEditExampleMapsEmptyArguments(t *testing.T) {
+	caller, err := runAitableWorkflowCommand(t, nil, "edit-example")
+	if err != nil {
+		t.Fatalf("workflow edit-example returned error: %v", err)
+	}
+	if len(caller.calls) != 1 {
+		t.Fatalf("tool call count = %d, want 1", len(caller.calls))
+	}
+	call := caller.calls[0]
+	if call.productID != "aitable" || call.toolName != "edit_workflow_example" {
+		t.Fatalf("tool call = %s/%s, want aitable/edit_workflow_example", call.productID, call.toolName)
+	}
+	if len(call.args) != 0 {
+		t.Fatalf("tool args = %#v, want empty arguments", call.args)
+	}
+}
+
 func TestAitableWorkflowUpdateReadsDSLFile(t *testing.T) {
 	path := t.TempDir() + "/workflow.json"
 	if err := os.WriteFile(path, []byte(`{"version":"workflow-dsl/v1","name":"updated"}`), 0o600); err != nil {

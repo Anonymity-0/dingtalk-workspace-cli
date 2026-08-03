@@ -97777,6 +97777,326 @@
         "用户明确要求停止某自动化工作流时"
       ]
     },
+    "aitable.workflow_edit_example": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "cobra-help:dws aitable workflow edit-example --help",
+        "internal/cli/schema_command_registry.json#aitable.workflow_edit_example",
+        "internal/cli/schema_hints/metadata/aitable.json",
+        "internal/cli/schema_hints/selection/aitable.json",
+        "mcp-contract:aitable/edit_workflow_example",
+        "skills/mono/references/products/aitable/aitable-workflow.md"
+      ],
+      "agent_summary": "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。",
+      "agent_summary_source": "dws-agent-selection/aitable",
+      "availability": "available",
+      "avoid_when": [
+        "实际创建工作流用 workflow create；修改已有工作流用 workflow update；查询已发布定义用 workflow get"
+      ],
+      "canonical_path": "aitable.workflow_edit_example",
+      "cli_name": "edit-example",
+      "cli_path": "aitable workflow edit-example",
+      "confirmation": "not_required",
+      "description": "返回服务端提供的 AI 表格工作流编辑文档与示例。\n可作为 workflow create / workflow update 的 workflow-dsl/v1 结构参考；此命令不需要 Base ID 或其他参数。",
+      "display": "AI 表格操作",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws aitable workflow edit-example"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/aitable.json",
+              "value": "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+          "source": "internal/cli/schema_hints/selection/aitable.json",
+          "value": "获取 AI 表格工作流编辑文档与 workflow-dsl/v1 示例。"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/aitable.json",
+              "value": [
+                "实际创建工作流用 workflow create；修改已有工作流用 workflow update；查询已发布定义用 workflow get"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+          "source": "internal/cli/schema_hints/selection/aitable.json",
+          "value": [
+            "实际创建工作流用 workflow create；修改已有工作流用 workflow update；查询已发布定义用 workflow get"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "aitable workflow edit-example",
+              "value": "aitable.workflow_edit_example"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "aitable workflow edit-example",
+          "value": "aitable.workflow_edit_example"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "返回服务端提供的 AI 表格工作流编辑文档与示例。\n可作为 workflow create / workflow update 的 workflow-dsl/v1 结构参考；此命令不需要 Base ID 或其他参数。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "返回服务端提供的 AI 表格工作流编辑文档与示例。\n可作为 workflow create / workflow update 的 workflow-dsl/v1 结构参考；此命令不需要 Base ID 或其他参数。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/aitable.json",
+              "value": [
+                "dws aitable workflow edit-example"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+          "source": "internal/cli/schema_hints/selection/aitable.json",
+          "value": [
+            "dws aitable workflow edit-example"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/aitable.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/aitable.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "The command sends empty arguments to aitable/edit_workflow_example and returns the service-provided workflow editing documentation and examples. The operation is read-only and safe to retry.",
+          "source": "internal/cli/schema_hints/metadata/aitable.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "获取工作流编辑文档与示例"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "获取工作流编辑文档与示例"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/aitable.json",
+              "value": [
+                "创建或更新工作流前，需要确认最新 workflow-dsl/v1 结构、节点写法或完整示例时"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据新增 Cobra leaf 和用户提供的 aitable/edit_workflow_example 空参数 MCP 契约审阅选型语义，将该命令限定为 create/update 前的只读文档入口。",
+          "source": "internal/cli/schema_hints/selection/aitable.json",
+          "value": [
+            "创建或更新工作流前，需要确认最新 workflow-dsl/v1 结构、节点写法或完整示例时"
+          ]
+        }
+      },
+      "group": "workflow",
+      "has_parameters": false,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+      "is_alias": false,
+      "name": "workflow_edit_example",
+      "parameter_count": 0,
+      "parameters": {},
+      "path": "aitable.workflow_edit_example",
+      "primary_cli_path": "aitable workflow edit-example",
+      "product_id": "aitable",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "获取工作流编辑文档与示例",
+      "use_when": [
+        "创建或更新工作流前，需要确认最新 workflow-dsl/v1 结构、节点写法或完整示例时"
+      ]
+    },
     "aitable.workflow_enable": {
       "agent_metadata_source": "embedded-skill-metadata",
       "agent_source_refs": [
