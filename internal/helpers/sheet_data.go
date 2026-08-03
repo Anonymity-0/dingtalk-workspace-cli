@@ -81,6 +81,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "find_cells",
+				CanonicalPath:  "sheet.find_cells",
+				CLIPath:        "sheet find",
+				PrimaryCLIPath: "sheet find",
+			},
 			Description: "在工作表中搜索单元格（支持精确匹配/正则/搜公式）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -170,6 +177,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "replace_all",
+				CanonicalPath:  "sheet.replace_all",
+				CLIPath:        "sheet replace",
+				PrimaryCLIPath: "sheet replace",
+			},
 			Description: "全局查找替换文本（服务端原子操作）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -237,6 +251,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "append_rows",
+				CanonicalPath:  "sheet.append_rows",
+				CLIPath:        "sheet append",
+				PrimaryCLIPath: "sheet append",
+			},
 			Description: "在工作表数据末尾追加带值的数据行。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -319,6 +340,13 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "set_range_from_csv",
+				CanonicalPath:  "sheet.set_range_from_csv",
+				CLIPath:        "sheet csv-put",
+				PrimaryCLIPath: "sheet csv-put",
+			},
 			Description: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -396,6 +424,13 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_range_as_csv",
+				CanonicalPath:  "sheet.get_range_as_csv",
+				CLIPath:        "sheet csv-get",
+				PrimaryCLIPath: "sheet csv-get",
+			},
 			Description: "以 CSV 文本读取指定区域。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

@@ -134,6 +134,13 @@ func newSheetCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "submit_export_job",
+				CanonicalPath:  "sheet.submit_export_job",
+				CLIPath:        "sheet export",
+				PrimaryCLIPath: "sheet export",
+			},
 			Description: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -164,6 +171,13 @@ func newSheetCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "batch_update",
+				CanonicalPath:  "sheet.batch_update",
+				CLIPath:        "sheet batch-update",
+				PrimaryCLIPath: "sheet batch-update",
+			},
 			Description: "批量打包多个写操作原子执行（可含清除/删除，需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -185,6 +199,13 @@ func newSheetCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_batch_clear",
+				CanonicalPath:  "sheet.range_batch_clear",
+				CLIPath:        "sheet range batch-clear",
+				PrimaryCLIPath: "sheet range batch-clear",
+			},
 			Description: "批量清除多个区域（原子事务，需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

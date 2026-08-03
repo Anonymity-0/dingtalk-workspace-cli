@@ -49,6 +49,13 @@ var NextEvent = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_next_event",
+			CanonicalPath:  "calendar.shortcut_next_event",
+			CLIPath:        "calendar +next-event",
+			PrimaryCLIPath: "calendar +next-event",
+		},
 		Description: "查看接下来最近的一个日程（默认扫描未来 7 天）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -47,6 +47,13 @@ var Remind = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_remind",
+			CanonicalPath:  "todo.shortcut_remind",
+			CLIPath:        "todo +remind",
+			PrimaryCLIPath: "todo +remind",
+		},
 		Description: "给自己创建一条带可选截止时间的待办",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -50,6 +50,13 @@ var FreeSlots = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_free_slots",
+			CanonicalPath:  "calendar.shortcut_free_slots",
+			CLIPath:        "calendar +free-slots",
+			PrimaryCLIPath: "calendar +free-slots",
+		},
 		Description: "找我某天工作时段内的空闲时间段（默认今天 09:00-18:00）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

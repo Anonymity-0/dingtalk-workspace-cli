@@ -684,6 +684,13 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "connect_status",
+				CanonicalPath:  "dev.connect_status",
+				CLIPath:        "dev connect status",
+				PrimaryCLIPath: "dev connect status",
+			},
 			Description: "查看后台连接器守护进程状态",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",
@@ -727,6 +734,13 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "connect_stop",
+				CanonicalPath:  "dev.connect_stop",
+				CLIPath:        "dev connect stop",
+				PrimaryCLIPath: "dev connect stop",
+			},
 			Description: "优雅停止后台连接器守护进程",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",

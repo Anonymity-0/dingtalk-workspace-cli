@@ -142,6 +142,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_user_mailboxes",
+				CanonicalPath:  "mail.list_user_mailboxes",
+				CLIPath:        "mail mailbox list",
+				PrimaryCLIPath: "mail mailbox list",
+			},
 			Description: "列出当前登录用户自己的可用邮箱",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -264,6 +271,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "search_emails",
+				CanonicalPath:  "mail.search_emails",
+				CLIPath:        "mail message search",
+				PrimaryCLIPath: "mail message search",
+			},
 			Description: "用 KQL 搜索邮件，返回 ID 与元信息而非完整正文",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -329,6 +343,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_emails",
+				CanonicalPath:  "mail.list_emails",
+				CLIPath:        "mail message list",
+				PrimaryCLIPath: "mail message list",
+			},
 			Description: "列出收件箱或指定文件夹中的邮件（无需手写 KQL）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -380,6 +401,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "get_email_by_message_id",
+				CanonicalPath:  "mail.get_email_by_message_id",
+				CLIPath:        "mail message get",
+				PrimaryCLIPath: "mail message get",
+			},
 			Description: "获取指定邮件的完整正文和元数据",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -464,6 +492,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "send_email",
+				CanonicalPath:  "mail.send_email",
+				CLIPath:        "mail message send",
+				PrimaryCLIPath: "mail message send",
+			},
 			Description: "以指定邮箱地址发送一封邮件",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -526,6 +561,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_folders",
+				CanonicalPath:  "mail.list_folders",
+				CLIPath:        "mail folder list",
+				PrimaryCLIPath: "mail folder list",
+			},
 			Description: "列出指定邮箱的系统和自定义文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -585,6 +627,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_mail_folder",
+				CanonicalPath:  "mail.create_mail_folder",
+				CLIPath:        "mail folder create",
+				PrimaryCLIPath: "mail folder create",
+			},
 			Description: "创建自定义邮件文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -630,6 +679,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "delete_mail_folder",
+				CanonicalPath:  "mail.delete_mail_folder",
+				CLIPath:        "mail folder delete",
+				PrimaryCLIPath: "mail folder delete",
+			},
 			Description: "删除指定邮箱下的邮件文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -679,6 +735,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "update_mail_folder",
+				CanonicalPath:  "mail.update_mail_folder",
+				CLIPath:        "mail folder update",
+				PrimaryCLIPath: "mail folder update",
+			},
 			Description: "重命名指定邮件文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -745,6 +808,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_tags",
+				CanonicalPath:  "mail.list_tags",
+				CLIPath:        "mail tag list",
+				PrimaryCLIPath: "mail tag list",
+			},
 			Description: "列出指定邮箱可用的邮件标签",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -956,6 +1026,13 @@ func newMailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "get_thread",
+				CanonicalPath:  "mail.get_thread",
+				CLIPath:        "mail thread get",
+				PrimaryCLIPath: "mail thread get",
+			},
 			Description: "获取指定邮件会话的详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1256,6 +1333,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_reply_draft",
+				CanonicalPath:  "mail.create_reply_draft",
+				CLIPath:        "mail message reply",
+				PrimaryCLIPath: "mail message reply",
+			},
 			Description: "创建仅回复原发件人的邮件草稿",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1329,6 +1413,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_replyall_draft",
+				CanonicalPath:  "mail.create_replyall_draft",
+				CLIPath:        "mail message reply-all",
+				PrimaryCLIPath: "mail message reply-all",
+			},
 			Description: "创建回复原邮件全部参与者的草稿",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1403,6 +1494,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_forward_draft",
+				CanonicalPath:  "mail.create_forward_draft",
+				CLIPath:        "mail message forward",
+				PrimaryCLIPath: "mail message forward",
+			},
 			Description: "基于已有邮件创建转发草稿",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1450,6 +1548,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "batch_move_message",
+				CanonicalPath:  "mail.batch_move_message",
+				CLIPath:        "mail message batch-move",
+				PrimaryCLIPath: "mail message batch-move",
+			},
 			Description: "把多封邮件批量移动到指定文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1492,6 +1597,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "batch_delete_message",
+				CanonicalPath:  "mail.batch_delete_message",
+				CLIPath:        "mail message batch-delete",
+				PrimaryCLIPath: "mail message batch-delete",
+			},
 			Description: "批量删除邮件（可移入已删除或按类型删除）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1680,6 +1792,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_draft",
+				CanonicalPath:  "mail.create_draft",
+				CLIPath:        "mail draft create",
+				PrimaryCLIPath: "mail draft create",
+			},
 			Description: "创建邮件草稿但不发送",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1763,6 +1882,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "update_draft",
+				CanonicalPath:  "mail.update_draft",
+				CLIPath:        "mail draft update",
+				PrimaryCLIPath: "mail draft update",
+			},
 			Description: "更新已有邮件草稿的内容",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1815,6 +1941,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_mail_attachments",
+				CanonicalPath:  "mail.list_mail_attachments",
+				CLIPath:        "mail attachment list",
+				PrimaryCLIPath: "mail attachment list",
+			},
 			Description: "列出指定邮件的全部附件元数据",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1873,6 +2006,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_download_session",
+				CanonicalPath:  "mail.create_download_session",
+				CLIPath:        "mail attachment download",
+				PrimaryCLIPath: "mail attachment download",
+			},
 			Description: "把指定邮件附件下载到本地文件",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2116,6 +2256,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "send_draft",
+				CanonicalPath:  "mail.send_draft",
+				CLIPath:        "mail draft send",
+				PrimaryCLIPath: "mail draft send",
+			},
 			Description: "发送草稿箱中已有的邮件草稿",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2209,6 +2356,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "search_mail_users",
+				CanonicalPath:  "mail.search_mail_users",
+				CLIPath:        "mail user search",
+				PrimaryCLIPath: "mail user search",
+			},
 			Description: "按姓名、工号或关键词搜索企业邮箱用户",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2287,6 +2441,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_user_message_template",
+				CanonicalPath:  "mail.create_user_message_template",
+				CLIPath:        "mail template create",
+				PrimaryCLIPath: "mail template create",
+			},
 			Description: "创建可复用的邮件模板",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2353,6 +2514,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_user_message_templates",
+				CanonicalPath:  "mail.list_user_message_templates",
+				CLIPath:        "mail template list",
+				PrimaryCLIPath: "mail template list",
+			},
 			Description: "分页列出当前邮箱的邮件模板",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2404,6 +2572,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "get_user_message_template",
+				CanonicalPath:  "mail.get_user_message_template",
+				CLIPath:        "mail template get",
+				PrimaryCLIPath: "mail template get",
+			},
 			Description: "获取指定邮件模板的完整内容",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2476,6 +2651,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "update_user_message_template",
+				CanonicalPath:  "mail.update_user_message_template",
+				CLIPath:        "mail template update",
+				PrimaryCLIPath: "mail template update",
+			},
 			Description: "更新已有邮件模板的内容",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2533,6 +2715,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "delete_user_message_template",
+				CanonicalPath:  "mail.delete_user_message_template",
+				CLIPath:        "mail template delete",
+				PrimaryCLIPath: "mail template delete",
+			},
 			Description: "删除指定邮件模板",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2595,6 +2784,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "create_user_mail_contact",
+				CanonicalPath:  "mail.create_user_mail_contact",
+				CLIPath:        "mail contact create",
+				PrimaryCLIPath: "mail contact create",
+			},
 			Description: "创建个人邮件联系人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2652,6 +2848,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_user_mail_contacts",
+				CanonicalPath:  "mail.list_user_mail_contacts",
+				CLIPath:        "mail contact list",
+				PrimaryCLIPath: "mail contact list",
+			},
 			Description: "分页列出个人保存的邮件联系人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2717,6 +2920,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "update_user_mail_contact",
+				CanonicalPath:  "mail.update_user_mail_contact",
+				CLIPath:        "mail contact update",
+				PrimaryCLIPath: "mail contact update",
+			},
 			Description: "更新个人邮件联系人的资料",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2764,6 +2974,13 @@ user 对象字段：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "batch_delete_user_mail_contacts",
+				CanonicalPath:  "mail.batch_delete_user_mail_contacts",
+				CLIPath:        "mail contact batch-delete",
+				PrimaryCLIPath: "mail contact batch-delete",
+			},
 			Description: "批量删除个人邮件联系人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

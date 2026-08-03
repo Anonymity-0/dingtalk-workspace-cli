@@ -55,6 +55,13 @@ var SearchMail = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_search_mail",
+			CanonicalPath:  "mail.shortcut_search_mail",
+			CLIPath:        "mail +search-mail",
+			PrimaryCLIPath: "mail +search-mail",
+		},
 		Description: "按 KQL 关键词搜索邮件并投影列表（主题/发件人/时间/messageId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

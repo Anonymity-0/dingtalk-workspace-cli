@@ -67,6 +67,13 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "formula_verify",
+				CanonicalPath:  "sheet.formula_verify",
+				CLIPath:        "sheet formula-verify",
+				PrimaryCLIPath: "sheet formula-verify",
+			},
 			Description: "扫描表格公式单元格并按错误类型聚合返回错误数量与位置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

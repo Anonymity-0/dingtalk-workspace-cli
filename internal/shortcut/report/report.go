@@ -54,6 +54,13 @@ var InboxList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "report",
+			Name:           "shortcut_inbox_list",
+			CanonicalPath:  "report.shortcut_inbox_list",
+			CLIPath:        "report +inbox-list",
+			PrimaryCLIPath: "report +inbox-list",
+		},
 		Description: "列出我收到的日报（按时间范围分页）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -198,6 +205,13 @@ var OutboxList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "report",
+			Name:           "shortcut_outbox_list",
+			CanonicalPath:  "report.shortcut_outbox_list",
+			CLIPath:        "report +outbox-list",
+			PrimaryCLIPath: "report +outbox-list",
+		},
 		Description: "列出我发出的日报（可选时间/模版名过滤）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

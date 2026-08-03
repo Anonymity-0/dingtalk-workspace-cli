@@ -902,6 +902,13 @@ func newDocCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "search_documents",
+				CanonicalPath:  "doc.search_documents",
+				CLIPath:        "doc search",
+				PrimaryCLIPath: "doc search",
+			},
 			Description: "搜索文档（不传关键词返回最近访问）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -968,6 +975,13 @@ func newDocCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_nodes",
+				CanonicalPath:  "doc.list_nodes",
+				CLIPath:        "doc list",
+				PrimaryCLIPath: "doc list",
+			},
 			Description: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1012,6 +1026,13 @@ func newDocCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "get_document_info",
+				CanonicalPath:  "doc.get_document_info",
+				CLIPath:        "doc info",
+				PrimaryCLIPath: "doc info",
+			},
 			Description: "获取文档元信息（标题/类型/创建者/权限等）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1112,6 +1133,13 @@ func newDocCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "get_document_content",
+				CanonicalPath:  "doc.get_document_content",
+				CLIPath:        "doc read",
+				PrimaryCLIPath: "doc read",
+			},
 			Description: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1238,6 +1266,13 @@ func newDocCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_document",
+				CanonicalPath:  "doc.create_document",
+				CLIPath:        "doc create",
+				PrimaryCLIPath: "doc create",
+			},
 			Description: "创建一篇新的在线文档",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1368,6 +1403,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_document",
+				CanonicalPath:  "doc.update_document",
+				CLIPath:        "doc update",
+				PrimaryCLIPath: "doc update",
+			},
 			Description: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1447,6 +1489,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_file",
+				CanonicalPath:  "doc.create_file",
+				CLIPath:        "doc file create",
+				PrimaryCLIPath: "doc file create",
+			},
 			Description: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1503,6 +1552,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_folder",
+				CanonicalPath:  "doc.create_folder",
+				CLIPath:        "doc folder create",
+				PrimaryCLIPath: "doc folder create",
+			},
 			Description: "创建文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1544,6 +1600,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "upload",
+				CanonicalPath:  "doc.upload",
+				CLIPath:        "doc upload",
+				PrimaryCLIPath: "doc upload",
+			},
 			Description: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -1585,6 +1648,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "download_file",
+				CanonicalPath:  "doc.download_file",
+				CLIPath:        "doc download",
+				PrimaryCLIPath: "doc download",
+			},
 			Description: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -1657,6 +1727,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_document_blocks",
+				CanonicalPath:  "doc.list_document_blocks",
+				CLIPath:        "doc block list",
+				PrimaryCLIPath: "doc block list",
+			},
 			Description: "查询文档一级块元素列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1785,6 +1862,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "insert_document_block",
+				CanonicalPath:  "doc.insert_document_block",
+				CLIPath:        "doc block insert",
+				PrimaryCLIPath: "doc block insert",
+			},
 			Description: "向文档插入块元素",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1870,6 +1954,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_document_block",
+				CanonicalPath:  "doc.update_document_block",
+				CLIPath:        "doc block update",
+				PrimaryCLIPath: "doc block update",
+			},
 			Description: "更新文档中的指定块",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1917,6 +2008,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "delete_document_block",
+				CanonicalPath:  "doc.delete_document_block",
+				CLIPath:        "doc block delete",
+				PrimaryCLIPath: "doc block delete",
+			},
 			Description: "删除块元素（不可逆）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1958,6 +2056,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "copy_document",
+				CanonicalPath:  "doc.copy_document",
+				CLIPath:        "doc copy",
+				PrimaryCLIPath: "doc copy",
+			},
 			Description: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2007,6 +2112,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "move_document",
+				CanonicalPath:  "doc.move_document",
+				CLIPath:        "doc move",
+				PrimaryCLIPath: "doc move",
+			},
 			Description: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2062,6 +2174,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "rename_document",
+				CanonicalPath:  "doc.rename_document",
+				CLIPath:        "doc rename",
+				PrimaryCLIPath: "doc rename",
+			},
 			Description: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2115,6 +2234,13 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "delete_document",
+				CanonicalPath:  "doc.delete_document",
+				CLIPath:        "doc delete",
+				PrimaryCLIPath: "doc delete",
+			},
 			Description: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2369,6 +2495,13 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "download_doc_attachment",
+				CanonicalPath:  "doc.download_doc_attachment",
+				CLIPath:        "doc media download",
+				PrimaryCLIPath: "doc media download",
+			},
 			Description: "获取文档附件的临时下载链接",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2417,6 +2550,13 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "media_insert",
+				CanonicalPath:  "doc.media_insert",
+				CLIPath:        "doc media insert",
+				PrimaryCLIPath: "doc media insert",
+			},
 			Description: "上传本地文件并作为附件插入文档",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -2518,6 +2658,13 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_comments",
+				CanonicalPath:  "doc.list_comments",
+				CLIPath:        "doc comment list",
+				PrimaryCLIPath: "doc comment list",
+			},
 			Description: "查询文档评论列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2592,6 +2739,13 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_comment",
+				CanonicalPath:  "doc.create_comment",
+				CLIPath:        "doc comment create",
+				PrimaryCLIPath: "doc comment create",
+			},
 			Description: "创建文档评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2680,6 +2834,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "reply_comment",
+				CanonicalPath:  "doc.reply_comment",
+				CLIPath:        "doc comment reply",
+				PrimaryCLIPath: "doc comment reply",
+			},
 			Description: "回复文档评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2750,6 +2911,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_comment",
+				CanonicalPath:  "doc.update_comment",
+				CLIPath:        "doc comment update",
+				PrimaryCLIPath: "doc comment update",
+			},
 			Description: "更新指定文档评论的文字内容和可选 @用户/@群。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2806,6 +2974,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "delete_comment",
+				CanonicalPath:  "doc.delete_comment",
+				CLIPath:        "doc comment delete",
+				PrimaryCLIPath: "doc comment delete",
+			},
 			Description: "永久删除指定文档中的一条评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2877,6 +3052,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_inline_comment",
+				CanonicalPath:  "doc.create_inline_comment",
+				CLIPath:        "doc comment create-inline",
+				PrimaryCLIPath: "doc comment create-inline",
+			},
 			Description: "在文档选中文本范围创建划词评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2984,6 +3166,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "add_permission",
+				CanonicalPath:  "doc.add_permission",
+				CLIPath:        "doc permission add",
+				PrimaryCLIPath: "doc permission add",
+			},
 			Description: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3063,6 +3252,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_permission",
+				CanonicalPath:  "doc.update_permission",
+				CLIPath:        "doc permission update",
+				PrimaryCLIPath: "doc permission update",
+			},
 			Description: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3134,6 +3330,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_permission",
+				CanonicalPath:  "doc.list_permission",
+				CLIPath:        "doc permission list",
+				PrimaryCLIPath: "doc permission list",
+			},
 			Description: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3205,6 +3408,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "remove_permission",
+				CanonicalPath:  "doc.remove_permission",
+				CLIPath:        "doc permission remove",
+				PrimaryCLIPath: "doc permission remove",
+			},
 			Description: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3446,6 +3656,13 @@ CLI 内部自动完成全部流程：
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "query_export_job",
+				CanonicalPath:  "doc.query_export_job",
+				CLIPath:        "doc export get",
+				PrimaryCLIPath: "doc export get",
+			},
 			Description: "查询文档导出任务结果",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -3545,6 +3762,13 @@ CLI 内部自动完成全部流程:
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "import_get",
+				CanonicalPath:  "doc.import_get",
+				CLIPath:        "doc import get",
+				PrimaryCLIPath: "doc import get",
+			},
 			Description: "根据 taskId 查询文档导入任务的执行结果",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -3591,6 +3815,13 @@ CLI 内部自动完成全部流程:
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "version_save",
+				CanonicalPath:  "doc.version_save",
+				CLIPath:        "doc version save",
+				PrimaryCLIPath: "doc version save",
+			},
 			Description: "手动保存文档版本快照",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3634,6 +3865,13 @@ CLI 内部自动完成全部流程:
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "version_list",
+				CanonicalPath:  "doc.version_list",
+				CLIPath:        "doc version list",
+				PrimaryCLIPath: "doc version list",
+			},
 			Description: "查看文档历史版本列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3695,6 +3933,13 @@ CLI 内部自动完成全部流程:
 	DeclareLeafMetadata(versionRevertCmd, LeafSpec{
 		Safety: versionRevertSafety,
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "version_revert",
+				CanonicalPath:  "doc.version_revert",
+				CLIPath:        "doc version revert",
+				PrimaryCLIPath: "doc version revert",
+			},
 			Description: "将文档回滚到指定历史版本",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3762,6 +4007,13 @@ CLI 内部自动完成全部流程:
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "template_list",
+				CanonicalPath:  "doc.template_list",
+				CLIPath:        "doc template list",
+				PrimaryCLIPath: "doc template list",
+			},
 			Description: "获取当前用户可用的文档模板列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3819,6 +4071,13 @@ CLI 内部自动完成全部流程:
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "template_search",
+				CanonicalPath:  "doc.template_search",
+				CLIPath:        "doc template search",
+				PrimaryCLIPath: "doc template search",
+			},
 			Description: "根据关键词搜索文档模板",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3877,6 +4136,13 @@ CLI 内部自动完成全部流程:
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "template_apply",
+				CanonicalPath:  "doc.template_apply",
+				CLIPath:        "doc template apply",
+				PrimaryCLIPath: "doc template apply",
+			},
 			Description: "使用指定模板创建新文档",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

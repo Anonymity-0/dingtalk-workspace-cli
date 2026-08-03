@@ -40,6 +40,13 @@ var GetMyTasks = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_get_my_tasks",
+			CanonicalPath:  "todo.shortcut_get_my_tasks",
+			CLIPath:        "todo +get-my-tasks",
+			PrimaryCLIPath: "todo +get-my-tasks",
+		},
 		Description: "查询当前组织下我的待办列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -146,6 +153,13 @@ var ListSub = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_list_sub",
+			CanonicalPath:  "todo.shortcut_list_sub",
+			CLIPath:        "todo +list-sub",
+			PrimaryCLIPath: "todo +list-sub",
+		},
 		Description: "查询子待办列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -256,6 +270,13 @@ var Get = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_get",
+			CanonicalPath:  "todo.shortcut_get",
+			CLIPath:        "todo +get",
+			PrimaryCLIPath: "todo +get",
+		},
 		Description: "查询待办详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -299,6 +320,13 @@ var ListAttachment = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_list_attachment",
+			CanonicalPath:  "todo.shortcut_list_attachment",
+			CLIPath:        "todo +list-attachment",
+			PrimaryCLIPath: "todo +list-attachment",
+		},
 		Description: "查询待办任务的附件列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -411,6 +439,13 @@ var ListComment = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_list_comment",
+			CanonicalPath:  "todo.shortcut_list_comment",
+			CLIPath:        "todo +list-comment",
+			PrimaryCLIPath: "todo +list-comment",
+		},
 		Description: "查询待办评论列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

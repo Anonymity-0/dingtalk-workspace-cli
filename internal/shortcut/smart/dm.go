@@ -47,6 +47,13 @@ var DM = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_dm",
+			CanonicalPath:  "chat.shortcut_dm",
+			CLIPath:        "chat +dm",
+			PrimaryCLIPath: "chat +dm",
+		},
 		Description: "按姓名直接给某人发单聊消息（自动解析 userId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

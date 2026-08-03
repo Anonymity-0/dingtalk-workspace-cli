@@ -302,6 +302,11 @@ func crossPlatformAgentExampleFixture(t *testing.T, mutate func(*cobra.Command, 
 	leaf.Flags().String("name", "", "name")
 	AttachRuntimeSchema(leaf, "sample", "run", "test")
 	payload := contract.ContractFinalPayload{
+		Identity: &contract.ToolIdentitySpec{
+			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+			CLIPath: "sample run", PrimaryCLIPath: "sample run",
+		},
+
 		Title:       "Run",
 		Description: "Run sample",
 		Safety:      &contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},

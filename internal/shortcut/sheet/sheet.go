@@ -38,6 +38,13 @@ var ListSheets = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "sheet",
+			Name:           "shortcut_list_sheets",
+			CanonicalPath:  "sheet.shortcut_list_sheets",
+			CLIPath:        "sheet +list-sheets",
+			PrimaryCLIPath: "sheet +list-sheets",
+		},
 		Description: "获取表格文档中全部工作表列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -161,6 +168,13 @@ var Read = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "sheet",
+			Name:           "shortcut_read",
+			CanonicalPath:  "sheet.shortcut_read",
+			CLIPath:        "sheet +read",
+			PrimaryCLIPath: "sheet +read",
+		},
 		Description: "读取工作表指定范围的结构化单元格数据",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

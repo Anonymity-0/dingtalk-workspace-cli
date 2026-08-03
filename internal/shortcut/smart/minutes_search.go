@@ -48,6 +48,13 @@ var MinutesSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_minutes_search",
+			CanonicalPath:  "minutes.shortcut_minutes_search",
+			CLIPath:        "minutes +minutes-search",
+			PrimaryCLIPath: "minutes +minutes-search",
+		},
 		Description: "按关键词搜索我的妙记并投影列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

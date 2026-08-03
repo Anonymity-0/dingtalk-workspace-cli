@@ -34,6 +34,13 @@ var ListPending = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_list_pending",
+			CanonicalPath:  "oa.shortcut_list_pending",
+			CLIPath:        "oa +list-pending",
+			PrimaryCLIPath: "oa +list-pending",
+		},
 		Description: "查询待我处理的审批（时间范围为 epoch 毫秒）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -118,6 +125,13 @@ var ListForms = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_list_forms",
+			CanonicalPath:  "oa.shortcut_list_forms",
+			CLIPath:        "oa +list-forms",
+			PrimaryCLIPath: "oa +list-forms",
+		},
 		Description: "获取当前用户可见的审批表单列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -237,6 +251,13 @@ var SearchForms = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_search_forms",
+			CanonicalPath:  "oa.shortcut_search_forms",
+			CLIPath:        "oa +search-forms",
+			PrimaryCLIPath: "oa +search-forms",
+		},
 		Description: "按关键字模糊搜索当前用户可见的审批表单",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -299,6 +320,13 @@ var ListExecuted = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_list_executed",
+			CanonicalPath:  "oa.shortcut_list_executed",
+			CLIPath:        "oa +list-executed",
+			PrimaryCLIPath: "oa +list-executed",
+		},
 		Description: "获取当前用户已经处理过的审批单列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -420,6 +448,13 @@ var ListSubmitted = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_list_submitted",
+			CanonicalPath:  "oa.shortcut_list_submitted",
+			CLIPath:        "oa +list-submitted",
+			PrimaryCLIPath: "oa +list-submitted",
+		},
 		Description: "获取当前用户已发起的审批单列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -489,6 +524,13 @@ var ListCc = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_list_cc",
+			CanonicalPath:  "oa.shortcut_list_cc",
+			CLIPath:        "oa +list-cc",
+			PrimaryCLIPath: "oa +list-cc",
+		},
 		Description: "获取抄送当前用户的审批单列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

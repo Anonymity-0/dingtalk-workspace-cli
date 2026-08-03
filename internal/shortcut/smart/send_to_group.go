@@ -50,6 +50,13 @@ var SendToGroup = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_send_to_group",
+			CanonicalPath:  "chat.shortcut_send_to_group",
+			CLIPath:        "chat +send-to-group",
+			PrimaryCLIPath: "chat +send-to-group",
+		},
 		Description: "按群名直接给群发消息（自动搜群解析 openConversationId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -49,6 +49,13 @@ var Org = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_org",
+			CanonicalPath:  "contact.shortcut_org",
+			CLIPath:        "contact +org",
+			PrimaryCLIPath: "contact +org",
+		},
 		Description: "按姓名查某人所在部门的详情（自动解析 userId 与 deptId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

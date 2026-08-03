@@ -59,6 +59,13 @@ var ResolveTable = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_resolve_table",
+			CanonicalPath:  "aitable.shortcut_resolve_table",
+			CLIPath:        "aitable +resolve-table",
+			PrimaryCLIPath: "aitable +resolve-table",
+		},
 		Description: "在某个多维表 Base 内按名称解析出唯一的数据表 tableId（只读）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -51,6 +51,13 @@ var ReplaceBatch = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_replace_batch",
+			CanonicalPath:  "minutes.shortcut_replace_batch",
+			CLIPath:        "minutes +replace-batch",
+			PrimaryCLIPath: "minutes +replace-batch",
+		},
 		Description: "对一条妙记（听记）批量执行多组文字替换（原文=>替换）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

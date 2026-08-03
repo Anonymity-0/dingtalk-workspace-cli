@@ -55,6 +55,13 @@ var AssignMulti = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_assign_multi",
+			CanonicalPath:  "todo.shortcut_assign_multi",
+			CLIPath:        "todo +assign-multi",
+			PrimaryCLIPath: "todo +assign-multi",
+		},
 		Description: "把一条待办按姓名一次性指派给多个人（自动把每个姓名解析成 userId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

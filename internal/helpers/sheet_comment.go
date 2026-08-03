@@ -49,6 +49,13 @@ func newSheetCommentCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "list_sheet_comments",
+				CanonicalPath:  "sheet.list_sheet_comments",
+				CLIPath:        "sheet comment list",
+				PrimaryCLIPath: "sheet comment list",
+			},
 			Description: "查询表格单元格评论列表，支持分页与按解决状态过滤",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -101,6 +108,13 @@ func newSheetCommentCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_sheet_comment",
+				CanonicalPath:  "sheet.create_sheet_comment",
+				CLIPath:        "sheet comment create",
+				PrimaryCLIPath: "sheet comment create",
+			},
 			Description: "在指定单元格上创建评论，可 @ 用户",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -154,6 +168,13 @@ func newSheetCommentCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "reply_sheet_comment",
+				CanonicalPath:  "sheet.reply_sheet_comment",
+				CLIPath:        "sheet comment reply",
+				PrimaryCLIPath: "sheet comment reply",
+			},
 			Description: "回复指定单元格评论，支持表情贴图回复",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -199,6 +220,13 @@ func newSheetCommentCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_sheet_comment",
+				CanonicalPath:  "sheet.update_sheet_comment",
+				CLIPath:        "sheet comment update",
+				PrimaryCLIPath: "sheet comment update",
+			},
 			Description: "更新单元格评论内容",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -242,6 +270,13 @@ func newSheetCommentCmd() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_sheet_comment",
+				CanonicalPath:  "sheet.delete_sheet_comment",
+				CLIPath:        "sheet comment delete",
+				PrimaryCLIPath: "sheet comment delete",
+			},
 			Description: "删除单元格评论（不可恢复）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

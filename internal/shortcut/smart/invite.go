@@ -44,6 +44,13 @@ var Invite = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_invite",
+			CanonicalPath:  "calendar.shortcut_invite",
+			CLIPath:        "calendar +invite",
+			PrimaryCLIPath: "calendar +invite",
+		},
 		Description: "按姓名把参会人加入已有日程（自动解析 userId 后批量添加）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -31,6 +31,10 @@ import (
 // corecmd.AttachContract's declaration completeness rules (test fixture).
 func contractCoverageSchema(desc string) LeafContract {
 	return LeafContract{
+		Identity: contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create",
+		},
 		Description: desc,
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

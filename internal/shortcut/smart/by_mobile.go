@@ -46,6 +46,13 @@ var ByMobile = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_by_mobile",
+			CanonicalPath:  "contact.shortcut_by_mobile",
+			CLIPath:        "contact +by-mobile",
+			PrimaryCLIPath: "contact +by-mobile",
+		},
 		Description: "按手机号查询某人的完整资料（自动解析 userId 后取详情）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

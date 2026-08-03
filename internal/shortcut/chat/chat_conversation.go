@@ -39,6 +39,13 @@ var ConversationInfo = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_conversation_info",
+			CanonicalPath:  "chat.shortcut_conversation_info",
+			CLIPath:        "chat +conversation-info",
+			PrimaryCLIPath: "chat +conversation-info",
+		},
 		Description: "获取会话信息（群聊传 --group，单聊传 --open-dingtalk-id）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -246,6 +253,13 @@ var ConversationClearAllRedPoint = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_conversation_clear_all_red_point",
+			CanonicalPath:  "chat.shortcut_conversation_clear_all_red_point",
+			CLIPath:        "chat +conversation-clear-all-red-point",
+			PrimaryCLIPath: "chat +conversation-clear-all-red-point",
+		},
 		Description: "清除所有会话红点（全部已读）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -278,6 +292,13 @@ var ConversationList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_conversation_list",
+			CanonicalPath:  "chat.shortcut_conversation_list",
+			CLIPath:        "chat +conversation-list",
+			PrimaryCLIPath: "chat +conversation-list",
+		},
 		Description: "分页获取当前用户的全部会话列表（单聊+群聊）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -393,6 +414,13 @@ var ConversationListTop = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_conversation_list_top",
+			CanonicalPath:  "chat.shortcut_conversation_list_top",
+			CLIPath:        "chat +conversation-list-top",
+			PrimaryCLIPath: "chat +conversation-list-top",
+		},
 		Description: "拉取置顶会话列表，可只看群聊或单聊",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -647,6 +675,13 @@ var CategoryList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_category_list",
+			CanonicalPath:  "chat.shortcut_category_list",
+			CLIPath:        "chat +category-list",
+			PrimaryCLIPath: "chat +category-list",
+		},
 		Description: "获取用户自定义会话分组",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -849,6 +884,13 @@ var CategoryCreate = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_category_create",
+			CanonicalPath:  "chat.shortcut_category_create",
+			CLIPath:        "chat +category-create",
+			PrimaryCLIPath: "chat +category-create",
+		},
 		Description: "创建用户自定义会话分组",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -894,6 +936,13 @@ var CategoryDelete = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_category_delete",
+			CanonicalPath:  "chat.shortcut_category_delete",
+			CLIPath:        "chat +category-delete",
+			PrimaryCLIPath: "chat +category-delete",
+		},
 		Description: "删除用户自定义会话分组",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -929,6 +978,13 @@ var CategoryRename = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_category_rename",
+			CanonicalPath:  "chat.shortcut_category_rename",
+			CLIPath:        "chat +category-rename",
+			PrimaryCLIPath: "chat +category-rename",
+		},
 		Description: "更新用户自定义会话分组的名称",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -1598,6 +1598,14 @@ func TestCrossPlatformCoverageEmbedContractCobraProjection(t *testing.T) {
 		},
 		Safety: testWriteSafety(),
 		Contract: ContractDecl{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "desc",
 			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
 			Selection: contract.SelectionSpec{
@@ -1642,6 +1650,10 @@ func TestCrossPlatformCoverageAttachContractNilAndEmptyGuards(t *testing.T) {
 func TestCrossPlatformCoverageAttachContractOverwritesLegacySelectionSources(t *testing.T) {
 	cmd := newTestCommand()
 	AttachContract(cmd, testWriteSafety(), ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create",
+		},
 		Description: "Declared description for attach coverage",
 		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
 		Parameters:  []contract.ParamDecl{{Name: "mode", Property: "mode", InterfaceType: "string"}},

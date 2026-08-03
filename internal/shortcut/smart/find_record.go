@@ -49,6 +49,13 @@ var FindRecord = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_find_record",
+			CanonicalPath:  "aitable.shortcut_find_record",
+			CLIPath:        "aitable +find-record",
+			PrimaryCLIPath: "aitable +find-record",
+		},
 		Description: "在指定多维表里按关键词查记录（只读）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -363,6 +363,13 @@ func newRangeSetStyleCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_set_style",
+				CanonicalPath:  "sheet.range_set_style",
+				CLIPath:        "sheet range set-style",
+				PrimaryCLIPath: "sheet range set-style",
+			},
 			Description: "为指定范围统一设置背景、字体、对齐、换行或数字格式。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -586,6 +593,13 @@ func newRangeBatchSetStyleCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_batch_set_style",
+				CanonicalPath:  "sheet.range_batch_set_style",
+				CLIPath:        "sheet range batch-set-style",
+				PrimaryCLIPath: "sheet range batch-set-style",
+			},
 			Description: "按 JSON 配置文件顺序批量设置多个区域样式。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

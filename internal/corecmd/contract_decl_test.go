@@ -120,6 +120,14 @@ func TestNewCommandFallsBackToDeclaredDescriptionWithoutLong(t *testing.T) {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: ContractDecl{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Title:       "Create Title",
 			Description: "Create Desc",
 			Interface: &contract.InterfaceSpec{
@@ -171,6 +179,11 @@ func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T
 			Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available"},
 			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
 		}, "Contract.Interface.Reason"},
+		{"missing identity", ContractDecl{
+			Description: "d",
+			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "get_thing"}},
+			Selection:   contract.SelectionSpec{AgentSummary: "s", UseWhen: []string{"u"}, AvoidWhen: []string{"a"}, Examples: []string{"dws x"}},
+		}, "Contract.Identity"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
@@ -194,6 +207,10 @@ func TestCrossPlatformCoverageNewCommandPanicsOnPartialContractDecl(t *testing.T
 
 func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 	decl := ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create",
+		},
 		Description: "desc",
 		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "create_thing"}},
 		Selection: contract.SelectionSpec{
@@ -232,6 +249,10 @@ func TestNewCommandDerivesHelpExampleFromDeclaredSelection(t *testing.T) {
 func TestNewCommandSafetySpecPassThrough(t *testing.T) {
 	decl := func() ContractDecl {
 		return ContractDecl{
+			Identity: contract.ToolIdentitySpec{
+				ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+				CLIPath: "dev create", PrimaryCLIPath: "dev create",
+			},
 			Description: "desc",
 			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "dev", RPCName: "op"}},
 			Selection: contract.SelectionSpec{

@@ -56,6 +56,13 @@ var ThreadList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_thread_list",
+			CanonicalPath:  "mail.shortcut_thread_list",
+			CLIPath:        "mail +thread-list",
+			PrimaryCLIPath: "mail +thread-list",
+		},
 		Description: "列出指定邮箱文件夹下的邮件会话（thread）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -193,6 +200,13 @@ var FolderList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_folder_list",
+			CanonicalPath:  "mail.shortcut_folder_list",
+			CLIPath:        "mail +folder-list",
+			PrimaryCLIPath: "mail +folder-list",
+		},
 		Description: "列出顶层文件夹或指定父文件夹下的子文件夹",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -309,6 +323,13 @@ var TagList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_tag_list",
+			CanonicalPath:  "mail.shortcut_tag_list",
+			CLIPath:        "mail +tag-list",
+			PrimaryCLIPath: "mail +tag-list",
+		},
 		Description: "列出指定邮箱下的所有邮件标签",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -420,6 +441,13 @@ var UserSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_user_search",
+			CanonicalPath:  "mail.shortcut_user_search",
+			CLIPath:        "mail +user-search",
+			PrimaryCLIPath: "mail +user-search",
+		},
 		Description: "按关键词或工号搜索邮箱用户（仅企业邮箱）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -560,6 +588,13 @@ var TemplateList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_template_list",
+			CanonicalPath:  "mail.shortcut_template_list",
+			CLIPath:        "mail +template-list",
+			PrimaryCLIPath: "mail +template-list",
+		},
 		Description: "列出指定邮箱的所有邮件模板",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -679,6 +714,13 @@ var ContactList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_contact_list",
+			CanonicalPath:  "mail.shortcut_contact_list",
+			CLIPath:        "mail +contact-list",
+			PrimaryCLIPath: "mail +contact-list",
+		},
 		Description: "列出指定邮箱的所有邮件联系人",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -47,6 +47,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_by_keyword_and_time_range",
+				CanonicalPath:  "minutes.list_by_keyword_and_time_range",
+				CLIPath:        "minutes list mine",
+				PrimaryCLIPath: "minutes list mine",
+			},
 			Description: "查询当前用户自己创建的听记列表，支持分页、关键字和时间范围筛选。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -86,6 +93,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_shared_minutes",
+				CanonicalPath:  "minutes.list_shared_minutes",
+				CLIPath:        "minutes list shared",
+				PrimaryCLIPath: "minutes list shared",
+			},
 			Description: "查询他人共享给当前用户的听记列表，支持分页、关键字和时间范围筛选。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -129,6 +143,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_accessible_minutes",
+				CanonicalPath:  "minutes.list_accessible_minutes",
+				CLIPath:        "minutes list all",
+				PrimaryCLIPath: "minutes list all",
+			},
 			Description: "查询当前用户有权限访问的全部听记，包括自己创建和他人共享的听记，并支持分页、关键字和时间范围筛选。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -174,6 +195,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_basic_info",
+				CanonicalPath:  "minutes.get_minutes_basic_info",
+				CLIPath:        "minutes get info",
+				PrimaryCLIPath: "minutes get info",
+			},
 			Description: "获取指定听记的基础元数据信息。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -213,6 +241,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_ai_summary",
+				CanonicalPath:  "minutes.get_minutes_ai_summary",
+				CLIPath:        "minutes get summary",
+				PrimaryCLIPath: "minutes get summary",
+			},
 			Description: "获取由 AI 对听记转写原文进行结构化提炼生成的摘要，返回 Markdown 格式。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -256,6 +291,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_keywords",
+				CanonicalPath:  "minutes.get_minutes_keywords",
+				CLIPath:        "minutes get keywords",
+				PrimaryCLIPath: "minutes get keywords",
+			},
 			Description: "获取指定听记的关键字列表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -314,6 +356,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_transcription",
+				CanonicalPath:  "minutes.get_minutes_transcription",
+				CLIPath:        "minutes get transcription",
+				PrimaryCLIPath: "minutes get transcription",
+			},
 			Description: "获取指定听记的语音转写原文。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -357,6 +406,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_minutes_todos",
+				CanonicalPath:  "minutes.list_minutes_todos",
+				CLIPath:        "minutes get todos",
+				PrimaryCLIPath: "minutes get todos",
+			},
 			Description: "查询指定听记中由系统提取的待办事项列表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -411,6 +467,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_minutes_audio_url",
+				CanonicalPath:  "minutes.query_minutes_audio_url",
+				CLIPath:        "minutes get audio",
+				PrimaryCLIPath: "minutes get audio",
+			},
 			Description: "查询听记的音频/视频文件地址（OSS 链接）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -452,6 +515,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "batch_get_minutes_details",
+				CanonicalPath:  "minutes.batch_get_minutes_details",
+				CLIPath:        "minutes get batch",
+				PrimaryCLIPath: "minutes get batch",
+			},
 			Description: "根据 taskUuid 列表批量查询听记详情。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -495,6 +565,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "update_minutes_title",
+				CanonicalPath:  "minutes.update_minutes_title",
+				CLIPath:        "minutes update title",
+				PrimaryCLIPath: "minutes update title",
+			},
 			Description: "修改指定听记的标题。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -602,6 +679,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_start",
+				CanonicalPath:  "minutes.record_start",
+				CLIPath:        "minutes record start",
+				PrimaryCLIPath: "minutes record start",
+			},
 			Description: "发起听记并开始录音。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -645,6 +729,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_pause",
+				CanonicalPath:  "minutes.record_pause",
+				CLIPath:        "minutes record pause",
+				PrimaryCLIPath: "minutes record pause",
+			},
 			Description: "暂停正在进行的听记录音。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -691,6 +782,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_resume",
+				CanonicalPath:  "minutes.record_resume",
+				CLIPath:        "minutes record resume",
+				PrimaryCLIPath: "minutes record resume",
+			},
 			Description: "恢复已暂停的听记录音。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -737,6 +835,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_stop",
+				CanonicalPath:  "minutes.record_stop",
+				CLIPath:        "minutes record stop",
+				PrimaryCLIPath: "minutes record stop",
+			},
 			Description: "结束正在进行的听记录音。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -799,6 +904,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "update_minutes_summary",
+				CanonicalPath:  "minutes.update_minutes_summary",
+				CLIPath:        "minutes update summary",
+				PrimaryCLIPath: "minutes update summary",
+			},
 			Description: "用传入的摘要文本全量覆盖听记的纪要内容，不触发 AI 重新生成。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -852,6 +964,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "create_mind_graph",
+				CanonicalPath:  "minutes.create_mind_graph",
+				CLIPath:        "minutes mind-graph create",
+				PrimaryCLIPath: "minutes mind-graph create",
+			},
 			Description: "触发创建听记思维导图任务。触发成功后，可通过 query_mind_graph_status 轮询任务状态。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -901,6 +1020,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_mind_graph_status",
+				CanonicalPath:  "minutes.query_mind_graph_status",
+				CLIPath:        "minutes mind-graph status",
+				PrimaryCLIPath: "minutes mind-graph status",
+			},
 			Description: "查询指定听记的思维导图生成状态。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -962,6 +1088,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "replace_speaker",
+				CanonicalPath:  "minutes.replace_speaker",
+				CLIPath:        "minutes speaker replace",
+				PrimaryCLIPath: "minutes speaker replace",
+			},
 			Description: "批量替换听记转写中指定发言人，将源发言人（speakerNick）精确匹配的所有段落替换为目标发言人。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1019,6 +1152,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "create_speaker_summary",
+				CanonicalPath:  "minutes.create_speaker_summary",
+				CLIPath:        "minutes speaker summary create",
+				PrimaryCLIPath: "minutes speaker summary create",
+			},
 			Description: "触发创建发言人的段落总结任务，将听记中每位发言人的所有发言内容汇总总结。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1067,6 +1207,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_speaker_summary",
+				CanonicalPath:  "minutes.get_speaker_summary",
+				CLIPath:        "minutes speaker summary get",
+				PrimaryCLIPath: "minutes speaker summary get",
+			},
 			Description: "查询发言人段落总结任务的结果，返回每位发言人的发言汇总。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1119,6 +1266,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "add_personal_hot_word",
+				CanonicalPath:  "minutes.add_personal_hot_word",
+				CLIPath:        "minutes hot-word add",
+				PrimaryCLIPath: "minutes hot-word add",
+			},
 			Description: "添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1158,6 +1312,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_my_hotwords",
+				CanonicalPath:  "minutes.list_my_hotwords",
+				CLIPath:        "minutes hot-word list",
+				PrimaryCLIPath: "minutes hot-word list",
+			},
 			Description: "查询当前用户配置的所有听记热词列表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1199,6 +1360,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "replace_minutes_text",
+				CanonicalPath:  "minutes.replace_minutes_text",
+				CLIPath:        "minutes replace-text",
+				PrimaryCLIPath: "minutes replace-text",
+			},
 			Description: "把听记中所有出现的原文字替换为目标文字，包括转写段落和纪要摘要中出现的原文字都会被替换。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1299,6 +1467,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "create_upload_session",
+				CanonicalPath:  "minutes.create_upload_session",
+				CLIPath:        "minutes upload create",
+				PrimaryCLIPath: "minutes upload create",
+			},
 			Description: "创建文件上传会话，获取预签名上传URL。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1358,6 +1533,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "complete_upload_session",
+				CanonicalPath:  "minutes.complete_upload_session",
+				CLIPath:        "minutes upload complete",
+				PrimaryCLIPath: "minutes upload complete",
+			},
 			Description: "文件上传完成后，创建听记。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1403,6 +1585,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "cancel_upload_session",
+				CanonicalPath:  "minutes.cancel_upload_session",
+				CLIPath:        "minutes upload cancel",
+				PrimaryCLIPath: "minutes upload cancel",
+			},
 			Description: "取消 create 创建的上传会话，传入要取消的会话 ID。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1502,6 +1691,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "add_member_permission",
+				CanonicalPath:  "minutes.add_member_permission",
+				CLIPath:        "minutes permission add",
+				PrimaryCLIPath: "minutes permission add",
+			},
 			Description: "批量给多个听记增加成员，并设置成员的权限。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1570,6 +1766,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "remove_member_permission",
+				CanonicalPath:  "minutes.remove_member_permission",
+				CLIPath:        "minutes permission remove",
+				PrimaryCLIPath: "minutes permission remove",
+			},
 			Description: "批量移除多个听记的成员权限。移除后，对应成员将失去对这些听记的访问权限。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1630,6 +1833,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_user_tag_list",
+				CanonicalPath:  "minutes.query_user_tag_list",
+				CLIPath:        "minutes tag list",
+				PrimaryCLIPath: "minutes tag list",
+			},
 			Description: "查询当前用户的听记标签或分组列表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1682,6 +1892,13 @@ func newMinutesCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_minutes_by_tag_id",
+				CanonicalPath:  "minutes.query_minutes_by_tag_id",
+				CLIPath:        "minutes tag query",
+				PrimaryCLIPath: "minutes tag query",
+			},
 			Description: "根据用户的标签或分组 ID 查询该标签下的听记列表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

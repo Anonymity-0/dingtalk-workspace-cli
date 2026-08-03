@@ -464,6 +464,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "list_files",
+				CanonicalPath:  "drive.list_files",
+				CLIPath:        "drive list",
+				PrimaryCLIPath: "drive list",
+			},
 			Description: "获取文件/文件夹列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -516,6 +523,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_file_info",
+				CanonicalPath:  "drive.get_file_info",
+				CLIPath:        "drive info",
+				PrimaryCLIPath: "drive info",
+			},
 			Description: "获取文件元数据信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -616,6 +630,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "download_file",
+				CanonicalPath:  "drive.download_file",
+				CLIPath:        "drive download",
+				PrimaryCLIPath: "drive download",
+			},
 			Description: "下载钉盘或文档空间文件到本地",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -717,6 +738,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "download_file_version",
+				CanonicalPath:  "drive.download_file_version",
+				CLIPath:        "drive download-version",
+				PrimaryCLIPath: "drive download-version",
+			},
 			Description: "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -767,6 +795,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "create_folder",
+				CanonicalPath:  "drive.create_folder",
+				CLIPath:        "drive mkdir",
+				PrimaryCLIPath: "drive mkdir",
+			},
 			Description: "创建文件夹",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -832,6 +867,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_upload_info",
+				CanonicalPath:  "drive.get_upload_info",
+				CLIPath:        "drive upload-info",
+				PrimaryCLIPath: "drive upload-info",
+			},
 			Description: "获取文件上传信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -888,6 +930,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "commit_upload",
+				CanonicalPath:  "drive.commit_upload",
+				CLIPath:        "drive commit",
+				PrimaryCLIPath: "drive commit",
+			},
 			Description: "提交文件上传",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -986,6 +1035,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "upload",
+				CanonicalPath:  "drive.upload",
+				CLIPath:        "drive upload",
+				PrimaryCLIPath: "drive upload",
+			},
 			Description: "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -1066,6 +1122,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "list_spaces",
+				CanonicalPath:  "drive.list_spaces",
+				CLIPath:        "drive list-spaces",
+				PrimaryCLIPath: "drive list-spaces",
+			},
 			Description: "兼容查询钉盘空间列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1226,6 +1289,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "search_files",
+				CanonicalPath:  "drive.search_files",
+				CLIPath:        "drive search",
+				PrimaryCLIPath: "drive search",
+			},
 			Description: "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1311,6 +1381,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "delete_document",
+				CanonicalPath:  "drive.delete_document",
+				CLIPath:        "drive delete",
+				PrimaryCLIPath: "drive delete",
+			},
 			Description: "将钉盘中的文件或文件夹移入回收站",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1370,6 +1447,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "copy_document",
+				CanonicalPath:  "drive.copy_document",
+				CLIPath:        "drive copy",
+				PrimaryCLIPath: "drive copy",
+			},
 			Description: "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1440,6 +1524,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "move_document",
+				CanonicalPath:  "drive.move_document",
+				CLIPath:        "drive move",
+				PrimaryCLIPath: "drive move",
+			},
 			Description: "将文件或文档移动到目标文件夹或知识库（原位置不再保留）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1510,6 +1601,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "rename_document",
+				CanonicalPath:  "drive.rename_document",
+				CLIPath:        "drive rename",
+				PrimaryCLIPath: "drive rename",
+			},
 			Description: "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1559,6 +1657,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_node_stats",
+				CanonicalPath:  "drive.get_node_stats",
+				CLIPath:        "drive stats",
+				PrimaryCLIPath: "drive stats",
+			},
 			Description: "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1615,6 +1720,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "create_shortcut",
+				CanonicalPath:  "drive.create_shortcut",
+				CLIPath:        "drive shortcut",
+				PrimaryCLIPath: "drive shortcut",
+			},
 			Description: "为钉盘或文档空间中的现有节点创建快捷方式。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1691,6 +1803,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "add_permission",
+				CanonicalPath:  "drive.add_permission",
+				CLIPath:        "drive permission add",
+				PrimaryCLIPath: "drive permission add",
+			},
 			Description: "为文档空间节点添加协作成员并授予指定角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1761,6 +1880,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "permission_update",
+				CanonicalPath:  "drive.permission_update",
+				CLIPath:        "drive permission update",
+				PrimaryCLIPath: "drive permission update",
+			},
 			Description: "更新文档空间节点已有协作者的权限角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1826,6 +1952,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "list_permission",
+				CanonicalPath:  "drive.list_permission",
+				CLIPath:        "drive permission list",
+				PrimaryCLIPath: "drive permission list",
+			},
 			Description: "查询文档空间节点的协作者列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1886,6 +2019,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "permission_remove",
+				CanonicalPath:  "drive.permission_remove",
+				CLIPath:        "drive permission remove",
+				PrimaryCLIPath: "drive permission remove",
+			},
 			Description: "从文档空间节点移除协作成员的权限",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2010,6 +2150,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "transfer_owner",
+				CanonicalPath:  "drive.transfer_owner",
+				CLIPath:        "drive permission transfer-owner",
+				PrimaryCLIPath: "drive permission transfer-owner",
+			},
 			Description: "转交文档或知识库所有者给指定用户（不可逆）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2048,6 +2195,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "query_permission_apply_info",
+				CanonicalPath:  "drive.query_permission_apply_info",
+				CLIPath:        "drive permission apply-info",
+				PrimaryCLIPath: "drive permission apply-info",
+			},
 			Description: "查询节点可申请的权限角色列表与审批人列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2104,6 +2258,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "apply_permission",
+				CanonicalPath:  "drive.apply_permission",
+				CLIPath:        "drive permission apply",
+				PrimaryCLIPath: "drive permission apply",
+			},
 			Description: "向审批人发起文档权限申请（会真实通知审批人）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2183,6 +2344,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "recycle_list",
+				CanonicalPath:  "drive.recycle_list",
+				CLIPath:        "drive recycle list",
+				PrimaryCLIPath: "drive recycle list",
+			},
 			Description: "查看回收站文件列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2227,6 +2395,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "recycle_restore",
+				CanonicalPath:  "drive.recycle_restore",
+				CLIPath:        "drive recycle restore",
+				PrimaryCLIPath: "drive recycle restore",
+			},
 			Description: "还原回收站中的文件",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2323,6 +2498,13 @@ func newDriveCommand() *cobra.Command {
 			return err
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "publish_set",
+				CanonicalPath:  "drive.publish_set",
+				CLIPath:        "drive publish set",
+				PrimaryCLIPath: "drive publish set",
+			},
 			Description: "开启文件的互联网公开发布",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2375,6 +2557,13 @@ func newDriveCommand() *cobra.Command {
 			return err
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "publish_unset",
+				CanonicalPath:  "drive.publish_unset",
+				CLIPath:        "drive publish unset",
+				PrimaryCLIPath: "drive publish unset",
+			},
 			Description: "关闭文件的互联网公开发布",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2416,6 +2605,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "publish_get",
+				CanonicalPath:  "drive.publish_get",
+				CLIPath:        "drive publish get",
+				PrimaryCLIPath: "drive publish get",
+			},
 			Description: "查询文件当前是否处于互联网公开发布状态",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2518,6 +2714,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "recent",
+				CanonicalPath:  "drive.recent",
+				CLIPath:        "drive recent",
+				PrimaryCLIPath: "drive recent",
+			},
 			Description: "获取当前用户最近访问或编辑过的文档列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2576,6 +2779,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "mark_star",
+				CanonicalPath:  "drive.mark_star",
+				CLIPath:        "drive star add",
+				PrimaryCLIPath: "drive star add",
+			},
 			Description: "收藏文档/文件到当前用户收藏列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2610,6 +2820,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "unmark_star",
+				CanonicalPath:  "drive.unmark_star",
+				CLIPath:        "drive star remove",
+				PrimaryCLIPath: "drive star remove",
+			},
 			Description: "将文档/文件从当前用户收藏列表移除",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2659,6 +2876,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_star_list",
+				CanonicalPath:  "drive.get_star_list",
+				CLIPath:        "drive star list",
+				PrimaryCLIPath: "drive star list",
+			},
 			Description: "获取当前用户的收藏列表，支持分页与按内容类型筛选",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2703,6 +2927,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_cover",
+				CanonicalPath:  "drive.get_cover",
+				CLIPath:        "drive cover",
+				PrimaryCLIPath: "drive cover",
+			},
 			Description: "获取节点封面图片地址（文档首图/图片缩略图/类型图标）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2747,6 +2978,13 @@ func newDriveCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "revert_file_version",
+				CanonicalPath:  "drive.revert_file_version",
+				CLIPath:        "drive revert",
+				PrimaryCLIPath: "drive revert",
+			},
 			Description: "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

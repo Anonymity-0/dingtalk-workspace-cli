@@ -188,6 +188,13 @@ func newFilterCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_filter",
+				CanonicalPath:  "sheet.get_filter",
+				CLIPath:        "sheet filter get",
+				PrimaryCLIPath: "sheet filter get",
+			},
 			Description: "获取工作表全局筛选信息。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -248,6 +255,13 @@ func newFilterCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_filter",
+				CanonicalPath:  "sheet.create_filter",
+				CLIPath:        "sheet filter create",
+				PrimaryCLIPath: "sheet filter create",
+			},
 			Description: "创建全局筛选（每表仅一个；range 须含表头）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -291,6 +305,13 @@ func newFilterCmd() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_filter",
+				CanonicalPath:  "sheet.delete_filter",
+				CLIPath:        "sheet filter delete",
+				PrimaryCLIPath: "sheet filter delete",
+			},
 			Description: "删除全局筛选（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -350,6 +371,13 @@ func newFilterCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_filter",
+				CanonicalPath:  "sheet.update_filter",
+				CLIPath:        "sheet filter update",
+				PrimaryCLIPath: "sheet filter update",
+			},
 			Description: "批量更新全局筛选多列条件。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -399,6 +427,13 @@ func newFilterCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "filter_clear_criteria",
+				CanonicalPath:  "sheet.filter_clear_criteria",
+				CLIPath:        "sheet filter clear-criteria",
+				PrimaryCLIPath: "sheet filter clear-criteria",
+			},
 			Description: "清除全局筛选中某一列条件（不删筛选本身）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -451,6 +486,13 @@ func newFilterCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "sort_filter",
+				CanonicalPath:  "sheet.sort_filter",
+				CLIPath:        "sheet filter sort",
+				PrimaryCLIPath: "sheet filter sort",
+			},
 			Description: "在全局筛选范围内按列排序（会改物理顺序）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -515,6 +557,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_filter_views",
+				CanonicalPath:  "sheet.get_filter_views",
+				CLIPath:        "sheet filter-view list",
+				PrimaryCLIPath: "sheet filter-view list",
+			},
 			Description: "列出工作表全部筛选视图概要。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -590,6 +639,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_filter_view",
+				CanonicalPath:  "sheet.create_filter_view",
+				CLIPath:        "sheet filter-view create",
+				PrimaryCLIPath: "sheet filter-view create",
+			},
 			Description: "创建个人筛选视图（可同时带 criteria）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -678,6 +734,13 @@ filterViewId 可通过 filter-view list 获取。
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_filter_view",
+				CanonicalPath:  "sheet.update_filter_view",
+				CLIPath:        "sheet filter-view update",
+				PrimaryCLIPath: "sheet filter-view update",
+			},
 			Description: "更新筛选视图名称、范围和/或多列条件。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -734,6 +797,13 @@ filterViewId 可通过 filter-view list 获取。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_filter_view",
+				CanonicalPath:  "sheet.delete_filter_view",
+				CLIPath:        "sheet filter-view delete",
+				PrimaryCLIPath: "sheet filter-view delete",
+			},
 			Description: "删除整个筛选视图（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -842,6 +912,13 @@ condition 类型支持的 operator（必须使用 kebab-case 格式）：
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "filter_view_update_criteria",
+				CanonicalPath:  "sheet.filter_view_update_criteria",
+				CLIPath:        "sheet filter-view update-criteria",
+				PrimaryCLIPath: "sheet filter-view update-criteria",
+			},
 			Description: "设置或更新筛选视图的单列条件。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -907,6 +984,13 @@ filterViewId 可通过 filter-view list 获取。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "filter_view_delete_criteria",
+				CanonicalPath:  "sheet.filter_view_delete_criteria",
+				CLIPath:        "sheet filter-view delete-criteria",
+				PrimaryCLIPath: "sheet filter-view delete-criteria",
+			},
 			Description: "清除筛选视图某列条件（需确认后加 --yes；保留视图）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -952,6 +1036,13 @@ filterViewId 可通过 filter-view list 获取。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "filter_view_info",
+				CanonicalPath:  "sheet.filter_view_info",
+				CLIPath:        "sheet filter-view info",
+				PrimaryCLIPath: "sheet filter-view info",
+			},
 			Description: "获取单个筛选视图完整配置（含 criteria）。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -999,6 +1090,13 @@ filterViewId 可通过 filter-view list 获取。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "filter_view_list_criteria",
+				CanonicalPath:  "sheet.filter_view_list_criteria",
+				CLIPath:        "sheet filter-view list-criteria",
+				PrimaryCLIPath: "sheet filter-view list-criteria",
+			},
 			Description: "列出筛选视图已设置的全部列条件。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -1052,6 +1150,13 @@ filterViewId 可通过 filter-view list 获取。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "filter_view_get_criteria",
+				CanonicalPath:  "sheet.filter_view_get_criteria",
+				CLIPath:        "sheet filter-view get-criteria",
+				PrimaryCLIPath: "sheet filter-view get-criteria",
+			},
 			Description: "获取筛选视图指定列的条件详情。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{

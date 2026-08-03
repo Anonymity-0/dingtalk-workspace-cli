@@ -383,6 +383,13 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "consume",
+				CanonicalPath:  "event.consume",
+				CLIPath:        "event consume",
+				PrimaryCLIPath: "event consume",
+			},
 			Description: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -783,6 +790,13 @@ func newEventListCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "list",
+				CanonicalPath:  "event.list",
+				CLIPath:        "event list",
+				PrimaryCLIPath: "event list",
+			},
 			Description: "列出支持的个人事件目录与状态说明",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",
@@ -874,6 +888,13 @@ func newEventStatusCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "status",
+				CanonicalPath:  "event.status",
+				CLIPath:        "event status",
+				PrimaryCLIPath: "event status",
+			},
 			Description: "查看个人事件订阅、本地 bus 与消费进程状态",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1207,6 +1228,13 @@ func newEventStopCommand() *cobra.Command {
 			return nil
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "stop",
+				CanonicalPath:  "event.stop",
+				CLIPath:        "event stop",
+				PrimaryCLIPath: "event stop",
+			},
 			Description: "取消个人事件订阅并停止对应本地消费",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{

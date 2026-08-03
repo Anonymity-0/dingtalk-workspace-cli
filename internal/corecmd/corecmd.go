@@ -1273,7 +1273,9 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		copied.Reviewed = nil
 		payload.Selection = &copied
 	}
-	if id := decl.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" {
+	if id := decl.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" ||
+		strings.TrimSpace(id.CanonicalPath) != "" || strings.TrimSpace(id.CLIPath) != "" ||
+		strings.TrimSpace(id.PrimaryCLIPath) != "" {
 		copied := id
 		copied.ProductID = strings.TrimSpace(id.ProductID)
 		copied.SourceProductID = strings.TrimSpace(id.SourceProductID)
@@ -1282,8 +1284,17 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		copied.CanonicalPath = strings.TrimSpace(id.CanonicalPath)
 		copied.CLIPath = strings.TrimSpace(id.CLIPath)
 		copied.PrimaryCLIPath = strings.TrimSpace(id.PrimaryCLIPath)
+		if copied.CLIPath == "" {
+			copied.CLIPath = copied.PrimaryCLIPath
+		}
+		if copied.PrimaryCLIPath == "" {
+			copied.PrimaryCLIPath = copied.CLIPath
+		}
 		copied.Group = strings.TrimSpace(id.Group)
 		copied.Source = strings.TrimSpace(id.Source)
+		if len(id.Aliases) > 0 {
+			copied.Aliases = append([]string(nil), id.Aliases...)
+		}
 		payload.Identity = &copied
 	}
 	if len(decl.Parameters) > 0 {

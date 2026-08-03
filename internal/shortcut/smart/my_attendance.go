@@ -54,6 +54,13 @@ var MyAttendance = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_my_attendance",
+			CanonicalPath:  "attendance.shortcut_my_attendance",
+			CLIPath:        "attendance +my-attendance",
+			PrimaryCLIPath: "attendance +my-attendance",
+		},
 		Description: "查我今天的考勤打卡记录（打卡流水，自动解析当前用户）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

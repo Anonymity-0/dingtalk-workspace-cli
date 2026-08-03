@@ -41,6 +41,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *tes
 		},
 		Identity: &contract.ToolIdentitySpec{
 			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create",
 		},
 	})
 
@@ -120,6 +121,11 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalRejectsReviewedSel
 		Command:   &cobra.Command{Use: "create"},
 	}
 	_, err := runtimeToolSpecFromContractFinal(entry, contract.ContractFinalPayload{
+		Identity: &contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create",
+		},
+
 		Selection: &contract.SelectionSpec{AgentSummary: "sum", Reviewed: &reviewed},
 	}, runtimeSchemaMetadataSources{})
 	if err == nil {
@@ -184,7 +190,11 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSameLengthAliasMis
 	}
 	// Same-length alias sets with different members must be detected by the
 	// element-wise comparison, not only by the length fast-path.
-	final := contract.ContractFinalPayload{Identity: &contract.ToolIdentitySpec{Aliases: []string{"dev other"}}}
+	final := contract.ContractFinalPayload{Identity: &contract.ToolIdentitySpec{
+		ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+		CLIPath: "dev create", PrimaryCLIPath: "dev create",
+		Aliases: []string{"dev other"},
+	}}
 	_, err := runtimeToolSpecFromContractFinal(entry, final, runtimeSchemaMetadataSources{})
 	if err == nil || !strings.Contains(err.Error(), "aliases") {
 		t.Fatalf("same-length alias mismatch error = %v, want aliases mismatch", err)

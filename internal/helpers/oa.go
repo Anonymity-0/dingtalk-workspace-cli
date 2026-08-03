@@ -84,6 +84,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "list_pending_approvals",
+				CanonicalPath:  "oa.list_pending_approvals",
+				CLIPath:        "oa approval list-pending",
+				PrimaryCLIPath: "oa approval list-pending",
+			},
 			Description: "查询当前用户待处理的审批单列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -130,6 +137,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "get_processInstance_detail",
+				CanonicalPath:  "oa.get_processInstance_detail",
+				CLIPath:        "oa approval detail",
+				PrimaryCLIPath: "oa approval detail",
+			},
 			Description: "获取指定审批实例的详情信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -180,6 +194,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "approve_processInstance",
+				CanonicalPath:  "oa.approve_processInstance",
+				CLIPath:        "oa approval approve",
+				PrimaryCLIPath: "oa approval approve",
+			},
 			Description: "同意审批",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -229,6 +250,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "reject_processInstance",
+				CanonicalPath:  "oa.reject_processInstance",
+				CLIPath:        "oa approval reject",
+				PrimaryCLIPath: "oa approval reject",
+			},
 			Description: "拒绝审批",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -278,6 +306,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "revoke_processInstance",
+				CanonicalPath:  "oa.revoke_processInstance",
+				CLIPath:        "oa approval revoke",
+				PrimaryCLIPath: "oa approval revoke",
+			},
 			Description: "撤销当前用户已发起的审批实例",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -318,6 +353,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "get_processInstance_records",
+				CanonicalPath:  "oa.get_processInstance_records",
+				CLIPath:        "oa approval records",
+				PrimaryCLIPath: "oa approval records",
+			},
 			Description: "获取审批操作记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -378,6 +420,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "list_initiated_instances",
+				CanonicalPath:  "oa.list_initiated_instances",
+				CLIPath:        "oa approval list-initiated",
+				PrimaryCLIPath: "oa approval list-initiated",
+			},
 			Description: "查询当前用户已发起的审批实例列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -424,6 +473,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "list_pending_tasks",
+				CanonicalPath:  "oa.list_pending_tasks",
+				CLIPath:        "oa approval tasks",
+				PrimaryCLIPath: "oa approval tasks",
+			},
 			Description: "查询待我审批的任务Id",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -467,6 +523,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "list_user_visible_process",
+				CanonicalPath:  "oa.list_user_visible_process",
+				CLIPath:        "oa approval list-forms",
+				PrimaryCLIPath: "oa approval list-forms",
+			},
 			Description: "获取当前用户可见的审批表单列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -546,6 +609,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "get_done_tasks",
+				CanonicalPath:  "oa.get_done_tasks",
+				CLIPath:        "oa approval list-executed",
+				PrimaryCLIPath: "oa approval list-executed",
+			},
 			Description: "获取员工已处理任务列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -594,6 +664,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "get_submitted_instances",
+				CanonicalPath:  "oa.get_submitted_instances",
+				CLIPath:        "oa approval list-submitted",
+				PrimaryCLIPath: "oa approval list-submitted",
+			},
 			Description: "获取已提交实例列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -642,6 +719,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "get_noticed_instances",
+				CanonicalPath:  "oa.get_noticed_instances",
+				CLIPath:        "oa approval list-cc",
+				PrimaryCLIPath: "oa approval list-cc",
+			},
 			Description: "获取抄送用户的列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -693,6 +777,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "redirect_task",
+				CanonicalPath:  "oa.redirect_task",
+				CLIPath:        "oa approval redirect-task",
+				PrimaryCLIPath: "oa approval redirect-task",
+			},
 			Description: "转交审批任务",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -739,6 +830,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "dingflow_comments",
+				CanonicalPath:  "oa.dingflow_comments",
+				CLIPath:        "oa approval oa-comments",
+				PrimaryCLIPath: "oa approval oa-comments",
+			},
 			Description: "用户添加审批评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -792,6 +890,13 @@ func newOaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "oa_cc_noticer",
+				CanonicalPath:  "oa.oa_cc_noticer",
+				CLIPath:        "oa approval oa-cc-noticer",
+				PrimaryCLIPath: "oa approval oa-cc-noticer",
+			},
 			Description: "抄送审批人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

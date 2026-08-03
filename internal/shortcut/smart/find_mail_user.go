@@ -63,6 +63,13 @@ var FindMailUser = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_find_mail_user",
+			CanonicalPath:  "mail.shortcut_find_mail_user",
+			CLIPath:        "mail +find-mail-user",
+			PrimaryCLIPath: "mail +find-mail-user",
+		},
 		Description: "按关键词搜索邮箱联系人并投影列表（姓名/昵称/邮箱/工号等）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -57,6 +57,13 @@ var ResolveDept = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_resolve_dept",
+			CanonicalPath:  "contact.shortcut_resolve_dept",
+			CLIPath:        "contact +resolve-dept",
+			PrimaryCLIPath: "contact +resolve-dept",
+		},
 		Description: "按名称搜索部门并解析出唯一 deptId（只读）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -48,6 +48,13 @@ var Broadcast = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_broadcast",
+			CanonicalPath:  "chat.shortcut_broadcast",
+			CLIPath:        "chat +broadcast",
+			PrimaryCLIPath: "chat +broadcast",
+		},
 		Description: "按姓名逐一给多个人群发同一条单聊消息（自动解析 userId、逐个发送）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

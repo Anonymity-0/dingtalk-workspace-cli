@@ -76,6 +76,13 @@ var BaseList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_base_list",
+			CanonicalPath:  "aitable.shortcut_base_list",
+			CLIPath:        "aitable +base-list",
+			PrimaryCLIPath: "aitable +base-list",
+		},
 		Description: "获取当前用户可访问的 AI 表格 Base 列表（最近访问，支持游标分页）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -189,6 +196,13 @@ var BaseSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_base_search",
+			CanonicalPath:  "aitable.shortcut_base_search",
+			CLIPath:        "aitable +base-search",
+			PrimaryCLIPath: "aitable +base-search",
+		},
 		Description: "按名称关键词搜索 AI 表格 Base",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -234,6 +248,13 @@ var BaseGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_base_get",
+			CanonicalPath:  "aitable.shortcut_base_get",
+			CLIPath:        "aitable +base-get",
+			PrimaryCLIPath: "aitable +base-get",
+		},
 		Description: "获取指定 Base 的目录信息（tables / dashboards summary）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -368,6 +389,13 @@ var TableGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_table_get",
+			CanonicalPath:  "aitable.shortcut_table_get",
+			CLIPath:        "aitable +table-get",
+			PrimaryCLIPath: "aitable +table-get",
+		},
 		Description: "批量获取指定数据表的表级信息、字段目录与视图目录",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -476,6 +504,13 @@ var FieldGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_field_get",
+			CanonicalPath:  "aitable.shortcut_field_get",
+			CLIPath:        "aitable +field-get",
+			PrimaryCLIPath: "aitable +field-get",
+		},
 		Description: "批量获取字段详情（含类型相关完整配置）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -593,6 +628,13 @@ var RecordQuery = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_record_query",
+			CanonicalPath:  "aitable.shortcut_record_query",
+			CLIPath:        "aitable +record-query",
+			PrimaryCLIPath: "aitable +record-query",
+		},
 		Description: "查询表格记录（按 ID 取 / 条件筛选 / 关键词 / 分页）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -720,6 +762,13 @@ var RecordQueryEmpty = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_record_query_empty",
+			CanonicalPath:  "aitable.shortcut_record_query_empty",
+			CLIPath:        "aitable +record-query-empty",
+			PrimaryCLIPath: "aitable +record-query-empty",
+		},
 		Description: "扫描并过滤出完全没填用户字段的空行",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -768,6 +817,13 @@ var RecordHistoryList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_record_history_list",
+			CanonicalPath:  "aitable.shortcut_record_history_list",
+			CLIPath:        "aitable +record-history-list",
+			PrimaryCLIPath: "aitable +record-history-list",
+		},
 		Description: "按 recordId 查询单条记录的变更历史",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -818,6 +874,13 @@ var RecordShareURL = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_record_share_url",
+			CanonicalPath:  "aitable.shortcut_record_share_url",
+			CLIPath:        "aitable +record-share-url",
+			PrimaryCLIPath: "aitable +record-share-url",
+		},
 		Description: "按 recordId 批量获取记录分享链接，单次最多 20 条",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -943,6 +1006,13 @@ var TemplateSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_template_search",
+			CanonicalPath:  "aitable.shortcut_template_search",
+			CLIPath:        "aitable +template-search",
+			PrimaryCLIPath: "aitable +template-search",
+		},
 		Description: "按名称关键词搜索 AI 表格模板",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1090,6 +1160,13 @@ var ViewGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_view_get",
+			CanonicalPath:  "aitable.shortcut_view_get",
+			CLIPath:        "aitable +view-get",
+			PrimaryCLIPath: "aitable +view-get",
+		},
 		Description: "获取视图完整信息（列顺序、筛选、排序、分组等）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1301,6 +1378,13 @@ var ViewGetLock = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_view_get_lock",
+			CanonicalPath:  "aitable.shortcut_view_get_lock",
+			CLIPath:        "aitable +view-get-lock",
+			PrimaryCLIPath: "aitable +view-get-lock",
+		},
 		Description: "获取视图锁定状态",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1371,6 +1455,13 @@ var ViewGetFrozenCols = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_view_get_frozen_cols",
+			CanonicalPath:  "aitable.shortcut_view_get_frozen_cols",
+			CLIPath:        "aitable +view-get-frozen-cols",
+			PrimaryCLIPath: "aitable +view-get-frozen-cols",
+		},
 		Description: "获取视图当前冻结的左侧列数",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1437,6 +1528,13 @@ var ViewGetRowHeight = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_view_get_row_height",
+			CanonicalPath:  "aitable.shortcut_view_get_row_height",
+			CLIPath:        "aitable +view-get-row-height",
+			PrimaryCLIPath: "aitable +view-get-row-height",
+		},
 		Description: "获取视图单元格行高（像素）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1537,6 +1635,13 @@ var FormList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_form_list",
+			CanonicalPath:  "aitable.shortcut_form_list",
+			CLIPath:        "aitable +form-list",
+			PrimaryCLIPath: "aitable +form-list",
+		},
 		Description: "列出指定数据表下的所有表单视图",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1701,6 +1806,13 @@ var FormFieldList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_form_field_list",
+			CanonicalPath:  "aitable.shortcut_form_field_list",
+			CLIPath:        "aitable +form-field-list",
+			PrimaryCLIPath: "aitable +form-field-list",
+		},
 		Description: "列出表单视图当前可见的字段及其配置",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1803,6 +1915,13 @@ var FormShareGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_form_share_get",
+			CanonicalPath:  "aitable.shortcut_form_share_get",
+			CLIPath:        "aitable +form-share-get",
+			PrimaryCLIPath: "aitable +form-share-get",
+		},
 		Description: "读取视图当前的分享表单配置",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2038,6 +2157,13 @@ var DashboardConfigExample = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_dashboard_config_example",
+			CanonicalPath:  "aitable.shortcut_dashboard_config_example",
+			CLIPath:        "aitable +dashboard-config-example",
+			PrimaryCLIPath: "aitable +dashboard-config-example",
+		},
 		Description: "获取 dashboard config 的结构示例",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2070,6 +2196,13 @@ var DashboardGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_dashboard_get",
+			CanonicalPath:  "aitable.shortcut_dashboard_get",
+			CLIPath:        "aitable +dashboard-get",
+			PrimaryCLIPath: "aitable +dashboard-get",
+		},
 		Description: "获取指定 dashboard 的详细信息（含 charts summary）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2252,6 +2385,13 @@ var ChartWidgetsExample = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_chart_widgets_example",
+			CanonicalPath:  "aitable.shortcut_chart_widgets_example",
+			CLIPath:        "aitable +chart-widgets-example",
+			PrimaryCLIPath: "aitable +chart-widgets-example",
+		},
 		Description: "获取所有图表类型的 widget config 示例",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2284,6 +2424,13 @@ var ChartGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_chart_get",
+			CanonicalPath:  "aitable.shortcut_chart_get",
+			CLIPath:        "aitable +chart-get",
+			PrimaryCLIPath: "aitable +chart-get",
+		},
 		Description: "获取指定 chart 的详细信息",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2619,6 +2766,13 @@ var RoleList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_role_list",
+			CanonicalPath:  "aitable.shortcut_role_list",
+			CLIPath:        "aitable +role-list",
+			PrimaryCLIPath: "aitable +role-list",
+		},
 		Description: "列出指定 Base 下的全部角色",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2877,6 +3031,13 @@ var SectionListEmpty = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_section_list_empty",
+			CanonicalPath:  "aitable.shortcut_section_list_empty",
+			CLIPath:        "aitable +section-list-empty",
+			PrimaryCLIPath: "aitable +section-list-empty",
+		},
 		Description: "列出指定 Base 下所有没有子节点的空文件夹",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -2912,6 +3073,13 @@ var SectionListNodes = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_section_list_nodes",
+			CanonicalPath:  "aitable.shortcut_section_list_nodes",
+			CLIPath:        "aitable +section-list-nodes",
+			PrimaryCLIPath: "aitable +section-list-nodes",
+		},
 		Description: "列出指定 Base 当前版本下的全部 nsheet 节点",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

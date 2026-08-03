@@ -72,6 +72,13 @@ var ListApp = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_list",
+			CanonicalPath:  "devapp.shortcut_list",
+			CLIPath:        "devapp +list",
+			PrimaryCLIPath: "devapp +list",
+		},
 		Description: "查询开放平台企业内部应用列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -222,6 +229,13 @@ var GetApp = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_get",
+			CanonicalPath:  "devapp.shortcut_get",
+			CLIPath:        "devapp +get",
+			PrimaryCLIPath: "devapp +get",
+		},
 		Description: "查询开放平台企业内部应用详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -256,6 +270,13 @@ var CreateApp = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_create",
+			CanonicalPath:  "devapp.shortcut_create",
+			CLIPath:        "devapp +create",
+			PrimaryCLIPath: "devapp +create",
+		},
 		Description: "创建开放平台企业内部应用",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -299,6 +320,13 @@ var UpdateApp = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_update",
+			CanonicalPath:  "devapp.shortcut_update",
+			CLIPath:        "devapp +update",
+			PrimaryCLIPath: "devapp +update",
+		},
 		Description: "修改开放平台企业内部应用基础信息",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -346,6 +374,13 @@ var DeleteApp = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_delete",
+			CanonicalPath:  "devapp.shortcut_delete",
+			CLIPath:        "devapp +delete",
+			PrimaryCLIPath: "devapp +delete",
+		},
 		Description: "删除开放平台企业内部应用（不可逆）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -380,6 +415,13 @@ var EnableApp = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_enable",
+			CanonicalPath:  "devapp.shortcut_enable",
+			CLIPath:        "devapp +enable",
+			PrimaryCLIPath: "devapp +enable",
+		},
 		Description: "启用开放平台企业内部应用",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -414,6 +456,13 @@ var DisableApp = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_disable",
+			CanonicalPath:  "devapp.shortcut_disable",
+			CLIPath:        "devapp +disable",
+			PrimaryCLIPath: "devapp +disable",
+		},
 		Description: "停用开放平台企业内部应用",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -468,6 +517,13 @@ var WebappGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_webapp_get",
+			CanonicalPath:  "devapp.shortcut_webapp_get",
+			CLIPath:        "devapp +webapp-get",
+			PrimaryCLIPath: "devapp +webapp-get",
+		},
 		Description: "查询网页应用配置",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -502,6 +558,13 @@ var WebappConfig = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_webapp_config",
+			CanonicalPath:  "devapp.shortcut_webapp_config",
+			CLIPath:        "devapp +webapp-config",
+			PrimaryCLIPath: "devapp +webapp-config",
+		},
 		Description: "配置网页应用能力",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -557,6 +620,13 @@ var PermissionList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_permission_list",
+			CanonicalPath:  "devapp.shortcut_permission_list",
+			CLIPath:        "devapp +permission-list",
+			PrimaryCLIPath: "devapp +permission-list",
+		},
 		Description: "查询开放平台应用权限列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -735,6 +805,13 @@ var MemberList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_member_list",
+			CanonicalPath:  "devapp.shortcut_member_list",
+			CLIPath:        "devapp +member-list",
+			PrimaryCLIPath: "devapp +member-list",
+		},
 		Description: "查询开放平台应用成员",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -769,6 +846,13 @@ var MemberAdd = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_member_add",
+			CanonicalPath:  "devapp.shortcut_member_add",
+			CLIPath:        "devapp +member-add",
+			PrimaryCLIPath: "devapp +member-add",
+		},
 		Description: "添加开放平台应用成员",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -810,6 +894,13 @@ var MemberRemove = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_member_remove",
+			CanonicalPath:  "devapp.shortcut_member_remove",
+			CLIPath:        "devapp +member-remove",
+			PrimaryCLIPath: "devapp +member-remove",
+		},
 		Description: "移除开放平台应用成员",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -888,6 +979,13 @@ var RobotGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_robot_get",
+			CanonicalPath:  "devapp.shortcut_robot_get",
+			CLIPath:        "devapp +robot-get",
+			PrimaryCLIPath: "devapp +robot-get",
+		},
 		Description: "查询现有应用的机器人配置",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1016,6 +1114,13 @@ var EventList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_event_list",
+			CanonicalPath:  "devapp.shortcut_event_list",
+			CLIPath:        "devapp +event-list",
+			PrimaryCLIPath: "devapp +event-list",
+		},
 		Description: "查询应用已订阅的事件列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1200,6 +1305,13 @@ var VersionList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_version_list",
+			CanonicalPath:  "devapp.shortcut_version_list",
+			CLIPath:        "devapp +version-list",
+			PrimaryCLIPath: "devapp +version-list",
+		},
 		Description: "分页查询应用版本列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1312,6 +1424,13 @@ var VersionGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_version_get",
+			CanonicalPath:  "devapp.shortcut_version_get",
+			CLIPath:        "devapp +version-get",
+			PrimaryCLIPath: "devapp +version-get",
+		},
 		Description: "查询指定版本详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1352,6 +1471,13 @@ var VersionCheckApproval = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_version_check_approval",
+			CanonicalPath:  "devapp.shortcut_version_check_approval",
+			CLIPath:        "devapp +version-check-approval",
+			PrimaryCLIPath: "devapp +version-check-approval",
+		},
 		Description: "预检版本发布是否需要审批（不实际发布）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1423,6 +1549,13 @@ var VersionStatus = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "devapp",
+			Name:           "shortcut_version_status",
+			CanonicalPath:  "devapp.shortcut_version_status",
+			CLIPath:        "devapp +version-status",
+			PrimaryCLIPath: "devapp +version-status",
+		},
 		Description: "查询版本发布/审批状态",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

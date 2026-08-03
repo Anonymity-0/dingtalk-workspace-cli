@@ -29,6 +29,10 @@ import (
 func TestDeclareLeafMetadataRejectsExecutionSurface(t *testing.T) {
 	cmd := &cobra.Command{Use: "x", Short: "x"}
 	schema := LeafContract{
+		Identity: contract.ToolIdentitySpec{
+			ProductID: "dev", Name: "create_thing", CanonicalPath: "dev.create_thing",
+			CLIPath: "dev create", PrimaryCLIPath: "dev create",
+		},
 		Description: "d",
 		Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "p", RPCName: "t"}},
 		Selection: contract.SelectionSpec{
@@ -71,6 +75,14 @@ func TestDeclareLeafMetadataDoesNotRewriteRunE(t *testing.T) {
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "d",
 			Interface:   aitableMCPInterface("tool"),
 			Selection: contract.SelectionSpec{

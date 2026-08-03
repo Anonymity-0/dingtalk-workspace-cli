@@ -52,6 +52,11 @@ func TestCrossPlatformCoverageAgentExampleRemainingBranches(t *testing.T) {
 		leaf.Flags().String("name", "", "name")
 		AttachRuntimeSchema(leaf, "sample", "run", "test")
 		RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+			Identity: &contract.ToolIdentitySpec{
+				ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+				CLIPath: "sample run", PrimaryCLIPath: "sample run",
+			},
+
 			Selection: &contract.SelectionSpec{Examples: []string{"dws sample alt --name x"}},
 		})
 		t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(leaf) })
@@ -491,6 +496,11 @@ func crossPlatformAgentSelectionBound(t *testing.T, mutate func(*cobra.Command, 
 	leaf := &cobra.Command{Use: "run", Run: func(*cobra.Command, []string) {}}
 	AttachRuntimeSchema(leaf, "sample", "run", "test")
 	payload := contract.ContractFinalPayload{
+		Identity: &contract.ToolIdentitySpec{
+			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+			CLIPath: "sample run", PrimaryCLIPath: "sample run",
+		},
+
 		Title:       "Run",
 		Description: "Run sample",
 		Safety:      &contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
@@ -712,6 +722,11 @@ func TestCrossPlatformCoverageSchemaRuntimeRegistryRemainingBranches(t *testing.
 		t.Cleanup(func() { contract.ClearProductDeclForTest("doc") })
 		create := root.Commands()[0].Commands()[0]
 		RegisterRuntimeContractFinal(create, contract.ContractFinalPayload{
+			Identity: &contract.ToolIdentitySpec{
+				ProductID: "doc", Name: "create_document", CanonicalPath: "doc.create_document",
+				CLIPath: "doc create", PrimaryCLIPath: "doc create",
+			},
+
 			Title: "Create", Description: "Create",
 			Safety:     &contract.SafetySpec{Effect: "write", Risk: "low", Confirmation: "not_required", Idempotency: "non_idempotent"},
 			Interface:  &contract.InterfaceSpec{Mode: "local", Availability: "available", Reason: "test"},
@@ -858,6 +873,11 @@ func TestCrossPlatformCoverageAgentExamplePlanAndTokenizerRemaining(t *testing.T
 		leaf.Flags().String("name", "", "name")
 		AttachRuntimeSchema(leaf, "sample", "run", "test")
 		RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
+			Identity: &contract.ToolIdentitySpec{
+				ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+				CLIPath: "sample run", PrimaryCLIPath: "sample run",
+			},
+
 			Selection: &contract.SelectionSpec{Examples: []string{"dws sample alt run --name x"}},
 		})
 		t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(leaf) })

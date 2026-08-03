@@ -39,6 +39,13 @@ var Lookup = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_lookup",
+			CanonicalPath:  "contact.shortcut_lookup",
+			CLIPath:        "contact +lookup",
+			PrimaryCLIPath: "contact +lookup",
+		},
 		Description: "按姓名查询某人的完整资料（自动解析 userId 后取详情）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

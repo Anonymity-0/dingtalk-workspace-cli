@@ -45,6 +45,13 @@ var Tomorrow = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_tomorrow",
+			CanonicalPath:  "calendar.shortcut_tomorrow",
+			CLIPath:        "calendar +tomorrow",
+			PrimaryCLIPath: "calendar +tomorrow",
+		},
 		Description: "列出我明天的日程（自动计算明天的起止时间，无需手动填时间范围）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

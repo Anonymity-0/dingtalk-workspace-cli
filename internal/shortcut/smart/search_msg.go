@@ -47,6 +47,13 @@ var SearchMsg = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_search_msg",
+			CanonicalPath:  "chat.shortcut_search_msg",
+			CLIPath:        "chat +search-msg",
+			PrimaryCLIPath: "chat +search-msg",
+		},
 		Description: "多维搜索消息，可全量翻页并批量富化详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

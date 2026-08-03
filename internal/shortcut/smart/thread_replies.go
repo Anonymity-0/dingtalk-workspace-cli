@@ -51,6 +51,13 @@ var ThreadReplies = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_thread_replies",
+			CanonicalPath:  "chat.shortcut_thread_replies",
+			CLIPath:        "chat +thread-replies",
+			PrimaryCLIPath: "chat +thread-replies",
+		},
 		Description: "拉取某条话题消息的全部回复并投影出发言人/文本/时间",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

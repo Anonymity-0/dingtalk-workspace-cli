@@ -446,6 +446,13 @@ agentCode 配置:
 			return nil
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "pat",
+				Name:           "batch_grant",
+				CanonicalPath:  "pat.batch_grant",
+				CLIPath:        "pat chmod",
+				PrimaryCLIPath: "pat chmod",
+			},
 			Description: "预览或执行 PAT 批量行为授权（支持 dryRun / pending flow）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

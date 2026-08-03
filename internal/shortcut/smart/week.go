@@ -51,6 +51,13 @@ var Week = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_week",
+			CanonicalPath:  "calendar.shortcut_week",
+			CLIPath:        "calendar +week",
+			PrimaryCLIPath: "calendar +week",
+		},
 		Description: "列出我本周的日程（自动按周一为周首计算本周起止时间，无需手动填时间范围）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

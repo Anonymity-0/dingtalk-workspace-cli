@@ -63,6 +63,13 @@ var MyInitiated = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "oa",
+			Name:           "shortcut_my_initiated",
+			CanonicalPath:  "oa.shortcut_my_initiated",
+			CLIPath:        "oa +my-initiated",
+			PrimaryCLIPath: "oa +my-initiated",
+		},
 		Description: "列出我发起（提交）的审批单据",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

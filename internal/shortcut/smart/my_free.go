@@ -52,6 +52,13 @@ var MyFree = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_my_free",
+			CanonicalPath:  "calendar.shortcut_my_free",
+			CLIPath:        "calendar +my-free",
+			PrimaryCLIPath: "calendar +my-free",
+		},
 		Description: "查我自己在某时间段的忙闲（默认今天，无需输入姓名）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

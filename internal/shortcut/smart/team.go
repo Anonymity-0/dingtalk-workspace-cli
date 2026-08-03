@@ -51,6 +51,13 @@ var Team = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_team",
+			CanonicalPath:  "contact.shortcut_team",
+			CLIPath:        "contact +team",
+			PrimaryCLIPath: "contact +team",
+		},
 		Description: "按姓名列出某人所在部门的成员（自动解析 userId 与 deptId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

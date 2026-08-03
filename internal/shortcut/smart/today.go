@@ -46,6 +46,13 @@ var Today = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_today",
+			CanonicalPath:  "calendar.shortcut_today",
+			CLIPath:        "calendar +today",
+			PrimaryCLIPath: "calendar +today",
+		},
 		Description: "列出我今天的日程（自动计算今天的起止时间，无需手动填时间范围）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

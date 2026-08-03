@@ -438,6 +438,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "get_current_user_profile",
+				CanonicalPath:  "contact.get_current_user_profile",
+				CLIPath:        "contact user get-self",
+				PrimaryCLIPath: "contact user get-self",
+			},
 			Description: "获取当前登录用户资料与 userId",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -473,6 +480,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "list_my_followings",
+				CanonicalPath:  "contact.list_my_followings",
+				CLIPath:        "contact relation list-my-followings",
+				PrimaryCLIPath: "contact relation list-my-followings",
+			},
 			Description: "获取当前用户的特别关注列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -509,6 +523,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "search_contact_by_key_word",
+				CanonicalPath:  "contact.search_contact_by_key_word",
+				CLIPath:        "contact user search",
+				PrimaryCLIPath: "contact user search",
+			},
 			Description: "按关键词搜索好友和同事，提取 userId/openDingTalkId",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -550,6 +571,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "search_user_by_mobile",
+				CanonicalPath:  "contact.search_user_by_mobile",
+				CLIPath:        "contact user search-mobile",
+				PrimaryCLIPath: "contact user search-mobile",
+			},
 			Description: "按手机号搜索用户",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -607,6 +635,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "get_user_info_by_user_ids",
+				CanonicalPath:  "contact.get_user_info_by_user_ids",
+				CLIPath:        "contact user get",
+				PrimaryCLIPath: "contact user get",
+			},
 			Description: "按 userId 批量获取员工详情（部门/主管等，受可见性限制）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -743,6 +778,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "search_dept_by_keyword",
+				CanonicalPath:  "contact.search_dept_by_keyword",
+				CLIPath:        "contact dept search",
+				PrimaryCLIPath: "contact dept search",
+			},
 			Description: "按关键词搜索部门",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -779,6 +821,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "get_sub_depts_by_dept_id",
+				CanonicalPath:  "contact.get_sub_depts_by_dept_id",
+				CLIPath:        "contact dept list-children",
+				PrimaryCLIPath: "contact dept list-children",
+			},
 			Description: "列出指定部门的直属子部门",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -818,6 +867,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "get_dept_info_by_dept_id",
+				CanonicalPath:  "contact.get_dept_info_by_dept_id",
+				CLIPath:        "contact dept get-info",
+				PrimaryCLIPath: "contact dept get-info",
+			},
 			Description: "获取指定部门详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -867,6 +923,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "get_dept_members_by_deptId",
+				CanonicalPath:  "contact.get_dept_members_by_deptId",
+				CLIPath:        "contact dept list-members",
+				PrimaryCLIPath: "contact dept list-members",
+			},
 			Description: "查看部门成员（逗号分隔 deptId）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -923,6 +986,13 @@ func newContactCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "list_authorized_roster_fields",
+				CanonicalPath:  "contact.list_authorized_roster_fields",
+				CLIPath:        "contact user profile fields",
+				PrimaryCLIPath: "contact user profile fields",
+			},
 			Description: "查询当前用户有权查看的花名册字段",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -981,6 +1051,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "get_authorized_emp_rosterInfo",
+				CanonicalPath:  "contact.get_authorized_emp_rosterInfo",
+				CLIPath:        "contact user profile get",
+				PrimaryCLIPath: "contact user profile get",
+			},
 			Description: "按字段 code 查询指定员工花名册字段值",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1095,6 +1172,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "query_dismission_employee_list",
+				CanonicalPath:  "contact.query_dismission_employee_list",
+				CLIPath:        "contact user dismission search",
+				PrimaryCLIPath: "contact user dismission search",
+			},
 			Description: "查询离职员工列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1174,6 +1258,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "add_employee",
+				CanonicalPath:  "contact.add_employee",
+				CLIPath:        "contact user invite",
+				PrimaryCLIPath: "contact user invite",
+			},
 			Description: "按手机号邀请一名员工加入当前企业",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1203,6 +1294,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "employee_update",
+				CanonicalPath:  "contact.employee_update",
+				CLIPath:        "contact user update",
+				PrimaryCLIPath: "contact user update",
+			},
 			Description: "修改指定员工的企业内姓名、所属部门或直属主管",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1232,6 +1330,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "self_user_profile_update",
+				CanonicalPath:  "contact.self_user_profile_update",
+				CLIPath:        "contact user update-self",
+				PrimaryCLIPath: "contact user update-self",
+			},
 			Description: "更新当前登录用户自己的昵称或头像",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1298,6 +1403,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "department_create",
+				CanonicalPath:  "contact.department_create",
+				CLIPath:        "contact dept create",
+				PrimaryCLIPath: "contact dept create",
+			},
 			Description: "在当前企业的根部门或指定父部门下创建部门",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1327,6 +1439,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "department_update",
+				CanonicalPath:  "contact.department_update",
+				CLIPath:        "contact dept update",
+				PrimaryCLIPath: "contact dept update",
+			},
 			Description: "更新指定部门的名称，并可调整父部门",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1415,6 +1534,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "org_create",
+				CanonicalPath:  "contact.org_create",
+				CLIPath:        "contact org create",
+				PrimaryCLIPath: "contact org create",
+			},
 			Description: "创建一个新的钉钉企业组织",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1499,6 +1625,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "exclusive_account_create",
+				CanonicalPath:  "contact.exclusive_account_create",
+				CLIPath:        "contact account create",
+				PrimaryCLIPath: "contact account create",
+			},
 			Description: "为当前企业创建专属登录账号",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1534,6 +1667,13 @@ contact user profile fields 获取可用字段列表。
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "contact",
+				Name:           "exclusive_account_user_update",
+				CanonicalPath:  "contact.exclusive_account_user_update",
+				CLIPath:        "contact account update",
+				PrimaryCLIPath: "contact account update",
+			},
 			Description: "更新企业专属账号的组织信息或个人资料",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

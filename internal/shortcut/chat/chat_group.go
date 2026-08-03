@@ -38,6 +38,13 @@ var ChatSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_search",
+			CanonicalPath:  "chat.shortcut_chat_search",
+			CLIPath:        "chat +chat-search",
+			PrimaryCLIPath: "chat +chat-search",
+		},
 		Description: "按关键词搜索群聊",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -147,6 +154,13 @@ var ChatInviteURL = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_invite_url",
+			CanonicalPath:  "chat.shortcut_chat_invite_url",
+			CLIPath:        "chat +chat-invite-url",
+			PrimaryCLIPath: "chat +chat-invite-url",
+		},
 		Description: "获取群邀请链接",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -251,6 +265,13 @@ var ChatDismiss = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_dismiss",
+			CanonicalPath:  "chat.shortcut_chat_dismiss",
+			CLIPath:        "chat +chat-dismiss",
+			PrimaryCLIPath: "chat +chat-dismiss",
+		},
 		Description: "解散群聊（不可逆，需群主权限）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -286,6 +307,13 @@ var ChatSetHistory = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_set_history",
+			CanonicalPath:  "chat.shortcut_chat_set_history",
+			CLIPath:        "chat +chat-set-history",
+			PrimaryCLIPath: "chat +chat-set-history",
+		},
 		Description: "设置新成员入群可查看历史消息范围",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -325,6 +353,13 @@ var ChatUpdateNick = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_update_nick",
+			CanonicalPath:  "chat.shortcut_chat_update_nick",
+			CLIPath:        "chat +chat-update-nick",
+			PrimaryCLIPath: "chat +chat-update-nick",
+		},
 		Description: "设置当前用户在群内的群昵称",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -364,6 +399,13 @@ var ChatUpdateAlias = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_update_alias",
+			CanonicalPath:  "chat.shortcut_chat_update_alias",
+			CLIPath:        "chat +chat-update-alias",
+			PrimaryCLIPath: "chat +chat-update-alias",
+		},
 		Description: "设置群备注（仅自己可见）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -403,6 +445,13 @@ var ChatListMine = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_list_mine",
+			CanonicalPath:  "chat.shortcut_chat_list_mine",
+			CLIPath:        "chat +chat-list-mine",
+			PrimaryCLIPath: "chat +chat-list-mine",
+		},
 		Description: "拉取我创建/管理的群",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -490,6 +539,13 @@ var ChatListAll = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_list_all",
+			CanonicalPath:  "chat.shortcut_chat_list_all",
+			CLIPath:        "chat +chat-list-all",
+			PrimaryCLIPath: "chat +chat-list-all",
+		},
 		Description: "分页拉取我加入的所有群列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -608,6 +664,13 @@ var ChatListJoinRequests = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_list_join_requests",
+			CanonicalPath:  "chat.shortcut_chat_list_join_requests",
+			CLIPath:        "chat +chat-list-join-requests",
+			PrimaryCLIPath: "chat +chat-list-join-requests",
+		},
 		Description: "分页拉取入群验证记录",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -721,6 +784,13 @@ var ChatBots = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_bots",
+			CanonicalPath:  "chat.shortcut_chat_bots",
+			CLIPath:        "chat +chat-bots",
+			PrimaryCLIPath: "chat +chat-bots",
+		},
 		Description: "查看群内所有机器人",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -808,6 +878,13 @@ var ChatSetAdmin = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_set_admin",
+			CanonicalPath:  "chat.shortcut_chat_set_admin",
+			CLIPath:        "chat +chat-set-admin",
+			PrimaryCLIPath: "chat +chat-set-admin",
+		},
 		Description: "设置 / 取消群管理员",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -856,6 +933,13 @@ var ChatMute = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_mute",
+			CanonicalPath:  "chat.shortcut_chat_mute",
+			CLIPath:        "chat +chat-mute",
+			PrimaryCLIPath: "chat +chat-mute",
+		},
 		Description: "全员禁言 / 取消全员禁言",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1067,6 +1151,13 @@ var ChatRoleList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_list",
+			CanonicalPath:  "chat.shortcut_chat_role_list",
+			CLIPath:        "chat +chat-role-list",
+			PrimaryCLIPath: "chat +chat-role-list",
+		},
 		Description: "拉取会话的群身份列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1134,6 +1225,13 @@ var ChatRoleAdd = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_add",
+			CanonicalPath:  "chat.shortcut_chat_role_add",
+			CLIPath:        "chat +chat-role-add",
+			PrimaryCLIPath: "chat +chat-role-add",
+		},
 		Description: "添加群身份",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1173,6 +1271,13 @@ var ChatRoleUpdate = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_update",
+			CanonicalPath:  "chat.shortcut_chat_role_update",
+			CLIPath:        "chat +chat-role-update",
+			PrimaryCLIPath: "chat +chat-role-update",
+		},
 		Description: "更新群身份名称",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1235,6 +1340,13 @@ var ChatRoleSetUser = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_set_user",
+			CanonicalPath:  "chat.shortcut_chat_role_set_user",
+			CLIPath:        "chat +chat-role-set-user",
+			PrimaryCLIPath: "chat +chat-role-set-user",
+		},
 		Description: "设置用户的群身份（覆盖该用户的全部群身份）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1311,6 +1423,13 @@ var ChatRoleQueryUser = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_query_user",
+			CanonicalPath:  "chat.shortcut_chat_role_query_user",
+			CLIPath:        "chat +chat-role-query-user",
+			PrimaryCLIPath: "chat +chat-role-query-user",
+		},
 		Description: "查询群成员的群身份",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

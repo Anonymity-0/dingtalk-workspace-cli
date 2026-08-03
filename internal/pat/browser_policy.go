@@ -232,6 +232,13 @@ func newBrowserPolicyCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "pat",
+				Name:           "browser_policy",
+				CanonicalPath:  "pat.browser_policy",
+				CLIPath:        "pat browser-policy",
+				PrimaryCLIPath: "pat browser-policy",
+			},
 			Description: "配置 PAT 授权流程是否允许打开本地浏览器",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",

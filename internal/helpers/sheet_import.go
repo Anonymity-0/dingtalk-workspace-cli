@@ -79,6 +79,13 @@ func newSheetImportCmdWithConfig(cfg importFlowConfig) *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "import",
+				CanonicalPath:  "sheet.import",
+				CLIPath:        "sheet import create",
+				PrimaryCLIPath: "sheet import create",
+			},
 			Description: "将本地 xlsx/xls 文件导入为新的钉钉在线电子表格。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -123,6 +130,13 @@ func newSheetImportCmdWithConfig(cfg importFlowConfig) *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "import_get",
+				CanonicalPath:  "sheet.import_get",
+				CLIPath:        "sheet import get",
+				PrimaryCLIPath: "sheet import get",
+			},
 			Description: "根据 taskId 查询表格导入任务结果。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

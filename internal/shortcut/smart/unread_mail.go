@@ -55,6 +55,13 @@ var UnreadMail = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_unread_mail",
+			CanonicalPath:  "mail.shortcut_unread_mail",
+			CLIPath:        "mail +unread-mail",
+			PrimaryCLIPath: "mail +unread-mail",
+		},
 		Description: "列出未读邮件并投影列表（主题/发件人/时间/messageId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

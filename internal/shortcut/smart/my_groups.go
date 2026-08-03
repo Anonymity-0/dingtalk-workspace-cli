@@ -54,6 +54,13 @@ var MyGroups = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_my_groups",
+			CanonicalPath:  "chat.shortcut_my_groups",
+			CLIPath:        "chat +my-groups",
+			PrimaryCLIPath: "chat +my-groups",
+		},
 		Description: "列出我加入的群，可按类型过滤并投影关键字段",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

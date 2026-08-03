@@ -127,6 +127,13 @@ func newTodoCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "create_personal_todo",
+				CanonicalPath:  "todo.create_personal_todo",
+				CLIPath:        "todo task create",
+				PrimaryCLIPath: "todo task create",
+			},
 			Description: "创建个人待办",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -215,6 +222,13 @@ func newTodoCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "create_personal_sub_todo",
+				CanonicalPath:  "todo.create_personal_sub_todo",
+				CLIPath:        "todo task create-sub",
+				PrimaryCLIPath: "todo task create-sub",
+			},
 			Description: "创建个人子待办",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -281,6 +295,13 @@ func newTodoCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "get_user_todos_in_current_org",
+				CanonicalPath:  "todo.get_user_todos_in_current_org",
+				CLIPath:        "todo task list",
+				PrimaryCLIPath: "todo task list",
+			},
 			Description: "查询当前组织待办，或通过 --query-all 跨组织查询全部待办",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -373,6 +394,13 @@ func newTodoCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "update_todo_task",
+				CanonicalPath:  "todo.update_todo_task",
+				CLIPath:        "todo task update",
+				PrimaryCLIPath: "todo task update",
+			},
 			Description: "修改整个待办任务",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -430,6 +458,13 @@ func newTodoCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "update_todo_done_status",
+				CanonicalPath:  "todo.update_todo_done_status",
+				CLIPath:        "todo task done",
+				PrimaryCLIPath: "todo task done",
+			},
 			Description: "修改执行者的待办完成状态",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -506,6 +541,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "get_todo_detail",
+				CanonicalPath:  "todo.get_todo_detail",
+				CLIPath:        "todo task get",
+				PrimaryCLIPath: "todo task get",
+			},
 			Description: "查询待办详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -552,6 +594,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "delete_todo",
+				CanonicalPath:  "todo.delete_todo",
+				CLIPath:        "todo task delete",
+				PrimaryCLIPath: "todo task delete",
+			},
 			Description: "删除待办",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -596,6 +645,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "add_task_executors",
+				CanonicalPath:  "todo.add_task_executors",
+				CLIPath:        "todo task add-executor",
+				PrimaryCLIPath: "todo task add-executor",
+			},
 			Description: "添加待办执行人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -647,6 +703,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "remove_task_executors",
+				CanonicalPath:  "todo.remove_task_executors",
+				CLIPath:        "todo task remove-executor",
+				PrimaryCLIPath: "todo task remove-executor",
+			},
 			Description: "移除待办执行人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -697,6 +760,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "add_task_participants",
+				CanonicalPath:  "todo.add_task_participants",
+				CLIPath:        "todo task add-participant",
+				PrimaryCLIPath: "todo task add-participant",
+			},
 			Description: "添加待办参与人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -748,6 +818,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "remove_task_participants",
+				CanonicalPath:  "todo.remove_task_participants",
+				CLIPath:        "todo task remove-participant",
+				PrimaryCLIPath: "todo task remove-participant",
+			},
 			Description: "移除待办参与人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -828,6 +905,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "add_todo_reminder",
+				CanonicalPath:  "todo.add_todo_reminder",
+				CLIPath:        "todo task add-reminder",
+				PrimaryCLIPath: "todo task add-reminder",
+			},
 			Description: "写入一条待办提醒规则（上游不支持规则读回）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -895,6 +979,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "reset_todo_reminder",
+				CanonicalPath:  "todo.reset_todo_reminder",
+				CLIPath:        "todo task reset-reminder",
+				PrimaryCLIPath: "todo task reset-reminder",
+			},
 			Description: "整体替换或清除待办提醒规则（上游不支持规则读回）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -979,6 +1070,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "add_todo_attachment",
+				CanonicalPath:  "todo.add_todo_attachment",
+				CLIPath:        "todo task add-attachment",
+				PrimaryCLIPath: "todo task add-attachment",
+			},
 			Description: "上传待办附件",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -1032,6 +1130,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "list_todo_attachment",
+				CanonicalPath:  "todo.list_todo_attachment",
+				CLIPath:        "todo task list-attachment",
+				PrimaryCLIPath: "todo task list-attachment",
+			},
 			Description: "查询待办附件列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1194,6 +1299,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "add_todo_comment",
+				CanonicalPath:  "todo.add_todo_comment",
+				CLIPath:        "todo comment add",
+				PrimaryCLIPath: "todo comment add",
+			},
 			Description: "给待办添加评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1239,6 +1351,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "list_todo_comment",
+				CanonicalPath:  "todo.list_todo_comment",
+				CLIPath:        "todo comment list",
+				PrimaryCLIPath: "todo comment list",
+			},
 			Description: "获取待办评论列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1287,6 +1406,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "delete_todo_comment",
+				CanonicalPath:  "todo.delete_todo_comment",
+				CLIPath:        "todo comment delete",
+				PrimaryCLIPath: "todo comment delete",
+			},
 			Description: "删除待办评论",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1350,6 +1476,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "tag_todo",
+				CanonicalPath:  "todo.tag_todo",
+				CLIPath:        "todo tag add",
+				PrimaryCLIPath: "todo tag add",
+			},
 			Description: "把一个或多个现有标签添加到指定待办",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1396,6 +1529,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "delete_todo_tag",
+				CanonicalPath:  "todo.delete_todo_tag",
+				CLIPath:        "todo tag delete",
+				PrimaryCLIPath: "todo tag delete",
+			},
 			Description: "不可逆地删除当前用户的一个或多个待办标签",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1448,6 +1588,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "update_todo_tag",
+				CanonicalPath:  "todo.update_todo_tag",
+				CLIPath:        "todo tag update",
+				PrimaryCLIPath: "todo tag update",
+			},
 			Description: "批量更新已有待办标签的名称等定义",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1480,6 +1627,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "list_todo_tags",
+				CanonicalPath:  "todo.list_todo_tags",
+				CLIPath:        "todo tag list",
+				PrimaryCLIPath: "todo tag list",
+			},
 			Description: "列出当前用户可用的待办标签及其 code",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1520,6 +1674,13 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "todo",
+				Name:           "create_todo_tag",
+				CanonicalPath:  "todo.create_todo_tag",
+				CLIPath:        "todo tag create",
+				PrimaryCLIPath: "todo tag create",
+			},
 			Description: "为当前用户创建一个新的待办标签",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

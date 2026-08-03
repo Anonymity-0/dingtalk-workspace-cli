@@ -49,6 +49,13 @@ var Reschedule = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_reschedule",
+			CanonicalPath:  "calendar.shortcut_reschedule",
+			CLIPath:        "calendar +reschedule",
+			PrimaryCLIPath: "calendar +reschedule",
+		},
 		Description: "改一个已有日程的时间（只动开始/结束时间，其他字段不变）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

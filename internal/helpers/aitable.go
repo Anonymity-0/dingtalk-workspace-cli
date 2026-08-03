@@ -993,6 +993,13 @@ func newAitableCommand() *cobra.Command {
 	DeclareLeafMetadata(baseGetPrimaryDocIdCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_get_primary_doc_id",
+				CanonicalPath:  "aitable.base_get_primary_doc_id",
+				CLIPath:        "aitable base get-primary-doc-id",
+				PrimaryCLIPath: "aitable base get-primary-doc-id",
+			},
 			Description: "获取某记录主键文档 ID。",
 			Interface:   aitableMCPInterface("get_base_primary_doc_id"),
 			Selection: contract.SelectionSpec{
@@ -1029,6 +1036,13 @@ AI 表格访问地址可按 baseId 拼接为：https://alidocs.dingtalk.com/i/no
 	DeclareLeafMetadata(baseListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_list",
+				CanonicalPath:  "aitable.base_list",
+				CLIPath:        "aitable base list",
+				PrimaryCLIPath: "aitable base list",
+			},
 			Description: "列出最近访问的 AI 表格 Base。",
 			Interface:   aitableMCPInterface("list_bases"),
 			Selection: contract.SelectionSpec{
@@ -1069,6 +1083,13 @@ AI 表格访问地址可按 baseId 拼接为：https://alidocs.dingtalk.com/i/no
 	DeclareLeafMetadata(baseSearchCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_search",
+				CanonicalPath:  "aitable.base_search",
+				CLIPath:        "aitable base search",
+				PrimaryCLIPath: "aitable base search",
+			},
 			Description: "按名称搜索 AI 表格 Base（优先于仅最近访问的 list）。",
 			Interface:   aitableMCPInterface("search_bases"),
 			Selection: contract.SelectionSpec{
@@ -1099,6 +1120,13 @@ AI 表格访问地址可按 baseId 拼接为：https://alidocs.dingtalk.com/i/no
 	DeclareLeafMetadata(baseGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_get",
+				CanonicalPath:  "aitable.base_get",
+				CLIPath:        "aitable base get",
+				PrimaryCLIPath: "aitable base get",
+			},
 			Description: "获取 Base 信息及 tables 目录。",
 			Interface:   aitableMCPInterface("get_base"),
 			Selection: contract.SelectionSpec{
@@ -1137,6 +1165,13 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 	DeclareLeafMetadata(baseCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_create",
+				CanonicalPath:  "aitable.base_create",
+				CLIPath:        "aitable base create",
+				PrimaryCLIPath: "aitable base create",
+			},
 			Description: "创建 AI 表格 Base。",
 			Interface:   aitableMCPInterface("create_base"),
 			Selection: contract.SelectionSpec{
@@ -1177,6 +1212,13 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 	DeclareLeafMetadata(baseUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_update",
+				CanonicalPath:  "aitable.base_update",
+				CLIPath:        "aitable base update",
+				PrimaryCLIPath: "aitable base update",
+			},
 			Description: "更新 Base 名称。",
 			Interface:   aitableMCPInterface("update_base"),
 			Selection: contract.SelectionSpec{
@@ -1214,6 +1256,13 @@ MCP 层会进一步兼容同字段传入的标准节点 URL，并在创建前解
 	DeclareLeafMetadata(baseDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_delete",
+				CanonicalPath:  "aitable.base_delete",
+				CLIPath:        "aitable base delete",
+				PrimaryCLIPath: "aitable base delete",
+			},
 			Description: "删除 AI 表格 Base（不可逆，需确认）。",
 			Interface:   aitableMCPInterface("delete_base"),
 			Selection: contract.SelectionSpec{
@@ -1256,6 +1305,13 @@ MCP 层不会会自动解析 URL，必须直接传入 dentryUuid 以避免报错
 	DeclareLeafMetadata(baseCopyCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "base_copy",
+				CanonicalPath:  "aitable.base_copy",
+				CLIPath:        "aitable base copy",
+				PrimaryCLIPath: "aitable base copy",
+			},
 			Description: "复制整个 Base 到目标文件夹（可仅结构）。",
 			Interface:   aitableMCPInterface("copy_base"),
 			Selection: contract.SelectionSpec{
@@ -1301,6 +1357,13 @@ MCP 层不会会自动解析 URL，必须直接传入 dentryUuid 以避免报错
 	DeclareLeafMetadata(tableGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "table_get",
+				CanonicalPath:  "aitable.table_get",
+				CLIPath:        "aitable table get",
+				PrimaryCLIPath: "aitable table get",
+			},
 			Description: "获取数据表结构（字段+视图目录）。",
 			Interface:   aitableMCPInterface("get_tables"),
 			Selection: contract.SelectionSpec{
@@ -1393,6 +1456,13 @@ config 结构参考：
 	DeclareLeafMetadata(tableCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "table_create",
+				CanonicalPath:  "aitable.table_create",
+				CLIPath:        "aitable table create",
+				PrimaryCLIPath: "aitable table create",
+			},
 			Description: "在 Base 下创建数据表（可带 fields，空数组会补标题列）。",
 			Interface:   aitableMCPInterface("create_table"),
 			Selection: contract.SelectionSpec{
@@ -1456,6 +1526,13 @@ config 结构参考：
 	DeclareLeafMetadata(tableUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "table_update",
+				CanonicalPath:  "aitable.table_update",
+				CLIPath:        "aitable table update",
+				PrimaryCLIPath: "aitable table update",
+			},
 			Description: "重命名数据表。",
 			Interface:   aitableMCPInterface("update_table"),
 			Selection: contract.SelectionSpec{
@@ -1502,6 +1579,13 @@ config 结构参考：
 	DeclareLeafMetadata(tableDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "table_delete",
+				CanonicalPath:  "aitable.table_delete",
+				CLIPath:        "aitable table delete",
+				PrimaryCLIPath: "aitable table delete",
+			},
 			Description: "删除数据表（不可逆，需确认）。",
 			Interface:   aitableMCPInterface("delete_table"),
 			Selection: contract.SelectionSpec{
@@ -1552,6 +1636,13 @@ config 结构参考：
 	DeclareLeafMetadata(fieldGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "field_get",
+				CanonicalPath:  "aitable.field_get",
+				CLIPath:        "aitable field get",
+				PrimaryCLIPath: "aitable field get",
+			},
 			Description: "获取字段完整配置。",
 			Interface:   aitableMCPInterface("get_fields"),
 			Selection: contract.SelectionSpec{
@@ -1664,6 +1755,13 @@ config 结构参考：
 	DeclareLeafMetadata(fieldCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "field_create",
+				CanonicalPath:  "aitable.field_create",
+				CLIPath:        "aitable field create",
+				PrimaryCLIPath: "aitable field create",
+			},
 			Description: "创建字段（单字段或批量，单次最多 15 个）。",
 			Interface:   aitableMCPInterface("create_fields"),
 			Selection: contract.SelectionSpec{
@@ -1731,6 +1829,13 @@ newFieldName、config、aiConfig 至少传入一项。
 	DeclareLeafMetadata(fieldUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "field_update",
+				CanonicalPath:  "aitable.field_update",
+				CLIPath:        "aitable field update",
+				PrimaryCLIPath: "aitable field update",
+			},
 			Description: "更新字段名或配置（不可变更字段类型）。",
 			Interface:   aitableMCPInterface("update_field"),
 			Selection: contract.SelectionSpec{
@@ -1784,6 +1889,13 @@ newFieldName、config、aiConfig 至少传入一项。
 	DeclareLeafMetadata(fieldSearchOptionsCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "field_search_options",
+				CanonicalPath:  "aitable.field_search_options",
+				CLIPath:        "aitable field search-options",
+				PrimaryCLIPath: "aitable field search-options",
+			},
 			Description: "搜索单选/多选字段的选项。",
 			Interface:   aitableMCPInterface("search_field_options"),
 			Selection: contract.SelectionSpec{
@@ -1826,6 +1938,13 @@ newFieldName、config、aiConfig 至少传入一项。
 	DeclareLeafMetadata(fieldDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "field_delete",
+				CanonicalPath:  "aitable.field_delete",
+				CLIPath:        "aitable field delete",
+				PrimaryCLIPath: "aitable field delete",
+			},
 			Description: "删除字段（不可逆，需确认）。",
 			Interface:   aitableMCPInterface("delete_field"),
 			Selection: contract.SelectionSpec{
@@ -1947,6 +2066,14 @@ newFieldName、config、aiConfig 至少传入一项。
 	DeclareLeafMetadata(recordQueryCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "query_records",
+				CanonicalPath:  "aitable.query_records",
+				CLIPath:        "aitable record query",
+				PrimaryCLIPath: "aitable record query",
+				Aliases:        []string{"aitable record list"},
+			},
 			Description: "查询/搜索记录（filters/sort/分页/--all；cells 键为 fieldId）。",
 			Interface:   aitableMCPInterface("query_records"),
 			Selection: contract.SelectionSpec{
@@ -2047,6 +2174,13 @@ CLI 会自动从文件中读取内容作为 --records 的值。这样可以避�
 	DeclareLeafMetadata(recordCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_create",
+				CanonicalPath:  "aitable.record_create",
+				CLIPath:        "aitable record create",
+				PrimaryCLIPath: "aitable record create",
+			},
 			Description: "新增记录（cells 的 key 必须是 fieldId）。",
 			Interface:   aitableMCPInterface("create_records"),
 			Selection: contract.SelectionSpec{
@@ -2118,6 +2252,13 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 	DeclareLeafMetadata(recordUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_update",
+				CanonicalPath:  "aitable.record_update",
+				CLIPath:        "aitable record update",
+				PrimaryCLIPath: "aitable record update",
+			},
 			Description: "更新已有记录字段（先 query 拿 recordId；只传需改字段）。",
 			Interface:   aitableMCPInterface("update_records"),
 			Selection: contract.SelectionSpec{
@@ -2157,6 +2298,13 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 	DeclareLeafMetadata(recordDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_delete",
+				CanonicalPath:  "aitable.record_delete",
+				CLIPath:        "aitable record delete",
+				PrimaryCLIPath: "aitable record delete",
+			},
 			Description: "删除记录（不可逆，需确认）。",
 			Interface:   aitableMCPInterface("delete_records"),
 			Selection: contract.SelectionSpec{
@@ -2229,6 +2377,13 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 	DeclareLeafMetadata(recordBatchUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_batch_update",
+				CanonicalPath:  "aitable.record_batch_update",
+				CLIPath:        "aitable record batch-update",
+				PrimaryCLIPath: "aitable record batch-update",
+			},
 			Description: "把同一份 cells 批量应用到多条 recordIds。",
 			Interface:   aitableCompositeInterface("Reviewed composite wrapper: the CLI expands record IDs and shared cells into the pinned aitable/update_records request, so it is not a direct parameter-equivalent RPC projection."),
 			Selection: contract.SelectionSpec{
@@ -2282,6 +2437,13 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 	DeclareLeafMetadata(recordQueryEmptyCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_query_empty",
+				CanonicalPath:  "aitable.record_query_empty",
+				CLIPath:        "aitable record query-empty",
+				PrimaryCLIPath: "aitable record query-empty",
+			},
 			Description: "查询完全未填用户字段的空行。",
 			Interface:   aitableHelperMCPInterface("query_empty_records"),
 			Selection: contract.SelectionSpec{
@@ -2344,6 +2506,13 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 	DeclareLeafMetadata(recordHistoryListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_history_list",
+				CanonicalPath:  "aitable.record_history_list",
+				CLIPath:        "aitable record history-list",
+				PrimaryCLIPath: "aitable record history-list",
+			},
 			Description: "查询单条记录变更历史。",
 			Interface:   aitableHelperMCPInterface("query_record_history"),
 			Selection: contract.SelectionSpec{
@@ -2395,6 +2564,13 @@ CLI 行为：客户端把 --record-ids 拆开后构造 [{recordId, cells}, ...] 
 	DeclareLeafMetadata(recordShareUrlCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_share_url",
+				CanonicalPath:  "aitable.record_share_url",
+				CLIPath:        "aitable record share-url",
+				PrimaryCLIPath: "aitable record share-url",
+			},
 			Description: "批量获取记录分享链接（最多 20）。",
 			Interface:   aitableHelperMCPInterface("get_record_share_url"),
 			Selection: contract.SelectionSpec{
@@ -2459,6 +2635,13 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 	DeclareLeafMetadata(recordUpsertCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_upsert",
+				CanonicalPath:  "aitable.record_upsert",
+				CLIPath:        "aitable record upsert",
+				PrimaryCLIPath: "aitable record upsert",
+			},
 			Description: "批量创建或更新（有 recordId 更新，无则创建）。",
 			Interface:   aitableHelperMCPInterface("record_upsert"),
 			Selection: contract.SelectionSpec{
@@ -2499,6 +2682,13 @@ Windows 用户注意：如果 --records JSON 很长，请使用 --records-file �
 	DeclareLeafMetadata(recordPrimaryDocGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_primary_doc_get",
+				CanonicalPath:  "aitable.record_primary_doc_get",
+				CLIPath:        "aitable record primary-doc-get",
+				PrimaryCLIPath: "aitable record primary-doc-get",
+			},
 			Description: "查询记录主键文档 nodeId。",
 			Interface:   aitableHelperMCPInterface("get_primary_doc"),
 			Selection: contract.SelectionSpec{
@@ -2537,6 +2727,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(recordPrimaryDocCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_primary_doc_create",
+				CanonicalPath:  "aitable.record_primary_doc_create",
+				CLIPath:        "aitable record primary-doc-create",
+				PrimaryCLIPath: "aitable record primary-doc-create",
+			},
 			Description: "为记录创建主键文档（幂等；field 须 primaryDoc 类型）。",
 			Interface:   aitableHelperMCPInterface("create_primary_doc"),
 			Selection: contract.SelectionSpec{
@@ -2579,6 +2776,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(templateSearchCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "template_search",
+				CanonicalPath:  "aitable.template_search",
+				CLIPath:        "aitable template search",
+				PrimaryCLIPath: "aitable template search",
+			},
 			Description: "搜索 AI 表格模板。",
 			Interface:   aitableMCPInterface("search_templates"),
 			Selection: contract.SelectionSpec{
@@ -2645,6 +2849,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(attachmentUploadCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "attachment_upload",
+				CanonicalPath:  "aitable.attachment_upload",
+				CLIPath:        "aitable attachment upload",
+				PrimaryCLIPath: "aitable attachment upload",
+			},
 			Description: "准备 AI 表格附件上传凭证（不要用钉盘 drive）。",
 			Interface:   aitableMCPInterface("prepare_attachment_upload"),
 			Selection: contract.SelectionSpec{
@@ -2709,6 +2920,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetCardCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_card",
+				CanonicalPath:  "aitable.view_get_card",
+				CLIPath:        "aitable view get card",
+				PrimaryCLIPath: "aitable view get card",
+			},
 			Description: "读取卡片视图配置",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2736,6 +2954,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetTimebarCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_timebar",
+				CanonicalPath:  "aitable.view_get_timebar",
+				CLIPath:        "aitable view get timebar",
+				PrimaryCLIPath: "aitable view get timebar",
+			},
 			Description: "读取时间条配置",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2763,6 +2988,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetAggregateCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_aggregate",
+				CanonicalPath:  "aitable.view_get_aggregate",
+				CLIPath:        "aitable view get aggregate",
+				PrimaryCLIPath: "aitable view get aggregate",
+			},
 			Description: "读取视图聚合配置",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2790,6 +3022,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetFilterCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_filter",
+				CanonicalPath:  "aitable.view_get_filter",
+				CLIPath:        "aitable view get filter",
+				PrimaryCLIPath: "aitable view get filter",
+			},
 			Description: "读取视图筛选",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2817,6 +3056,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetSortCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_sort",
+				CanonicalPath:  "aitable.view_get_sort",
+				CLIPath:        "aitable view get sort",
+				PrimaryCLIPath: "aitable view get sort",
+			},
 			Description: "读取视图排序",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2844,6 +3090,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetGroupCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_group",
+				CanonicalPath:  "aitable.view_get_group",
+				CLIPath:        "aitable view get group",
+				PrimaryCLIPath: "aitable view get group",
+			},
 			Description: "读取视图分组",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2871,6 +3124,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetVisibleFieldsCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_visible_fields",
+				CanonicalPath:  "aitable.view_get_visible_fields",
+				CLIPath:        "aitable view get visible-fields",
+				PrimaryCLIPath: "aitable view get visible-fields",
+			},
 			Description: "读取可见字段及顺序",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2898,6 +3158,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewGetFieldWidthsCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_field_widths",
+				CanonicalPath:  "aitable.view_get_field_widths",
+				CLIPath:        "aitable view get field-widths",
+				PrimaryCLIPath: "aitable view get field-widths",
+			},
 			Description: "读取 Grid 列宽",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -2966,6 +3233,13 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 	DeclareLeafMetadata(viewCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_create",
+				CanonicalPath:  "aitable.view_create",
+				CLIPath:        "aitable view create",
+				PrimaryCLIPath: "aitable view create",
+			},
 			Description: "创建视图（Grid/Kanban/Gantt/Calendar/Gallery/FormDesigner）。",
 			Interface:   aitableMCPInterface("create_view"),
 			Selection: contract.SelectionSpec{
@@ -3071,6 +3345,13 @@ typed flag 与 --json 同时存在时，typed flag 优先。--no-cover 与 --cov
 	DeclareLeafMetadata(viewUpdateCardCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_card",
+				CanonicalPath:  "aitable.view_update_card",
+				CLIPath:        "aitable view update card",
+				PrimaryCLIPath: "aitable view update card",
+			},
 			Description: "更新卡片视图配置",
 			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
 			Selection: contract.SelectionSpec{
@@ -3125,6 +3406,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateTimebarCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_timebar",
+				CanonicalPath:  "aitable.view_update_timebar",
+				CLIPath:        "aitable view update timebar",
+				PrimaryCLIPath: "aitable view update timebar",
+			},
 			Description: "更新时间条配置",
 			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
 			Selection: contract.SelectionSpec{
@@ -3186,6 +3474,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateAggregateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_aggregate",
+				CanonicalPath:  "aitable.view_update_aggregate",
+				CLIPath:        "aitable view update aggregate",
+				PrimaryCLIPath: "aitable view update aggregate",
+			},
 			Description: "更新视图聚合配置",
 			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
 			Selection: contract.SelectionSpec{
@@ -3231,6 +3526,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateFieldWidthsCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_field_widths",
+				CanonicalPath:  "aitable.view_update_field_widths",
+				CLIPath:        "aitable view update field-widths",
+				PrimaryCLIPath: "aitable view update field-widths",
+			},
 			Description: "更新 Grid 列宽",
 			Interface:   aitableCompositeInterface("The CLI performs an aitable/get_views preflight, locally transforms the requested configuration, and then calls aitable/update_view; the two-call workflow has no single direct MCP interface."),
 			Selection: contract.SelectionSpec{
@@ -3289,6 +3591,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateVisibleFieldsCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_visible_fields",
+				CanonicalPath:  "aitable.view_update_visible_fields",
+				CLIPath:        "aitable view update visible-fields",
+				PrimaryCLIPath: "aitable view update visible-fields",
+			},
 			Description: "更新可见字段列表与顺序",
 			Interface:   aitableMCPInterface("update_view"),
 			Selection: contract.SelectionSpec{
@@ -3319,6 +3628,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateFilterCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_filter",
+				CanonicalPath:  "aitable.view_update_filter",
+				CLIPath:        "aitable view update filter",
+				PrimaryCLIPath: "aitable view update filter",
+			},
 			Description: "更新视图筛选",
 			Interface:   aitableMCPInterface("update_view"),
 			Selection: contract.SelectionSpec{
@@ -3347,6 +3663,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateSortCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_sort",
+				CanonicalPath:  "aitable.view_update_sort",
+				CLIPath:        "aitable view update sort",
+				PrimaryCLIPath: "aitable view update sort",
+			},
 			Description: "更新视图排序",
 			Interface:   aitableMCPInterface("update_view"),
 			Selection: contract.SelectionSpec{
@@ -3375,6 +3698,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateGroupCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_group",
+				CanonicalPath:  "aitable.view_update_group",
+				CLIPath:        "aitable view update group",
+				PrimaryCLIPath: "aitable view update group",
+			},
 			Description: "更新视图分组",
 			Interface:   aitableMCPInterface("update_view"),
 			Selection: contract.SelectionSpec{
@@ -3410,6 +3740,13 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 	DeclareLeafMetadata(viewUpdateNameCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_name",
+				CanonicalPath:  "aitable.view_update_name",
+				CLIPath:        "aitable view update name",
+				PrimaryCLIPath: "aitable view update name",
+			},
 			Description: "重命名视图",
 			Interface:   aitableMCPInterface("update_view"),
 			Selection: contract.SelectionSpec{
@@ -3467,6 +3804,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewGetLockCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_lock",
+				CanonicalPath:  "aitable.view_get_lock",
+				CLIPath:        "aitable view get lock",
+				PrimaryCLIPath: "aitable view get lock",
+			},
 			Description: "读取视图锁状态",
 			Interface:   aitableHelperMCPInterface("get_view_lock_status"),
 			Selection: contract.SelectionSpec{
@@ -3502,6 +3846,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewLockCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_lock",
+				CanonicalPath:  "aitable.view_lock",
+				CLIPath:        "aitable view lock",
+				PrimaryCLIPath: "aitable view lock",
+			},
 			Description: "锁定或管理视图锁。",
 			Interface:   aitableHelperMCPInterface("lock_or_unlock_view"),
 			Selection: contract.SelectionSpec{
@@ -3531,6 +3882,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewGetFrozenColsCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_frozen_cols",
+				CanonicalPath:  "aitable.view_get_frozen_cols",
+				CLIPath:        "aitable view get frozen-cols",
+				PrimaryCLIPath: "aitable view get frozen-cols",
+			},
 			Description: "读取冻结列",
 			Interface:   aitableHelperMCPInterface("get_frozen_columns_of_view"),
 			Selection: contract.SelectionSpec{
@@ -3572,6 +3930,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewUpdateFrozenColsCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_frozen_cols",
+				CanonicalPath:  "aitable.view_update_frozen_cols",
+				CLIPath:        "aitable view update frozen-cols",
+				PrimaryCLIPath: "aitable view update frozen-cols",
+			},
 			Description: "更新冻结列",
 			Interface:   aitableHelperMCPInterface("set_frozen_columns_of_view"),
 			Selection: contract.SelectionSpec{
@@ -3601,6 +3966,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewGetRowHeightCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_row_height",
+				CanonicalPath:  "aitable.view_get_row_height",
+				CLIPath:        "aitable view get row-height",
+				PrimaryCLIPath: "aitable view get row-height",
+			},
 			Description: "读取行高",
 			Interface:   aitableHelperMCPInterface("get_cell_height_of_view"),
 			Selection: contract.SelectionSpec{
@@ -3642,6 +4014,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewUpdateRowHeightCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_row_height",
+				CanonicalPath:  "aitable.view_update_row_height",
+				CLIPath:        "aitable view update row-height",
+				PrimaryCLIPath: "aitable view update row-height",
+			},
 			Description: "更新行高",
 			Interface:   aitableHelperMCPInterface("set_cell_height_of_view"),
 			Selection: contract.SelectionSpec{
@@ -3667,6 +4046,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewGetFillColorRuleCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_get_fill_color_rule",
+				CanonicalPath:  "aitable.view_get_fill_color_rule",
+				CLIPath:        "aitable view get fill-color-rule",
+				PrimaryCLIPath: "aitable view get fill-color-rule",
+			},
 			Description: "读取填充色规则",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -3721,6 +4107,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewUpdateFillColorRuleCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_update_fill_color_rule",
+				CanonicalPath:  "aitable.view_update_fill_color_rule",
+				CLIPath:        "aitable view update fill-color-rule",
+				PrimaryCLIPath: "aitable view update fill-color-rule",
+			},
 			Description: "更新填充色规则",
 			Interface:   aitableMCPInterface("set_view_fill_color_rule"),
 			Selection: contract.SelectionSpec{
@@ -3765,6 +4158,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewDuplicateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_duplicate",
+				CanonicalPath:  "aitable.view_duplicate",
+				CLIPath:        "aitable view duplicate",
+				PrimaryCLIPath: "aitable view duplicate",
+			},
 			Description: "复制视图。",
 			Interface:   aitableHelperMCPInterface("duplicate_view"),
 			Selection: contract.SelectionSpec{
@@ -3821,6 +4221,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(viewDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_delete",
+				CanonicalPath:  "aitable.view_delete",
+				CLIPath:        "aitable view delete",
+				PrimaryCLIPath: "aitable view delete",
+			},
 			Description: "删除视图（不可删最后一个/锁定视图；需确认）。",
 			Interface:   aitableMCPInterface("delete_view"),
 			Selection: contract.SelectionSpec{
@@ -3860,6 +4267,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_list",
+				CanonicalPath:  "aitable.form_list",
+				CLIPath:        "aitable form list",
+				PrimaryCLIPath: "aitable form list",
+			},
 			Description: "列出表单视图。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -3898,6 +4312,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_create",
+				CanonicalPath:  "aitable.form_create",
+				CLIPath:        "aitable form create",
+				PrimaryCLIPath: "aitable form create",
+			},
 			Description: "创建表单视图（推荐路径；也可用 view create FormDesigner）。",
 			Interface:   aitableCompositeInterface("Reviewed composite wrapper: the CLI constrains pinned aitable/create_view to FormDesigner and applies form-specific argument semantics, so it is not a direct parameter-equivalent RPC projection."),
 			Selection: contract.SelectionSpec{
@@ -3953,6 +4374,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_get",
+				CanonicalPath:  "aitable.form_get",
+				CLIPath:        "aitable form get",
+				PrimaryCLIPath: "aitable form get",
+			},
 			Description: "按 viewId 获取表单详情。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -3990,6 +4418,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_delete",
+				CanonicalPath:  "aitable.form_delete",
+				CLIPath:        "aitable form delete",
+				PrimaryCLIPath: "aitable form delete",
+			},
 			Description: "删除表单（不可逆，需确认）。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4040,6 +4475,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_update",
+				CanonicalPath:  "aitable.form_update",
+				CLIPath:        "aitable form update",
+				PrimaryCLIPath: "aitable form update",
+			},
 			Description: "更新表单 title/name/description。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4069,6 +4511,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formQuestionsCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_questions_create",
+				CanonicalPath:  "aitable.form_questions_create",
+				CLIPath:        "aitable form questions create",
+				PrimaryCLIPath: "aitable form questions create",
+			},
 			Description: "在表单侧创建题目（等价 field create）。",
 			Interface:   aitableCompositeInterface("Reviewed composite wrapper: the CLI converts single-question flags or batch JSON into the pinned aitable/create_fields request, so it is not a direct parameter-equivalent RPC projection."),
 			Selection: contract.SelectionSpec{
@@ -4091,6 +4540,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formQuestionsDeleteCmd, LeafSpec{
 		Safety: aitableSafetyWriteConfirm(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_questions_delete",
+				CanonicalPath:  "aitable.form_questions_delete",
+				CLIPath:        "aitable form questions delete",
+				PrimaryCLIPath: "aitable form questions delete",
+			},
 			Description: "删除表单题目（等价 field delete，需确认语义）。",
 			Interface:   aitableMCPInterface("delete_field"),
 			Selection: contract.SelectionSpec{
@@ -4127,6 +4583,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formFieldListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_field_list",
+				CanonicalPath:  "aitable.form_field_list",
+				CLIPath:        "aitable form field list",
+				PrimaryCLIPath: "aitable form field list",
+			},
 			Description: "列出表单字段/题目。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4171,6 +4634,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formFieldUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_field_update",
+				CanonicalPath:  "aitable.form_field_update",
+				CLIPath:        "aitable form field update",
+				PrimaryCLIPath: "aitable form field update",
+			},
 			Description: "更新表单字段展示属性。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4213,6 +4683,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_field_hide",
+				CanonicalPath:  "aitable.form_field_hide",
+				CLIPath:        "aitable form field hide",
+				PrimaryCLIPath: "aitable form field hide",
+			},
 			Description: "切换表单中字段的隐藏/显示。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4249,6 +4726,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formShareGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_share_get",
+				CanonicalPath:  "aitable.form_share_get",
+				CLIPath:        "aitable form share get",
+				PrimaryCLIPath: "aitable form share get",
+			},
 			Description: "获取表单分享配置。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4286,6 +4770,13 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 	DeclareLeafMetadata(formShareUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "form_share_update",
+				CanonicalPath:  "aitable.form_share_update",
+				CLIPath:        "aitable form share update",
+				PrimaryCLIPath: "aitable form share update",
+			},
 			Description: "更新表单分享配置。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4346,6 +4837,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_create",
+				CanonicalPath:  "aitable.workflow_create",
+				CLIPath:        "aitable workflow create",
+				PrimaryCLIPath: "aitable workflow create",
+			},
 			Description: "创建并发布 AI 表格自动化工作流。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4399,6 +4897,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(workflowUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_update",
+				CanonicalPath:  "aitable.workflow_update",
+				CLIPath:        "aitable workflow update",
+				PrimaryCLIPath: "aitable workflow update",
+			},
 			Description: "用完整 DSL 更新并发布已有 AI 表格自动化工作流。",
 			Interface:   aitableCompositeInterface("Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."),
 			Selection: contract.SelectionSpec{
@@ -4441,6 +4946,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(workflowEnableCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_enable",
+				CanonicalPath:  "aitable.workflow_enable",
+				CLIPath:        "aitable workflow enable",
+				PrimaryCLIPath: "aitable workflow enable",
+			},
 			Description: "启用工作流。",
 			Interface:   aitableHelperMCPInterface("enable_workflow"),
 			Selection: contract.SelectionSpec{
@@ -4482,6 +4994,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_disable",
+				CanonicalPath:  "aitable.workflow_disable",
+				CLIPath:        "aitable workflow disable",
+				PrimaryCLIPath: "aitable workflow disable",
+			},
 			Description: "禁用工作流（高危，需确认；status 变 STOP）。",
 			Interface:   aitableHelperMCPInterface("disable_workflow"),
 			Selection: contract.SelectionSpec{
@@ -4517,6 +5036,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(workflowGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_get",
+				CanonicalPath:  "aitable.workflow_get",
+				CLIPath:        "aitable workflow get",
+				PrimaryCLIPath: "aitable workflow get",
+			},
 			Description: "获取工作流详情（含 flowSchema）。",
 			Interface:   aitableHelperMCPInterface("get_workflow"),
 			Selection: contract.SelectionSpec{
@@ -4562,6 +5088,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(workflowListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "workflow_list",
+				CanonicalPath:  "aitable.workflow_list",
+				CLIPath:        "aitable workflow list",
+				PrimaryCLIPath: "aitable workflow list",
+			},
 			Description: "列出 Base 下自动化工作流。",
 			Interface:   aitableHelperMCPInterface("list_workflows"),
 			Selection: contract.SelectionSpec{
@@ -4590,6 +5123,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(dashboardConfigExampleCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_config_example",
+				CanonicalPath:  "aitable.dashboard_config_example",
+				CLIPath:        "aitable dashboard config-example",
+				PrimaryCLIPath: "aitable dashboard config-example",
+			},
 			Description: "查看仪表盘配置模板。",
 			Interface:   aitableMCPInterface("get_dashboard_config_example"),
 			Selection: contract.SelectionSpec{
@@ -4625,6 +5165,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(dashboardGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_get",
+				CanonicalPath:  "aitable.dashboard_get",
+				CLIPath:        "aitable dashboard get",
+				PrimaryCLIPath: "aitable dashboard get",
+			},
 			Description: "获取仪表盘及 charts 列表。",
 			Interface:   aitableMCPInterface("get_dashboard"),
 			Selection: contract.SelectionSpec{
@@ -4675,6 +5222,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(dashboardCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_create",
+				CanonicalPath:  "aitable.dashboard_create",
+				CLIPath:        "aitable dashboard create",
+				PrimaryCLIPath: "aitable dashboard create",
+			},
 			Description: "创建仪表盘。",
 			Interface:   aitableMCPInterface("create_dashboard"),
 			Selection: contract.SelectionSpec{
@@ -4733,6 +5287,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(dashboardUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_update",
+				CanonicalPath:  "aitable.dashboard_update",
+				CLIPath:        "aitable dashboard update",
+				PrimaryCLIPath: "aitable dashboard update",
+			},
 			Description: "更新仪表盘。",
 			Interface:   aitableMCPInterface("update_dashboard"),
 			Selection: contract.SelectionSpec{
@@ -4776,6 +5337,13 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 	DeclareLeafMetadata(dashboardDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_delete",
+				CanonicalPath:  "aitable.dashboard_delete",
+				CLIPath:        "aitable dashboard delete",
+				PrimaryCLIPath: "aitable dashboard delete",
+			},
 			Description: "删除仪表盘（需确认）。",
 			Interface:   aitableMCPInterface("delete_dashboard"),
 			Selection: contract.SelectionSpec{
@@ -4815,6 +5383,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(dashboardArrangeCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_arrange",
+				CanonicalPath:  "aitable.dashboard_arrange",
+				CLIPath:        "aitable dashboard arrange",
+				PrimaryCLIPath: "aitable dashboard arrange",
+			},
 			Description: "调整仪表盘布局。",
 			Interface:   aitableHelperMCPInterface("align_dashboard"),
 			Selection: contract.SelectionSpec{
@@ -4853,6 +5428,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(dashboardShareGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_share_get",
+				CanonicalPath:  "aitable.dashboard_share_get",
+				CLIPath:        "aitable dashboard share get",
+				PrimaryCLIPath: "aitable dashboard share get",
+			},
 			Description: "查询仪表盘分享配置（可能 404，按可重试处理）。",
 			Interface:   aitableMCPInterface("get_dashboard_share"),
 			Selection: contract.SelectionSpec{
@@ -4903,6 +5485,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(dashboardShareUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "dashboard_share_update",
+				CanonicalPath:  "aitable.dashboard_share_update",
+				CLIPath:        "aitable dashboard share update",
+				PrimaryCLIPath: "aitable dashboard share update",
+			},
 			Description: "更新仪表盘分享配置。",
 			Interface:   aitableMCPInterface("update_dashboard_share"),
 			Selection: contract.SelectionSpec{
@@ -4931,6 +5520,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartWidgetsExampleCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_widgets_example",
+				CanonicalPath:  "aitable.chart_widgets_example",
+				CLIPath:        "aitable chart widgets-example",
+				PrimaryCLIPath: "aitable chart widgets-example",
+			},
 			Description: "查看图表 widgets 配置模板。",
 			Interface:   aitableMCPInterface("get_dashboard_widgets_example"),
 			Selection: contract.SelectionSpec{
@@ -4968,6 +5564,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_get",
+				CanonicalPath:  "aitable.chart_get",
+				CLIPath:        "aitable chart get",
+				PrimaryCLIPath: "aitable chart get",
+			},
 			Description: "获取图表详情。",
 			Interface:   aitableMCPInterface("get_chart"),
 			Selection: contract.SelectionSpec{
@@ -5013,6 +5616,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_create",
+				CanonicalPath:  "aitable.chart_create",
+				CLIPath:        "aitable chart create",
+				PrimaryCLIPath: "aitable chart create",
+			},
 			Description: "创建图表。",
 			Interface:   aitableMCPInterface("create_chart"),
 			Selection: contract.SelectionSpec{
@@ -5061,6 +5671,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_update",
+				CanonicalPath:  "aitable.chart_update",
+				CLIPath:        "aitable chart update",
+				PrimaryCLIPath: "aitable chart update",
+			},
 			Description: "更新图表。",
 			Interface:   aitableMCPInterface("update_chart"),
 			Selection: contract.SelectionSpec{
@@ -5107,6 +5724,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_delete",
+				CanonicalPath:  "aitable.chart_delete",
+				CLIPath:        "aitable chart delete",
+				PrimaryCLIPath: "aitable chart delete",
+			},
 			Description: "删除图表（需确认）。",
 			Interface:   aitableMCPInterface("delete_chart"),
 			Selection: contract.SelectionSpec{
@@ -5146,6 +5770,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartShareGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_share_get",
+				CanonicalPath:  "aitable.chart_share_get",
+				CLIPath:        "aitable chart share get",
+				PrimaryCLIPath: "aitable chart share get",
+			},
 			Description: "获取图表分享配置（稳定返回 enabled）。",
 			Interface:   aitableMCPInterface("get_chart_share"),
 			Selection: contract.SelectionSpec{
@@ -5197,6 +5828,13 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 	DeclareLeafMetadata(chartShareUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "chart_share_update",
+				CanonicalPath:  "aitable.chart_share_update",
+				CLIPath:        "aitable chart share update",
+				PrimaryCLIPath: "aitable chart share update",
+			},
 			Description: "更新图表分享配置。",
 			Interface:   aitableMCPInterface("update_chart_share"),
 			Selection: contract.SelectionSpec{
@@ -5294,6 +5932,13 @@ export-format 可选值：excel、attachment、excel_and_attachment、excel_with
 	DeclareLeafMetadata(exportDataCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "export_data",
+				CanonicalPath:  "aitable.export_data",
+				CLIPath:        "aitable export data",
+				PrimaryCLIPath: "aitable export data",
+			},
 			Description: "导出数据（异步：可能返回 taskId 需继续轮询）。",
 			Interface:   aitableMCPInterface("export_data"),
 			Selection: contract.SelectionSpec{
@@ -5335,6 +5980,13 @@ export-format 可选值：excel、attachment、excel_and_attachment、excel_with
 	DeclareLeafMetadata(advpermEnableCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_enable",
+				CanonicalPath:  "aitable.advperm_enable",
+				CLIPath:        "aitable advperm enable",
+				PrimaryCLIPath: "aitable advperm enable",
+			},
 			Description: "开启 Base 高级权限总开关。",
 			Interface:   aitableHelperMCPInterface("set_advanced_permission"),
 			Selection: contract.SelectionSpec{
@@ -5373,6 +6025,13 @@ message: "the current user must be a manager (administrator) of this base to man
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_disable",
+				CanonicalPath:  "aitable.advperm_disable",
+				CLIPath:        "aitable advperm disable",
+				PrimaryCLIPath: "aitable advperm disable",
+			},
 			Description: "关闭高级权限总开关（高危，需确认；全员回退默认权限）。",
 			Interface:   aitableHelperMCPInterface("set_advanced_permission"),
 			Selection: contract.SelectionSpec{
@@ -5407,6 +6066,13 @@ subRoles[].display.* 提供人类可读标签（authLevelLabel / targetTypeLabel
 	DeclareLeafMetadata(advpermRoleListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_role_list",
+				CanonicalPath:  "aitable.advperm_role_list",
+				CLIPath:        "aitable advperm role-list",
+				PrimaryCLIPath: "aitable advperm role-list",
+			},
 			Description: "列出 Base 下全部角色（含系统角色与自定义）。",
 			Interface:   aitableHelperMCPInterface("list_roles"),
 			Selection: contract.SelectionSpec{
@@ -5441,6 +6107,13 @@ subRoles[].display.* 提供人类可读标签（authLevelLabel / targetTypeLabel
 	DeclareLeafMetadata(advpermRoleGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_role_get",
+				CanonicalPath:  "aitable.advperm_role_get",
+				CLIPath:        "aitable advperm role-get",
+				PrimaryCLIPath: "aitable advperm role-get",
+			},
 			Description: "获取单角色完整配置（含 subRoles）。",
 			Interface:   aitableHelperMCPInterface("get_role"),
 			Selection: contract.SelectionSpec{
@@ -5498,6 +6171,13 @@ subRoles[].display.* 提供人类可读标签（authLevelLabel / targetTypeLabel
 	DeclareLeafMetadata(advpermRoleCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_role_create",
+				CanonicalPath:  "aitable.advperm_role_create",
+				CLIPath:        "aitable advperm role-create",
+				PrimaryCLIPath: "aitable advperm role-create",
+			},
 			Description: "创建自定义角色（可选同时指定 sub-roles）。",
 			Interface:   aitableHelperMCPInterface("create_role"),
 			Selection: contract.SelectionSpec{
@@ -5558,6 +6238,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(advpermRoleUpdateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_role_update",
+				CanonicalPath:  "aitable.advperm_role_update",
+				CLIPath:        "aitable advperm role-update",
+				PrimaryCLIPath: "aitable advperm role-update",
+			},
 			Description: "增量更新自定义角色（PATCH）。",
 			Interface:   aitableHelperMCPInterface("patch_role"),
 			Selection: contract.SelectionSpec{
@@ -5599,6 +6286,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(advpermRoleDeleteCmd, LeafSpec{
 		Safety: aitableSafetyDestructive(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "advperm_role_delete",
+				CanonicalPath:  "aitable.advperm_role_delete",
+				CLIPath:        "aitable advperm role-delete",
+				PrimaryCLIPath: "aitable advperm role-delete",
+			},
 			Description: "删除自定义角色（需确认；系统角色禁删；需管理员）。",
 			Interface:   aitableHelperMCPInterface("delete_role"),
 			Selection: contract.SelectionSpec{
@@ -5649,6 +6343,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(importUploadCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "import_upload",
+				CanonicalPath:  "aitable.import_upload",
+				CLIPath:        "aitable import upload",
+				PrimaryCLIPath: "aitable import upload",
+			},
 			Description: "申请导入文件上传凭证。",
 			Interface:   aitableMCPInterface("prepare_import_upload"),
 			Selection: contract.SelectionSpec{
@@ -5713,6 +6414,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(importDataCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "import_data",
+				CanonicalPath:  "aitable.import_data",
+				CLIPath:        "aitable import data",
+				PrimaryCLIPath: "aitable import data",
+			},
 			Description: "触发数据导入。",
 			Interface:   aitableMCPInterface("import_data"),
 			Selection: contract.SelectionSpec{
@@ -5765,6 +6473,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(sectionCreateCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_create",
+				CanonicalPath:  "aitable.section_create",
+				CLIPath:        "aitable section create",
+				PrimaryCLIPath: "aitable section create",
+			},
 			Description: "在 Base 导航树创建文件夹。",
 			Interface:   aitableHelperMCPInterface("create_section"),
 			Selection: contract.SelectionSpec{
@@ -5803,6 +6518,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(sectionRenameCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_rename",
+				CanonicalPath:  "aitable.section_rename",
+				CLIPath:        "aitable section rename",
+				PrimaryCLIPath: "aitable section rename",
+			},
 			Description: "重命名文件夹。",
 			Interface:   aitableHelperMCPInterface("rename_section"),
 			Selection: contract.SelectionSpec{
@@ -5840,6 +6562,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(sectionDeleteCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_delete",
+				CanonicalPath:  "aitable.section_delete",
+				CLIPath:        "aitable section delete",
+				PrimaryCLIPath: "aitable section delete",
+			},
 			Description: "删除文件夹（运行时无 confirmDelete；调用前自行确认）。",
 			Interface:   aitableHelperMCPInterface("delete_section"),
 			Selection: contract.SelectionSpec{
@@ -5882,6 +6611,13 @@ role-get 自行 merge）。
 	DeclareLeafMetadata(sectionReorderCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_reorder",
+				CanonicalPath:  "aitable.section_reorder",
+				CLIPath:        "aitable section reorder",
+				PrimaryCLIPath: "aitable section reorder",
+			},
 			Description: "在当前父文件夹下调整文件夹顺序。",
 			Interface:   aitableHelperMCPInterface("reorder_section"),
 			Selection: contract.SelectionSpec{
@@ -5915,6 +6651,13 @@ parentSectionId 为空串表示该文件夹在 Base 根目录下。`,
 	DeclareLeafMetadata(sectionListEmptyCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_list_empty",
+				CanonicalPath:  "aitable.section_list_empty",
+				CLIPath:        "aitable section list-empty",
+				PrimaryCLIPath: "aitable section list-empty",
+			},
 			Description: "列出空文件夹。",
 			Interface:   aitableHelperMCPInterface("list_empty_sections"),
 			Selection: contract.SelectionSpec{
@@ -5949,6 +6692,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(sectionListNodesCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_list_nodes",
+				CanonicalPath:  "aitable.section_list_nodes",
+				CLIPath:        "aitable section list-nodes",
+				PrimaryCLIPath: "aitable section list-nodes",
+			},
 			Description: "列出 Base 导航全部节点。",
 			Interface:   aitableHelperMCPInterface("list_nsheet_nodes"),
 			Selection: contract.SelectionSpec{
@@ -5998,6 +6748,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(sectionMoveNodeCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "section_move_node",
+				CanonicalPath:  "aitable.section_move_node",
+				CLIPath:        "aitable section move-node",
+				PrimaryCLIPath: "aitable section move-node",
+			},
 			Description: "移动导航节点到新父文件夹。",
 			Interface:   aitableHelperMCPInterface("move_nsheet_node"),
 			Selection: contract.SelectionSpec{
@@ -6073,6 +6830,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(tableListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "table_list",
+				CanonicalPath:  "aitable.table_list",
+				CLIPath:        "aitable table list",
+				PrimaryCLIPath: "aitable table list",
+			},
 			Description: "获取数据表（table get 别名）。",
 			Interface:   aitableMCPInterface("get_tables"),
 			Selection: contract.SelectionSpec{
@@ -6136,6 +6900,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(fieldListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "field_list",
+				CanonicalPath:  "aitable.field_list",
+				CLIPath:        "aitable field list",
+				PrimaryCLIPath: "aitable field list",
+			},
 			Description: "获取字段信息（field get 别名）。",
 			Interface:   aitableMCPInterface("get_fields"),
 			Selection: contract.SelectionSpec{
@@ -6286,6 +7057,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(recordGetCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "record_get",
+				CanonicalPath:  "aitable.record_get",
+				CLIPath:        "aitable record get",
+				PrimaryCLIPath: "aitable record get",
+			},
 			Description: "按 recordIds 批量取记录（最多 100）。",
 			Interface:   aitableMCPInterface("query_records"),
 			Selection: contract.SelectionSpec{
@@ -6426,6 +7204,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(viewListCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "view_list",
+				CanonicalPath:  "aitable.view_list",
+				CLIPath:        "aitable view list",
+				PrimaryCLIPath: "aitable view list",
+			},
 			Description: "列出或获取视图配置。",
 			Interface:   aitableMCPInterface("get_views"),
 			Selection: contract.SelectionSpec{
@@ -6703,6 +7488,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(searchAliasCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "search",
+				CanonicalPath:  "aitable.search",
+				CLIPath:        "aitable search",
+				PrimaryCLIPath: "aitable search",
+			},
 			Description: "搜索 Base（search 别名）。",
 			Interface:   aitableMCPInterface("search_bases"),
 			Selection: contract.SelectionSpec{
@@ -6731,6 +7523,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(listAliasCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "list",
+				CanonicalPath:  "aitable.list",
+				CLIPath:        "aitable list",
+				PrimaryCLIPath: "aitable list",
+			},
 			Description: "列出最近 Base（list 别名）。",
 			Interface:   aitableMCPInterface("list_bases"),
 			Selection: contract.SelectionSpec{
@@ -6758,6 +7557,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(createAliasCmd, LeafSpec{
 		Safety: aitableSafetyWrite(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "create",
+				CanonicalPath:  "aitable.create",
+				CLIPath:        "aitable create",
+				PrimaryCLIPath: "aitable create",
+			},
 			Description: "创建 AI 表格 Base（create 别名入口）。",
 			Interface:   aitableMCPInterface("create_base"),
 			Selection: contract.SelectionSpec{
@@ -6789,6 +7595,13 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	DeclareLeafMetadata(infoAliasCmd, LeafSpec{
 		Safety: aitableSafetyRead(),
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "info",
+				CanonicalPath:  "aitable.info",
+				CLIPath:        "aitable info",
+				PrimaryCLIPath: "aitable info",
+			},
 			Description: "获取 Base 信息（info 别名）。",
 			Interface:   aitableMCPInterface("get_base"),
 			Selection: contract.SelectionSpec{

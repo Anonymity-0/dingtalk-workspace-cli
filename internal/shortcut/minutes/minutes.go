@@ -40,6 +40,13 @@ var ListMine = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_list_mine",
+			CanonicalPath:  "minutes.shortcut_list_mine",
+			CLIPath:        "minutes +list-mine",
+			PrimaryCLIPath: "minutes +list-mine",
+		},
 		Description: "查询我创建的听记列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -76,6 +83,13 @@ var ListShared = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_list_shared",
+			CanonicalPath:  "minutes.shortcut_list_shared",
+			CLIPath:        "minutes +list-shared",
+			PrimaryCLIPath: "minutes +list-shared",
+		},
 		Description: "查询他人共享给我的听记列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -112,6 +126,13 @@ var ListAll = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_list_all",
+			CanonicalPath:  "minutes.shortcut_list_all",
+			CLIPath:        "minutes +list-all",
+			PrimaryCLIPath: "minutes +list-all",
+		},
 		Description: "查询我有权限访问的所有听记列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -259,6 +280,13 @@ var RecordStart = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_record_start",
+			CanonicalPath:  "minutes.shortcut_record_start",
+			CLIPath:        "minutes +record-start",
+			PrimaryCLIPath: "minutes +record-start",
+		},
 		Description: "发起听记（开始录音）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

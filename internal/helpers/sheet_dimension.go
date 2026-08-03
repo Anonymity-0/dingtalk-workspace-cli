@@ -65,6 +65,13 @@ func newDimensionCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "insert_dimension",
+				CanonicalPath:  "sheet.insert_dimension",
+				CLIPath:        "sheet insert-dimension",
+				PrimaryCLIPath: "sheet insert-dimension",
+			},
 			Description: "在指定位置之前插入空行或空列。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -153,6 +160,13 @@ func newDimensionCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "move_dimension",
+				CanonicalPath:  "sheet.move_dimension",
+				CLIPath:        "sheet move-dimension",
+				PrimaryCLIPath: "sheet move-dimension",
+			},
 			Description: "移动连续行或列到目标索引（保留格式）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -219,6 +233,13 @@ func newDimensionCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "add_dimension",
+				CanonicalPath:  "sheet.add_dimension",
+				CLIPath:        "sheet add-dimension",
+				PrimaryCLIPath: "sheet add-dimension",
+			},
 			Description: "在工作表末尾追加空行或空列。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -288,6 +309,13 @@ rangeAddress 也支持带工作表前缀的写法，如 Sheet1!A1:B3，此时将
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "merge_cells",
+				CanonicalPath:  "sheet.merge_cells",
+				CLIPath:        "sheet merge-cells",
+				PrimaryCLIPath: "sheet merge-cells",
+			},
 			Description: "合并指定区域单元格（默认 mergeAll，可按行/列合并）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -340,6 +368,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "unmerge_range",
+				CanonicalPath:  "sheet.unmerge_range",
+				CLIPath:        "sheet unmerge-cells",
+				PrimaryCLIPath: "sheet unmerge-cells",
+			},
 			Description: "取消指定范围内的合并单元格。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -415,6 +450,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_dimension",
+				CanonicalPath:  "sheet.delete_dimension",
+				CLIPath:        "sheet delete-dimension",
+				PrimaryCLIPath: "sheet delete-dimension",
+			},
 			Description: "删除指定位置起的连续行或列（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -514,6 +556,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_dimension",
+				CanonicalPath:  "sheet.update_dimension",
+				CLIPath:        "sheet update-dimension",
+				PrimaryCLIPath: "sheet update-dimension",
+			},
 			Description: "更新连续行/列的显隐或行高/列宽。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -586,6 +635,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "group_dimension",
+				CanonicalPath:  "sheet.group_dimension",
+				CLIPath:        "sheet group-dimension",
+				PrimaryCLIPath: "sheet group-dimension",
+			},
 			Description: "为连续整行或整列创建分组（可展开/折叠）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -638,6 +694,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "ungroup_dimension",
+				CanonicalPath:  "sheet.ungroup_dimension",
+				CLIPath:        "sheet ungroup-dimension",
+				PrimaryCLIPath: "sheet ungroup-dimension",
+			},
 			Description: "取消指定连续行/列分组。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -719,6 +782,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "set_dropdown_lists",
+				CanonicalPath:  "sheet.set_dropdown_lists",
+				CLIPath:        "sheet set-dropdown",
+				PrimaryCLIPath: "sheet set-dropdown",
+			},
 			Description: "为指定范围设置下拉列表（可多选、可带颜色）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -776,6 +846,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_dropdown_lists",
+				CanonicalPath:  "sheet.get_dropdown_lists",
+				CLIPath:        "sheet get-dropdown",
+				PrimaryCLIPath: "sheet get-dropdown",
+			},
 			Description: "查询指定范围的下拉列表配置。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -826,6 +903,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_dropdown_lists",
+				CanonicalPath:  "sheet.delete_dropdown_lists",
+				CLIPath:        "sheet delete-dropdown",
+				PrimaryCLIPath: "sheet delete-dropdown",
+			},
 			Description: "删除指定范围的下拉列表（需确认后加 --yes；不清除已填值）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

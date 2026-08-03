@@ -491,25 +491,48 @@ func contractFinalProvenance(identity contract.ToolIdentitySpec, title, descript
 // validateContractFinalIdentity guards the pass-through contract: on a bound
 // (managed) leaf, a declared identity must agree with the bound tree entry.
 // Otherwise the Schema catalog would publish an identity the registry never
-// indexed. Non-empty declared fields that differ from the entry fail assembly.
+// indexed. Registry-owned keys are compared exactly (including empty aliases);
+// optional derived fields (cli_name/group/source) still fail only when
+// non-empty and disagreeing.
 func validateContractFinalIdentity(entry runtimeSchemaEntry, id contract.ToolIdentitySpec, canonicalPath string) error {
 	mismatches := make([]string, 0, 10)
-	check := func(field, declared, bound string) {
+	checkExact := func(field, declared, bound string) {
+		declared = strings.TrimSpace(declared)
+		bound = strings.TrimSpace(bound)
+		if declared != bound {
+			mismatches = append(mismatches, fmt.Sprintf("%s: declared %q, bound %q", field, declared, bound))
+		}
+	}
+	checkOptional := func(field, declared, bound string) {
 		declared = strings.TrimSpace(declared)
 		if declared != "" && declared != strings.TrimSpace(bound) {
 			mismatches = append(mismatches, fmt.Sprintf("%s: declared %q, bound %q", field, declared, bound))
 		}
 	}
-	check("product_id", id.ProductID, entry.ProductID)
-	check("source_product_id", id.SourceProductID, entry.SourceProductID)
-	check("name", id.Name, entry.ToolName)
-	check("cli_name", id.CLIName, entry.CLIName)
-	check("canonical_path", id.CanonicalPath, canonicalPath)
-	check("cli_path", id.CLIPath, entry.CLIPath)
-	check("primary_cli_path", id.PrimaryCLIPath, entry.PrimaryCLIPath)
-	check("group", id.Group, entry.Group)
-	check("source", id.Source, entry.Source)
-	if len(id.Aliases) > 0 && !stringSetsEqual(id.Aliases, entry.Aliases) {
+	checkExact("product_id", id.ProductID, entry.ProductID)
+	checkExact("name", id.Name, entry.ToolName)
+	checkExact("canonical_path", id.CanonicalPath, canonicalPath)
+	cliPath := strings.TrimSpace(id.CLIPath)
+	primary := strings.TrimSpace(id.PrimaryCLIPath)
+	if cliPath == "" {
+		cliPath = primary
+	}
+	if primary == "" {
+		primary = cliPath
+	}
+	checkExact("cli_path", cliPath, entry.CLIPath)
+	checkExact("primary_cli_path", primary, entry.PrimaryCLIPath)
+	// Empty / product-equal source_product_id are equivalent (registry decode
+	// defaults omitted source to product_id; Contract may omit it).
+	checkExact(
+		"source_product_id",
+		normalizeIdentitySourceProduct(id.SourceProductID, entry.ProductID),
+		normalizeIdentitySourceProduct(entry.SourceProductID, entry.ProductID),
+	)
+	checkOptional("cli_name", id.CLIName, entry.CLIName)
+	checkOptional("group", id.Group, entry.Group)
+	checkOptional("source", id.Source, entry.Source)
+	if !stringSetsEqual(id.Aliases, entry.Aliases) {
 		mismatches = append(mismatches, fmt.Sprintf("aliases: declared %v, bound %v", id.Aliases, entry.Aliases))
 	}
 	if len(mismatches) > 0 {

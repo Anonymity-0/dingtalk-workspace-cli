@@ -90,6 +90,13 @@ func newMCPURLGetCommand(caller edition.ToolCaller) *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mcp",
+				Name:           "url_get",
+				CanonicalPath:  "mcp.url_get",
+				CLIPath:        "mcp url get",
+				PrimaryCLIPath: "mcp url get",
+			},
 			Description: "按 MCP 市场 mcpId 获取当前用户和组织可用的 Streamable HTTP 地址",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

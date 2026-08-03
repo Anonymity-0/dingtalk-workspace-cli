@@ -51,6 +51,13 @@ var Book = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_book",
+			CanonicalPath:  "calendar.shortcut_book",
+			CLIPath:        "calendar +book",
+			PrimaryCLIPath: "calendar +book",
+		},
 		Description: "创建日程，并可按姓名邀请参会人（自动解析 userId，失败自动回滚删除日程）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

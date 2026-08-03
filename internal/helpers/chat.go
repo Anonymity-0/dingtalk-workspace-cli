@@ -1243,6 +1243,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "create_group_conversation",
+				CanonicalPath:  "chat.create_group_conversation",
+				CLIPath:        "chat group create",
+				PrimaryCLIPath: "chat group create",
+			},
 			Description: "创建群聊并可指定群名与初始成员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1304,6 +1311,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_groups",
+				CanonicalPath:  "chat.search_groups",
+				CLIPath:        "chat search",
+				PrimaryCLIPath: "chat search",
+			},
 			Description: "按关键词搜索群聊并拿到 openConversationId",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1372,6 +1386,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_robot_to_group",
+				CanonicalPath:  "chat.add_robot_to_group",
+				CLIPath:        "chat group members add-bot",
+				PrimaryCLIPath: "chat group members add-bot",
+			},
 			Description: "把企业机器人拉进我有管理权限的群",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1414,6 +1435,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_group_name",
+				CanonicalPath:  "chat.update_group_name",
+				CLIPath:        "chat group rename",
+				PrimaryCLIPath: "chat group rename",
+			},
 			Description: "修改指定群聊的名称",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1459,6 +1487,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_group_member",
+				CanonicalPath:  "chat.add_group_member",
+				CLIPath:        "chat group members add",
+				PrimaryCLIPath: "chat group members add",
+			},
 			Description: "向指定群聊添加成员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1507,6 +1542,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_group_member",
+				CanonicalPath:  "chat.remove_group_member",
+				CLIPath:        "chat group members remove",
+				PrimaryCLIPath: "chat group members remove",
+			},
 			Description: "从指定群聊移除成员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1609,6 +1651,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_conversation_message_v2",
+				CanonicalPath:  "chat.list_conversation_message_v2",
+				CLIPath:        "chat message list",
+				PrimaryCLIPath: "chat message list",
+			},
 			Description: "分页读取指定会话消息及其引用上下文",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1680,6 +1729,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_individual_chat_message",
+				CanonicalPath:  "chat.list_individual_chat_message",
+				CLIPath:        "chat message list-direct",
+				PrimaryCLIPath: "chat message list-direct",
+			},
 			Description: "读取与指定用户的单聊消息记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1947,6 +2003,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "send_personal_message",
+				CanonicalPath:  "chat.send_personal_message",
+				CLIPath:        "chat message send",
+				PrimaryCLIPath: "chat message send",
+			},
 			Description: "以当前用户身份发送群聊或单聊消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2072,6 +2135,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "send_robot_message",
+				CanonicalPath:  "chat.send_robot_message",
+				CLIPath:        "chat message send-by-bot",
+				PrimaryCLIPath: "chat message send-by-bot",
+			},
 			Description: "以应用机器人身份发送群消息或批量单聊",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2127,6 +2197,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "recall_robot_message",
+				CanonicalPath:  "chat.recall_robot_message",
+				CLIPath:        "chat message recall-by-bot",
+				PrimaryCLIPath: "chat message recall-by-bot",
+			},
 			Description: "撤回指定机器人发送的消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2212,6 +2289,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "send_message_by_custom_robot",
+				CanonicalPath:  "chat.send_message_by_custom_robot",
+				CLIPath:        "chat message send-by-webhook",
+				PrimaryCLIPath: "chat message send-by-webhook",
+			},
 			Description: "用自定义机器人 Webhook 向群发送消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2273,6 +2357,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_topic_replies",
+				CanonicalPath:  "chat.list_topic_replies",
+				CLIPath:        "chat message list-topic-replies",
+				PrimaryCLIPath: "chat message list-topic-replies",
+			},
 			Description: "分页读取指定话题的回复",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2321,6 +2412,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_messages_by_time_range",
+				CanonicalPath:  "chat.search_messages_by_time_range",
+				CLIPath:        "chat message list-all",
+				PrimaryCLIPath: "chat message list-all",
+			},
 			Description: "按时间范围搜索跨会话消息并保留权益指引",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2399,6 +2497,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_messages_by_sender",
+				CanonicalPath:  "chat.search_messages_by_sender",
+				CLIPath:        "chat message list-by-sender",
+				PrimaryCLIPath: "chat message list-by-sender",
+			},
 			Description: "按发送者和时间范围查询消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2464,6 +2569,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_at_me_message",
+				CanonicalPath:  "chat.search_at_me_message",
+				CLIPath:        "chat message list-mentions",
+				PrimaryCLIPath: "chat message list-mentions",
+			},
 			Description: "查询指定时间范围内提及当前用户的消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2507,6 +2619,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_special_focus_messages",
+				CanonicalPath:  "chat.list_special_focus_messages",
+				CLIPath:        "chat message list-focused",
+				PrimaryCLIPath: "chat message list-focused",
+			},
 			Description: "列出当前用户特别关注的消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2548,6 +2667,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_top_conversations",
+				CanonicalPath:  "chat.list_top_conversations",
+				CLIPath:        "chat list-top-conversations",
+				PrimaryCLIPath: "chat list-top-conversations",
+			},
 			Description: "列出当前用户置顶的会话",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2586,6 +2712,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "unread_message_conversation_list",
+				CanonicalPath:  "chat.unread_message_conversation_list",
+				CLIPath:        "chat message list-unread-conversations",
+				PrimaryCLIPath: "chat message list-unread-conversations",
+			},
 			Description: "列出当前用户存在未读消息的会话",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2649,6 +2782,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_messages_by_keyword",
+				CanonicalPath:  "chat.search_messages_by_keyword",
+				CLIPath:        "chat message search",
+				PrimaryCLIPath: "chat message search",
+			},
 			Description: "按关键词和时间范围搜索消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2790,6 +2930,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_messages",
+				CanonicalPath:  "chat.search_messages",
+				CLIPath:        "chat message search-advanced",
+				PrimaryCLIPath: "chat message search-advanced",
+			},
 			Description: "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2843,6 +2990,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "query_message_send_status",
+				CanonicalPath:  "chat.query_message_send_status",
+				CLIPath:        "chat message query-send-status",
+				PrimaryCLIPath: "chat message query-send-status",
+			},
 			Description: "查询异步消息发送任务的状态",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2886,6 +3040,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "recall_message",
+				CanonicalPath:  "chat.recall_message",
+				CLIPath:        "chat message recall",
+				PrimaryCLIPath: "chat message recall",
+			},
 			Description: "撤回当前用户已发送的单条消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2973,6 +3134,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "edit_message",
+				CanonicalPath:  "chat.edit_message",
+				CLIPath:        "chat message edit",
+				PrimaryCLIPath: "chat message edit",
+			},
 			Description: "编辑当前用户已发送消息的 Markdown 内容",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3037,6 +3205,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "query_msg_read_status",
+				CanonicalPath:  "chat.query_msg_read_status",
+				CLIPath:        "chat message read-status",
+				PrimaryCLIPath: "chat message read-status",
+			},
 			Description: "查询指定消息的已读状态和人员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3072,6 +3247,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_common_groups",
+				CanonicalPath:  "chat.search_common_groups",
+				CLIPath:        "chat search-common",
+				PrimaryCLIPath: "chat search-common",
+			},
 			Description: "查询指定人员共同所在的群聊",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3136,6 +3318,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_my_robots",
+				CanonicalPath:  "chat.search_my_robots",
+				CLIPath:        "chat bot search",
+				PrimaryCLIPath: "chat bot search",
+			},
 			Description: "搜索我创建的企业机器人并提取 robot-code",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3566,6 +3755,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "get_conversation_info",
+				CanonicalPath:  "chat.get_conversation_info",
+				CLIPath:        "chat conversation-info",
+				PrimaryCLIPath: "chat conversation-info",
+			},
 			Description: "获取群聊或单聊会话的详细信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3656,6 +3852,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_user_define_conv_categories",
+				CanonicalPath:  "chat.list_user_define_conv_categories",
+				CLIPath:        "chat category list",
+				PrimaryCLIPath: "chat category list",
+			},
 			Description: "列出当前用户的自定义会话分组",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3693,6 +3896,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_conversations_by_category",
+				CanonicalPath:  "chat.list_conversations_by_category",
+				CLIPath:        "chat category list-conversations",
+				PrimaryCLIPath: "chat category list-conversations",
+			},
 			Description: "列出指定会话分组中的会话",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3841,6 +4051,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_conv_categories_by_conv",
+				CanonicalPath:  "chat.list_conv_categories_by_conv",
+				CLIPath:        "chat category list-by-conv",
+				PrimaryCLIPath: "chat category list-by-conv",
+			},
 			Description: "查询指定会话所属的自定义会话分组",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3886,6 +4103,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "get_conv_categories_info",
+				CanonicalPath:  "chat.get_conv_categories_info",
+				CLIPath:        "chat category batch-info",
+				PrimaryCLIPath: "chat category batch-info",
+			},
 			Description: "按分组 ID 批量获取自定义会话分组详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3924,6 +4148,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "get_conv_info_by_group_id",
+				CanonicalPath:  "chat.get_conv_info_by_group_id",
+				CLIPath:        "chat group get-by-group-id",
+				PrimaryCLIPath: "chat group get-by-group-id",
+			},
 			Description: "把数字群号解析为群聊信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -3965,6 +4196,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_messages_by_ids",
+				CanonicalPath:  "chat.list_messages_by_ids",
+				CLIPath:        "chat message list-by-ids",
+				PrimaryCLIPath: "chat message list-by-ids",
+			},
 			Description: "按消息 ID 批量获取消息详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4010,6 +4248,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_emoji_reaction",
+				CanonicalPath:  "chat.add_emoji_reaction",
+				CLIPath:        "chat message add-emoji",
+				PrimaryCLIPath: "chat message add-emoji",
+			},
 			Description: "给指定消息添加表情回应",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4064,6 +4309,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_emoji_reaction",
+				CanonicalPath:  "chat.remove_emoji_reaction",
+				CLIPath:        "chat message remove-emoji",
+				PrimaryCLIPath: "chat message remove-emoji",
+			},
 			Description: "移除指定消息上的表情回应",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4120,6 +4372,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_text_emotion",
+				CanonicalPath:  "chat.add_text_emotion",
+				CLIPath:        "chat message add-text-emotion",
+				PrimaryCLIPath: "chat message add-text-emotion",
+			},
 			Description: "给指定消息添加已定义的文字表情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4178,6 +4437,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_text_emotion",
+				CanonicalPath:  "chat.remove_text_emotion",
+				CLIPath:        "chat message remove-text-emotion",
+				PrimaryCLIPath: "chat message remove-text-emotion",
+			},
 			Description: "移除指定消息上的文字表情回应",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4234,6 +4500,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_text_emotion",
+				CanonicalPath:  "chat.update_text_emotion",
+				CLIPath:        "chat message update-text-emotion",
+				PrimaryCLIPath: "chat message update-text-emotion",
+			},
 			Description: "把消息上已有的文字表情原地替换为新的文字表情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -4306,6 +4579,13 @@ func newChatCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "create_text_emotion",
+				CanonicalPath:  "chat.create_text_emotion",
+				CLIPath:        "chat message create-text-emotion",
+				PrimaryCLIPath: "chat message create-text-emotion",
+			},
 			Description: "创建可用于消息回应的文字表情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4370,6 +4650,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "create_and_send_card",
+				CanonicalPath:  "chat.create_and_send_card",
+				CLIPath:        "chat message send-card",
+				PrimaryCLIPath: "chat message send-card",
+			},
 			Description: "创建并向群聊或单聊发送互动卡片",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4421,6 +4708,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_streaming_card",
+				CanonicalPath:  "chat.update_streaming_card",
+				CLIPath:        "chat message update-card",
+				PrimaryCLIPath: "chat message update-card",
+			},
 			Description: "更新已发送流式卡片的内容和状态",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4560,6 +4854,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "download_media",
+				CanonicalPath:  "chat.download_media",
+				CLIPath:        "chat message download-media",
+				PrimaryCLIPath: "chat message download-media",
+			},
 			Description: "下载消息中的媒体资源到本地",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -4644,6 +4945,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "transfer_group_owner",
+				CanonicalPath:  "chat.transfer_group_owner",
+				CLIPath:        "chat group transfer-owner",
+				PrimaryCLIPath: "chat group transfer-owner",
+			},
 			Description: "把群主身份转让给指定群成员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4696,6 +5004,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "get_group_invite_url",
+				CanonicalPath:  "chat.get_group_invite_url",
+				CLIPath:        "chat group invite-url",
+				PrimaryCLIPath: "chat group invite-url",
+			},
 			Description: "获取指定群聊的邀请链接",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4743,6 +5058,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_notification_off",
+				CanonicalPath:  "chat.update_notification_off",
+				CLIPath:        "chat mute",
+				PrimaryCLIPath: "chat mute",
+			},
 			Description: "开启或关闭指定会话的免打扰",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4791,6 +5113,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "quit_group",
+				CanonicalPath:  "chat.quit_group",
+				CLIPath:        "chat group quit",
+				PrimaryCLIPath: "chat group quit",
+			},
 			Description: "当前用户退出群聊，群本身保留",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4840,6 +5169,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_group_icon",
+				CanonicalPath:  "chat.update_group_icon",
+				CLIPath:        "chat group update-icon",
+				PrimaryCLIPath: "chat group update-icon",
+			},
 			Description: "使用真实媒体 ID 更新群头像",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4909,6 +5245,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_group_settings",
+				CanonicalPath:  "chat.update_group_settings",
+				CLIPath:        "chat group update-settings",
+				PrimaryCLIPath: "chat group update-settings",
+			},
 			Description: "更新指定群聊的一项设置开关",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -4988,6 +5331,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "reply_personal_message",
+				CanonicalPath:  "chat.reply_personal_message",
+				CLIPath:        "chat message reply",
+				PrimaryCLIPath: "chat message reply",
+			},
 			Description: "引用指定消息发送个人回复",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5051,6 +5401,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "forward_message",
+				CanonicalPath:  "chat.forward_message",
+				CLIPath:        "chat message forward",
+				PrimaryCLIPath: "chat message forward",
+			},
 			Description: "把一条已有消息转发到另一个会话",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5108,6 +5465,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "set_top_conversation",
+				CanonicalPath:  "chat.set_top_conversation",
+				CLIPath:        "chat set-top",
+				PrimaryCLIPath: "chat set-top",
+			},
 			Description: "设置或取消指定会话置顶",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5152,6 +5516,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "get_group_mute_config",
+				CanonicalPath:  "chat.get_group_mute_config",
+				CLIPath:        "chat group get-mute-config",
+				PrimaryCLIPath: "chat group get-mute-config",
+			},
 			Description: "查询群用户禁言配置（禁言黑名单/全员禁言白名单）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -5196,6 +5567,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "set_group_mute",
+				CanonicalPath:  "chat.set_group_mute",
+				CLIPath:        "chat group-mute",
+				PrimaryCLIPath: "chat group-mute",
+			},
 			Description: "开启或关闭群聊全员禁言",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5284,6 +5662,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "set_group_member_mute_list",
+				CanonicalPath:  "chat.set_group_member_mute_list",
+				CLIPath:        "chat group-mute-member",
+				PrimaryCLIPath: "chat group-mute-member",
+			},
 			Description: "禁言或解除禁言指定群成员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5357,6 +5742,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_conv_member_roles",
+				CanonicalPath:  "chat.update_conv_member_roles",
+				CLIPath:        "chat group set-admin",
+				PrimaryCLIPath: "chat group set-admin",
+			},
 			Description: "设置或取消群管理员角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5464,6 +5856,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_custom_group_roles",
+				CanonicalPath:  "chat.list_custom_group_roles",
+				CLIPath:        "chat group-role list",
+				PrimaryCLIPath: "chat group-role list",
+			},
 			Description: "列出群聊中的自定义角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5504,6 +5903,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_custom_group_role",
+				CanonicalPath:  "chat.add_custom_group_role",
+				CLIPath:        "chat group-role add",
+				PrimaryCLIPath: "chat group-role add",
+			},
 			Description: "在群聊中创建自定义角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5547,6 +5953,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_custom_group_role",
+				CanonicalPath:  "chat.update_custom_group_role",
+				CLIPath:        "chat group-role update",
+				PrimaryCLIPath: "chat group-role update",
+			},
 			Description: "更新群聊自定义角色的名称",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5592,6 +6005,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_custom_group_role",
+				CanonicalPath:  "chat.remove_custom_group_role",
+				CLIPath:        "chat group-role remove",
+				PrimaryCLIPath: "chat group-role remove",
+			},
 			Description: "删除群聊中的自定义角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5648,6 +6068,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "set_custom_user_roles",
+				CanonicalPath:  "chat.set_custom_user_roles",
+				CLIPath:        "chat group-role set-user",
+				PrimaryCLIPath: "chat group-role set-user",
+			},
 			Description: "为指定群成员设置自定义角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5706,6 +6133,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_custom_user_roles",
+				CanonicalPath:  "chat.remove_custom_user_roles",
+				CLIPath:        "chat group-role remove-user",
+				PrimaryCLIPath: "chat group-role remove-user",
+			},
 			Description: "取消指定成员的一个或多个自定义角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5762,6 +6196,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "query_custom_user_roles",
+				CanonicalPath:  "chat.query_custom_user_roles",
+				CLIPath:        "chat group-role query-user",
+				PrimaryCLIPath: "chat group-role query-user",
+			},
 			Description: "查询指定群成员的自定义角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5819,6 +6260,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_group_bots",
+				CanonicalPath:  "chat.list_group_bots",
+				CLIPath:        "chat group bots",
+				PrimaryCLIPath: "chat group bots",
+			},
 			Description: "列出群内机器人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5862,6 +6310,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_robot_in_group",
+				CanonicalPath:  "chat.remove_robot_in_group",
+				CLIPath:        "chat group members remove-bot",
+				PrimaryCLIPath: "chat group members remove-bot",
+			},
 			Description: "从群内移除指定机器人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5928,6 +6383,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "search_bots",
+				CanonicalPath:  "chat.search_bots",
+				CLIPath:        "chat bot find",
+				PrimaryCLIPath: "chat bot find",
+			},
 			Description: "按关键词搜索企业机器人并拿到 openDingTalkId",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -5975,6 +6437,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "dismiss_group",
+				CanonicalPath:  "chat.dismiss_group",
+				CLIPath:        "chat group dismiss",
+				PrimaryCLIPath: "chat group dismiss",
+			},
 			Description: "永久解散指定群聊（不可恢复，仅群主）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6034,6 +6503,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_show_history_msg_option",
+				CanonicalPath:  "chat.update_show_history_msg_option",
+				CLIPath:        "chat group set-history",
+				PrimaryCLIPath: "chat group set-history",
+			},
 			Description: "设置新成员可见的群历史消息范围",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6088,6 +6564,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "combine_forward_messages",
+				CanonicalPath:  "chat.combine_forward_messages",
+				CLIPath:        "chat message combine-forward",
+				PrimaryCLIPath: "chat message combine-forward",
+			},
 			Description: "把多条消息合并转发到目标会话",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6149,6 +6632,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "forward_topic",
+				CanonicalPath:  "chat.forward_topic",
+				CLIPath:        "chat message forward-topic",
+				PrimaryCLIPath: "chat message forward-topic",
+			},
 			Description: "把一个话题消息转发到目标会话",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6205,6 +6695,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "set_pin_message",
+				CanonicalPath:  "chat.set_pin_message",
+				CLIPath:        "chat message set-pin-msg",
+				PrimaryCLIPath: "chat message set-pin-msg",
+			},
 			Description: "把指定消息设为会话置顶消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6252,6 +6749,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "unset_pin_message",
+				CanonicalPath:  "chat.unset_pin_message",
+				CLIPath:        "chat message unset-pin-msg",
+				PrimaryCLIPath: "chat message unset-pin-msg",
+			},
 			Description: "取消指定消息的会话置顶",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6307,6 +6811,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_pin_messages",
+				CanonicalPath:  "chat.list_pin_messages",
+				CLIPath:        "chat message list-pin-msg",
+				PrimaryCLIPath: "chat message list-pin-msg",
+			},
 			Description: "列出指定会话中的置顶消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6354,6 +6865,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_message_favorite",
+				CanonicalPath:  "chat.add_message_favorite",
+				CLIPath:        "chat message add-favorite",
+				PrimaryCLIPath: "chat message add-favorite",
+			},
 			Description: "将指定会话中的一条消息加入当前用户的收藏。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -6396,6 +6914,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_message_favorite",
+				CanonicalPath:  "chat.remove_message_favorite",
+				CLIPath:        "chat message remove-favorite",
+				PrimaryCLIPath: "chat message remove-favorite",
+			},
 			Description: "取消当前用户对指定消息的收藏标记，不删除原消息。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -6446,6 +6971,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_message_favorites",
+				CanonicalPath:  "chat.list_message_favorites",
+				CLIPath:        "chat message list-favorites",
+				PrimaryCLIPath: "chat message list-favorites",
+			},
 			Description: "分页查询当前用户收藏的消息列表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -6500,6 +7032,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_owned_or_admin_groups",
+				CanonicalPath:  "chat.list_owned_or_admin_groups",
+				CLIPath:        "chat group list-my-groups",
+				PrimaryCLIPath: "chat group list-my-groups",
+			},
 			Description: "列出当前用户创建或管理的群聊",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -6865,6 +7404,13 @@ status 可选值:
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_group_nick",
+				CanonicalPath:  "chat.update_group_nick",
+				CLIPath:        "chat group update-nick",
+				PrimaryCLIPath: "chat group update-nick",
+			},
 			Description: "设置或清除当前用户在指定群内的昵称",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -7242,6 +7788,13 @@ status 可选值:
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "upgrade_group_to_external",
+				CanonicalPath:  "chat.upgrade_group_to_external",
+				CLIPath:        "chat group upgrade-to-external",
+				PrimaryCLIPath: "chat group upgrade-to-external",
+			},
 			Description: "不可逆地把已有普通群升级为外部群",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -7303,6 +7856,13 @@ status 可选值:
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "create_smart_conv_category",
+				CanonicalPath:  "chat.create_smart_conv_category",
+				CLIPath:        "chat category create-smart",
+				PrimaryCLIPath: "chat category create-smart",
+			},
 			Description: "按名称、成员或关键词创建智能会话分组",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -7418,6 +7978,13 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "batch_query_group_chat_settings",
+				CanonicalPath:  "chat.batch_query_group_chat_settings",
+				CLIPath:        "chat group user-settings query",
+				PrimaryCLIPath: "chat group user-settings query",
+			},
 			Description: "批量查询当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -7470,6 +8037,13 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "batch_update_group_chat_settings",
+				CanonicalPath:  "chat.batch_update_group_chat_settings",
+				CLIPath:        "chat group user-settings set",
+				PrimaryCLIPath: "chat group user-settings set",
+			},
 			Description: "批量更新当前用户自己的群会话设置（置顶/免打扰/群昵称/群备注）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

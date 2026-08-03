@@ -55,6 +55,13 @@ func newDocStyleCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "style_cover_set",
+				CanonicalPath:  "doc.style_cover_set",
+				CLIPath:        "doc style cover set",
+				PrimaryCLIPath: "doc style cover set",
+			},
 			Description: "设置钉钉文档顶部封面图（外链或本地图片上传）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -81,6 +88,13 @@ func newDocStyleCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "style_cover_clear",
+				CanonicalPath:  "doc.style_cover_clear",
+				CLIPath:        "doc style cover clear",
+				PrimaryCLIPath: "doc style cover clear",
+			},
 			Description: "移除钉钉文档封面",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -114,6 +128,13 @@ func newDocStyleCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "style_background_set",
+				CanonicalPath:  "doc.style_background_set",
+				CLIPath:        "doc style background set",
+				PrimaryCLIPath: "doc style background set",
+			},
 			Description: "设置钉钉文档背景纯色（#RRGGBB）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -140,6 +161,13 @@ func newDocStyleCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "style_background_clear",
+				CanonicalPath:  "doc.style_background_clear",
+				CLIPath:        "doc style background clear",
+				PrimaryCLIPath: "doc style background clear",
+			},
 			Description: "清除钉钉文档背景",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -167,6 +195,13 @@ func newDocStyleCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "get_document_style",
+				CanonicalPath:  "doc.get_document_style",
+				CLIPath:        "doc style get",
+				PrimaryCLIPath: "doc style get",
+			},
 			Description: "读取文档当前封面与背景配置（只读）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

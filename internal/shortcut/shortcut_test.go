@@ -530,6 +530,14 @@ func TestLiveMountExplicitSafetyDrivesRuntimeAndContractFinal(t *testing.T) {
 		Service: "chat", Command: "+send", Risk: RiskRead,
 		Safety: explicit,
 		Contract: corecmd.ContractDecl{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "发送消息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

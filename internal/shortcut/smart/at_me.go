@@ -62,6 +62,13 @@ var AtMe = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_at_me",
+			CanonicalPath:  "chat.shortcut_at_me",
+			CLIPath:        "chat +at-me",
+			PrimaryCLIPath: "chat +at-me",
+		},
 		Description: "查最近 @我 的消息（自动算时间窗，投影发送人/时间/内容/会话）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

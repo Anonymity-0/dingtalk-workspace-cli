@@ -186,6 +186,13 @@ func newEventSchemaCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "schema",
+				CanonicalPath:  "event.schema",
+				CLIPath:        "event schema",
+				PrimaryCLIPath: "event schema",
+			},
 			Description: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",

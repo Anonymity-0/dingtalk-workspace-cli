@@ -32,6 +32,13 @@ var BotSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_bot_search",
+			CanonicalPath:  "chat.shortcut_bot_search",
+			CLIPath:        "chat +bot-search",
+			PrimaryCLIPath: "chat +bot-search",
+		},
 		Description: "搜索当前用户自己创建的机器人",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -144,6 +151,13 @@ var BotFind = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_bot_find",
+			CanonicalPath:  "chat.shortcut_bot_find",
+			CLIPath:        "chat +bot-find",
+			PrimaryCLIPath: "chat +bot-find",
+		},
 		Description: "搜索全部可用机器人（含他人/官方，返回 openDingTalkId 可发单聊）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

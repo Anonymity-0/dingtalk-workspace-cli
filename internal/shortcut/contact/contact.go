@@ -37,6 +37,13 @@ var ListFollowings = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_list_followings",
+			CanonicalPath:  "contact.shortcut_list_followings",
+			CLIPath:        "contact +list-followings",
+			PrimaryCLIPath: "contact +list-followings",
+		},
 		Description: "获取当前用户的特别关注列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -112,6 +119,13 @@ var SearchUser = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_search_user",
+			CanonicalPath:  "contact.shortcut_search_user",
+			CLIPath:        "contact +search-user",
+			PrimaryCLIPath: "contact +search-user",
+		},
 		Description: "按关键词搜索通讯录用户",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -184,6 +198,13 @@ var SearchMobile = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_search_mobile",
+			CanonicalPath:  "contact.shortcut_search_mobile",
+			CLIPath:        "contact +search-mobile",
+			PrimaryCLIPath: "contact +search-mobile",
+		},
 		Description: "按手机号搜索通讯录用户",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -229,6 +250,13 @@ var ListRoles = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_list_roles",
+			CanonicalPath:  "contact.shortcut_list_roles",
+			CLIPath:        "contact +list-roles",
+			PrimaryCLIPath: "contact +list-roles",
+		},
 		Description: "获取企业所有角色（标签）列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -364,6 +392,13 @@ var ListRoleMembers = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_list_role_members",
+			CanonicalPath:  "contact.shortcut_list_role_members",
+			CLIPath:        "contact +list-role-members",
+			PrimaryCLIPath: "contact +list-role-members",
+		},
 		Description: "查询角色下的成员列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -481,6 +516,13 @@ var ListSubDepts = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_list_sub_depts",
+			CanonicalPath:  "contact.shortcut_list_sub_depts",
+			CLIPath:        "contact +list-sub-depts",
+			PrimaryCLIPath: "contact +list-sub-depts",
+		},
 		Description: "查看指定部门的子部门",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -589,6 +631,13 @@ var ListDeptMembers = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_list_dept_members",
+			CanonicalPath:  "contact.shortcut_list_dept_members",
+			CLIPath:        "contact +list-dept-members",
+			PrimaryCLIPath: "contact +list-dept-members",
+		},
 		Description: "查看部门成员（仅本部门，不含下级）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

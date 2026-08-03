@@ -270,6 +270,13 @@ func newDevAppEventListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "keyword", Usage: "事件搜索关键词，支持按事件码或事件名称模糊匹配", Bind: "keyword", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "list_dev_app_events",
+				CanonicalPath:  "dev.list_dev_app_events",
+				CLIPath:        "dev app event list",
+				PrimaryCLIPath: "dev app event list",
+			},
 			Description: "查询应用已订阅的事件列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -299,6 +306,13 @@ func newDevAppEventSubscribeCommand(runner executor.Runner) *cobra.Command {
 			{Name: "event-codes", Usage: "事件码，多个用逗号或分号分隔", Bind: "eventCodes", Trim: true, Required: true, RequiredHint: "--event-codes 为必填", Transform: transformDevAppListParam},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "subscribe_dev_app_events",
+				CanonicalPath:  "dev.subscribe_dev_app_events",
+				CLIPath:        "dev app event subscribe",
+				PrimaryCLIPath: "dev app event subscribe",
+			},
 			Description: "订阅应用事件回调",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -328,6 +342,13 @@ func newDevAppEventUnsubscribeCommand(runner executor.Runner) *cobra.Command {
 			{Name: "event-codes", Usage: "事件码，多个用逗号或分号分隔", Bind: "eventCodes", Trim: true, Required: true, RequiredHint: "--event-codes 为必填", Transform: transformDevAppListParam},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "unsubscribe_dev_app_events",
+				CanonicalPath:  "dev.unsubscribe_dev_app_events",
+				CLIPath:        "dev app event unsubscribe",
+				PrimaryCLIPath: "dev app event unsubscribe",
+			},
 			Description: "取消订阅应用事件",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -362,6 +383,13 @@ func newDevAppListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "sort-order", Usage: "排序方向 asc 或 desc", Bind: "sortOrder", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "list_dev_app",
+				CanonicalPath:  "dev.list_dev_app",
+				CLIPath:        "dev app list",
+				PrimaryCLIPath: "dev app list",
+			},
 			Description: "查询开放平台企业内部应用列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -398,6 +426,13 @@ func newDevAppGetCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "get_dev_app",
+				CanonicalPath:  "dev.get_dev_app",
+				CLIPath:        "dev app get",
+				PrimaryCLIPath: "dev app get",
+			},
 			Description: "查询开放平台企业内部应用详情",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -431,6 +466,13 @@ func newDevAppCreateCommand(runner executor.Runner) *cobra.Command {
 			{Name: "icon-media-id", Usage: "应用图标 mediaId", Bind: "iconMediaId", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_dev_app",
+				CanonicalPath:  "dev.create_dev_app",
+				CLIPath:        "dev app create",
+				PrimaryCLIPath: "dev app create",
+			},
 			Description: "创建开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -471,6 +513,13 @@ func newDevAppUpdateCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "update_dev_app",
+				CanonicalPath:  "dev.update_dev_app",
+				CLIPath:        "dev app update",
+				PrimaryCLIPath: "dev app update",
+			},
 			Description: "修改开放平台企业内部应用基础信息",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -497,6 +546,13 @@ func newDevAppCredentialsGetCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "get_dev_app_credentials",
+				CanonicalPath:  "dev.get_dev_app_credentials",
+				CLIPath:        "dev app credentials get",
+				PrimaryCLIPath: "dev app credentials get",
+			},
 			Description: "读取开放平台应用凭证",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -524,6 +580,13 @@ func newDevAppDisableCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "disable_dev_app",
+				CanonicalPath:  "dev.disable_dev_app",
+				CLIPath:        "dev app disable",
+				PrimaryCLIPath: "dev app disable",
+			},
 			Description: "停用开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -551,6 +614,13 @@ func newDevAppEnableCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "enable_dev_app",
+				CanonicalPath:  "dev.enable_dev_app",
+				CLIPath:        "dev app enable",
+				PrimaryCLIPath: "dev app enable",
+			},
 			Description: "启用开放平台企业内部应用",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -590,6 +660,13 @@ func newDevAppDeleteCommand(runner executor.Runner) *cobra.Command {
 			{Name: "confirm-name", Usage: "二次确认：必须与被删应用的名称一致（不可逆操作的防误删）", Bind: "confirmName", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "delete_dev_app",
+				CanonicalPath:  "dev.delete_dev_app",
+				CLIPath:        "dev app delete",
+				PrimaryCLIPath: "dev app delete",
+			},
 			Description: "删除开放平台企业内部应用（不可逆，需 --confirm-name 二次确认）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -684,6 +761,13 @@ func newDevAppWebappGetCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "get_extension_webapp_config",
+				CanonicalPath:  "dev.get_extension_webapp_config",
+				CLIPath:        "dev app webapp get",
+				PrimaryCLIPath: "dev app webapp get",
+			},
 			Description: "查询网页应用配置",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -724,6 +808,13 @@ func newDevAppWebappConfigCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "set_extension_webapp_config",
+				CanonicalPath:  "dev.set_extension_webapp_config",
+				CLIPath:        "dev app webapp config",
+				PrimaryCLIPath: "dev app webapp config",
+			},
 			Description: "配置网页应用能力",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -756,6 +847,13 @@ func newDevAppPermissionListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "api-status", Usage: "开发者后台 apiStatus 过滤", Bind: "apiStatus", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "list_dev_app_permissions",
+				CanonicalPath:  "dev.list_dev_app_permissions",
+				CLIPath:        "dev app permission list",
+				PrimaryCLIPath: "dev app permission list",
+			},
 			Description: "查询开放平台应用权限列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -788,6 +886,13 @@ func newDevAppPermissionAddCommand(runner executor.Runner) *cobra.Command {
 			{Name: "scope-values", Usage: "权限点 scopeValue，多个用逗号或分号分隔", Bind: "scopeValues", Trim: true, Required: true, RequiredHint: "--scope-values 为必填", Transform: transformDevAppScopeValues},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "apply_dev_app_permissions",
+				CanonicalPath:  "dev.apply_dev_app_permissions",
+				CLIPath:        "dev app permission add",
+				PrimaryCLIPath: "dev app permission add",
+			},
 			Description: "申请开放平台应用权限点",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -817,6 +922,13 @@ func newDevAppPermissionRemoveCommand(runner executor.Runner) *cobra.Command {
 			{Name: "scope-values", Usage: "待取消权限点 scopeValue，多个用逗号或分号分隔", Bind: "scopeValues", Trim: true, Required: true, RequiredHint: "--scope-values 为必填", Transform: transformDevAppScopeValues},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "remove_dev_app_permissions",
+				CanonicalPath:  "dev.remove_dev_app_permissions",
+				CLIPath:        "dev app permission remove",
+				PrimaryCLIPath: "dev app permission remove",
+			},
 			Description: "取消开放平台应用权限点",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -843,6 +955,13 @@ func newDevAppMemberListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "list_dev_app_members",
+				CanonicalPath:  "dev.list_dev_app_members",
+				CLIPath:        "dev app member list",
+				PrimaryCLIPath: "dev app member list",
+			},
 			Description: "查询开放平台应用成员",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -881,6 +1000,13 @@ func newDevAppMemberAddCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "add_dev_app_members",
+				CanonicalPath:  "dev.add_dev_app_members",
+				CLIPath:        "dev app member add",
+				PrimaryCLIPath: "dev app member add",
+			},
 			Description: "添加开放平台应用成员",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -919,6 +1045,13 @@ func newDevAppMemberRemoveCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "remove_dev_app_members",
+				CanonicalPath:  "dev.remove_dev_app_members",
+				CLIPath:        "dev app member remove",
+				PrimaryCLIPath: "dev app member remove",
+			},
 			Description: "移除开放平台应用成员",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -960,6 +1093,13 @@ func newDevAppSecurityConfigCommand(runner executor.Runner) *cobra.Command {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "update_dev_app_security_config",
+				CanonicalPath:  "dev.update_dev_app_security_config",
+				CLIPath:        "dev app security config",
+				PrimaryCLIPath: "dev app security config",
+			},
 			Description: "更新开放平台应用安全配置",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1000,6 +1140,13 @@ func newDevAppRobotSubmitCommand(runner executor.Runner) *cobra.Command {
 			{Name: "task-id", Usage: "失败重试时传入原 taskId；为空时服务端自动生成", Bind: "taskId", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "submit_robot_create_task",
+				CanonicalPath:  "dev.submit_robot_create_task",
+				CLIPath:        "dev app robot submit",
+				PrimaryCLIPath: "dev app robot submit",
+			},
 			Description: "异步提交钉钉智能体机器人创建任务（支持失败重试）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1041,6 +1188,13 @@ func newDevAppRobotResultCommand(runner executor.Runner) *cobra.Command {
 			{Name: "task-id", Usage: "提交创建任务时返回的 taskId (必填)", Bind: "taskId", Trim: true, Required: true, RequiredHint: "--task-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "query_robot_create_result",
+				CanonicalPath:  "dev.query_robot_create_result",
+				CLIPath:        "dev app robot result",
+				PrimaryCLIPath: "dev app robot result",
+			},
 			Description: "查询机器人异步创建任务结果",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1067,6 +1221,13 @@ func newDevAppRobotConfigGetCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "get_extension_robot_config",
+				CanonicalPath:  "dev.get_extension_robot_config",
+				CLIPath:        "dev app robot get",
+				PrimaryCLIPath: "dev app robot get",
+			},
 			Description: "查询现有应用的机器人配置",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1117,6 +1278,13 @@ func newDevAppRobotConfigCommand(runner executor.Runner) *cobra.Command {
 			{Name: "i18n-description", Usage: "机器人描述国际化 JSON", Bind: "i18nDescription", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "set_extension_robot_config",
+				CanonicalPath:  "dev.set_extension_robot_config",
+				CLIPath:        "dev app robot config",
+				PrimaryCLIPath: "dev app robot config",
+			},
 			Description: "创建或更新现有应用的机器人配置（upsert）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1160,6 +1328,13 @@ func newDevAppRobotEnableCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "enable_dev_app_robot",
+				CanonicalPath:  "dev.enable_dev_app_robot",
+				CLIPath:        "dev app robot enable",
+				PrimaryCLIPath: "dev app robot enable",
+			},
 			Description: "启用现有应用机器人能力（纯启用，无需配置字段）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1188,6 +1363,13 @@ func newDevAppRobotOfflineCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "disable_dev_app_robot",
+				CanonicalPath:  "dev.disable_dev_app_robot",
+				CLIPath:        "dev app robot disable",
+				PrimaryCLIPath: "dev app robot disable",
+			},
 			Description: "停用现有应用的机器人能力",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1303,6 +1485,13 @@ func newDevAppVersionCreateCommand(runner executor.Runner) *cobra.Command {
 			{Name: "desc", Usage: "版本描述", Bind: "desc", Trim: true, OmitEmpty: true},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_dev_app_version",
+				CanonicalPath:  "dev.create_dev_app_version",
+				CLIPath:        "dev app version create",
+				PrimaryCLIPath: "dev app version create",
+			},
 			Description: "基于当前配置创建应用新版本",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1329,6 +1518,13 @@ func newDevAppVersionListCommand(runner executor.Runner) *cobra.Command {
 			{Name: "unified-app-id", Usage: "开放平台统一应用 ID（必填）", Bind: "unifiedAppId", Trim: true, Required: true, RequiredHint: "--unified-app-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "list_dev_app_versions",
+				CanonicalPath:  "dev.list_dev_app_versions",
+				CLIPath:        "dev app version list",
+				PrimaryCLIPath: "dev app version list",
+			},
 			Description: "分页查询应用版本列表",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1356,6 +1552,13 @@ func newDevAppVersionGetCommand(runner executor.Runner) *cobra.Command {
 			{Name: "version-id", Usage: "版本 ID (必填)", Bind: "versionId", Trim: true, Required: true, RequiredHint: "--version-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "get_dev_app_version_detail",
+				CanonicalPath:  "dev.get_dev_app_version_detail",
+				CLIPath:        "dev app version get",
+				PrimaryCLIPath: "dev app version get",
+			},
 			Description: "查询指定版本详情",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1405,6 +1608,13 @@ func newDevAppVersionPublishCommand(runner executor.Runner) *cobra.Command {
 		},
 		ConstParams: map[string]any{"precheckOnly": false},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "publish_dev_app_version",
+				CanonicalPath:  "dev.publish_dev_app_version",
+				CLIPath:        "dev app version publish",
+				PrimaryCLIPath: "dev app version publish",
+			},
 			Description: "发布指定版本（含高敏权限需 --confirmed-sensitive）",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),
@@ -1432,6 +1642,13 @@ func newDevAppVersionStatusCommand(runner executor.Runner) *cobra.Command {
 			{Name: "version-id", Usage: "版本 ID (必填)", Bind: "versionId", Trim: true, Required: true, RequiredHint: "--version-id 为必填"},
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "get_dev_app_version_status",
+				CanonicalPath:  "dev.get_dev_app_version_status",
+				CLIPath:        "dev app version status",
+				PrimaryCLIPath: "dev app version status",
+			},
 			Description: "查询版本发布/审批状态",
 			DryRun:      devAppDryRun,
 			Interface:   devAppCompositeInterface(),

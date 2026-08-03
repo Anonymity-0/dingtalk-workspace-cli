@@ -54,6 +54,13 @@ var MinutesDetail = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "minutes",
+			Name:           "shortcut_detail",
+			CanonicalPath:  "minutes.shortcut_detail",
+			CLIPath:        "minutes +detail",
+			PrimaryCLIPath: "minutes +detail",
+		},
 		Description: "一条命令聚合取一条妙记（听记）的多项产物（基础信息/摘要/关键词/逐字稿/待办）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

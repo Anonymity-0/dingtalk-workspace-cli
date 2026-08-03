@@ -44,6 +44,13 @@ var FreeBusy = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_free",
+			CanonicalPath:  "calendar.shortcut_free",
+			CLIPath:        "calendar +free",
+			PrimaryCLIPath: "calendar +free",
+		},
 		Description: "按姓名查询某人在指定时间段内的忙闲状态（自动解析 userId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

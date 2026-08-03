@@ -55,6 +55,13 @@ var Overdue = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_overdue",
+			CanonicalPath:  "todo.shortcut_overdue",
+			CLIPath:        "todo +overdue",
+			PrimaryCLIPath: "todo +overdue",
+		},
 		Description: "列出我已过期未完成的待办",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

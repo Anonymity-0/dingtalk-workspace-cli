@@ -51,6 +51,13 @@ var GroupMembers = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_group_members",
+			CanonicalPath:  "chat.shortcut_group_members",
+			CLIPath:        "chat +group-members",
+			PrimaryCLIPath: "chat +group-members",
+		},
 		Description: "按群名列出群成员（自动搜群解析 openConversationId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

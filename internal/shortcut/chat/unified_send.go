@@ -38,6 +38,13 @@ var MessagesSend = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_send",
+			CanonicalPath:  "chat.shortcut_messages_send",
+			CLIPath:        "chat +messages-send",
+			PrimaryCLIPath: "chat +messages-send",
+		},
 		Description: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

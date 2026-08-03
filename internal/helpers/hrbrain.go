@@ -87,6 +87,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "list_talent_pools",
+				CanonicalPath:  "hrbrain.list_talent_pools",
+				CLIPath:        "hrbrain talent-pool list",
+				PrimaryCLIPath: "hrbrain talent-pool list",
+			},
 			Description: "查询人才池列表，支持按名称关键词、类型、创建人、标签筛选",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -142,6 +149,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "get_talent_pool_detail",
+				CanonicalPath:  "hrbrain.get_talent_pool_detail",
+				CLIPath:        "hrbrain talent-pool detail",
+				PrimaryCLIPath: "hrbrain talent-pool detail",
+			},
 			Description: "根据人才池编码获取人才池详细信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -185,6 +199,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "list_pool_employees",
+				CanonicalPath:  "hrbrain.list_pool_employees",
+				CLIPath:        "hrbrain talent-pool employees",
+				PrimaryCLIPath: "hrbrain talent-pool employees",
+			},
 			Description: "查询指定人才池内的人员列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -237,6 +258,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "get_profile_metadata",
+				CanonicalPath:  "hrbrain.get_profile_metadata",
+				CLIPath:        "hrbrain profile metadata",
+				PrimaryCLIPath: "hrbrain profile metadata",
+			},
 			Description: "查询员工档案元数据结构，用于构造档案数据查询参数",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -287,6 +315,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "query_profile_data",
+				CanonicalPath:  "hrbrain.query_profile_data",
+				CLIPath:        "hrbrain profile query",
+				PrimaryCLIPath: "hrbrain profile query",
+			},
 			Description: "按模块批量查询员工档案数据",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -336,6 +371,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "get_profile_label",
+				CanonicalPath:  "hrbrain.get_profile_label",
+				CLIPath:        "hrbrain profile labels",
+				PrimaryCLIPath: "hrbrain profile labels",
+			},
 			Description: "根据员工工号列表获取员工标签",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -376,6 +418,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "get_employee_career",
+				CanonicalPath:  "hrbrain.get_employee_career",
+				CLIPath:        "hrbrain profile career",
+				PrimaryCLIPath: "hrbrain profile career",
+			},
 			Description: "查询员工在公司内的职业历程",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -414,6 +463,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "get_employee_performance",
+				CanonicalPath:  "hrbrain.get_employee_performance",
+				CLIPath:        "hrbrain profile performance",
+				PrimaryCLIPath: "hrbrain profile performance",
+			},
 			Description: "查询员工绩效记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -476,6 +532,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "search_employees",
+				CanonicalPath:  "hrbrain.search_employees",
+				CLIPath:        "hrbrain search employees",
+				PrimaryCLIPath: "hrbrain search employees",
+			},
 			Description: "按关键词、部门、职务、职级、人才池等条件搜索员工",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -560,6 +623,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "search_employees_structured",
+				CanonicalPath:  "hrbrain.search_employees_structured",
+				CLIPath:        "hrbrain search employees-structured",
+				PrimaryCLIPath: "hrbrain search employees-structured",
+			},
 			Description: "使用高级条件表达式（originJson）搜索员工",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -605,6 +675,13 @@ func newHrbrainCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "hrbrain",
+				Name:           "get_search_fields",
+				CanonicalPath:  "hrbrain.get_search_fields",
+				CLIPath:        "hrbrain search fields",
+				PrimaryCLIPath: "hrbrain search fields",
+			},
 			Description: "获取当前操作人有权限使用的高级搜索字段与操作符列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

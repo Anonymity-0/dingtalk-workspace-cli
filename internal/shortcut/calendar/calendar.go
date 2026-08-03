@@ -54,6 +54,13 @@ var EventList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_agenda",
+			CanonicalPath:  "calendar.shortcut_agenda",
+			CLIPath:        "calendar +agenda",
+			PrimaryCLIPath: "calendar +agenda",
+		},
 		Description: "查询日程列表（不传时间默认查询今天）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -216,6 +223,13 @@ var AttendeeList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_attendee_list",
+			CanonicalPath:  "calendar.shortcut_attendee_list",
+			CLIPath:        "calendar +attendee-list",
+			PrimaryCLIPath: "calendar +attendee-list",
+		},
 		Description: "查看日程参会人",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -331,6 +345,13 @@ var RoomSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_room_search",
+			CanonicalPath:  "calendar.shortcut_room_search",
+			CLIPath:        "calendar +room-search",
+			PrimaryCLIPath: "calendar +room-search",
+		},
 		Description: "按名称模糊搜索会议室（不检查可用性）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -504,6 +525,13 @@ var RoomGroups = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_room_groups",
+			CanonicalPath:  "calendar.shortcut_room_groups",
+			CLIPath:        "calendar +room-groups",
+			PrimaryCLIPath: "calendar +room-groups",
+		},
 		Description: "会议室分组列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -620,6 +648,13 @@ var BusySearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_freebusy",
+			CanonicalPath:  "calendar.shortcut_freebusy",
+			CLIPath:        "calendar +freebusy",
+			PrimaryCLIPath: "calendar +freebusy",
+		},
 		Description: "查询用户 / 会议室闲忙状态（--users 与 --rooms 至少其一）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -691,6 +726,13 @@ var BookList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_book_list",
+			CanonicalPath:  "calendar.shortcut_book_list",
+			CLIPath:        "calendar +book-list",
+			PrimaryCLIPath: "calendar +book-list",
+		},
 		Description: "查询用户的日历本列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -755,6 +797,13 @@ var BookSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_book_search",
+			CanonicalPath:  "calendar.shortcut_book_search",
+			CLIPath:        "calendar +book-search",
+			PrimaryCLIPath: "calendar +book-search",
+		},
 		Description: "按名称模糊搜索日历本",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -118,6 +118,13 @@ var MessagesSendByWebhook = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_send_by_webhook",
+			CanonicalPath:  "chat.shortcut_messages_send_by_webhook",
+			CLIPath:        "chat +messages-send-by-webhook",
+			PrimaryCLIPath: "chat +messages-send-by-webhook",
+		},
 		Description: "自定义机器人 Webhook 发送群消息",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -407,6 +414,13 @@ var MessagesListDirect = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_list_direct",
+			CanonicalPath:  "chat.shortcut_messages_list_direct",
+			CLIPath:        "chat +messages-list-direct",
+			PrimaryCLIPath: "chat +messages-list-direct",
+		},
 		Description: "拉取单聊会话消息",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -477,6 +491,13 @@ var MessagesListUnreadConversations = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_list_unread_conversations",
+			CanonicalPath:  "chat.shortcut_messages_list_unread_conversations",
+			CLIPath:        "chat +messages-list-unread-conversations",
+			PrimaryCLIPath: "chat +messages-list-unread-conversations",
+		},
 		Description: "获取有未读消息的会话列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -590,6 +611,13 @@ var MessagesMget = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_mget",
+			CanonicalPath:  "chat.shortcut_messages_mget",
+			CLIPath:        "chat +messages-mget",
+			PrimaryCLIPath: "chat +messages-mget",
+		},
 		Description: "根据消息 ID 批量查询消息（最多 50 条）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -912,6 +940,13 @@ var MessagesQuerySendStatus = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_query_send_status",
+			CanonicalPath:  "chat.shortcut_messages_query_send_status",
+			CLIPath:        "chat +messages-query-send-status",
+			PrimaryCLIPath: "chat +messages-query-send-status",
+		},
 		Description: "查询消息发送状态",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -947,6 +982,13 @@ var MessagesReadStatus = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_read_status",
+			CanonicalPath:  "chat.shortcut_messages_read_status",
+			CLIPath:        "chat +messages-read-status",
+			PrimaryCLIPath: "chat +messages-read-status",
+		},
 		Description: "查询消息的已读/未读状态",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1133,6 +1175,13 @@ var MessagesSendCard = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_send_card",
+			CanonicalPath:  "chat.shortcut_messages_send_card",
+			CLIPath:        "chat +messages-send-card",
+			PrimaryCLIPath: "chat +messages-send-card",
+		},
 		Description: "创建流式卡片，可在同一次调用中写入内容并结束",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1320,6 +1369,13 @@ var MessagesUpdateCard = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_update_card",
+			CanonicalPath:  "chat.shortcut_messages_update_card",
+			CLIPath:        "chat +messages-update-card",
+			PrimaryCLIPath: "chat +messages-update-card",
+		},
 		Description: "流式更新卡片内容（最后一次 --flow-status 应为 3）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1520,6 +1576,13 @@ var MessagesListPin = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_list_pin",
+			CanonicalPath:  "chat.shortcut_messages_list_pin",
+			CLIPath:        "chat +messages-list-pin",
+			PrimaryCLIPath: "chat +messages-list-pin",
+		},
 		Description: "拉取会话中钉住的消息列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

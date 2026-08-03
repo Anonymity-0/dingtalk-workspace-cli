@@ -55,6 +55,10 @@ type ContractDecl struct {
 // only fail later, opaquely, in generated artifacts. Failing at construction
 // keeps the error next to the authoring mistake and prevents silent drift
 // between cobra prose (Short/Long/Example) and the published Contract values.
+//
+// Identity is required on every declared Contract as a pin/self-description
+// against the reviewed CommandRegistry. Registry remains the identity
+// authority; binder/assembly reject any declared Identity that disagrees.
 func validateContractDecl(spec Spec) {
 	if spec.Contract.empty() {
 		return
@@ -85,10 +89,39 @@ func validateContractDecl(spec Spec) {
 		strings.TrimSpace(iface.Reason) == "" {
 		missing = append(missing, "Contract.Interface.Reason")
 	}
+	id := spec.Contract.Identity
+	productID := strings.TrimSpace(id.ProductID)
+	name := strings.TrimSpace(id.Name)
+	canonical := strings.TrimSpace(id.CanonicalPath)
+	cliPath := strings.TrimSpace(id.CLIPath)
+	primary := strings.TrimSpace(id.PrimaryCLIPath)
+	if productID == "" {
+		missing = append(missing, "Contract.Identity.ProductID")
+	}
+	if name == "" {
+		missing = append(missing, "Contract.Identity.Name")
+	}
+	if canonical == "" {
+		missing = append(missing, "Contract.Identity.CanonicalPath")
+	}
+	if cliPath == "" && primary == "" {
+		missing = append(missing, "Contract.Identity.CLIPath")
+	}
 	if len(missing) > 0 {
 		panic(fmt.Sprintf(
 			"command %q declares Contract but is missing %s: a declared Contract is the final source and must carry the full reviewed prose (no hints fallback)",
 			spec.Use, strings.Join(missing, ", ")))
+	}
+	wantCanonical := productID + "." + name
+	if canonical != wantCanonical {
+		panic(fmt.Sprintf(
+			"command %q Contract.Identity.CanonicalPath %q must equal ProductID.Name %q",
+			spec.Use, canonical, wantCanonical))
+	}
+	if cliPath != "" && primary != "" && cliPath != primary {
+		panic(fmt.Sprintf(
+			"command %q Contract.Identity.CLIPath %q and PrimaryCLIPath %q must agree on the primary leaf path",
+			spec.Use, cliPath, primary))
 	}
 }
 

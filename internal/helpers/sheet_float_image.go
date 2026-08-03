@@ -82,6 +82,13 @@ func newFloatImageCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_float_image",
+				CanonicalPath:  "sheet.create_float_image",
+				CLIPath:        "sheet create-float-image",
+				PrimaryCLIPath: "sheet create-float-image",
+			},
 			Description: "创建浮动图片（src 必须来自 media-upload 的 resourceUrl）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -130,6 +137,13 @@ floatImageId 可通过 list-float-images 获取。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_float_image",
+				CanonicalPath:  "sheet.get_float_image",
+				CLIPath:        "sheet get-float-image",
+				PrimaryCLIPath: "sheet get-float-image",
+			},
 			Description: "获取单张浮动图片详情。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -171,6 +185,13 @@ floatImageId 可通过 list-float-images 获取。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "list_float_images",
+				CanonicalPath:  "sheet.list_float_images",
+				CLIPath:        "sheet list-float-images",
+				PrimaryCLIPath: "sheet list-float-images",
+			},
 			Description: "列出工作表全部浮动图片。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -268,6 +289,13 @@ floatImageId 可通过 list-float-images 获取。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_float_image",
+				CanonicalPath:  "sheet.update_float_image",
+				CLIPath:        "sheet update-float-image",
+				PrimaryCLIPath: "sheet update-float-image",
+			},
 			Description: "更新浮动图片锚点、尺寸、偏移或资源路径。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -317,6 +345,13 @@ floatImageId 可通过 list-float-images 获取。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_float_image",
+				CanonicalPath:  "sheet.delete_float_image",
+				CLIPath:        "sheet delete-float-image",
+				PrimaryCLIPath: "sheet delete-float-image",
+			},
 			Description: "删除浮动图片（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

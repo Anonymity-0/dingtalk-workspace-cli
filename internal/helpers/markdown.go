@@ -91,6 +91,13 @@ func newMarkdownFetchCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "markdown",
+				Name:           "fetch",
+				CanonicalPath:  "markdown.fetch",
+				CLIPath:        "markdown fetch",
+				PrimaryCLIPath: "markdown fetch",
+			},
 			Description: "从钉盘或文档空间安全获取原生 Markdown 内容",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -246,6 +253,13 @@ func newMarkdownCreateCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "markdown",
+				Name:           "create",
+				CanonicalPath:  "markdown.create",
+				CLIPath:        "markdown create",
+				PrimaryCLIPath: "markdown create",
+			},
 			Description: "在钉盘或文档空间创建原生 Markdown 文件",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -413,6 +427,13 @@ func newMarkdownOverwriteCmd() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "markdown",
+				Name:           "overwrite",
+				CanonicalPath:  "markdown.overwrite",
+				CLIPath:        "markdown overwrite",
+				PrimaryCLIPath: "markdown overwrite",
+			},
 			Description: "预览并全量覆盖钉盘或文档空间中的原生 Markdown 文件",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -581,6 +602,13 @@ func newMarkdownPatchCmd() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "markdown",
+				Name:           "patch",
+				CanonicalPath:  "markdown.patch",
+				CLIPath:        "markdown patch",
+				PrimaryCLIPath: "markdown patch",
+			},
 			Description: "预览并以字面量或 RE2 正则局部替换远程 Markdown 文本",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{

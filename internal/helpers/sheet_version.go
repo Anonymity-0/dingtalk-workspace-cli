@@ -35,6 +35,13 @@ func newSheetVersionCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "version_save",
+				CanonicalPath:  "sheet.version_save",
+				CLIPath:        "sheet version save",
+				PrimaryCLIPath: "sheet version save",
+			},
 			Description: "手动保存表格版本快照",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -78,6 +85,13 @@ func newSheetVersionCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "version_list",
+				CanonicalPath:  "sheet.version_list",
+				CLIPath:        "sheet version list",
+				PrimaryCLIPath: "sheet version list",
+			},
 			Description: "查看表格历史版本列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -121,6 +135,13 @@ func newSheetVersionCmd() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "version_revert",
+				CanonicalPath:  "sheet.version_revert",
+				CLIPath:        "sheet version revert",
+				PrimaryCLIPath: "sheet version revert",
+			},
 			Description: "回滚表格到指定历史版本",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

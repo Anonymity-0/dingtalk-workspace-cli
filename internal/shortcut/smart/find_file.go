@@ -53,6 +53,13 @@ var FindFile = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_find_file",
+			CanonicalPath:  "drive.shortcut_find_file",
+			CLIPath:        "drive +find-file",
+			PrimaryCLIPath: "drive +find-file",
+		},
 		Description: "按名称关键词搜索钉盘文件并投影关键字段（只读）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

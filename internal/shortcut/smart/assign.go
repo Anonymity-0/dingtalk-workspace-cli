@@ -39,6 +39,13 @@ var Assign = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_assign",
+			CanonicalPath:  "todo.shortcut_assign",
+			CLIPath:        "todo +assign",
+			PrimaryCLIPath: "todo +assign",
+		},
 		Description: "按姓名给某人创建并指派一条待办（自动解析 userId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

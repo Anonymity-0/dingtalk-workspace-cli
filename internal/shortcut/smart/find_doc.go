@@ -54,6 +54,13 @@ var FindDoc = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_find_doc",
+			CanonicalPath:  "doc.shortcut_find_doc",
+			CLIPath:        "doc +find-doc",
+			PrimaryCLIPath: "doc +find-doc",
+		},
 		Description: "按关键词搜索云文档并投影关键字段（只读）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

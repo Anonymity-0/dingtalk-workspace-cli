@@ -53,6 +53,13 @@ var RecordShareLinks = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_record_share_links",
+			CanonicalPath:  "aitable.shortcut_record_share_links",
+			CLIPath:        "aitable +record-share-links",
+			PrimaryCLIPath: "aitable +record-share-links",
+		},
 		Description: "批量（可 >20 条）获取多维表记录分享链接：去重+分片+合并",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -54,6 +54,13 @@ var CreatedTodos = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_created_todos",
+			CanonicalPath:  "todo.shortcut_created_todos",
+			CLIPath:        "todo +created-todos",
+			PrimaryCLIPath: "todo +created-todos",
+		},
 		Description: "列出我创建的待办（我作为创建人 creator 发起的待办，而非分配给我执行的）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

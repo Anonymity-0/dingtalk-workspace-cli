@@ -49,6 +49,13 @@ var Conflicts = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_conflicts",
+			CanonicalPath:  "calendar.shortcut_conflicts",
+			CLIPath:        "calendar +conflicts",
+			PrimaryCLIPath: "calendar +conflicts",
+		},
 		Description: "检测我某天日程的时间冲突（重叠/双重预订，默认今天）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -63,6 +63,14 @@ func newTableCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "table_get",
+				CanonicalPath:  "sheet.table_get",
+				CLIPath:        "sheet table-get",
+				PrimaryCLIPath: "sheet table-get",
+				Aliases:        []string{"sheet table-read"},
+			},
 			Description: "读取结构化 table 区域数据。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -132,6 +140,14 @@ func newTableCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "table_put",
+				CanonicalPath:  "sheet.table_put",
+				CLIPath:        "sheet table-put",
+				PrimaryCLIPath: "sheet table-put",
+				Aliases:        []string{"sheet table-write"},
+			},
 			Description: "写入一个或多个结构化 table。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

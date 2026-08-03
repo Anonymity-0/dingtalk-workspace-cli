@@ -155,6 +155,13 @@ func newChartCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_list",
+				CanonicalPath:  "sheet.chart_list",
+				CLIPath:        "sheet chart list",
+				PrimaryCLIPath: "sheet chart list",
+			},
 			Description: "列出工作表浮动图表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -250,6 +257,13 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_create",
+				CanonicalPath:  "sheet.chart_create",
+				CLIPath:        "sheet chart create",
+				PrimaryCLIPath: "sheet chart create",
+			},
 			Description: "创建浮动图表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -327,6 +341,13 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_update",
+				CanonicalPath:  "sheet.chart_update",
+				CLIPath:        "sheet chart update",
+				PrimaryCLIPath: "sheet chart update",
+			},
 			Description: "更新浮动图表属性。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -370,6 +391,13 @@ chart-id 可通过 chart list 获取。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_delete",
+				CanonicalPath:  "sheet.chart_delete",
+				CLIPath:        "sheet chart delete",
+				PrimaryCLIPath: "sheet chart delete",
+			},
 			Description: "删除浮动图表（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

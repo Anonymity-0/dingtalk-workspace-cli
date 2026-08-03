@@ -165,6 +165,13 @@ func newPivotTableCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "list_pivot_tables",
+				CanonicalPath:  "sheet.list_pivot_tables",
+				CLIPath:        "sheet pivot-table list",
+				PrimaryCLIPath: "sheet pivot-table list",
+			},
 			Description: "列出或获取透视表信息。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -224,6 +231,13 @@ func newPivotTableCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_pivot_table",
+				CanonicalPath:  "sheet.create_pivot_table",
+				CLIPath:        "sheet pivot-table create",
+				PrimaryCLIPath: "sheet pivot-table create",
+			},
 			Description: "创建原生透视表。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -275,6 +289,13 @@ func newPivotTableCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_pivot_table",
+				CanonicalPath:  "sheet.update_pivot_table",
+				CLIPath:        "sheet pivot-table update",
+				PrimaryCLIPath: "sheet pivot-table update",
+			},
 			Description: "更新透视表配置。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -320,6 +341,13 @@ func newPivotTableCmd() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_pivot_table",
+				CanonicalPath:  "sheet.delete_pivot_table",
+				CLIPath:        "sheet pivot-table delete",
+				PrimaryCLIPath: "sheet pivot-table delete",
+			},
 			Description: "删除透视表（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

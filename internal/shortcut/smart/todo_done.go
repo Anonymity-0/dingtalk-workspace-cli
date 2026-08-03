@@ -53,6 +53,13 @@ var TodoDone = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "todo",
+			Name:           "shortcut_todo_done",
+			CanonicalPath:  "todo.shortcut_todo_done",
+			CLIPath:        "todo +todo-done",
+			PrimaryCLIPath: "todo +todo-done",
+		},
 		Description: "按标题关键词把我的某条待办标记完成（自动定位 taskId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

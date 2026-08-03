@@ -91,6 +91,13 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "devdoc",
+				Name:           "search_open_platform_docs_rag",
+				CanonicalPath:  "devdoc.search_open_platform_docs_rag",
+				CLIPath:        "devdoc article search",
+				PrimaryCLIPath: "devdoc article search",
+			},
 			Description: "搜索钉钉开放平台开发文档，返回资料与链接（不生成分析答案）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -168,6 +175,13 @@ func newDevDocSearchCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "search_open_platform_docs_rag",
+				CanonicalPath:  "dev.search_open_platform_docs_rag",
+				CLIPath:        "dev doc search",
+				PrimaryCLIPath: "dev doc search",
+			},
 			Description: "通过 dev 兼容入口搜索开放平台文档",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

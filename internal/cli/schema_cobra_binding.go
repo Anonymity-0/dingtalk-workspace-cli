@@ -884,5 +884,86 @@ func validateCommandRegistryAnnotation(command *cobra.Command, path string, spec
 			return fmt.Errorf("schema command registry %s path %q conflicts with native annotation %s", spec.CanonicalPath, path, nativeCanonical)
 		}
 	}
+	// ContractFinal.Identity is a pin against the reviewed registry entry.
+	// Registry remains authoritative; disagreement fails closed at bind time.
+	if final, ok := contractfinal.RuntimeContractFinal(command); ok {
+		if final.Identity == nil {
+			return fmt.Errorf("schema command registry %s path %q has ContractFinal without Identity", spec.CanonicalPath, path)
+		}
+		if err := validateContractIdentityAgainstCommandSpec(*final.Identity, spec, path); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// validateContractIdentityAgainstCommandSpec requires declared Identity fields
+// that map to the reviewed CommandRegistry entry to match exactly. Empty
+// optional fields (cli_name/group/source) are allowed and filled from the
+// bound entry at assembly; authored identity keys may not drift.
+func validateContractIdentityAgainstCommandSpec(id contract.ToolIdentitySpec, spec CommandSpec, path string) error {
+	productID, toolName, ok := splitManualSchemaCanonicalPath(spec.CanonicalPath)
+	if !ok {
+		return fmt.Errorf("schema command registry %s path %q has invalid canonical path", spec.CanonicalPath, path)
+	}
+	mismatches := make([]string, 0, 8)
+	check := func(field, declared, bound string) {
+		declared = strings.TrimSpace(declared)
+		bound = strings.TrimSpace(bound)
+		if declared != bound {
+			mismatches = append(mismatches, fmt.Sprintf("%s: declared %q, registry %q", field, declared, bound))
+		}
+	}
+	check("product_id", id.ProductID, productID)
+	check("name", id.Name, toolName)
+	check("canonical_path", id.CanonicalPath, spec.CanonicalPath)
+	primary := strings.TrimSpace(spec.PrimaryCLIPath)
+	cliPath := strings.TrimSpace(id.CLIPath)
+	primaryDecl := strings.TrimSpace(id.PrimaryCLIPath)
+	if cliPath == "" {
+		cliPath = primaryDecl
+	}
+	if primaryDecl == "" {
+		primaryDecl = cliPath
+	}
+	check("cli_path", cliPath, primary)
+	check("primary_cli_path", primaryDecl, primary)
+	// Registry decode defaults empty source_product_id to product_id; Identity
+	// may omit it. Normalize both to "" when equal to product_id.
+	check("source_product_id", normalizeIdentitySourceProduct(id.SourceProductID, productID), normalizeIdentitySourceProduct(spec.SourceProductID, productID))
+	if !stringSlicesEqualAsSet(id.Aliases, spec.Aliases) {
+		mismatches = append(mismatches, fmt.Sprintf("aliases: declared %v, registry %v", id.Aliases, spec.Aliases))
+	}
+	if len(mismatches) > 0 {
+		sort.Strings(mismatches)
+		return fmt.Errorf("schema command registry %s path %q Contract.Identity mismatch: %s", spec.CanonicalPath, path, strings.Join(mismatches, "; "))
+	}
+	return nil
+}
+
+func stringSlicesEqualAsSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	counts := make(map[string]int, len(a))
+	for _, v := range a {
+		counts[strings.TrimSpace(v)]++
+	}
+	for _, v := range b {
+		k := strings.TrimSpace(v)
+		counts[k]--
+		if counts[k] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeIdentitySourceProduct(sourceProductID, productID string) string {
+	sourceProductID = strings.TrimSpace(sourceProductID)
+	productID = strings.TrimSpace(productID)
+	if sourceProductID == "" || sourceProductID == productID {
+		return ""
+	}
+	return sourceProductID
 }

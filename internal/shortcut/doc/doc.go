@@ -41,6 +41,13 @@ var Search = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_search",
+			CanonicalPath:  "doc.shortcut_search",
+			CLIPath:        "doc +search",
+			PrimaryCLIPath: "doc +search",
+		},
 		Description: "按关键词搜索有权限的文档 (不传则返回最近访问)",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -206,6 +213,13 @@ var List = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_list",
+			CanonicalPath:  "doc.shortcut_list",
+			CLIPath:        "doc +list",
+			PrimaryCLIPath: "doc +list",
+		},
 		Description: "列出文件夹或知识库下的直接子节点",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -299,6 +313,13 @@ var Copy = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_copy",
+			CanonicalPath:  "doc.shortcut_copy",
+			CLIPath:        "doc +copy",
+			PrimaryCLIPath: "doc +copy",
+		},
 		Description: "复制文档/文件到指定文件夹或知识库",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -342,6 +363,13 @@ var Move = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_move",
+			CanonicalPath:  "doc.shortcut_move",
+			CLIPath:        "doc +move",
+			PrimaryCLIPath: "doc +move",
+		},
 		Description: "移动文档/文件到指定文件夹或知识库",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -393,6 +421,13 @@ var CommentList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_comment_list",
+			CanonicalPath:  "doc.shortcut_comment_list",
+			CLIPath:        "doc +comment-list",
+			PrimaryCLIPath: "doc +comment-list",
+		},
 		Description: "查询文档评论列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -447,6 +482,13 @@ var CommentCreate = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_comment_create",
+			CanonicalPath:  "doc.shortcut_comment_create",
+			CLIPath:        "doc +comment-create",
+			PrimaryCLIPath: "doc +comment-create",
+		},
 		Description: "在文档上创建一条评论",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -490,6 +532,13 @@ var CommentReply = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_comment_reply",
+			CanonicalPath:  "doc.shortcut_comment_reply",
+			CLIPath:        "doc +comment-reply",
+			PrimaryCLIPath: "doc +comment-reply",
+		},
 		Description: "回复文档中的一条评论",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -578,6 +627,13 @@ var ExportSubmit = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_export_submit",
+			CanonicalPath:  "doc.shortcut_export_submit",
+			CLIPath:        "doc +export-submit",
+			PrimaryCLIPath: "doc +export-submit",
+		},
 		Description: "提交在线文档导出任务 (docx/markdown/pdf)，返回 jobId",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -620,6 +676,13 @@ var ExportGet = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_export_get",
+			CanonicalPath:  "doc.shortcut_export_get",
+			CLIPath:        "doc +export-get",
+			PrimaryCLIPath: "doc +export-get",
+		},
 		Description: "根据 jobId 查询文档导出任务结果",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -656,6 +719,13 @@ var VersionSave = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_version_save",
+			CanonicalPath:  "doc.shortcut_version_save",
+			CLIPath:        "doc +version-save",
+			PrimaryCLIPath: "doc +version-save",
+		},
 		Description: "手动保存文档版本快照",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -690,6 +760,13 @@ var VersionList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_version_list",
+			CanonicalPath:  "doc.shortcut_version_list",
+			CLIPath:        "doc +version-list",
+			PrimaryCLIPath: "doc +version-list",
+		},
 		Description: "查看文档历史版本列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -733,6 +810,13 @@ var VersionRevert = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_version_revert",
+			CanonicalPath:  "doc.shortcut_version_revert",
+			CLIPath:        "doc +version-revert",
+			PrimaryCLIPath: "doc +version-revert",
+		},
 		Description: "回滚文档到指定历史版本",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -773,6 +857,13 @@ var TemplateList = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_template_list",
+			CanonicalPath:  "doc.shortcut_template_list",
+			CLIPath:        "doc +template-list",
+			PrimaryCLIPath: "doc +template-list",
+		},
 		Description: "获取文档模板列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -819,6 +910,13 @@ var TemplateSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_template_search",
+			CanonicalPath:  "doc.shortcut_template_search",
+			CLIPath:        "doc +template-search",
+			PrimaryCLIPath: "doc +template-search",
+		},
 		Description: "根据关键词搜索文档模板",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

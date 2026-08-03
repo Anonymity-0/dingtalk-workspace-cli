@@ -147,6 +147,13 @@ var Info = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_info",
+			CanonicalPath:  "drive.shortcut_info",
+			CLIPath:        "drive +info",
+			PrimaryCLIPath: "drive +info",
+		},
 		Description: "获取钉盘文件/文件夹元数据",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -213,6 +220,13 @@ var Search = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_search",
+			CanonicalPath:  "drive.shortcut_search",
+			CLIPath:        "drive +search",
+			PrimaryCLIPath: "drive +search",
+		},
 		Description: "搜索钉盘文件",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -365,6 +379,13 @@ var SearchDocs = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_search_docs",
+			CanonicalPath:  "drive.shortcut_search_docs",
+			CLIPath:        "drive +search-docs",
+			PrimaryCLIPath: "drive +search-docs",
+		},
 		Description: "搜索文档空间文档",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -466,6 +487,13 @@ var Copy = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_copy",
+			CanonicalPath:  "drive.shortcut_copy",
+			CLIPath:        "drive +copy",
+			PrimaryCLIPath: "drive +copy",
+		},
 		Description: "复制文件/文档到指定位置",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -510,6 +538,13 @@ var Move = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_move",
+			CanonicalPath:  "drive.shortcut_move",
+			CLIPath:        "drive +move",
+			PrimaryCLIPath: "drive +move",
+		},
 		Description: "移动文件/文档到指定位置",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -559,6 +594,13 @@ var Recent = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "drive",
+			Name:           "shortcut_recent",
+			CanonicalPath:  "drive.shortcut_recent",
+			CLIPath:        "drive +recent",
+			PrimaryCLIPath: "drive +recent",
+		},
 		Description: "获取最近访问/编辑的文档列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

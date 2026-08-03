@@ -58,6 +58,13 @@ var UnreadChats = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_unread_chats",
+			CanonicalPath:  "chat.shortcut_unread_chats",
+			CLIPath:        "chat +unread-chats",
+			PrimaryCLIPath: "chat +unread-chats",
+		},
 		Description: "列出我有未读消息的会话（投影会话名/未读数/会话ID）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

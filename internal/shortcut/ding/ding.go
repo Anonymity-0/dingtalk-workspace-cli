@@ -30,6 +30,13 @@ var List = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "ding",
+			Name:           "shortcut_list",
+			CanonicalPath:  "ding.shortcut_list",
+			CLIPath:        "ding +list",
+			PrimaryCLIPath: "ding +list",
+		},
 		Description: "查询 DING 消息列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -69,6 +76,13 @@ var ReceiverStatus = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "ding",
+			Name:           "shortcut_receiver_status",
+			CanonicalPath:  "ding.shortcut_receiver_status",
+			CLIPath:        "ding +receiver-status",
+			PrimaryCLIPath: "ding +receiver-status",
+		},
 		Description: "查询 DING 消息接收人已读状态",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -100,6 +114,13 @@ var SendPersonal = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "ding",
+			Name:           "shortcut_send_personal",
+			CanonicalPath:  "ding.shortcut_send_personal",
+			CLIPath:        "ding +send-personal",
+			PrimaryCLIPath: "ding +send-personal",
+		},
 		Description: "以本人身份发送 DING 给指定人",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -164,6 +185,13 @@ var RecallPersonal = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "ding",
+			Name:           "shortcut_recall_personal",
+			CanonicalPath:  "ding.shortcut_recall_personal",
+			CLIPath:        "ding +recall-personal",
+			PrimaryCLIPath: "ding +recall-personal",
+		},
 		Description: "撤回本人发起的 DING",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

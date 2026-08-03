@@ -415,6 +415,14 @@ func TestDeclareLeafMetadataInstallsConfirmSafetyForUserRequired(t *testing.T) {
 		},
 		Validate: func(*cobra.Command, []string) error { return nil },
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "test delete",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -482,6 +490,14 @@ func TestDeclareLeafMetadataDefersConfirmUntilCallTool(t *testing.T) {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "test delete",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -546,6 +562,14 @@ func TestDeclareLeafMetadataValidateRunsBeforeConfirmSafety(t *testing.T) {
 			return nil
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "test mutate",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

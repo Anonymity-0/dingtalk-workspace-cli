@@ -49,6 +49,13 @@ var DocAppend = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_doc_append",
+			CanonicalPath:  "doc.shortcut_doc_append",
+			CLIPath:        "doc +doc-append",
+			PrimaryCLIPath: "doc +doc-append",
+		},
 		Description: "在文档末尾追加一段文本（安全追加，不改动原有内容）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

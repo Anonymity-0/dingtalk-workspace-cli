@@ -53,6 +53,13 @@ var CancelEvent = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_cancel_event",
+			CanonicalPath:  "calendar.shortcut_cancel_event",
+			CLIPath:        "calendar +cancel-event",
+			PrimaryCLIPath: "calendar +cancel-event",
+		},
 		Description: "取消（删除）一个已有日程（删除前先确认它真实存在）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

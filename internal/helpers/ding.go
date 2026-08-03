@@ -88,6 +88,13 @@ func newDingCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "ding",
+				Name:           "send_ding_message",
+				CanonicalPath:  "ding.send_ding_message",
+				CLIPath:        "ding message send",
+				PrimaryCLIPath: "ding message send",
+			},
 			Description: "以企业机器人发送应用内/短信/电话 DING",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -143,6 +150,13 @@ func newDingCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "ding",
+				Name:           "recall_ding_message",
+				CanonicalPath:  "ding.recall_ding_message",
+				CLIPath:        "ding message recall",
+				PrimaryCLIPath: "ding message recall",
+			},
 			Description: "撤回已发送的机器人 DING",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

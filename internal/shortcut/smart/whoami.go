@@ -42,6 +42,13 @@ var Whoami = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "contact",
+			Name:           "shortcut_me",
+			CanonicalPath:  "contact.shortcut_me",
+			CLIPath:        "contact +me",
+			PrimaryCLIPath: "contact +me",
+		},
 		Description: "查看我自己的通讯录资料（姓名/userId/手机/部门/组织，干净投影）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

@@ -36,6 +36,13 @@ func newWorkbookCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_workspace_sheet",
+				CanonicalPath:  "sheet.create_workspace_sheet",
+				CLIPath:        "sheet create",
+				PrimaryCLIPath: "sheet create",
+			},
 			Description: "创建钉钉在线电子表格文档（axls），返回 nodeId。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -85,6 +92,13 @@ nodeId 支持传入文档链接 URL 或文档 ID（dentryUuid），系统自动�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_all_sheets",
+				CanonicalPath:  "sheet.get_all_sheets",
+				CLIPath:        "sheet list",
+				PrimaryCLIPath: "sheet list",
+			},
 			Description: "列出电子表格文档内全部工作表的 ID 与名称。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -144,6 +158,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "info",
+				CanonicalPath:  "sheet.info",
+				CLIPath:        "sheet info",
+				PrimaryCLIPath: "sheet info",
+			},
 			Description: "获取指定工作表详情（行列数、非空范围、合并区等）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -186,6 +207,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_sheet",
+				CanonicalPath:  "sheet.create_sheet",
+				CLIPath:        "sheet new",
+				PrimaryCLIPath: "sheet new",
+			},
 			Description: "在已有电子表格文档中新建工作表（Sheet 页签）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -300,6 +328,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_sheet",
+				CanonicalPath:  "sheet.update_sheet",
+				CLIPath:        "sheet update",
+				PrimaryCLIPath: "sheet update",
+			},
 			Description: "更新工作表属性：名称、位置、隐藏、标签色、冻结行列。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -374,6 +409,13 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "copy_sheet",
+				CanonicalPath:  "sheet.copy_sheet",
+				CLIPath:        "sheet copy",
+				PrimaryCLIPath: "sheet copy",
+			},
 			Description: "在同一文档内复制工作表（含数据与格式）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -420,6 +462,13 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_sheet",
+				CanonicalPath:  "sheet.delete_sheet",
+				CLIPath:        "sheet delete-sheet",
+				PrimaryCLIPath: "sheet delete-sheet",
+			},
 			Description: "删除指定工作表（不可逆，需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -465,6 +514,13 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "show_gridline",
+				CanonicalPath:  "sheet.show_gridline",
+				CLIPath:        "sheet show-gridline",
+				PrimaryCLIPath: "sheet show-gridline",
+			},
 			Description: "显示工作表网格线。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -510,6 +566,13 @@ name 不能包含 / \ ? * [ ] : 等特殊字符，最长 100 字符。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "hide_gridline",
+				CanonicalPath:  "sheet.hide_gridline",
+				CLIPath:        "sheet hide-gridline",
+				PrimaryCLIPath: "sheet hide-gridline",
+			},
 			Description: "隐藏工作表网格线。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

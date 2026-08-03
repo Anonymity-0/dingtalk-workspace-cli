@@ -63,6 +63,13 @@ var RecentMail = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "mail",
+			Name:           "shortcut_recent_mail",
+			CanonicalPath:  "mail.shortcut_recent_mail",
+			CLIPath:        "mail +recent-mail",
+			PrimaryCLIPath: "mail +recent-mail",
+		},
 		Description: "列出收件箱近期邮件会话并投影列表（主题/发件人/时间/threadId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

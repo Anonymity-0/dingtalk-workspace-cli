@@ -246,6 +246,13 @@ func newAisearchCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aisearch",
+				Name:           "enterprise_person_search",
+				CanonicalPath:  "aisearch.enterprise_person_search",
+				CLIPath:        "aisearch person",
+				PrimaryCLIPath: "aisearch person",
+			},
 			Description: "企业内找人：按姓名/部门/职位/职责/上下级/手机号/工号筛选",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -301,6 +308,13 @@ func newAisearchCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aisearch",
+				Name:           "search_enterprise",
+				CanonicalPath:  "aisearch.search_enterprise",
+				CLIPath:        "aisearch enterprise",
+				PrimaryCLIPath: "aisearch enterprise",
+			},
 			Description: "搜索企业内部知识与相关内容（文档/IM/日历/待办/纪要/日志/邮件等）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -358,6 +372,13 @@ func newAisearchCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aisearch",
+				Name:           "search_enterprise_behavior",
+				CanonicalPath:  "aisearch.search_enterprise_behavior",
+				CLIPath:        "aisearch behavior",
+				PrimaryCLIPath: "aisearch behavior",
+			},
 			Description: "搜索发送/创建/分享/编辑/接收等明确行为记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

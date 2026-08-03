@@ -43,6 +43,13 @@ func newSheetTemplateCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "template_list",
+				CanonicalPath:  "sheet.template_list",
+				CLIPath:        "sheet template list",
+				PrimaryCLIPath: "sheet template list",
+			},
 			Description: "分页列出可用表格模板。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -97,6 +104,13 @@ func newSheetTemplateCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "template_search",
+				CanonicalPath:  "sheet.template_search",
+				CLIPath:        "sheet template search",
+				PrimaryCLIPath: "sheet template search",
+			},
 			Description: "按关键词搜索表格模板。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -152,6 +166,13 @@ func newSheetTemplateCmd() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "template_apply",
+				CanonicalPath:  "sheet.template_apply",
+				CLIPath:        "sheet template apply",
+				PrimaryCLIPath: "sheet template apply",
+			},
 			Description: "应用模板创建新的电子表格文档。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

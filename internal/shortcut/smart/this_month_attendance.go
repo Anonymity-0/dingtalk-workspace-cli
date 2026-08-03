@@ -54,6 +54,13 @@ var ThisMonthAttendance = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_this_month",
+			CanonicalPath:  "attendance.shortcut_this_month",
+			CLIPath:        "attendance +this-month",
+			PrimaryCLIPath: "attendance +this-month",
+		},
 		Description: "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

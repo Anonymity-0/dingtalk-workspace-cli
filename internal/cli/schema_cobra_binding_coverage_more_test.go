@@ -360,4 +360,34 @@ func TestCrossPlatformCoverageCompatibilityPathAndHelperRemainingEdges(t *testin
 	if err := validateCommandRegistryAnnotation(incomplete, "sample run", spec); err == nil || !strings.Contains(err.Error(), "incomplete native") {
 		t.Fatalf("incomplete annotation error = %v", err)
 	}
+
+	// ContractFinal without Identity fails closed once a Contract is declared.
+	noIdentity := &cobra.Command{Use: "run"}
+	RegisterRuntimeContractFinal(noIdentity, contract.ContractFinalPayload{Description: "x"})
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(noIdentity) })
+	if err := validateCommandRegistryAnnotation(noIdentity, "sample run", spec); err == nil || !strings.Contains(err.Error(), "without Identity") {
+		t.Fatalf("missing Identity error = %v", err)
+	}
+	mismatch := &cobra.Command{Use: "run"}
+	RegisterRuntimeContractFinal(mismatch, contract.ContractFinalPayload{
+		Identity: &contract.ToolIdentitySpec{
+			ProductID: "other", Name: "run", CanonicalPath: "other.run",
+			CLIPath: "sample run", PrimaryCLIPath: "sample run",
+		},
+	})
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(mismatch) })
+	if err := validateCommandRegistryAnnotation(mismatch, "sample run", spec); err == nil || !strings.Contains(err.Error(), "Contract.Identity mismatch") {
+		t.Fatalf("Identity mismatch error = %v", err)
+	}
+	aligned := &cobra.Command{Use: "run"}
+	RegisterRuntimeContractFinal(aligned, contract.ContractFinalPayload{
+		Identity: &contract.ToolIdentitySpec{
+			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
+			CLIPath: "sample run", PrimaryCLIPath: "sample run",
+		},
+	})
+	t.Cleanup(func() { ClearRuntimeContractFinalForTest(aligned) })
+	if err := validateCommandRegistryAnnotation(aligned, "sample run", spec); err != nil {
+		t.Fatalf("aligned Identity must pass: %v", err)
+	}
 }

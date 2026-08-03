@@ -318,6 +318,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "list_calendar_events",
+				CanonicalPath:  "calendar.list_calendar_events",
+				CLIPath:        "calendar event list",
+				PrimaryCLIPath: "calendar event list",
+			},
 			Description: "查询当前用户日程列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -366,6 +373,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "get_calendar_detail",
+				CanonicalPath:  "calendar.get_calendar_detail",
+				CLIPath:        "calendar event get",
+				PrimaryCLIPath: "calendar event get",
+			},
 			Description: "查询日程详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -475,6 +489,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "create_calendar_event",
+				CanonicalPath:  "calendar.create_calendar_event",
+				CLIPath:        "calendar event create",
+				PrimaryCLIPath: "calendar event create",
+			},
 			Description: "创建日程",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -567,6 +588,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "update_calendar_event",
+				CanonicalPath:  "calendar.update_calendar_event",
+				CLIPath:        "calendar event update",
+				PrimaryCLIPath: "calendar event update",
+			},
 			Description: "修改日程",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -619,6 +647,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "delete_calendar_event",
+				CanonicalPath:  "calendar.delete_calendar_event",
+				CLIPath:        "calendar event delete",
+				PrimaryCLIPath: "calendar event delete",
+			},
 			Description: "删除指定日程",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -673,6 +708,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "list_suggested_event_times",
+				CanonicalPath:  "calendar.list_suggested_event_times",
+				CLIPath:        "calendar event suggest",
+				PrimaryCLIPath: "calendar event suggest",
+			},
 			Description: "建议日程时间",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -740,6 +782,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "respond",
+				CanonicalPath:  "calendar.respond",
+				CLIPath:        "calendar event respond",
+				PrimaryCLIPath: "calendar event respond",
+			},
 			Description: "响应日程",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -800,6 +849,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "get_calendar_participants",
+				CanonicalPath:  "calendar.get_calendar_participants",
+				CLIPath:        "calendar attendee list",
+				PrimaryCLIPath: "calendar attendee list",
+			},
 			Description: "获取日程参与人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -855,6 +911,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "add_calendar_participant",
+				CanonicalPath:  "calendar.add_calendar_participant",
+				CLIPath:        "calendar attendee add",
+				PrimaryCLIPath: "calendar attendee add",
+			},
 			Description: "添加日程参与人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -913,6 +976,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "remove_calendar_participant",
+				CanonicalPath:  "calendar.remove_calendar_participant",
+				CLIPath:        "calendar attendee delete",
+				PrimaryCLIPath: "calendar attendee delete",
+			},
 			Description: "删除日程参与人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1068,6 +1138,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "query_available_meeting_room",
+				CanonicalPath:  "calendar.query_available_meeting_room",
+				CLIPath:        "calendar room search",
+				PrimaryCLIPath: "calendar room search",
+			},
 			Description: "查询空闲或按名搜索会议室",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1127,6 +1204,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "add_meeting_room",
+				CanonicalPath:  "calendar.add_meeting_room",
+				CLIPath:        "calendar room add",
+				PrimaryCLIPath: "calendar room add",
+			},
 			Description: "为日程预订会议室",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1183,6 +1267,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "delete_meeting_room",
+				CanonicalPath:  "calendar.delete_meeting_room",
+				CLIPath:        "calendar room delete",
+				PrimaryCLIPath: "calendar room delete",
+			},
 			Description: "移除日程中的会议室",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1230,6 +1321,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "list_meeting_room_groups",
+				CanonicalPath:  "calendar.list_meeting_room_groups",
+				CLIPath:        "calendar room list-groups",
+				PrimaryCLIPath: "calendar room list-groups",
+			},
 			Description: "查询会议室分组列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1313,6 +1411,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "query_busy_status",
+				CanonicalPath:  "calendar.query_busy_status",
+				CLIPath:        "calendar busy search",
+				PrimaryCLIPath: "calendar busy search",
+			},
 			Description: "查询用户或会议室闲忙",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1390,6 +1495,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "add_attachments",
+				CanonicalPath:  "calendar.add_attachments",
+				CLIPath:        "calendar attachment add",
+				PrimaryCLIPath: "calendar attachment add",
+			},
 			Description: "为日程添加附件",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1434,6 +1546,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "list_acls",
+				CanonicalPath:  "calendar.list_acls",
+				CLIPath:        "calendar acl list",
+				PrimaryCLIPath: "calendar acl list",
+			},
 			Description: "查询主日历访问控制列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1519,6 +1638,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "list_calendars",
+				CanonicalPath:  "calendar.list_calendars",
+				CLIPath:        "calendar book list",
+				PrimaryCLIPath: "calendar book list",
+			},
 			Description: "查询用户日历列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1557,6 +1683,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "get_calendar",
+				CanonicalPath:  "calendar.get_calendar",
+				CLIPath:        "calendar book get",
+				PrimaryCLIPath: "calendar book get",
+			},
 			Description: "查询指定日历信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1601,6 +1734,13 @@ func newCalendarCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "search_calendar",
+				CanonicalPath:  "calendar.search_calendar",
+				CLIPath:        "calendar book search",
+				PrimaryCLIPath: "calendar book search",
+			},
 			Description: "搜索日历本列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

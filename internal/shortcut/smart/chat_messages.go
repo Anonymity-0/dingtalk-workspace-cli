@@ -67,6 +67,13 @@ var ChatMessages = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_messages",
+			CanonicalPath:  "chat.shortcut_chat_messages",
+			CLIPath:        "chat +chat-messages",
+			PrimaryCLIPath: "chat +chat-messages",
+		},
 		Description: "拉取某个会话（群聊或单聊）的消息列表并投影出发言人/文本/时间",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

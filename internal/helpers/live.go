@@ -43,6 +43,13 @@ func newLiveCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "live",
+				Name:           "get_my_lives",
+				CanonicalPath:  "live.get_my_lives",
+				CLIPath:        "live stream list",
+				PrimaryCLIPath: "live stream list",
+			},
 			Description: "查看当前用户发起的直播列表与基础统计",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

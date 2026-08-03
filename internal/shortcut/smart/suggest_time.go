@@ -46,6 +46,13 @@ var SuggestTime = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "calendar",
+			Name:           "shortcut_suggest_time",
+			CanonicalPath:  "calendar.shortcut_suggest_time",
+			CLIPath:        "calendar +suggest-time",
+			PrimaryCLIPath: "calendar +suggest-time",
+		},
 		Description: "按姓名解析多位参与者，推荐大家都有空的可开会时间段（自动解析 userId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

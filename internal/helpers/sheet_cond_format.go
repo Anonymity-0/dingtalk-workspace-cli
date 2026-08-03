@@ -44,6 +44,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_cond_format",
+				CanonicalPath:  "sheet.get_cond_format",
+				CLIPath:        "sheet cond-format list",
+				PrimaryCLIPath: "sheet cond-format list",
+			},
 			Description: "列出工作表条件格式规则。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -189,6 +196,13 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_cond_format",
+				CanonicalPath:  "sheet.create_cond_format",
+				CLIPath:        "sheet cond-format create",
+				PrimaryCLIPath: "sheet cond-format create",
+			},
 			Description: "创建条件格式规则。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -298,6 +312,13 @@ ruleId 可通过 cond-format list 获取。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "update_cond_format",
+				CanonicalPath:  "sheet.update_cond_format",
+				CLIPath:        "sheet cond-format update",
+				PrimaryCLIPath: "sheet cond-format update",
+			},
 			Description: "更新已有条件格式规则。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -353,6 +374,13 @@ ruleId 可通过 cond-format list 获取。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "delete_cond_format",
+				CanonicalPath:  "sheet.delete_cond_format",
+				CLIPath:        "sheet cond-format delete",
+				PrimaryCLIPath: "sheet cond-format delete",
+			},
 			Description: "删除条件格式规则（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

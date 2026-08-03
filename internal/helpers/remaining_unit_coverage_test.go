@@ -287,6 +287,14 @@ func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testi
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "create_thing",
+				CanonicalPath:  "dev.create_thing",
+				CLIPath:        "dev create",
+				PrimaryCLIPath: "dev create",
+			},
+
 			Description: "test sheet delete",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

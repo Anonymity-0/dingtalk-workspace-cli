@@ -139,6 +139,13 @@ var SpaceSearch = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "wiki",
+			Name:           "shortcut_space_search",
+			CanonicalPath:  "wiki.shortcut_space_search",
+			CLIPath:        "wiki +space-search",
+			PrimaryCLIPath: "wiki +space-search",
+		},
 		Description: "搜索知识库",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

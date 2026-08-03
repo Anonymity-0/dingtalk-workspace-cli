@@ -76,6 +76,13 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_read",
+				CanonicalPath:  "sheet.range_read",
+				CLIPath:        "sheet range read",
+				PrimaryCLIPath: "sheet range read",
+			},
 			Description: "读取工作表指定范围的单元格数据（可取格式化值/原始值/公式）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -238,6 +245,13 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_update",
+				CanonicalPath:  "sheet.range_update",
+				CLIPath:        "sheet range update",
+				PrimaryCLIPath: "sheet range update",
+			},
 			Description: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或含公式时使用。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -301,6 +315,13 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "clear_range",
+				CanonicalPath:  "sheet.clear_range",
+				CLIPath:        "sheet range clear",
+				PrimaryCLIPath: "sheet range clear",
+			},
 			Description: "清除指定范围的内容、格式或全部（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -367,6 +388,13 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "sort_range",
+				CanonicalPath:  "sheet.sort_range",
+				CLIPath:        "sheet range sort",
+				PrimaryCLIPath: "sheet range sort",
+			},
 			Description: "对指定区域排序（改变物理行序）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -428,6 +456,13 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "fill_range",
+				CanonicalPath:  "sheet.fill_range",
+				CLIPath:        "sheet range fill",
+				PrimaryCLIPath: "sheet range fill",
+			},
 			Description: "按源区域对目标区域做自动填充（复制或序列）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -494,6 +529,13 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_copy_to",
+				CanonicalPath:  "sheet.range_copy_to",
+				CLIPath:        "sheet range copy-to",
+				PrimaryCLIPath: "sheet range copy-to",
+			},
 			Description: "将源范围复制到目标位置。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -558,6 +600,13 @@ column 使用字母列名（如 "A"、"B"、"AA"），表示排序的目标列�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "range_move_to",
+				CanonicalPath:  "sheet.range_move_to",
+				CLIPath:        "sheet range move-to",
+				PrimaryCLIPath: "sheet range move-to",
+			},
 			Description: "将源范围移动到目标位置（需确认后加 --yes）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

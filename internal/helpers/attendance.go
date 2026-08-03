@@ -578,6 +578,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "get_user_attendance_record",
+				CanonicalPath:  "attendance.get_user_attendance_record",
+				CLIPath:        "attendance record get",
+				PrimaryCLIPath: "attendance record get",
+			},
 			Description: "查询个人考勤详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -671,6 +678,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "check_result",
+				CanonicalPath:  "attendance.check_result",
+				CLIPath:        "attendance check result",
+				PrimaryCLIPath: "attendance check result",
+			},
 			Description: "查询打卡结果",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -741,6 +755,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "check_record",
+				CanonicalPath:  "attendance.check_record",
+				CLIPath:        "attendance check record",
+				PrimaryCLIPath: "attendance check record",
+			},
 			Description: "查询打卡记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -874,6 +895,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "approve_list",
+				CanonicalPath:  "attendance.approve_list",
+				CLIPath:        "attendance approve list",
+				PrimaryCLIPath: "attendance approve list",
+			},
 			Description: "查询考勤相关审批单记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -933,6 +961,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "approve_templates",
+				CanonicalPath:  "attendance.approve_templates",
+				CLIPath:        "attendance approve templates",
+				PrimaryCLIPath: "attendance approve templates",
+			},
 			Description: "查询考勤审批模板和提交入口",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1000,6 +1035,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "batch_get_employee_shifts",
+				CanonicalPath:  "attendance.batch_get_employee_shifts",
+				CLIPath:        "attendance shift list",
+				PrimaryCLIPath: "attendance shift list",
+			},
 			Description: "批量查询员工班次信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1072,6 +1114,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "class_search",
+				CanonicalPath:  "attendance.class_search",
+				CLIPath:        "attendance class search",
+				PrimaryCLIPath: "attendance class search",
+			},
 			Description: "查询班次定义列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1116,6 +1165,13 @@ func newAttendanceCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "class_get",
+				CanonicalPath:  "attendance.class_get",
+				CLIPath:        "attendance class get",
+				PrimaryCLIPath: "attendance class get",
+			},
 			Description: "查询单个班次定义详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1219,6 +1275,13 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "class_create",
+				CanonicalPath:  "attendance.class_create",
+				CLIPath:        "attendance class create",
+				PrimaryCLIPath: "attendance class create",
+			},
 			Description: "创建班次定义",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1321,6 +1384,13 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "class_update",
+				CanonicalPath:  "attendance.class_update",
+				CLIPath:        "attendance class update",
+				PrimaryCLIPath: "attendance class update",
+			},
 			Description: "更新班次定义",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1370,6 +1440,13 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "adjustment_get",
+				CanonicalPath:  "attendance.adjustment_get",
+				CLIPath:        "attendance adjustment get",
+				PrimaryCLIPath: "attendance adjustment get",
+			},
 			Description: "查询单个补卡规则详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1428,6 +1505,13 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "adjustment_search",
+				CanonicalPath:  "attendance.adjustment_search",
+				CLIPath:        "attendance adjustment search",
+				PrimaryCLIPath: "attendance adjustment search",
+			},
 			Description: "查询补卡规则列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1481,6 +1565,13 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "overtime_get",
+				CanonicalPath:  "attendance.overtime_get",
+				CLIPath:        "attendance overtime get",
+				PrimaryCLIPath: "attendance overtime get",
+			},
 			Description: "查询单个加班规则详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1539,6 +1630,13 @@ checkTime 字段统一使用 "HH:mm" 格式（如 "09:00"），CLI 自动转换�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "overtime_search",
+				CanonicalPath:  "attendance.overtime_search",
+				CLIPath:        "attendance overtime search",
+				PrimaryCLIPath: "attendance overtime search",
+			},
 			Description: "查询加班规则列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1635,6 +1733,13 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "group_search",
+				CanonicalPath:  "attendance.group_search",
+				CLIPath:        "attendance group search",
+				PrimaryCLIPath: "attendance group search",
+			},
 			Description: "查询考勤组列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1684,6 +1789,13 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "group_get",
+				CanonicalPath:  "attendance.group_get",
+				CLIPath:        "attendance group get",
+				PrimaryCLIPath: "attendance group get",
+			},
 			Description: "查询考勤组完整详情",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1742,6 +1854,13 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "group_filtered_get",
+				CanonicalPath:  "attendance.group_filtered_get",
+				CLIPath:        "attendance group filtered-get",
+				PrimaryCLIPath: "attendance group filtered-get",
+			},
 			Description: "查询考勤组指定字段子集",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -1821,6 +1940,13 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "group_update_members",
+				CanonicalPath:  "attendance.group_update_members",
+				CLIPath:        "attendance group update-members",
+				PrimaryCLIPath: "attendance group update-members",
+			},
 			Description: "增删考勤组成员",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2066,6 +2192,13 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "group_create",
+				CanonicalPath:  "attendance.group_create",
+				CLIPath:        "attendance group create",
+				PrimaryCLIPath: "attendance group create",
+			},
 			Description: "创建考勤组",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2277,6 +2410,13 @@ CLI 会在未传筛选条件时补齐默认查询字段，在未传分页参数�
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "group_update",
+				CanonicalPath:  "attendance.group_update",
+				CLIPath:        "attendance group update",
+				PrimaryCLIPath: "attendance group update",
+			},
 			Description: "更新考勤组配置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2334,6 +2474,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "get_attendance_summary",
+				CanonicalPath:  "attendance.get_attendance_summary",
+				CLIPath:        "attendance summary",
+				PrimaryCLIPath: "attendance summary",
+			},
 			Description: "查询个人考勤统计摘要",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2395,6 +2542,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "query_attendance_group_or_rules",
+				CanonicalPath:  "attendance.query_attendance_group_or_rules",
+				CLIPath:        "attendance rules",
+				PrimaryCLIPath: "attendance rules",
+			},
 			Description: "查询考勤组与考勤规则",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -2533,6 +2687,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "selfsetting_get",
+				CanonicalPath:  "attendance.selfsetting_get",
+				CLIPath:        "attendance selfsetting get",
+				PrimaryCLIPath: "attendance selfsetting get",
+			},
 			Description: "查询个人考勤设置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2636,6 +2797,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "selfsetting_save",
+				CanonicalPath:  "attendance.selfsetting_save",
+				CLIPath:        "attendance selfsetting save",
+				PrimaryCLIPath: "attendance selfsetting save",
+			},
 			Description: "更新个人考勤设置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2708,6 +2876,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "globalsetting_get",
+				CanonicalPath:  "attendance.globalsetting_get",
+				CLIPath:        "attendance globalsetting get",
+				PrimaryCLIPath: "attendance globalsetting get",
+			},
 			Description: "查询企业全局考勤设置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2793,6 +2968,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "globalsetting_save",
+				CanonicalPath:  "attendance.globalsetting_save",
+				CLIPath:        "attendance globalsetting save",
+				PrimaryCLIPath: "attendance globalsetting save",
+			},
 			Description: "更新企业全局考勤设置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2846,6 +3028,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "report_columns",
+				CanonicalPath:  "attendance.report_columns",
+				CLIPath:        "attendance report columns",
+				PrimaryCLIPath: "attendance report columns",
+			},
 			Description: "查询可查看的考勤报表字段",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2919,6 +3108,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "report_query_data",
+				CanonicalPath:  "attendance.report_query_data",
+				CLIPath:        "attendance report query-data",
+				PrimaryCLIPath: "attendance report query-data",
+			},
 			Description: "查询考勤报表数据",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -2991,6 +3187,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "report_query_leave",
+				CanonicalPath:  "attendance.report_query_leave",
+				CLIPath:        "attendance report query-leave",
+				PrimaryCLIPath: "attendance report query-leave",
+			},
 			Description: "查询假期报表数据",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3050,6 +3253,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "vacation_types",
+				CanonicalPath:  "attendance.vacation_types",
+				CLIPath:        "attendance vacation types",
+				PrimaryCLIPath: "attendance vacation types",
+			},
 			Description: "查询可用假期类型",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3106,6 +3316,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "vacation_balance",
+				CanonicalPath:  "attendance.vacation_balance",
+				CLIPath:        "attendance vacation balance",
+				PrimaryCLIPath: "attendance vacation balance",
+			},
 			Description: "查询员工假期余额",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3169,6 +3386,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "vacation_records",
+				CanonicalPath:  "attendance.vacation_records",
+				CLIPath:        "attendance vacation records",
+				PrimaryCLIPath: "attendance vacation records",
+			},
 			Description: "查询假期余额变更记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3364,6 +3588,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "vacation_update_type",
+				CanonicalPath:  "attendance.vacation_update_type",
+				CLIPath:        "attendance vacation update-type",
+				PrimaryCLIPath: "attendance vacation update-type",
+			},
 			Description: "更新假期类型规则",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3461,6 +3692,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "vacation_save_balance",
+				CanonicalPath:  "attendance.vacation_save_balance",
+				CLIPath:        "attendance vacation save-balance",
+				PrimaryCLIPath: "attendance vacation save-balance",
+			},
 			Description: "调整员工假期余额",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3624,6 +3862,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "schedule_import",
+				CanonicalPath:  "attendance.schedule_import",
+				CLIPath:        "attendance schedule import",
+				PrimaryCLIPath: "attendance schedule import",
+			},
 			Description: "导入排班制考勤组排班记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -3711,6 +3956,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "schedule_get",
+				CanonicalPath:  "attendance.schedule_get",
+				CLIPath:        "attendance schedule get",
+				PrimaryCLIPath: "attendance schedule get",
+			},
 			Description: "查询员工排班记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -4035,6 +4287,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "checkin_records",
+				CanonicalPath:  "attendance.checkin_records",
+				CLIPath:        "attendance checkin records",
+				PrimaryCLIPath: "attendance checkin records",
+			},
 			Description: "查询打卡流水记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -4155,6 +4414,13 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "attendance",
+				Name:           "boss_check",
+				CanonicalPath:  "attendance.boss_check",
+				CLIPath:        "attendance boss-check",
+				PrimaryCLIPath: "attendance boss-check",
+			},
 			Description: "管理员修正员工打卡结果",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",

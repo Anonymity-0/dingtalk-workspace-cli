@@ -101,6 +101,13 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "get_available_report_templates",
+				CanonicalPath:  "report.get_available_report_templates",
+				CLIPath:        "report template list",
+				PrimaryCLIPath: "report template list",
+			},
 			Description: "获取当前员工可使用的日志模版列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -131,6 +138,14 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "get_template_details_by_name",
+				CanonicalPath:  "report.get_template_details_by_name",
+				CLIPath:        "report template get",
+				PrimaryCLIPath: "report template get",
+				Aliases:        []string{"report template detail"},
+			},
 			Description: "按名称获取日志模版字段定义",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -179,6 +194,14 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "get_report_entry_details",
+				CanonicalPath:  "report.get_report_entry_details",
+				CLIPath:        "report entry get",
+				PrimaryCLIPath: "report entry get",
+				Aliases:        []string{"report detail"},
+			},
 			Description: "获取指定一篇日志的详情信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -217,6 +240,14 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "get_report_statistics_by_id",
+				CanonicalPath:  "report.get_report_statistics_by_id",
+				CLIPath:        "report entry stats",
+				PrimaryCLIPath: "report entry stats",
+				Aliases:        []string{"report stats"},
+			},
 			Description: "获取指定日志的统计数据",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -265,6 +296,14 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "create_report",
+				CanonicalPath:  "report.create_report",
+				CLIPath:        "report entry submit",
+				PrimaryCLIPath: "report entry submit",
+				Aliases:        []string{"report create"},
+			},
 			Description: "按模版提交一份新日报",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -315,6 +354,14 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "get_received_report_list",
+				CanonicalPath:  "report.get_received_report_list",
+				CLIPath:        "report inbox list",
+				PrimaryCLIPath: "report inbox list",
+				Aliases:        []string{"report list"},
+			},
 			Description: "查询当前人收到的日志列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -357,6 +404,14 @@ func newReportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "report",
+				Name:           "get_send_report_list",
+				CanonicalPath:  "report.get_send_report_list",
+				CLIPath:        "report outbox list",
+				PrimaryCLIPath: "report outbox list",
+				Aliases:        []string{"report created", "report sent"},
+			},
 			Description: "查询当前人创建的日志详情列表",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

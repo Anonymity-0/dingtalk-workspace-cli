@@ -292,6 +292,13 @@ func newMediaCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "media_upload",
+				CanonicalPath:  "sheet.media_upload",
+				CLIPath:        "sheet media-upload",
+				PrimaryCLIPath: "sheet media-upload",
+			},
 			Description: "上传附件到表格并返回 resourceUrl（浮动图片前置步骤）。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
@@ -345,6 +352,13 @@ func newMediaCmds() []*cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "write_image",
+				CanonicalPath:  "sheet.write_image",
+				CLIPath:        "sheet write-image",
+				PrimaryCLIPath: "sheet write-image",
+			},
 			Description: "上传图片并写入指定单元格（占单元格内容）。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{

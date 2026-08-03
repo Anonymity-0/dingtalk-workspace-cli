@@ -51,6 +51,13 @@ var ListTables = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_list_tables",
+			CanonicalPath:  "aitable.shortcut_list_tables",
+			CLIPath:        "aitable +list-tables",
+			PrimaryCLIPath: "aitable +list-tables",
+		},
 		Description: "列出某个多维表(base)里的所有数据表（只读，投影 tableId/tableName）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

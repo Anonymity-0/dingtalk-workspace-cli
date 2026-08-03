@@ -196,6 +196,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "create_wikiSpace",
+				CanonicalPath:  "wiki.create_wikiSpace",
+				CLIPath:        "wiki space create",
+				PrimaryCLIPath: "wiki space create",
+			},
 			Description: "创建一个新的钉钉文档知识库（WikiSpace）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -244,6 +251,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "get_wikiSpace",
+				CanonicalPath:  "wiki.get_wikiSpace",
+				CLIPath:        "wiki space get",
+				PrimaryCLIPath: "wiki space get",
+			},
 			Description: "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -317,6 +331,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "list_wikiSpaces",
+				CanonicalPath:  "wiki.list_wikiSpaces",
+				CLIPath:        "wiki space list",
+				PrimaryCLIPath: "wiki space list",
+			},
 			Description: "列出当前用户可访问的知识库或钉盘空间",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -377,6 +398,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "search_wikiSpaces",
+				CanonicalPath:  "wiki.search_wikiSpaces",
+				CLIPath:        "wiki space search",
+				PrimaryCLIPath: "wiki space search",
+			},
 			Description: "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -452,6 +480,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "delete_wikiSpace",
+				CanonicalPath:  "wiki.delete_wikiSpace",
+				CLIPath:        "wiki space delete",
+				PrimaryCLIPath: "wiki space delete",
+			},
 			Description: "将指定知识库移入回收站",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -536,6 +571,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "add_member",
+				CanonicalPath:  "wiki.add_member",
+				CLIPath:        "wiki member add",
+				PrimaryCLIPath: "wiki member add",
+			},
 			Description: "为指定知识库添加一个或多个成员，并授予指定角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -612,6 +654,13 @@ func newWikiCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "update_member",
+				CanonicalPath:  "wiki.update_member",
+				CLIPath:        "wiki member update",
+				PrimaryCLIPath: "wiki member update",
+			},
 			Description: "更新指定知识库已有成员的角色",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -679,6 +728,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "list_member",
+				CanonicalPath:  "wiki.list_member",
+				CLIPath:        "wiki member list",
+				PrimaryCLIPath: "wiki member list",
+			},
 			Description: "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -742,6 +798,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "remove_member",
+				CanonicalPath:  "wiki.remove_member",
+				CLIPath:        "wiki member remove",
+				PrimaryCLIPath: "wiki member remove",
+			},
 			Description: "从指定知识库中移除一个或多个成员（仅支持 USER 类型）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -830,6 +893,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "list_nodes",
+				CanonicalPath:  "wiki.list_nodes",
+				CLIPath:        "wiki node list",
+				PrimaryCLIPath: "wiki node list",
+			},
 			Description: "列出指定知识库下的直接子节点（文档、文件夹、表格等）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -909,6 +979,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "create_file",
+				CanonicalPath:  "wiki.create_file",
+				CLIPath:        "wiki node create",
+				PrimaryCLIPath: "wiki node create",
+			},
 			Description: "在指定知识库中创建文档、文件夹或其他类型的节点",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -976,6 +1053,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "node_copy",
+				CanonicalPath:  "wiki.node_copy",
+				CLIPath:        "wiki node copy",
+				PrimaryCLIPath: "wiki node copy",
+			},
 			Description: "将知识库中的节点复制到指定位置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1041,6 +1125,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "node_move",
+				CanonicalPath:  "wiki.node_move",
+				CLIPath:        "wiki node move",
+				PrimaryCLIPath: "wiki node move",
+			},
 			Description: "将知识库中的节点移动到指定位置",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1094,6 +1185,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "delete_document",
+				CanonicalPath:  "wiki.delete_document",
+				CLIPath:        "wiki node delete",
+				PrimaryCLIPath: "wiki node delete",
+			},
 			Description: "将知识库中的节点移入回收站",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
@@ -1158,6 +1256,13 @@ ORG 类型授权不会出现在查询结果中。`,
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "node_search",
+				CanonicalPath:  "wiki.node_search",
+				CLIPath:        "wiki node search",
+				PrimaryCLIPath: "wiki node search",
+			},
 			Description: "在指定知识库内搜索文档/文件夹/表格等节点",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",

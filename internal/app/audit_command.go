@@ -87,6 +87,13 @@ func newAuditTailCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "audit",
+				Name:           "tail",
+				CanonicalPath:  "audit.tail",
+				CLIPath:        "audit tail",
+				PrimaryCLIPath: "audit tail",
+			},
 			Description: "查看本地操作审计日志最近 N 条记录",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",
@@ -148,6 +155,13 @@ func newAuditExportCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "audit",
+				Name:           "export",
+				CanonicalPath:  "audit.export",
+				CLIPath:        "audit export",
+				PrimaryCLIPath: "audit export",
+			},
 			Description: "按日期范围导出本地操作审计日志（jsonl 或 csv）",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",
@@ -227,6 +241,13 @@ func newAuditVerifyCommand() *cobra.Command {
 			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "audit",
+				Name:           "verify",
+				CanonicalPath:  "audit.verify",
+				CLIPath:        "audit verify",
+				PrimaryCLIPath: "audit verify",
+			},
 			Description: "校验本地审计日志文件的哈希链完整性",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",

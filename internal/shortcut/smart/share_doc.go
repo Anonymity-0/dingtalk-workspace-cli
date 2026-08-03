@@ -47,6 +47,13 @@ var ShareDoc = shortcut.Shortcut{
 		Confirmation: "user_required", Idempotency: "unknown",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "doc",
+			Name:           "shortcut_share_doc",
+			CanonicalPath:  "doc.shortcut_share_doc",
+			CLIPath:        "doc +share-doc",
+			PrimaryCLIPath: "doc +share-doc",
+		},
 		Description: "按姓名把文档链接私信发给某人（自动解析 userId）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",

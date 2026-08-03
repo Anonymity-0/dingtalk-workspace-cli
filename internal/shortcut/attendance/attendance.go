@@ -176,6 +176,13 @@ var CheckResult = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_check_result",
+			CanonicalPath:  "attendance.shortcut_check_result",
+			CLIPath:        "attendance +check-result",
+			PrimaryCLIPath: "attendance +check-result",
+		},
 		Description: "查询用户打卡结果（迟到/早退/缺卡等）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -231,6 +238,13 @@ var CheckRecord = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_check_record",
+			CanonicalPath:  "attendance.shortcut_check_record",
+			CLIPath:        "attendance +check-record",
+			PrimaryCLIPath: "attendance +check-record",
+		},
 		Description: "查询用户打卡流水（打卡时间/地点/定位方式）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -284,6 +298,13 @@ var ListApprove = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_list_approve",
+			CanonicalPath:  "attendance.shortcut_list_approve",
+			CLIPath:        "attendance +list-approve",
+			PrimaryCLIPath: "attendance +list-approve",
+		},
 		Description: "查询用户考勤审批单（补卡/加班/请假/出差外出）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -349,6 +370,13 @@ var GetApproveTemplate = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_approve_template",
+			CanonicalPath:  "attendance.shortcut_get_approve_template",
+			CLIPath:        "attendance +get-approve-template",
+			PrimaryCLIPath: "attendance +get-approve-template",
+		},
 		Description: "查询补卡/请假/加班/外出/出差审批提交链接",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -401,6 +429,13 @@ var GetSchedule = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_schedule",
+			CanonicalPath:  "attendance.shortcut_get_schedule",
+			CLIPath:        "attendance +get-schedule",
+			PrimaryCLIPath: "attendance +get-schedule",
+		},
 		Description: "获取指定用户一段时间内的排班记录",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -502,6 +537,13 @@ var SearchClass = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_search_class",
+			CanonicalPath:  "attendance.shortcut_search_class",
+			CLIPath:        "attendance +search-class",
+			PrimaryCLIPath: "attendance +search-class",
+		},
 		Description: "查询当前用户可管理的班次详情列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -733,6 +775,13 @@ var GetAdjustmentRule = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_adjustment_rule",
+			CanonicalPath:  "attendance.shortcut_get_adjustment_rule",
+			CLIPath:        "attendance +get-adjustment-rule",
+			PrimaryCLIPath: "attendance +get-adjustment-rule",
+		},
 		Description: "根据补卡规则主键 ID 查询补卡规则详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -770,6 +819,13 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_search_adjustment_rule",
+			CanonicalPath:  "attendance.shortcut_search_adjustment_rule",
+			CLIPath:        "attendance +search-adjustment-rule",
+			PrimaryCLIPath: "attendance +search-adjustment-rule",
+		},
 		Description: "查询当前用户可管理的补卡规则列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -865,6 +921,13 @@ var GetOvertimeRule = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_overtime_rule",
+			CanonicalPath:  "attendance.shortcut_get_overtime_rule",
+			CLIPath:        "attendance +get-overtime-rule",
+			PrimaryCLIPath: "attendance +get-overtime-rule",
+		},
 		Description: "根据加班规则主键 ID 查询加班规则详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -902,6 +965,13 @@ var SearchOvertimeRule = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_search_overtime_rule",
+			CanonicalPath:  "attendance.shortcut_search_overtime_rule",
+			CLIPath:        "attendance +search-overtime-rule",
+			PrimaryCLIPath: "attendance +search-overtime-rule",
+		},
 		Description: "查询当前用户可管理的加班规则列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -962,6 +1032,13 @@ var SearchGroup = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_search_group",
+			CanonicalPath:  "attendance.shortcut_search_group",
+			CLIPath:        "attendance +search-group",
+			PrimaryCLIPath: "attendance +search-group",
+		},
 		Description: "查询当前用户可管理的考勤组列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1271,6 +1348,13 @@ var GetSummary = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_summary",
+			CanonicalPath:  "attendance.shortcut_get_summary",
+			CLIPath:        "attendance +get-summary",
+			PrimaryCLIPath: "attendance +get-summary",
+		},
 		Description: "查询某个人的考勤统计摘要（周/月）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1321,6 +1405,13 @@ var GetSelfSetting = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_self_setting",
+			CanonicalPath:  "attendance.shortcut_get_self_setting",
+			CLIPath:        "attendance +get-self-setting",
+			PrimaryCLIPath: "attendance +get-self-setting",
+		},
 		Description: "查询个人规则设置（打卡提醒/极速打卡/缺卡提醒等）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1402,6 +1493,13 @@ var QueryReportData = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_query_report_data",
+			CanonicalPath:  "attendance.shortcut_query_report_data",
+			CLIPath:        "attendance +query-report-data",
+			PrimaryCLIPath: "attendance +query-report-data",
+		},
 		Description: "根据字段查询考勤报表数据（仅管理员）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1504,6 +1602,13 @@ var ListLeaveTypes = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_list_leave_types",
+			CanonicalPath:  "attendance.shortcut_list_leave_types",
+			CLIPath:        "attendance +list-leave-types",
+			PrimaryCLIPath: "attendance +list-leave-types",
+		},
 		Description: "查询当前用户可用的假期规则列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1564,6 +1669,13 @@ var GetLeaveRecords = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_leave_records",
+			CanonicalPath:  "attendance.shortcut_get_leave_records",
+			CLIPath:        "attendance +get-leave-records",
+			PrimaryCLIPath: "attendance +get-leave-records",
+		},
 		Description: "查询指定员工的假期余额变更记录",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -1740,6 +1852,13 @@ var GetCheckinRecord = shortcut.Shortcut{
 		Confirmation: "not_required", Idempotency: "idempotent",
 	},
 	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_checkin_record",
+			CanonicalPath:  "attendance.shortcut_get_checkin_record",
+			CLIPath:        "attendance +get-checkin-record",
+			PrimaryCLIPath: "attendance +get-checkin-record",
+		},
 		Description: "查询指定员工一段时间内的签到记录",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
